@@ -6,11 +6,12 @@
 
 From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
+From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
-Require Import vehicle.tensor.
-Require Import vehicle.utils.
-Open Scope ring_scope.
-Open Scope order_scope.
+From vehicle Require Import utils.
+Local Open Scope ring_scope.
+Local Open Scope order_scope.
+Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
@@ -30,13 +31,13 @@ Definition smallDogs : seq Dog := chihuahua :: (pekinese :: nil).
 
 Definition bigDogs : seq Dog := greatDane :: (germanShepherd :: nil).
 
-Definition Image : Type := 'nT[R]_(4%N :: (4%N :: nil)).
+Definition Image : Type := 'nT[R]_[4, 4].
 
-Definition Score : Type := 'nT[R]_(nil).
+Definition Score : Type := 'sT[R].
 
-Parameter score : Image -> 'nT[R]_(6%N :: nil).
+Parameter score : Image -> 'nT[R]_[6].
 
-Definition validPixel (p : 'nT[R]_(nil)) : Prop := const_t (0 : R) <= p /\ p <= const_t (1 : R).
+Definition validPixel (p : 'sT[R]) : Prop := const_t (0 : R) <= p /\ p <= const_t (1 : R).
 
 Definition validImage (x : Image) : Prop := forallIndex (fun i => forallIndex (fun j => validPixel (x ^^ i) ^^ j)).
 

@@ -34,6 +34,8 @@ The intermediate Marabou queries can be found in `examples/windController/verifi
 
 ## Compiling to specification to an ITP backend
 
+### Agda
+
 The (verified) specification may then be compiled to Agda by running the command:
 
 ```bash
@@ -43,9 +45,53 @@ vehicle export \
   --output examples/windController/agdaProof/WindControllerSpec.agda
 ```
 
-The full proof safety which makes uses of the generated Agda version of the specification in `agdaProof/WindControllerSpec.agda` is found in `agdaProof/SafetyProof.agda`.
+The full proof of safety which makes use of the generated Agda version of the
+specification in `agdaProof/WindControllerSpec.agda` is found in
+`agdaProof/SafetyProof.agda`.
 
-This can be equivalently achieved using Rocq, the full proof script can be found in `rocqProof/SafetyProof.v`.
+### Rocq
+
+The same is supported for Rocq:
+
+```bash
+vehicle compile itp \
+  --target Rocq \
+  --specification examples/windController/windController.vcl \
+  --cache examples/windController/verificationResult \
+  --output examples/windController/rocqProof/WindControllerSpec.v
+```
+
+When `--cache` is supplied, each `@property` is emitted as
+
+```coq
+Lemma <name> : <type>.
+Proof. vehicle_validate "<absolute path to cache>". Qed.
+```
+
+instead of an `Axiom`. The `vehicle_validate` tactic — provided by the
+`vehicle-rocq` companion library — invokes `vehicle validate --cache=...`
+at `Qed.` time and closes the goal only if validation succeeds. The full
+proof of safety using the generated spec is in `rocqProof/SafetyProof.v`.
+
+`vehicle compile` canonicalises the supplied cache path to an absolute
+path before embedding it in the generated `.v` file, so `rocq compile`
+can be invoked from any directory. For the cache itself to remain
+relocatable, pass absolute paths for the specification and network when
+running `vehicle verify` (otherwise those resource paths are stored
+relative to the verify cwd and `vehicle validate` will look for them
+there).
+
+To build the Rocq proof, generate the Coq makefile from `_CoqProject`
+and run it:
+
+```bash
+cd examples/windController/rocqProof
+rocq makefile -f _CoqProject -o Makefile
+make
+```
+
+See [`vehicle-rocq/README.md`](../../vehicle-rocq/README.md) for details
+on the plugin.
 
 ## Generated files
 
