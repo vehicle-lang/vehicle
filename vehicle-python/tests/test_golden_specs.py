@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-
 import vehicle_lang as vcl
 import vehicle_lang.loss as loss
 
