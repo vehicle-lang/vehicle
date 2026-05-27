@@ -21,4 +21,5 @@ of neural networks.
   parameters
   properties
   type-synonyms
+  differentiable-logics
   tips-and-tricks

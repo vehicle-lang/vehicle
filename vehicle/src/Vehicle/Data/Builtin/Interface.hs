@@ -55,6 +55,7 @@ class BuiltinHasBoolLiterals builtin where
   accessCompareRatTensorReducedBuiltin :: Accessor builtin ComparisonOp
 
   accessQuantifyRatTensorBuiltin :: Accessor builtin Quantifier
+  accessQuantifyRecordBuiltin :: Accessor builtin Quantifier
 
 --------------------------------------------------------------------------------
 -- Index

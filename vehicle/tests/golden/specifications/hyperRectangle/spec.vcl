@@ -1,21 +1,31 @@
 --------------------------------------------------------------------------------
 -- Inputs
+
 inputSize = 30
+
 type InputVector = Tensor Real [inputSize]
+
 --------------------------------------------------------------------------------
 -- Outputs
+
 type OutputVector = Tensor Real [2]
+
 type Label = Index 2
+
 pos : Label
 pos = 0
+
 neg : Label
 neg = 1
 --------------------------------------------------------------------------------
 -- Network
+
 @network
 classifier : InputVector -> OutputVector
+
 advises : InputVector -> Label -> Bool
 advises x i = forall j . j != i => classifier x ! i > classifier x ! j
+
 --------------------------------------------------------------------------------
 -- Dataset
 @parameter(infer=True)

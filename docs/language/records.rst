@@ -8,8 +8,15 @@ Records
 Basics
 ------
 
-Records allow you to group logical sets of parameters to together. A record can be defined
-as follows:
+| |backendloss_easy|
+| |backendverification_full|
+| |backendagda_full|
+| |backendrocq_full|
+| |backendimandra_full|
+| |backendisabelle_full|
+
+Records allow you to group logical sets of parameters to together.
+The syntax for defining a record is as follows:
 
 .. code-block:: agda
 
@@ -37,7 +44,7 @@ A new instance of this record can be defined by providing a value for each of th
 
 The fields can then be accessed via standard ``.`` notation, e.g.:
 
-.. code-block: agda
+.. code-block:: agda
 
-    sum : Pair -> Real
-    sum pair = pair.a + pair.b
+    sumOf : Pair -> Real
+    sumOf pair = pair.a + pair.b

@@ -524,7 +524,7 @@ class HasTensorLiterals expr builtin where
 -- For example `(xs + ys) ! i` becomes `xs ! i + ys ! i`.
 evalAtTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
+  (MonadNormBuiltin m, PrintableBuiltin builtin, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
   NamedBoundCtx ->
   EvalApp builtin m ->
   Eval builtin m ->
@@ -582,11 +582,9 @@ unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
     goLiterals i literals = case literals of
       Wrapper Access {..} : remainingLiterals -> case getExpr tensor of
         Just xs -> Just $ return $ mkExpr (xs `at` i)
-        Nothing -> goLiterals i remainingLiterals
+        Nothing -> do
+          goLiterals i remainingLiterals
       _ -> Nothing
-
------------------------------------------------------------------------------
--- Foreach
 
 type HasOptimisedAtBuiltins builtin =
   ( HasTensorLiterals Value builtin,
@@ -613,7 +611,6 @@ evalForeachTensor ::
   m (Value builtin)
 evalForeachTensor ctx evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
   VLam binder (Closure env body) -> do
-    logDebug MaxDetail "Hit"
     let lv = boundCtxLv ctx
     let newEnv = extendEnvWithBound lv binder env
     let newCtx = nameOf binder : ctx
@@ -648,8 +645,6 @@ liftForeach ctx evalForeach lv d = go
               <|> goAt body
               <|> goConst body
               <|> goLiterals body tensorLiterals
-      logDebug MaxDetail (prettyVerbose body)
-      logDebug MaxDetail (pretty $ isJust maybeResult)
       result <- fromMaybe (evalForeach typ body) maybeResult
       showFusionExit ctx result
 

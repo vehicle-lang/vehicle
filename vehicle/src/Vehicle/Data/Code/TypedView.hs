@@ -28,6 +28,8 @@ module Vehicle.Data.Code.TypedView
     etaReduceTensor,
     scaleValue,
     addValues,
+    toRecordValue,
+    RecordValue (..),
   )
 where
 
@@ -51,7 +53,7 @@ import Vehicle.Prelude.Logging
 -------------------------------------------------------------------------------
 -- Types
 
--- | A view on all possible expressions that can have type `List Int`.
+-- | A view on all possible expressions that can have type `Type`.
 data TypeValue
   = VUnitType
   | VBoolType
@@ -61,6 +63,7 @@ data TypeValue
   | VBoolTensorType (VDims Builtin)
   | VNatTensorType (VDims Builtin)
   | VRatTensorType (VDims Builtin)
+  | VRecordType (VType Builtin) !(VRecordFields Builtin)
   | VIndexTensorType (Value Builtin) (Value Builtin)
   | VListType (Value Builtin)
   | VVectorType (Value Builtin) (Value Builtin)
@@ -73,6 +76,7 @@ toTypeValue t = case t of
   VPi binder value -> VPiType binder value
   VBoundVar lv spine -> VBoundTypeVar lv spine
   VFreeVar v spine -> VFreeTypeVar v spine
+  VRecord recordType fields -> VRecordType recordType fields
   VBuiltin (BuiltinType typ) spine -> case (typ, spine) of
     (UnitType, []) -> VUnitType
     (BoolType, []) -> VBoolType
@@ -106,6 +110,7 @@ fromTypeValue t = case t of
   VNatTensorType ds -> ITensorType (fromTypeValue VNatType) ds
   VIndexTensorType n ds -> ITensorType (fromTypeValue (VIndexType n)) ds
   VVectorType tElem d -> IVectorType tElem d
+  VRecordType _recordType _fields -> undefined
 
 -------------------------------------------------------------------------------
 -- Index
@@ -189,6 +194,7 @@ data BoolValue
   | VReduceAndTensor (TensorReductionArgs (Value Builtin))
   | VReduceOrTensor (TensorReductionArgs (Value Builtin))
   | VQuantifyRatTensor (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
+  | VQuantifyRecord (Quantifier, QuantifyRecordArgs (Value Builtin) (Closure Builtin))
   | VBoolIf (IfArgs (Value Builtin))
   | VBoolAt (AtTensorArgs (Value Builtin))
 
@@ -203,6 +209,7 @@ toBoolValue expr = case expr of
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just args) -> VQuantifyRatTensor args
+  (getExpr accessQuantifyRecord -> Just args) -> VQuantifyRecord args
   (getExpr accessReduceAnd -> Just args) ->
     case foldReduceAndComparison args of
       Nothing -> VReduceAndTensor args
@@ -222,6 +229,7 @@ fromBoolValue = \case
   VCompareIndex args -> mkExpr accessCompareIndex args
   VCompareRatTensor args -> toComparison args
   VQuantifyRatTensor args -> mkExpr accessQuantifyRatTensor args
+  VQuantifyRecord _args -> undefined
   VReduceAndTensor args -> mkExpr accessReduceAnd args
   VReduceOrTensor args -> mkExpr accessReduceOr args
   VBoolIf args -> mkExpr accessIf args
@@ -270,7 +278,8 @@ data BoolTensorValue
   | VBoolTensorReduceAnd (TensorReductionArgs (Value Builtin))
   | VBoolTensorReduceOr (TensorReductionArgs (Value Builtin))
   | VBoolTensorQuantifyRat (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
-  | VBoolTensorBoolIf (IfArgs (Value Builtin))
+  | VBoolTensorQuantifyRecord (Quantifier, QuantifyRecordArgs (Value Builtin) (Closure Builtin))
+  | VBoolTensorIf (IfArgs (Value Builtin))
   | VBoolTensorAt (AtTensorArgs (Value Builtin))
   | VBoolTensorForeach (ForeachTensorArgs (Value Builtin))
 
@@ -287,6 +296,7 @@ toBoolTensorValue expr = case expr of
   (getExpr accessCompareNat -> Just args) -> VBoolTensorCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VBoolTensorCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just args) -> VBoolTensorQuantifyRat args
+  (getExpr accessQuantifyRecord -> Just args) -> VBoolTensorQuantifyRecord args
   (getExpr accessReduceAnd -> Just args) ->
     case foldReduceAndComparison args of
       Nothing -> VBoolTensorReduceAnd args
@@ -294,7 +304,7 @@ toBoolTensorValue expr = case expr of
   (getExpr accessReduceOr -> Just args) -> VBoolTensorReduceOr args
   (getExpr accessAtTensor -> Just args) -> VBoolTensorAt args
   (getExpr accessForeachTensor -> Just args) -> VBoolTensorForeach args
-  (getExpr accessIf -> Just args) -> VBoolTensorBoolIf args
+  (getExpr accessIf -> Just args) -> VBoolTensorIf args
   _ -> developerError $ "ill-typed BoolTensor expression:" <+> prettyVerbose expr
 
 fromBoolTensorValue :: BoolTensorValue -> Value Builtin
@@ -310,9 +320,10 @@ fromBoolTensorValue = \case
   VBoolTensorCompareRatPointwise args -> mkExpr accessCompareRatTensorPointwise args
   VBoolTensorCompareRatReduced args -> mkExpr accessCompareRatTensorReduced args
   VBoolTensorQuantifyRat args -> mkExpr accessQuantifyRatTensor args
+  VBoolTensorQuantifyRecord args -> mkExpr accessQuantifyRecord args
   VBoolTensorReduceAnd args -> mkExpr accessReduceAnd args
   VBoolTensorReduceOr args -> mkExpr accessReduceOr args
-  VBoolTensorBoolIf args -> mkExpr accessIf args
+  VBoolTensorIf args -> mkExpr accessIf args
   VBoolTensorAt args -> mkExpr accessAtTensor args
   VBoolTensorForeach args -> mkExpr accessForeachTensor args
 
@@ -360,6 +371,20 @@ fromMultiDimBoolTensorValue = \case
   VBoolForeach args -> mkExpr accessForeachTensor args
 
 -------------------------------------------------------------------------------
+-- Record
+data RecordValue
+  = VRecordNetworkApp Identifier (NetworkAppArgs (Value Builtin))
+  | VRecordBoundVar Lv
+  | VRecordLiteral (VType Builtin) !(VRecordFields Builtin)
+
+toRecordValue :: (HasCallStack) => Value Builtin -> RecordValue
+toRecordValue expr = case expr of
+  VBoundVar lv [] -> VRecordBoundVar lv
+  VFreeVar n (getExpr accessSpine -> Just networkArgs) -> VRecordNetworkApp n networkArgs
+  VRecord typ fields -> VRecordLiteral typ fields
+  _ -> developerError $ "ill-typed Record expression" <+> prettyVerbose expr
+
+-------------------------------------------------------------------------------
 -- Tensor Rat
 
 -- | A view on all possible expressions that can have type `Tensor Rat`.
@@ -378,16 +403,20 @@ data RatTensorValue
   | VReduceMaxRatTensor (TensorReductionArgs (Value Builtin))
   | VIfRatTensor (IfArgs (Value Builtin))
   | VRatTensorBoundVar Lv
-  | VRatTensorFreeVar Identifier (Spine Builtin)
+  | VRatTensorNetworkApp Identifier (NetworkAppArgs (Value Builtin))
   | VRatConstTensor (ConstTensorArgs (Value Builtin))
   | VRatStackTensor (StackTensorArgs (Value Builtin))
   | VRatAt (AtTensorArgs (Value Builtin))
   | VRatForeach (ForeachTensorArgs (Value Builtin))
+  | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
+  | VDatasetOrParameter Identifier
 
 toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue
 toRatTensorValue expr = case expr of
   VBoundVar lv [] -> VRatTensorBoundVar lv
-  VFreeVar n spine -> VRatTensorFreeVar n spine
+  VRecordAcc typ value fieldName spine -> VRatRecordAcc typ value fieldName spine
+  VFreeVar n (getExpr accessSpine -> Just networkArgs) -> VRatTensorNetworkApp n networkArgs
+  VFreeVar n [] -> VDatasetOrParameter n
   (getExpr accessRatTensorLiteral -> Just t) -> VRatTensorLiteral t
   (getExpr accessNegRatTensor -> Just args) -> VNegRatTensor args
   (getExpr accessAddRatTensor -> Just args) -> VAddRatTensor args
@@ -407,12 +436,12 @@ toRatTensorValue expr = case expr of
   (getExpr accessForeachTensor -> Just args) -> VRatForeach args
   _ -> illTyped
   where
-    illTyped = developerError $ "ill-typed RatTensor expression:" <+> pretty (show expr) -- rettyVerbose expr
+    illTyped = developerError $ "ill-typed RatTensor expression:" <+> pretty (show expr)
 
 fromRatTensorValue :: RatTensorValue -> Value Builtin
 fromRatTensorValue = \case
   VRatTensorBoundVar v -> VBoundVar v []
-  VRatTensorFreeVar name args -> VFreeVar name args
+  VRatRecordAcc typ value fieldName spine -> VRecordAcc typ value fieldName spine
   VRatTensorLiteral t -> mkExpr accessRatTensorLiteral t
   VNegRatTensor args -> mkExpr accessNegRatTensor args
   VAddRatTensor args -> mkExpr accessAddRatTensor args
@@ -430,6 +459,8 @@ fromRatTensorValue = \case
   VRatStackTensor args -> mkExpr accessStackTensor args
   VRatAt args -> mkExpr accessAtTensor args
   VRatForeach args -> mkExpr accessForeachTensor args
+  VDatasetOrParameter ident -> VFreeVar ident []
+  VRatTensorNetworkApp name args -> VFreeVar name (mkExpr accessSpine args)
 
 -------------------------------------------------------------------------------
 -- Dim
@@ -449,6 +480,7 @@ toDimensionsValue e = case e of
   (getExpr accessIf -> Just args) -> VDimsIf args
   _ -> developerError $ "ill-typed Dimensions expression" <+> prettyVerbose e
 
+-- TODO: use this for conversion of lengths back to dims
 fromDimensionsValue :: (HasCallStack) => DimensionsValue -> Value Builtin
 fromDimensionsValue e = case e of
   VDimsBoundVar lv spine -> VBoundVar lv spine

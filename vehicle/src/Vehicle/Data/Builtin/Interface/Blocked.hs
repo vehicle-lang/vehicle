@@ -51,7 +51,7 @@ functionBlockingStatus ::
   BlockingStatus builtin
 functionBlockingStatus b spine = case b of
   QuantifyRatTensor {} -> DoesNotReduce
-  QuantifyTensorLike {} -> DoesNotReduce
+  QuantifyRecord {} -> DoesNotReduce
   Implies -> AlwaysReduces
   Not -> fixedStatus [1] spine
   And -> fixedStatus [1, 2] spine

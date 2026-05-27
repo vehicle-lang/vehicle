@@ -7,8 +7,10 @@ module Vehicle.Compile
   )
 where
 
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.Set qualified as Set
+import System.Directory (makeAbsolute)
 import Vehicle.Backend.ITP.Agda
 import Vehicle.Backend.ITP.Imandra
 import Vehicle.Backend.ITP.Isabelle
@@ -134,7 +136,11 @@ compileToITP ITPOptions {..} typedProg = do
         agdaCode <- compileProgToAgda decProg agdaOptions
         writeAgdaFile outputFile agdaCode
       Rocq -> do
-        let rocqOptions = RocqOptions outputFile moduleName constructiveReals
+        -- Make the cache path absolute so that `rocq compile` can be invoked
+        -- from any working directory; the path is embedded verbatim in the
+        -- generated `vehicle_validate "..."` tactic call.
+        absCache <- liftIO $ traverse makeAbsolute verificationCache
+        let rocqOptions = RocqOptions absCache outputFile moduleName constructiveReals
         rocqCode <- compileProgToRocq decProg rocqOptions
         writeRocqFile outputFile rocqCode
       Isabelle -> do

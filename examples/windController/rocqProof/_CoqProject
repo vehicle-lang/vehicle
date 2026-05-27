@@ -1,2 +1,4 @@
+-Q . windController
+
 WindControllerSpec.v
 SafetyProof.v

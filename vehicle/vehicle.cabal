@@ -200,6 +200,7 @@ library
     Vehicle.Backend.Loss
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
+    Vehicle.Backend.Loss.Domain.PurifyAssertion
     Vehicle.Backend.Solver
     Vehicle.Backend.Solver.QueryCompilation
     Vehicle.Backend.Solver.QueryCompilation.Core
@@ -209,6 +210,7 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch
     Vehicle.Backend.Solver.UserVariableElimination.Core
     Vehicle.Backend.Solver.UserVariableElimination.EliminateExists
+    Vehicle.Backend.Solver.UserVariableElimination.PurifyAssertion
     Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames

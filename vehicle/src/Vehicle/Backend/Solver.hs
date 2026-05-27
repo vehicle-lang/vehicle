@@ -20,18 +20,22 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
-import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
-import Vehicle.Compile.Normalise.NBE (evalDecl)
+import Vehicle.Compile.LowerNot (lowerNot, negateRatTensorQuantifierBody)
+import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Normalise.Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructTensorisableDims)
 import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DSL
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..), andTrivial, orTrivial)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
@@ -82,8 +86,7 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder = do
   properties <- compileProg settings resourceFreeProg
 
   -- Check that there were actually properties in the specification.
-  when (null properties) $ do
-    throwError NoPropertiesFound
+  when (null properties) $ throwError NoPropertiesFound
 
   -- Write out the folder
   case maybeVerificationFolder of
@@ -107,7 +110,7 @@ compileProg ::
   CompilationSettings ->
   Prog Builtin ->
   m [(Name, MultiProperty PropertyAddress)]
-compileProg settings (Main decls) = do
+compileProg settings (Main decls) =
   runFreshFreeContextT (Proxy @Builtin) $
     runSupplyT [(0 :: PropertyID) ..] $
       compileDecls settings decls
@@ -191,7 +194,7 @@ compileSingleProperty CompilationSettings {..} prov propertyAddress expr =
 -- Assumptions - expression is well-typed in the empty context and of type Bool.
 compileQueries ::
   forall m.
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Value Builtin ->
   m (Property QueryMetaData)
 compileQueries expr = do
@@ -204,8 +207,11 @@ compileQueries expr = do
     VQuantifyRatTensor (Exists, args) -> compileQuantifiedQuerySet False args
     VQuantifyRatTensor (Forall, args) -> do
       logDebug MaxDetail $ "negate" <+> pretty Forall
-      negatedArgs <- negateQuantifierBody args
+      negatedArgs <- negateRatTensorQuantifierBody args
       compileQuantifiedQuerySet True negatedArgs
+    VQuantifyRecord (q, args) -> do
+      wrappedBinderArgs <- wrapQuantifyRecord args
+      compileQueries (fromBoolValue $ VQuantifyRatTensor (q, wrappedBinderArgs))
     ---------------------
     -- Recursive cases --
     ---------------------
@@ -236,7 +242,7 @@ compileQueries expr = do
     unblock = unblockBoolExpr topLevelUnblockingActions
 
 compileQuantifiedQuerySet ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Bool ->
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (Property QueryMetaData)
@@ -245,9 +251,49 @@ compileQuantifiedQuerySet isPropertyNegated args =
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
+-- | Takes a record quantifier and wraps the binder & body in a tensor quantifier
+--  e.g. given Pair has fields { a : Real, b : Real }
+--  forall (r : Pair) . (body)
+--  becomes
+--  forall (_t0 : tensor Real [2]) . (body (_PairFromTensor _t0))
+wrapQuantifyRecord ::
+  ( MonadPropertyStructure m,
+    MonadSupply QueryID m,
+    MonadStdIO m,
+    MonadFreeContext Builtin m
+  ) =>
+  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
+  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
+wrapQuantifyRecord QuantifyRecordArgs {..} = do
+  namedCtx <- getNameContext
+  recordTypeIdent <- case toTypeValue quantifyRecordType of
+    VFreeTypeVar v _spine -> pure v
+    _ -> developerError "Record binder is not of expected format."
+
+  -- Construct \r -> body from binder and body in record quantifier args
+  recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody
+  fields <- getRecordFields recordTypeIdent
+  let shape = constructTensorisableDims fields
+  let dims = mkDims shape
+
+  -- Build tensor binder with appropriate dims and type for record
+  let Closure boundEnv _body = quantifyRecordBody
+  tensorType <- eval namedCtx boundEnv $ fromDSL mempty $ tTensor tRat (toDSL dims)
+  normalisedDims <- eval namedCtx boundEnv dims
+  let tensorBinder = mkExplicitBinder tensorType (Just (mempty, getFreshTensorBinderName namedCtx))
+
+  let tensorBoundVar = explicit $ BoundVar mempty 0
+  recordTypeProv <- getRecordProvenance recordTypeIdent
+  -- Construct _PairFromTensor _t0
+  let fromTensorExpr = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
+
+  -- Construct body (_PairFromTensor _t0)
+  let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
+  return $ QuantifyRatTensorArgs normalisedDims tensorBinder (Closure boundEnv nestedBody)
+
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Value Builtin ->
   m (Property QueryMetaData)
 compileUnquantifiedQuerySet value = do
@@ -257,7 +303,7 @@ compileUnquantifiedQuerySet value = do
     compileQuerySetPartitions globalCtx False maybePartitions
 
 compileQuerySetPartitions ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   GlobalCtx ->
   QuerySetNegationStatus ->
   MaybeTrivial Partitions ->
@@ -271,11 +317,14 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
       Trivial b -> return $ Trivial b
       NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
 
-topLevelUnblockingActions :: (MonadCompile m) => UnblockingActions m
+topLevelUnblockingActions :: (Monad m) => UnblockingActions m
 topLevelUnblockingActions =
   UnblockingActions
-    (developerError "Should not be unblocking variables at top-level")
-    (developerError "Unblocking of constant network functions at top-level not yet supported")
+    { unblockRatTensorBoundVar = developerError "No bound variables should exist at top-level",
+      unblockRecordBoundVar = developerError "No bound variables should exist at top-level",
+      unblockNetworkApp = \_ _ _ -> developerError "Unblocking of constant network functions at top-level not yet supported",
+      unblockDatasetOrParameter = developerError "Should not be unblocking datasets or parameters"
+    }
 
 handlePropertyCompileError ::
   (MonadIO m, MonadCompile m) =>

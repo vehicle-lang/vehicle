@@ -673,7 +673,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier moduleDefs q [binder] body
       _ -> unsupportedArgsError
-    QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
+    QuantifyRecord _ -> unsupportedTensorLikeQuantifier
     AtTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "flex_subtensor" args
     If -> annotateNotation moduleDefs [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args

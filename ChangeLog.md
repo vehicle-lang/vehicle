@@ -2,12 +2,43 @@
 
 ## Next release
 
+### General
+
+* Improved language documentation to show per-backend support.
+
+* Added undocumented operations to language documentation.
+
+### Rocq backend
+
+* Reworked the tensor representation to use the new `tensor` module from
+  mathcomp 2.6.0; generated specifications now use the `'nT[R]_[n1, .., nk]`
+  / `'sT[R]` shorthand notations.
+* Generated `@property` declarations now integrate with the verification
+  cache: when `--cache` is supplied, properties are emitted as
+  `Lemma p : <type>. Proof. vehicle_validate "...". Qed.` instead of
+  bare `Axiom`s. The new `vehicle_validate` tactic (provided by
+  `vehicle-rocq`) invokes `vehicle validate --cache=...` at proof-checking
+  time and closes the goal only if validation succeeds. Mirrors the
+  Agda `checkSpecification` macro.
+* Cache paths supplied via `--cache` are canonicalised to absolute paths
+  before being embedded in the generated `.v` so `rocq compile` works
+  from any working directory.
+* `vehicle-rocq` switched to a Dune-based build; the OCaml plugin lives
+  in `vehicle-rocq/plugin/`.
+
 ### Loss backend
 
 * `--declaration` now accepts non-property declarations and restricts output to exactly the names listed.
 
+* Added the ability to declare custom Differentiable Logics internally in Vehicle (see documentation for details).
+
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
+
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
+
+### Python bindings
+
+* Breaking change: the `vehicle_lang.list` Python API now returns structured Python objects instead of a JSON string. Callers relying on the previous `str` output will need to be updated.
 
 ## v0.24.1
 

@@ -6,16 +6,17 @@
 
 From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
+From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
-Require Import vehicle.tensor.
-Require Import vehicle.utils.
-Open Scope ring_scope.
+From vehicle Require Import utils.
+Local Open Scope ring_scope.
+Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
-Parameter f : 'nT[R]_(2%N :: nil) -> 'nT[R]_(1%N :: nil).
+Parameter f : 'nT[R]_[2] -> 'nT[R]_[1].
 
-Definition dataset : seq 'nT[R]_(2%N :: nil) := [tensor^^= (1 / 2 : R); (1 : R)] :: nil.
+Definition dataset : seq 'nT[R]_[2] := [tensor^^= (1 / 2 : R); (1 : R)] :: nil.
 
 Axiom empty : forallInList (fun x => True) dataset.
 

@@ -12,10 +12,12 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Scoping (constructTensorisableDims)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView (DimensionsValue (..), TypeValue (..), toDimensionsValue, toTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
+import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields)
 import Vehicle.Verify.Core (NetworkContextInfo (..))
 
 --------------------------------------------------------------------------------
@@ -51,11 +53,16 @@ getNetworkType decl networkType = case normalised networkType of
         return networkDetails
   _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
   where
-    tensorType :: InputOrOutput -> VType Builtin -> m NetworkTensorType
+    tensorType :: InputOrOutput -> VType Builtin -> m NetworkIOType
     tensorType io t = case toTypeValue t of
       VRatTensorType dims -> do
         shape <- tensorDimensions io dims
-        return $ NetworkTensorType NetworkRatType shape
+        return $ TensorIOType $ NetworkTensorType NetworkRatType shape
+      VFreeTypeVar ident _spine -> do
+        fieldNames <- getRecordFieldNames ident
+        fields <- getRecordFields ident
+        let shape = constructTensorisableDims fields
+        return $ RecordIOType $ NetworkRecordType NetworkRatType ident shape fieldNames
       _ -> typingError
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape

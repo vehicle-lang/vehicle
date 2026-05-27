@@ -126,7 +126,6 @@ convertTypedValue p ident typ value = case toTypeValue typ of
             addNonTensorBinderToContext binder $ convertTypedValue p ident body v
       vClosure' <- convertClosure convertBody vBinder vClosure
       return $ VLam vBinder' vClosure'
-    -- Non-Lam at a Pi position: walk past the binder and dispatch at the leaf.
     _ -> do
       body <- normaliseClosure binder closure
       addNonTensorBinderToContext binder $ convertTypedValue p ident body value
@@ -141,6 +140,7 @@ convertTypedValue p ident typ value = case toTypeValue typ of
   VVectorType tElem _d -> convertVectorValue p ident tElem value
   VListType tElem -> convertListValue (convertTypedValue p ident tElem) value
   VUnitType {} -> unsupportedOperation "Unit-typed declarations"
+  VRecordType {} -> developerError "Records in loss functions are not supported yet"
   VFreeTypeVar {} -> unexpectedExprError currentPass "free type variable in decl type"
   VBoundTypeVar {} -> unexpectedExprError currentPass "bound type variable in decl type"
 
@@ -170,9 +170,8 @@ getVectorDims typ = case toTypeValue typ of
   VVectorType t d -> IDimCons d (getVectorDims t)
   _ -> developerError "non-tensor element type in vector unwrap"
 
--- `LossCompilation.convertBoolTensor` throws on `VBoolTensorQuantifyRat`
--- because its callers nest inside contexts where quantifiers can't occur.
--- A top-level decl body can have them, so handle that one arm here.
+-- Like `LossCompilation.convertBoolTensor`, but accepts top-level
+-- `VBoolTensorQuantifyRat`, which the shared version rejects.
 convertBoolTensorValue :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
 convertBoolTensorValue value = case toBoolTensorValue value of
   VBoolTensorLiteral bs -> convertBoolTensorLiteral bs
@@ -186,8 +185,9 @@ convertBoolTensorValue value = case toBoolTensorValue value of
   VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args
   VBoolTensorCompareRatReduced args -> convertRatTensorReducedComparison args
   VBoolTensorQuantifyRat args -> compileQuantifier args
+  VBoolTensorQuantifyRecord {} -> developerError "Quantifying records not yet supported in loss backend"
   VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertBoolTensorValue args
   VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertBoolTensorValue args
-  VBoolTensorBoolIf args -> convertIf args
+  VBoolTensorIf args -> convertIf args
   VBoolTensorAt args -> convertAtTensor convertBoolTensorValue args
   VBoolTensorForeach args -> convertForeachTensor convertBoolTensorValue args

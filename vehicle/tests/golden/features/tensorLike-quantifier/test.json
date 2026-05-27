@@ -3,5 +3,19 @@
     "name": "TypeCheck",
     "run": "vehicle typecheck -s spec.vcl",
     "needs": ["spec.vcl"]
-  }
+  },
+  {
+  "name": "Marabou",
+  "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network f:fake.onnx --loggingPass Solver",
+  "needs": ["spec.vcl", "fake.onnx"],
+  "produces": [
+    "Marabou.queries/*.txt",
+    "Marabou.queries/p.vcl-plan",
+    "Marabou.queries/parallel.vcl-plan"
+  ],
+  "ignore": {
+    "lines": ".*\"fileHash\".*"
+  },
+  "sizeOnly": ".vcl-plan"
+}
 ]

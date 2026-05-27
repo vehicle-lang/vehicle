@@ -358,7 +358,7 @@ compileRecordDecl p ident telescope fields = do
   t' <-
     if null telescope
       then return (compileType 0)
-      else throwError $ UnimplementedFeature p "Compiling parameterised records to Rocq"
+      else throwError $ UnimplementedFeature p "Compiling parameterised records to Agda"
   fs' <- traverseRecordFields compileExpr fields
 
   return $
@@ -591,7 +591,7 @@ compileBuiltinFunction f args = case f of
   QuantifyRatTensor q -> case reverse args of
     (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
     _ -> unsupportedArgsError
-  QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
+  QuantifyRecord _ -> unsupportedTensorLikeQuantifier
   AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
