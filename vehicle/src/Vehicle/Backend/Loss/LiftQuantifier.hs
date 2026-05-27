@@ -1,10 +1,5 @@
 module Vehicle.Backend.Loss.LiftQuantifier
   ( liftQuantifiers,
-    liftQuantifierDecls,
-    liftQuantifierDecl,
-    liftQuantifierProperty,
-    liftForall,
-    liftExists,
   )
 where
 
@@ -12,21 +7,17 @@ import Data.Proxy (Proxy (..))
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Prelude
 import Vehicle.Data.Variable.Bound.Context.Generic (MonadBoundContext (addBinderToContext, getBoundCtx), runFreshBoundContextT, addBinderToContext)
-import Vehicle.Data.Variable.Bound.Context.Core (boundCtxLv)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, runFreshFreeContextT, addDeclEntryToContext)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.AST.Expr.Scoped (Decl)
-import Vehicle.Data.AST.Prog (GenericProg(Main), Prog)
 import Vehicle.Data.Code.Value (Closure (..), Value (..), VDecl, boundContextToEnv)
-import Vehicle.Data.Variable.Bound.Level (Lv)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseClosure, evalDecl)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
-import Data.IDX (idxDimensions)
 
 liftQuantifiers ::
   (MonadCompile m) =>
@@ -254,8 +245,7 @@ updateRatTensorBoundVar lv value = case toRatTensorValue value of
     return (fromRatTensorValue $ VRatStackTensor (StackTensorArgs typ firstDim restDims elems'))
   VRatAt (AtTensorArgs typ firstDim restDims tensor idx) -> do
     tensor' <- updateRatTensorBoundVar lv tensor
-    idx' <- updateRatTensorBoundVar lv idx
-    return (fromRatTensorValue $ VRatAt (AtTensorArgs typ firstDim restDims tensor' idx'))
+    return (fromRatTensorValue $ VRatAt (AtTensorArgs typ firstDim restDims tensor' idx))
   VRatForeach (ForeachTensorArgs typ firstDim restDims fn) -> do
     fn' <- updateRatTensorBoundVar lv fn
     return (fromRatTensorValue $ VRatForeach (ForeachTensorArgs typ firstDim restDims fn'))
