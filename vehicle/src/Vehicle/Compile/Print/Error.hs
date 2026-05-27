@@ -909,6 +909,21 @@ formatCompileError = \case
             <> indent 2 (prettyFriendly (WithContext problematicValue ctx)),
         fix = Nothing
       }
+  UnableToLiftQuantifiersInProperty (ident, p) -> 
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Unable to lift quantifiers in property"
+            <+> quotePretty ident
+            <> ".",
+        fix = Nothing
+      }
+  UnableToUpdateBoundVars ->
+    VehicleError
+      { provenance = Nothing,
+        problem = "Unable to update bound variable levels.",
+        fix = Nothing
+      }
   UnusedMonomorphisableDeclaration p ident ->
     VehicleUserError
       { provenance = Just p,

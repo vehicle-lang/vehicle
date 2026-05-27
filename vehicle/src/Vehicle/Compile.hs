@@ -30,7 +30,6 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
-import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
 import Vehicle.Backend.Loss.LiftQuantifier (liftQuantifiers)
 
 --------------------------------------------------------------------------------
