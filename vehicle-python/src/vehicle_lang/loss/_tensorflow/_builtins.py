@@ -17,9 +17,9 @@ else:  # pragma: no cover - exercised implicitly
         feature="The TensorFlow loss backend",
     )
 
-from .. import error
+from ... import error
+from ..._ast import _nodes
 from .._abc import ABCBuiltins
-from .._ast import _nodes
 
 ################################################################################
 ### Type-safe TensorFlow wrappers
@@ -146,7 +146,7 @@ class TensorFlowBuiltins(
             return xs[i]
 
         if xs.shape.ndims == 0:
-            raise error.VehicleInternalError(  # type: ignore[attr-defined]
+            raise error.VehicleInternalError(
                 "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
             )
 

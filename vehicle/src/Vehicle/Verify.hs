@@ -88,14 +88,14 @@ verifyQueries loggingSettings outputAsJSON queryFolder verifierID verifierLocati
   runLoggerT loggingSettings $ verifySpecification outputAsJSON verifierSettings
 
 locateVerifierExecutable ::
-  (MonadIO m) =>
+  (MonadStdIO m) =>
   Verifier ->
   Maybe VerifierExecutable ->
   m VerifierExecutable
 locateVerifierExecutable Verifier {..} = \case
-  Just providedLocation -> liftIO $ do
-    absolutePath <- makeAbsolute providedLocation
-    exists <- doesFileExist providedLocation
+  Just providedLocation -> do
+    absolutePath <- liftIO $ makeAbsolute providedLocation
+    exists <- liftIO $ doesFileExist providedLocation
     if exists
       then return absolutePath
       else fatalError (missingVerifierExecutableError verifierID providedLocation)

@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from .. import session
-from ..error import VehicleError
 
 
 def validate(cache: str | Path) -> str:
@@ -13,12 +12,8 @@ def validate(cache: str | Path) -> str:
     args = ["validate", "--cache", str(cache), "--json"]
 
     # Call Vehicle
-    exc, out, err, _ = session.check_output(args)
-
-    # Check for errors
-    if exc != 0:
-        raise VehicleError(f"{err}")
-    elif not out:
+    out = session.execute_command(args)
+    if not out:
         return ""
 
     return out

@@ -17,9 +17,9 @@ else:  # pragma: no cover - exercised implicitly
         feature="The PyTorch loss backend",
     )
 
+from ..._ast import _nodes
+from ...error import VehicleInternalError
 from .._abc import ABCBuiltins
-from .._ast import _nodes
-from ..error import VehicleInternalError  # type: ignore[attr-defined]
 
 ################################################################################
 ### Type-safe PyTorch wrappers

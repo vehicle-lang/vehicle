@@ -8,9 +8,9 @@ from typing_extensions import TypeAlias
 from typing_extensions import TypeVar as TypingTypeVar
 
 from .. import session
-from ..error import VehicleError
-from ..loss._ast._decode import JsonValue, decode
-from ..loss._ast._nodes import Provenance
+from .._ast._decode import JsonValue, decode
+from .._ast._nodes import Provenance
+from ..error import VehicleInternalError
 
 Quantifier: TypeAlias = str
 
@@ -99,7 +99,7 @@ def _decode_listable_entities(value: JsonValue) -> List[ListableEntity]:
     return decode(List[ListableEntity], value)
 
 
-def list(specification: str | Path) -> List[ListableEntity]:
+def list_entities(specification: str | Path) -> List[ListableEntity]:
     """
     List all networks, datasets, parameters, and properties in the specification.
 
@@ -109,18 +109,14 @@ def list(specification: str | Path) -> List[ListableEntity]:
     args = ["list", "--specification", str(specification), "--json"]
 
     # Call Vehicle
-    exc, out, err, _ = session.check_output(args)
-
-    # Check for errors
-    if exc != 0:
-        raise VehicleError(f"{err}")
-    elif not out:
+    out = session.execute_command(args)
+    if not out:
         return []
 
     try:
         return _decode_listable_entities(json.loads(out))
     except Exception as exc:
-        raise VehicleError(str(exc)) from exc
+        raise VehicleInternalError(str(exc)) from exc
 
 
 __all__ = [
@@ -140,5 +136,5 @@ __all__ = [
     "Quantifier",
     "SharedData",
     "SingleProperty",
-    "list",
+    "list_entities",
 ]

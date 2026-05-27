@@ -43,7 +43,17 @@
 
 ### Python bindings
 
-* Breaking change: the `vehicle_lang.list` Python API now returns structured Python objects instead of a JSON string. Callers relying on the previous `str` output will need to be updated.
+There has been a major refactoring of the Python bindings to improve usability.
+
+* Breaking change: all methods that call the Vehicle compiler now throw either a structured `VehicleUserError` or an unstructured `VehicleInternalError`.
+
+* Breaking change: the method `list` from `vehicle_lang` has been renamed to `list_entities` and now returns structured Python objects instead of a JSON string.
+
+* Breaking change: removed the unused `VehiclePropertyNotFound`, `VehicleBuiltinUnsupported`, and `VehiclePropertyNotCallable` error types.
+
+* Breaking change: the method `vehicle_lang.typecheck` now does not accept a `TypeSystem` parameter and now returns an `Optional[VehicleUserError]` instead of a JSON string.
+
+* A new method `vehicle_lang.typecheck_with_typesystem` has been added which accepts a secondary type system parameter `SecondaryTypeSystem` that supports the functionality removed from the `typecheck`.
 
 ## v0.24.1
 

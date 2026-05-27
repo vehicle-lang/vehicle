@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Generic
 
-from .._ast import _nodes as vcl_ast
+from ..._ast import _nodes as vcl_ast
 from . import _types as vcl_var
 
 ################################################################################
