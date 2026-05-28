@@ -746,8 +746,8 @@ compileTensorLiteral compileElement t = annotate ([MathcompImport Algebra, Open 
   where
     toTensor :: TensorShape -> [Code] -> Code
     toTensor shape values = case shape of
-      [] -> "[tensor^^=" <+> concatWith (surround "; ") values <> "]"
-      _ -> "[tensor^^" <+> concatWith (surround "; ") values <> "]"
+      [] -> "ntensor_of_tuple (x := " <> pretty (length values) <> "%:posnat) [tuple of" <+> concatWith (surround " :: ") values <> " :: [::]]"
+      _ -> "nstack_tuple (x := " <> pretty (length values) <> "%:posnat) [tuple of" <+> concatWith (surround " :: ") values <> " :: [::]]"
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case
