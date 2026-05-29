@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from vehicle_lang.error import VehicleUserError
 from vehicle_lang.list import list_entities
 from vehicle_lang.verify import verify
