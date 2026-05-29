@@ -70,14 +70,13 @@
                         }
                       ]
                     },
-                    "queryAddress": [
-                      {
+                    "queryAddress": {
+                      "queryID": 1,
+                      "property": {
                         "propertyName": "p",
-                        "propertyIndices": [],
-                        "propertyID": 0
-                      },
-                      1
-                    ],
+                        "propertyIndices": []
+                      }
+                    },
                     "metaNetwork": [
                       [
                         "f",
@@ -194,14 +193,13 @@
                         }
                       ]
                     },
-                    "queryAddress": [
-                      {
+                    "queryAddress": {
+                      "queryID": 2,
+                      "property": {
                         "propertyName": "p",
-                        "propertyIndices": [],
-                        "propertyID": 0
-                      },
-                      2
-                    ],
+                        "propertyIndices": []
+                      }
+                    },
                     "metaNetwork": [
                       [
                         "f",

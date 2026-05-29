@@ -75,17 +75,16 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 1,
+                "property": {
                   "propertyName": "multiProperty",
                   "propertyIndices": [
                     0,
                     1
-                  ],
-                  "propertyID": 1
-                },
-                1
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "f",

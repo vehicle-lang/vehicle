@@ -162,14 +162,13 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 1,
+                "property": {
                   "propertyName": "safe",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "controller",
@@ -356,14 +355,13 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 2,
+                "property": {
                   "propertyName": "safe",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                2
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "controller",

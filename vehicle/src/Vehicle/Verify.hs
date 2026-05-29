@@ -22,7 +22,7 @@ import Vehicle.Verify.Verifier
 data VerifyOptions = VerifyOptions
   { specification :: FilePath,
     -- Compilation options
-    properties :: PropertyNames,
+    properties :: [PropertyName],
     networkLocations :: NetworkLocations,
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues,

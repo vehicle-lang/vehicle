@@ -182,14 +182,13 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 1,
+                "property": {
                   "propertyName": "underConstrainedVar1",
-                  "propertyIndices": [],
-                  "propertyID": 1
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "f",

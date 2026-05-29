@@ -1,11 +1,11 @@
 [93m
-Warning: The property 'p' was found to evaluate to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
-
-
 Warning: The property 'multiProperty!0!2' was found to evaluate to 'False' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
 
 
 Warning: The property 'multiProperty!0!0' was found to evaluate to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
+
+
+Warning: The property 'p' was found to evaluate to 'True' without needing to call the verifier. This usually indicates a fault with either the specification or any external datasets used.
 
 
 Warning: In property 'multiProperty', at least one of the generated queries were found to contain a strict inequality (i.e. constraints of the form 'x < y'). Unfortunately the Marabou query format only supports non-strict inequalities (i.e. constraints of the form 'x <= y').

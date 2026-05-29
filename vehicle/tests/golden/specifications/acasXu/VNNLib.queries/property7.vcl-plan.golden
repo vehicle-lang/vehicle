@@ -954,14 +954,13 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 1,
+                "property": {
                   "propertyName": "property7",
-                  "propertyIndices": [],
-                  "propertyID": 6
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "acasXu",
@@ -1940,14 +1939,13 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 2,
+                "property": {
                   "propertyName": "property7",
-                  "propertyIndices": [],
-                  "propertyID": 6
-                },
-                2
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "acasXu",

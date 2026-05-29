@@ -554,14 +554,13 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 1,
+                "property": {
                   "propertyName": "property9",
-                  "propertyIndices": [],
-                  "propertyID": 8
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "acasXu",
@@ -1140,14 +1139,13 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 2,
+                "property": {
                   "propertyName": "property9",
-                  "propertyIndices": [],
-                  "propertyID": 8
-                },
-                2
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "acasXu",
@@ -1726,14 +1724,13 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 3,
+                "property": {
                   "propertyName": "property9",
-                  "propertyIndices": [],
-                  "propertyID": 8
-                },
-                3
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "acasXu",
@@ -2312,14 +2309,13 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 4,
+                "property": {
                   "propertyName": "property9",
-                  "propertyIndices": [],
-                  "propertyID": 8
-                },
-                4
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "acasXu",

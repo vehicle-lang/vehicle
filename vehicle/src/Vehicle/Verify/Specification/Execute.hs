@@ -54,8 +54,8 @@ verifySpecification ::
   VerificationSettings ->
   m ()
 verifySpecification outputAsJSON verifierSettings
-  | outputAsJSON = runJSONProgressReporterT $ runReaderT verifySpecificationActual verifierSettings
-  | otherwise = runTextProgressReporterT $ runReaderT verifySpecificationActual verifierSettings
+  | outputAsJSON = runReaderT (runJSONProgressReporterT verifySpecificationActual) verifierSettings
+  | otherwise = runReaderT (runTextProgressReporterT verifySpecificationActual) verifierSettings
 
 verifySpecificationActual :: (MonadVerify m) => m ()
 verifySpecificationActual = do
@@ -90,7 +90,7 @@ verifyProperty address = do
   PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
 
   -- Determine number of queries and initialise progress bar
-  result <- reportProperty settings address (propertySize queryMetaData) $ case queryMetaData of
+  result <- reportProperty address (propertySize queryMetaData) $ case queryMetaData of
     Trivial status ->
       return $ PropertyCompleted (Trivial status)
     NonTrivial structure -> do

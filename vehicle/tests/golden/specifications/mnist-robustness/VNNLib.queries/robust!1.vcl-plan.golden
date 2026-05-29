@@ -13692,16 +13692,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 1,
+                "property": {
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                1
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -27419,16 +27418,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 2,
+                "property": {
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                2
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -41146,16 +41144,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 3,
+                "property": {
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                3
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -54873,16 +54870,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 4,
+                "property": {
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                4
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -68600,16 +68596,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 5,
+                "property": {
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                5
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -82327,16 +82322,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 6,
+                "property": {
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                6
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -96054,16 +96048,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 7,
+                "property": {
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                7
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -109781,16 +109774,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 8,
+                "property": {
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                8
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -123508,16 +123500,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "queryID": 9,
+                "property": {
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                9
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",

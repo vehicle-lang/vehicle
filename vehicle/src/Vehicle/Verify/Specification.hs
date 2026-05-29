@@ -233,7 +233,7 @@ instance (ToJSON property) => ToJSON (Specification property)
 
 instance (FromJSON property) => FromJSON (Specification property)
 
-specificationPropertyNames :: Specification a -> PropertyNames
+specificationPropertyNames :: Specification a -> [PropertyName]
 specificationPropertyNames (Specification properties) = fmap fst properties
 
 --------------------------------------------------------------------------------
