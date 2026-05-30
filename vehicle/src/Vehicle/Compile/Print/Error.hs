@@ -10,6 +10,7 @@ where
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Map.Ordered qualified as OMap
 import Data.These (mergeTheseWith)
 import System.FilePath
 import Vehicle.Compile.Error
@@ -26,7 +27,6 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Data.Variable.Bound.Context.Name
-import qualified Data.Map.Ordered as OMap
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -918,9 +918,9 @@ formatCompileError = \case
         fix = Just "this is on our road map to fix with VNNLib 2.0, but please open an issue on the Issue tracker with your use-case."
       }
   UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputValue, userVariables, unboundedInputs) :| _) ->
-    case toTypeValue inputValue of 
+    case toTypeValue inputValue of
       (VRecordType _t fields) -> do
-        let varName = "x"  :: Name
+        let varName = "x" :: Name
         let fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
         VehicleError
           { provenance = Just p,
@@ -928,7 +928,8 @@ formatCompileError = \case
               "The property"
                 <+> quotePretty ident
                 <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
-                <+> lineIndent (pretty networkName) <+> pretty varName
+                <+> lineIndent (pretty networkName)
+                <+> pretty varName
                 <> line
                 <> "In particular,"
                   <+> missingBoundsRecord varName fieldNames unboundedInputs
@@ -959,8 +960,6 @@ formatCompileError = \case
                   [v] -> "the quantified variable" <+> quotePretty v
                   _ -> "the following quantified variables:" <+> hsep (fmap pretty userVariables)
           }
-
-
   UnknownDifferentiableLogic name possibleNames ->
     VehicleError
       { provenance = Nothing,
@@ -1159,7 +1158,6 @@ missingOneSidedBounds isLowerBound missingIndices =
   "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <> case missingIndices of
     [[]] -> ""
     _ -> " for indices" <+> vsep (fmap pretty missingIndices)
-
 
 missingBoundsRecord :: Name -> [Name] -> UnboundedIndices -> Doc a
 missingBoundsRecord varName fieldNames = mergeTheseWith (missingOneSidedBoundsRecord varName fieldNames True) (missingOneSidedBoundsRecord varName fieldNames False) (\u v -> u <+> "and" <+> v)

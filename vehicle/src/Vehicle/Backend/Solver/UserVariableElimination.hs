@@ -12,6 +12,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
+import Data.Map qualified as Map
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
 import Vehicle.Backend.Solver.UserVariableElimination.PurifyAssertion (purifyAssertion)
@@ -41,9 +42,8 @@ import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStac
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
-import Prelude hiding (Applicative (..))
 import Vehicle.Verify.Specification (CompilationStep)
-import qualified Data.Map as Map
+import Prelude hiding (Applicative (..))
 
 eliminateExists ::
   (MonadQueryStructure m) =>
@@ -74,7 +74,7 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) prevSteps = 
     -- Recursively compile the expression.
     (partitions, networkInputEqualities) <-
       logCompilerSection2 MidDetail "reduction of body to assertion tree" $ runWriterT (compileBoolExpr normExpr)
-    
+
     partitions' <- case partitions of
       Trivial b -> pure (Trivial b)
       NonTrivial (Partitions m) ->

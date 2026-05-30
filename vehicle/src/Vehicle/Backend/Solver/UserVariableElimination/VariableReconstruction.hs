@@ -7,6 +7,7 @@ import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (coerce)
 import Data.Foldable (foldlM)
+import Data.List (delete, find)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -27,7 +28,6 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Core
-import Data.List ( find, delete )
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction
@@ -61,14 +61,16 @@ reconstructRecords existingAssignment steps = do
     checkStep (UserVariableAssignment assignments) step = do
       case step of
         ConvertQuantifiedTensorLike tensorName recordName fieldNames -> do
-          let tensorAssignment = find
-                  (\case
-                    TensorAssignment (tn, _) -> tn == tensorName
-                    _ -> False)
+          let tensorAssignment =
+                find
+                  ( \case
+                      TensorAssignment (tn, _) -> tn == tensorName
+                      _ -> False
+                  )
                   assignments
 
           tensorValue <- case tensorAssignment of
-            Just (TensorAssignment ( _ , t)) -> return t
+            Just (TensorAssignment (_, t)) -> return t
             -- TODO: proper/better error message
             _ -> developerError "No assignment found"
 
@@ -120,8 +122,8 @@ applyReconstructionStep ctx assignment step = do
         -- differently or convert a different way?
         ConvertQuantifiedTensorLike {} -> \varAssignment ->
           case NonEmpty.nonEmpty (Map.toList varAssignment) of
-          Just a -> pure a
-          Nothing -> developerError "Variable assignment list should not be empty"
+            Just a -> pure a
+            Nothing -> developerError "Variable assignment list should not be empty"
   newValues <- handleMissingError ctx (errorOrValueFn assignment)
 
   logDebugM MidDetail $ do

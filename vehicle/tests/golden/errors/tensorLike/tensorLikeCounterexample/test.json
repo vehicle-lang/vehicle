@@ -4,4 +4,3 @@
   "needs": ["spec.vcl", "fake.onnx", "../../../../testVerifier"],
   "external": ["TestVerifier"]
 }
-

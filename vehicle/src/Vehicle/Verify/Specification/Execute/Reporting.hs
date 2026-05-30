@@ -33,6 +33,7 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.Specification (QueryMetaData (..))
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Core as Core
+
 --------------------------------------------------------------------------------
 -- Interface
 --------------------------------------------------------------------------------
@@ -264,7 +265,7 @@ prettyUserVariableAssignment (UserVariableAssignment assignment) = do
   vsep (fmap prettyLine assignment)
   where
     prettyLine a = do
-      case a of 
+      case a of
         TensorAssignment (var, value) -> pretty var <> ":" <+> pretty value
         RecordAssignment (var, fields) -> pretty var <> ":" <+> "{" <+> fillSep (fmap (\(name, tens) -> pretty name <+> "=" <+> pretty tens) fields) <+> "}"
 
