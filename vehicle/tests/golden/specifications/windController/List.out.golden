@@ -1,57 +1,65 @@
-{
-  "tag": "SpecificationSummary",
-  "properties": [
-    {
-      "typeText": "Bool",
+[
+  {
+    "tag": "Network",
+    "contents": {
+      "tag": "NetworkSummary",
+      "sharedData": {
+        "typeText": "Tensor Real [2] -> OutputVector",
+        "tag": "SharedData",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            17,
+            1,
+            17,
+            11
+          ]
+        },
+        "name": "controller"
+      }
+    }
+  },
+  {
+    "tag": "Property",
+    "contents": {
       "tag": "PropertySummary",
-      "quantifiedVariables": {
+      "subcomponents": {
         "tag": "SingleProperty",
         "contents": [
           {
-            "typeText": "Tensor Real [2]",
             "tag": "QuantifiedVariableSummary",
-            "quantifier": "Forall",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                35,
-                15,
-                35,
-                16
-              ]
+            "sharedData": {
+              "typeText": "Tensor Real [2]",
+              "tag": "SharedData",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  35,
+                  15,
+                  35,
+                  16
+                ]
+              },
+              "name": "x"
             },
-            "name": "x"
+            "quantifier": "Forall"
           }
         ]
       },
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          34,
-          1,
-          34,
-          5
-        ]
-      },
-      "name": "safe"
+      "sharedData": {
+        "typeText": "Bool",
+        "tag": "SharedData",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            34,
+            1,
+            34,
+            5
+          ]
+        },
+        "name": "safe"
+      }
     }
-  ],
-  "parameters": [],
-  "networks": [
-    {
-      "typeText": "Tensor Real [2] -> OutputVector",
-      "tag": "NetworkSummary",
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          17,
-          1,
-          17,
-          11
-        ]
-      },
-      "name": "controller"
-    }
-  ],
-  "datasets": []
-}
+  }
+]

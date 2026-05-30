@@ -16,24 +16,25 @@ Quantifier: TypeAlias = str
 
 
 @dataclass(frozen=True)
-class NetworkSummary:
+class SharedData:
     provenance: Provenance
     name: str
     typeText: str
+
+
+@dataclass(frozen=True)
+class NetworkSummary:
+    sharedData: SharedData
 
 
 @dataclass(frozen=True)
 class DatasetSummary:
-    provenance: Provenance
-    name: str
-    typeText: str
+    sharedData: SharedData
 
 
 @dataclass(frozen=True)
 class ParameterSummary:
-    provenance: Provenance
-    name: str
-    typeText: str
+    sharedData: SharedData
     inferable: bool
 
 
@@ -58,57 +59,82 @@ class MultiProperty(MultiPropertyTree[_T]):
 
 @dataclass(frozen=True)
 class QuantifiedVariableSummary:
-    provenance: Provenance
-    name: str
-    typeText: str
+    sharedData: SharedData
     quantifier: Quantifier
 
 
 @dataclass(frozen=True)
 class PropertySummary:
-    provenance: Provenance
-    name: str
-    typeText: str
-    quantifiedVariables: Optional[MultiPropertyTree[list[QuantifiedVariableSummary]]]
+    sharedData: SharedData
+    subcomponents: Optional[MultiPropertyTree[list[QuantifiedVariableSummary]]]
+
+
+@dataclass(frozen=True, init=False)
+class ListableEntity(metaclass=ABCMeta):
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class ListableEntity")
 
 
 @dataclass(frozen=True)
-class SpecificationSummary:
-    networks: List[NetworkSummary]
-    datasets: List[DatasetSummary]
-    parameters: List[ParameterSummary]
-    properties: List[PropertySummary]
+class Network(ListableEntity):
+    summary: NetworkSummary
 
 
-def list_entities(specification: str | Path) -> SpecificationSummary:
+@dataclass(frozen=True)
+class Dataset(ListableEntity):
+    summary: DatasetSummary
+
+
+@dataclass(frozen=True)
+class Parameter(ListableEntity):
+    summary: ParameterSummary
+
+
+@dataclass(frozen=True)
+class Property(ListableEntity):
+    summary: PropertySummary
+
+
+def _decode_listable_entities(value: JsonValue) -> List[ListableEntity]:
+    return decode(List[ListableEntity], value)
+
+
+def list_entities(specification: str | Path) -> List[ListableEntity]:
     """
     List all networks, datasets, parameters, and properties in the specification.
 
     :param specification: The path to the Vehicle specification file to list entities for.
-    :return: A summary of all entities in the specification.
+    :return: list of structured listable entities.
     """
     args = ["list", "--specification", str(specification), "--json"]
 
     # Call Vehicle
     out = session.execute_command(args)
-    if out is None:
-        raise VehicleInternalError("Vehicle did not return any output")
+    if not out:
+        return []
 
     try:
-        return decode(SpecificationSummary, json.loads(out))
+        return _decode_listable_entities(json.loads(out))
     except Exception as exc:
         raise VehicleInternalError(str(exc)) from exc
 
 
 __all__ = [
-    "SpecificationSummary",
-    "NetworkSummary",
+    "Dataset",
     "DatasetSummary",
-    "ParameterSummary",
-    "PropertySummary",
-    "SingleProperty",
+    "ListableEntity",
     "MultiProperty",
     "MultiPropertyTree",
+    "Network",
+    "NetworkSummary",
+    "Parameter",
+    "ParameterSummary",
+    "Property",
+    "PropertySummary",
+    "Provenance",
     "QuantifiedVariableSummary",
+    "Quantifier",
+    "SharedData",
+    "SingleProperty",
     "list_entities",
 ]

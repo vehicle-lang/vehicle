@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Type
 
 import pytest
-
 from vehicle_lang._ast._nodes import Program
 
 torch = pytest.importorskip(

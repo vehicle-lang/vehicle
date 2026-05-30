@@ -1,13 +1,11 @@
 from pathlib import Path
 
 import pytest
-
 import vehicle_lang.loss as loss
 import vehicle_lang.typing as vcl_typing
 
-from ..config import PYTHON_TEST_SPECS_PATH
-
-GOLDEN_LOSS_FUNCTION_FILES = PYTHON_TEST_SPECS_PATH.glob("*.vcl")
+GOLDEN_PATH = Path(__file__).parent / "data"
+GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob("*.vcl")
 
 
 @pytest.mark.parametrize(
@@ -16,10 +14,8 @@ GOLDEN_LOSS_FUNCTION_FILES = PYTHON_TEST_SPECS_PATH.glob("*.vcl")
 )  # type: ignore[untyped-decorator]
 def test_lossdl2_load(specification_path: Path) -> None:
     print(f"Load {specification_path}")
-    if specification_path == PYTHON_TEST_SPECS_PATH / "test_quantifier_all.vcl":
+    if specification_path == GOLDEN_PATH / "test_quantifier_all.vcl":
         pytest.skip("Bounds-only quantifiers not yet supported in DL2 load")
-    if specification_path == PYTHON_TEST_SPECS_PATH / "test_quantifier_any.vcl":
+    if specification_path == GOLDEN_PATH / "test_quantifier_any.vcl":
         pytest.skip("Bounds-only quantifiers not yet supported in DL2 load")
-    if specification_path == PYTHON_TEST_SPECS_PATH / "test_multiproperty.vcl":
-        pytest.skip("Multi-properties not yet supported in DL2 load")
     loss.load_ast(specification_path, target=vcl_typing.DifferentiableLogic.DL2)

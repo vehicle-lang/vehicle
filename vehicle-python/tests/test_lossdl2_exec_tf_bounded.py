@@ -7,7 +7,6 @@ if False:
         try:
             import numpy as np
             import tensorflow as tf
-
             import vehicle_lang as vcl
 
             # Prepare a simple network

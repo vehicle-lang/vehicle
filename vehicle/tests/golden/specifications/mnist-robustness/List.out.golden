@@ -1,98 +1,125 @@
-{
-  "tag": "SpecificationSummary",
-  "properties": [
-    {
-      "typeText": "Vector Bool n",
-      "tag": "PropertySummary",
-      "quantifiedVariables": null,
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          92,
-          1,
-          92,
-          7
-        ]
-      },
-      "name": "robust"
+[
+  {
+    "tag": "Network",
+    "contents": {
+      "tag": "NetworkSummary",
+      "sharedData": {
+        "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
+        "tag": "SharedData",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            22,
+            1,
+            22,
+            11
+          ]
+        },
+        "name": "classifier"
+      }
     }
-  ],
-  "parameters": [
-    {
-      "typeText": "Nat",
+  },
+  {
+    "tag": "Parameter",
+    "contents": {
       "tag": "ParameterSummary",
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          72,
-          1,
-          72,
-          2
-        ]
+      "sharedData": {
+        "typeText": "Real",
+        "tag": "SharedData",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            37,
+            1,
+            37,
+            8
+          ]
+        },
+        "name": "epsilon"
       },
-      "name": "n",
-      "inferable": true
-    },
-    {
-      "typeText": "Real",
-      "tag": "ParameterSummary",
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          37,
-          1,
-          37,
-          8
-        ]
-      },
-      "name": "epsilon",
       "inferable": false
     }
-  ],
-  "networks": [
-    {
-      "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
-      "tag": "NetworkSummary",
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          22,
-          1,
-          22,
-          11
-        ]
+  },
+  {
+    "tag": "Parameter",
+    "contents": {
+      "tag": "ParameterSummary",
+      "sharedData": {
+        "typeText": "Nat",
+        "tag": "SharedData",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            72,
+            1,
+            72,
+            2
+          ]
+        },
+        "name": "n"
       },
-      "name": "classifier"
+      "inferable": true
     }
-  ],
-  "datasets": [
-    {
-      "typeText": "Vector (Index 10) n",
+  },
+  {
+    "tag": "Dataset",
+    "contents": {
       "tag": "DatasetSummary",
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          81,
-          1,
-          81,
-          15
-        ]
-      },
-      "name": "trainingLabels"
-    },
-    {
-      "typeText": "Vector (Tensor Real [28, 28]) n",
-      "tag": "DatasetSummary",
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          78,
-          1,
-          78,
-          15
-        ]
-      },
-      "name": "trainingImages"
+      "sharedData": {
+        "typeText": "Vector (Tensor Real [28, 28]) n",
+        "tag": "SharedData",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            78,
+            1,
+            78,
+            15
+          ]
+        },
+        "name": "trainingImages"
+      }
     }
-  ]
-}
+  },
+  {
+    "tag": "Dataset",
+    "contents": {
+      "tag": "DatasetSummary",
+      "sharedData": {
+        "typeText": "Vector (Index 10) n",
+        "tag": "SharedData",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            81,
+            1,
+            81,
+            15
+          ]
+        },
+        "name": "trainingLabels"
+      }
+    }
+  },
+  {
+    "tag": "Property",
+    "contents": {
+      "tag": "PropertySummary",
+      "subcomponents": null,
+      "sharedData": {
+        "typeText": "Vector Bool n",
+        "tag": "SharedData",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            92,
+            1,
+            92,
+            7
+          ]
+        },
+        "name": "robust"
+      }
+    }
+  }
+]
