@@ -137,7 +137,7 @@ def verify(
         - The first event is a VerificationStart event.
         - The last event is a VerificationFinish event.
         - For every MultiPropertyStart event, there is a corresponding MultiPropertyFinish event with the same propertyName.
-        - For every PropertyStart event, there is a corresponding PropertyFinish event with the same property.
+        - For every PropertyStart event, there is a corresponding PropertyFinish or QueryError event with the same property.
         - For every QueryStart event, there is a corresponding QueryFinish or QueryError event with the same queryAddress.
         - Higher-level property events (VerificationStart, MultiPropertyStart, PropertyStart) always start before lower-level property events, and finish after lower-level property events. For example, if a PropertyStart event for property P occurs between a MultiPropertyStart event for property P and its corresponding MultiPropertyFinish event, then the corresponding PropertyFinish event for property P also occurs between the same MultiPropertyStart and MultiPropertyFinish events.
     Other than that, the order is not guaranteed, and in particular, events from different properties may be interleaved in any order.
@@ -146,7 +146,7 @@ def verify(
     the moment only returns when the verification finishes.
 
     :param specification: The path to the Vehicle specification file or Vehicle to verify.
-    :param verifier: The verifier to be used, defaults to Marabou.
+    :param verifier: The verifier to be used.
     :param verifier_location: The path to the verifier executable, defaults to searching the system path.
     :param verifier_args: A list of extra arguments to pass to the verifier, defaults to no extra arguments.
     :param properties: The names of the properties in the specification to verify, defaults to all declarations.

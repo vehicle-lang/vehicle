@@ -96,7 +96,7 @@ groupWarnings warnings = stateToWarnings $ foldl addWarningToState emptyState wa
 
 stateToWarnings :: CombiningState -> [SummarisedCompileWarning]
 stateToWarnings CombiningState {..} =
-  uniqueWarnings
+  reverse uniqueWarnings
     <> fmap combineUnderSpecifiedProblemSpaceVars (OMap.toAscList underSpecifiedProblemSpaceVars)
     <> fmap combineUnsoundStrictnessConversions (OMap.toAscList unsoundStrictnessConversions)
     <> fmap combineAllConstantNetworkInputVars (OMap.toAscList allConstantNetworkInputVars)

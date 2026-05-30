@@ -80,8 +80,10 @@
                       ]
                     },
                     "queryAddress": {
+                      "tag": "QueryAddress",
                       "queryID": 1,
                       "property": {
+                        "tag": "PropertyAddress",
                         "propertyName": "parallel",
                         "propertyIndices": []
                       }
@@ -195,8 +197,10 @@
                       ]
                     },
                     "queryAddress": {
+                      "tag": "QueryAddress",
                       "queryID": 2,
                       "property": {
+                        "tag": "PropertyAddress",
                         "propertyName": "parallel",
                         "propertyIndices": []
                       }

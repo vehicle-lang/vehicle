@@ -555,8 +555,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 1,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property6",
                   "propertyIndices": []
                 }
@@ -1140,8 +1142,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 2,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property6",
                   "propertyIndices": []
                 }
@@ -1725,8 +1729,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 3,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property6",
                   "propertyIndices": []
                 }
@@ -2310,8 +2316,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 4,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property6",
                   "propertyIndices": []
                 }
@@ -2895,8 +2903,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 5,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property6",
                   "propertyIndices": []
                 }
@@ -3480,8 +3490,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 6,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property6",
                   "propertyIndices": []
                 }
@@ -4065,8 +4077,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 7,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property6",
                   "propertyIndices": []
                 }
@@ -4650,8 +4664,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 8,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property6",
                   "propertyIndices": []
                 }

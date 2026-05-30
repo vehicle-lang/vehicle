@@ -154,8 +154,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 1,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "prop1",
                   "propertyIndices": []
                 }
@@ -338,8 +340,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 2,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "prop1",
                   "propertyIndices": []
                 }

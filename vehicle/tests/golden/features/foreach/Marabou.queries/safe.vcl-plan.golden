@@ -92,8 +92,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 1,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "safe",
                   "propertyIndices": []
                 }

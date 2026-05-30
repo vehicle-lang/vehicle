@@ -51,8 +51,10 @@
                 ]
               },
               "queryAddress": {
+                "tag": "QueryAddress",
                 "queryID": 1,
                 "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "p",
                   "propertyIndices": []
                 }
