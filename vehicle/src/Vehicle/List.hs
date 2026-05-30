@@ -25,7 +25,7 @@ import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
-import Vehicle.Verify.Core (PropertyAddress, PropertyID)
+import Vehicle.Verify.Core (PropertyAddress)
 import Vehicle.Verify.Specification (MultiProperty)
 
 --------------------------------------------------------------------------------
@@ -70,9 +70,8 @@ list loggingSettings outputAsJSON ListOptions {..} =
 searchProg :: (MonadLogger m, MonadStdIO m) => Prog Builtin -> m [ListableEntity]
 searchProg (Main decls) =
   runFreshFreeContextT (Proxy @Builtin) $
-    runSupplyT [(0 :: PropertyID) ..] $
-      execWriterT $
-        searchDecls decls
+    execWriterT $
+      searchDecls decls
 
 type MonadList m =
   ( MonadLogger m,
@@ -81,7 +80,7 @@ type MonadList m =
     MonadStdIO m
   )
 
-searchDecls :: (MonadList m, MonadSupply PropertyID m) => [Decl Builtin] -> m ()
+searchDecls :: (MonadList m) => [Decl Builtin] -> m ()
 searchDecls = \case
   [] -> return ()
   d : ds -> do
@@ -89,7 +88,7 @@ searchDecls = \case
     searchDecl normDecl
     addDeclEntryToContext normDecl $ searchDecls ds
 
-searchDecl :: (MonadList m, MonadSupply PropertyID m) => VDecl Builtin -> m ()
+searchDecl :: (MonadList m) => VDecl Builtin -> m ()
 searchDecl decl = do
   let sharedData = mkSharedData (provenanceOf decl) (nameOf decl)
   case decl of
@@ -105,10 +104,9 @@ searchDecl decl = do
           tell [entity]
     DefRecord {} -> return ()
 
-searchPropertyDecl :: (MonadList m, MonadSupply PropertyID m) => DeclProvenance -> SharedData -> VType Builtin -> Value Builtin -> m ListableEntity
+searchPropertyDecl :: (MonadList m) => DeclProvenance -> SharedData -> VType Builtin -> Value Builtin -> m ListableEntity
 searchPropertyDecl prov sharedData declType declBody = do
-  propertyID <- demand
-  traversalErrorOrResult <- traverseMultiProperty searchProperty propertyID (name sharedData) declType declBody
+  traversalErrorOrResult <- traverseMultiProperty searchProperty (name sharedData) declType declBody
 
   case traversalErrorOrResult of
     Right result -> return $ Property $ PropertySummary sharedData (Just result)

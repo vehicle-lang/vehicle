@@ -28,4 +28,4 @@ Definition validInput (x : 'sT[R]) : Prop := const_t (0 : R) <= x /\ x <= const_
 Definition correctOutput (x1 : 'sT[R]) (x2 : 'sT[R]) : Prop := let y := (andGate (nstack_tuple [tuple x1; x2])) ^^ 0 in (truthy x1 /\ truthy x2 -> truthy y) /\ ((truthy x1 /\ falsey x2 -> falsey y) /\ ((falsey x1 /\ truthy x2 -> falsey y) /\ (falsey x1 /\ falsey x2 -> falsey y))).
 
 Lemma andGateCorrect : forall x1, forall x2, validInput x1 /\ validInput x2 -> correctOutput x1 x2.
-Proof. vehicle_validate "Marabou.queries". Qed.
+Proof. vehicle_validate "/tmp/Rocq-951598eb60b0b79b/Marabou.queries". Qed.
