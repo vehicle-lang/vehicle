@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 import pytest
-
 import vehicle_lang as vcl
 
 tf = pytest.importorskip(

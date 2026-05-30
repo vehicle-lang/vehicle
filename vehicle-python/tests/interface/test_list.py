@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 import vehicle_lang as vcl
 
 from ..config import HASKELL_GOLDEN_TESTS_PATH
