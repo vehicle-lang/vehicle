@@ -3,8 +3,9 @@ if False:
     from pathlib import Path
     from typing import Any, Callable, cast
 
-    import vehicle_lang as vcl
     from typing_extensions import TypeAlias
+
+    import vehicle_lang as vcl
 
     GOLDEN_PATH = (
         Path(__file__).parent.parent
