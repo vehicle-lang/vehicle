@@ -176,7 +176,7 @@ flipQueryRel = \case
 
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
-  = UserVariableAssignment [UserVariableAssignmentType]
+  = UserVariableAssignment [(Name, UserVariableAssignmentType)]
   deriving (Generic)
 
 instance Pretty UserVariableAssignment where
@@ -188,9 +188,9 @@ instance ToJSON UserVariableAssignment
 instance FromJSON UserVariableAssignment
 
 data UserVariableAssignmentType
-  = TensorAssignment (Name, RatTensor)
+  = TensorAssignment RatTensor
   | -- Attempting to cheat recordfields here
-    RecordAssignment (Name, [(Name, RatTensor)])
+    RecordAssignment [(Name, RatTensor)]
   deriving (Show, Generic, Eq)
 
 instance ToJSON UserVariableAssignmentType
@@ -201,4 +201,4 @@ instance Pretty UserVariableAssignmentType where
   pretty t = case t of
     TensorAssignment tens -> pretty tens
     -- LAUREN TODO: this is probably pretty dodgy
-    RecordAssignment (_varName, fields) -> vsep (fmap (\(name, tens) -> pretty name <+> pretty tens) fields)
+    RecordAssignment fields -> vsep (fmap (\(name, tens) -> pretty name <+> pretty tens) fields)

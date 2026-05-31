@@ -64,21 +64,21 @@ reconstructRecords existingAssignment steps = do
           let tensorAssignment =
                 find
                   ( \case
-                      TensorAssignment (tn, _) -> tn == tensorName
+                      (tn, TensorAssignment _) -> tn == tensorName
                       _ -> False
                   )
                   assignments
 
           tensorValue <- case tensorAssignment of
-            Just (TensorAssignment (_, t)) -> return t
+            Just (_, TensorAssignment t) -> return t
             -- TODO: proper/better error message
             _ -> developerError "No assignment found"
 
           let fieldIndices = [0 .. length fieldNames - 1] :: [Int]
           let tensorIndices = map (\i -> at tensorValue i) fieldIndices
           let fields = zip fieldNames tensorIndices
-          let assignment = RecordAssignment (recordName, fields)
-          let newMap = delete (TensorAssignment (tensorName, tensorValue)) assignments ++ [assignment]
+          let assignment = (recordName, RecordAssignment fields)
+          let newMap = delete (tensorName, TensorAssignment tensorValue) assignments ++ [assignment]
 
           return $ UserVariableAssignment newMap
         _ -> return $ UserVariableAssignment assignments
@@ -250,7 +250,7 @@ createFinalAssignment ::
   m UserVariableAssignment
 createFinalAssignment vehicleVariables userVariables assignment = do
   let userVariableValues = mapMaybe isUserVar $ Map.toList assignment
-  return $ UserVariableAssignment (map (\var -> TensorAssignment var) userVariableValues)
+  return $ UserVariableAssignment (map (second TensorAssignment) userVariableValues)
   where
     isUserVar :: (SliceVariable, RatTensor) -> Maybe (Name, RatTensor)
     isUserVar (var, value) =
