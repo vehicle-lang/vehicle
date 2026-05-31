@@ -144,9 +144,16 @@ type MonadList m =
 
 -- | Print all the listable entities in the program
 searchProg :: (MonadLogger m, MonadStdIO m) => Prog Builtin -> m SpecificationSummary
-searchProg (Main decls) =
-  runFreshFreeContextT (Proxy @Builtin) $
-    execStateT (searchDecls decls) (SpecificationSummary mempty mempty mempty mempty)
+searchProg (Main decls) = do
+  let initialSummary = SpecificationSummary mempty mempty mempty mempty
+  summary <- runFreshFreeContextT (Proxy @Builtin) $ execStateT (searchDecls decls) initialSummary
+  return $
+    SpecificationSummary
+      { networks = reverse $ networks summary,
+        datasets = reverse $ datasets summary,
+        parameters = reverse $ parameters summary,
+        properties = reverse $ properties summary
+      }
 
 searchDecls :: (MonadList m) => [Decl Builtin] -> m ()
 searchDecls = \case
@@ -251,7 +258,7 @@ searchValue value = case value of
   VRecordAcc _ record _ spine -> do searchValue record; searchSpine spine
   -- Never traverse into types so the following cases shouldn't happen!
   VUniverse {} -> unexpectedExprError "list" "VUniverse"
-  VPi {} -> unexpectedExprError "list" "VUniverse"
+  VPi {} -> unexpectedExprError "list" "VPi"
   VMeta {} -> unexpectedExprError "list" "VMeta"
 
 searchSpine :: (MonadListProperty m) => Spine Builtin -> m ()
