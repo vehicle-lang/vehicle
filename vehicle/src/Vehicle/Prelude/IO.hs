@@ -31,7 +31,6 @@ import System.Directory (createDirectoryIfMissing, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
 import System.FilePath ((</>))
-import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
 import Vehicle.Prelude.Prettyprinter
@@ -121,10 +120,10 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-fatalError :: (MonadIO m) => Doc a -> m b
-fatalError message = liftIO $ do
-  hPrint stderr message
-  exitFailure
+fatalError :: (MonadStdIO m) => Doc a -> m b
+fatalError message = do
+  writeStderr $ layoutAsText message
+  liftIO exitFailure
 
 programOutput :: (MonadStdIO m) => Doc a -> m ()
 programOutput message = writeStdoutLn $ layoutAsText message

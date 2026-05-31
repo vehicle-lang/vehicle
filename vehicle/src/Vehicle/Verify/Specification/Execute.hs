@@ -54,21 +54,22 @@ verifySpecification ::
   VerificationSettings ->
   m ()
 verifySpecification outputAsJSON verifierSettings
-  | outputAsJSON = runJSONProgressReporterT $ runReaderT verifySpecificationActual verifierSettings
-  | otherwise = runTextProgressReporterT $ runReaderT verifySpecificationActual verifierSettings
+  | outputAsJSON = runReaderT (runJSONProgressReporterT verifySpecificationActual) verifierSettings
+  | otherwise = runReaderT (runTextProgressReporterT verifySpecificationActual) verifierSettings
 
 verifySpecificationActual :: (MonadVerify m) => m ()
 verifySpecificationActual = do
-  settings <- ask
-  let verificationPlanFile = specificationCacheIndexFileName (specificationCache settings)
-  SpecificationCacheIndex {..} <- readSpecificationCacheIndex verificationPlanFile
+  logCompilerPass Verification $ do
+    settings <- ask
+    let verificationPlanFile = specificationCacheIndexFileName (specificationCache settings)
+    SpecificationCacheIndex {..} <- readSpecificationCacheIndex verificationPlanFile
 
-  maybeIntegrityError <- checkIntegrityOfResources resourcesIntegrityInfo
-  case maybeIntegrityError of
-    Just err -> writeStderrLn $ layoutAsText $ "Resource error:" <+> pretty err
-    Nothing -> do
-      forM_ properties $ \(name, multiProperty) ->
-        reportMultiProperty name $ verifyMultiproperty multiProperty
+    maybeIntegrityError <- checkIntegrityOfResources resourcesIntegrityInfo
+    case maybeIntegrityError of
+      Just err -> writeStderrLn $ layoutAsText $ "Resource error:" <+> pretty err
+      Nothing -> do
+        forM_ properties $ \(name, multiProperty) ->
+          reportMultiProperty name $ verifyMultiproperty multiProperty
 
 verifyMultiproperty ::
   (MonadVerify m) =>
@@ -89,7 +90,7 @@ verifyProperty address = do
   PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
 
   -- Determine number of queries and initialise progress bar
-  result <- reportProperty settings address (propertySize queryMetaData) $ case queryMetaData of
+  result <- reportProperty address (propertySize queryMetaData) $ case queryMetaData of
     Trivial status ->
       return $ PropertyCompleted (Trivial status)
     NonTrivial structure -> do

@@ -6,8 +6,6 @@
     "network.onnx",
     "features.idx"
   ],
-  "external": [
-    "Marabou"
-  ],
+  "external": ["Marabou"],
   "enabled": false
 }

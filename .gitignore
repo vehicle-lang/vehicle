@@ -55,6 +55,11 @@ MAlonzo/**
 .CoqMakefile.d
 CoqMakefile
 CoqMakefile.conf
+.Makefile.d
+Makefile.conf
+
+# dune
+_build/
 
 ################################################################################
 # Isabelle
@@ -571,3 +576,6 @@ TSWLatexianTemp*
 ################################################################################
 
 !/vehicle/lib
+
+# Vehicle-generated example specs
+examples/windController/rocqProof/WindControllerSpec.v

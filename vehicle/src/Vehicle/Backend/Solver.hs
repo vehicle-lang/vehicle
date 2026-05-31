@@ -112,11 +112,10 @@ compileProg ::
   m [(Name, MultiProperty PropertyAddress)]
 compileProg settings (Main decls) =
   runFreshFreeContextT (Proxy @Builtin) $
-    runSupplyT [(0 :: PropertyID) ..] $
-      compileDecls settings decls
+    compileDecls settings decls
 
 compileDecls ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m, MonadSupply PropertyID m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   CompilationSettings ->
   [Decl Builtin] ->
   m [(Name, MultiProperty PropertyAddress)]
@@ -140,18 +139,17 @@ compileDecls settings = \case
       return $ maybeToList property ++ properties
 
 compilePropertyDecl ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m, MonadSupply PropertyID m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   CompilationSettings ->
   DeclProvenance ->
   VType Builtin ->
   Value Builtin ->
   m (MultiProperty PropertyAddress)
 compilePropertyDecl settings prov typ body = do
-  propertyID <- demand
   let compilePropertyFn = compileSingleProperty settings prov
   logDebug MaxDetail $ prettyFriendlyEmptyCtx typ
   logDebug MaxDetail $ prettyFriendlyEmptyCtx body
-  errorOrResult <- traverseMultiProperty compilePropertyFn propertyID (nameOf prov) typ body
+  errorOrResult <- traverseMultiProperty compilePropertyFn (nameOf prov) typ body
   case errorOrResult of
     Left err -> throwError $ MultiPropertyTraveralError prov err
     Right result -> return result

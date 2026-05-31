@@ -27,7 +27,6 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Tuple (swap)
 import GHC.Exts qualified as GHC (Constraint)
 import GHC.TypeLits
 import Prettyprinter (fill)
@@ -50,6 +49,7 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor (Tensor, prettyTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
 import Vehicle.Data.Variable.Bound.Context.Name.Core
@@ -181,6 +181,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (Text `In` ctx) = 'Pretty
   StrategyFor tags (Bool `In` ctx) = 'Pretty
   StrategyFor tags (Rational `In` ctx) = 'Pretty
+  StrategyFor tags (ExtendedRational `In` ctx) = 'Pretty
   StrategyFor tags (String `In` ctx) = 'Pretty
   StrategyFor tags (Identifier `In` ctx) = 'Pretty
   StrategyFor tags (ModulePath `In` ctx) = 'Pretty
@@ -626,7 +627,7 @@ instance
   where
   prettyUsing (QueryAssertion {..}, ctx) = do
     let prettyVar u = prettyUsing @restVar (u, ctx)
-    let varCoeffs = NonEmpty.toList (fmap swap lhs)
+    let varCoeffs = NonEmpty.toList (fmap (\(c, v) -> (v, c)) lhs)
     prettyLinearExprLike prettyVar pretty varCoeffs (ZeroDimTensor rhs) <> pretty rel <+> "0"
 
 --------------------------------------------------------------------------------

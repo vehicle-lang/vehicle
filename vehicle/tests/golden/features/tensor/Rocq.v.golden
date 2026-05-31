@@ -6,27 +6,28 @@
 
 From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
+From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
-Require Import vehicle.tensor.
-Require Import vehicle.utils.
-Open Scope ring_scope.
-Open Scope order_scope.
-Open Scope form_scope.
+From vehicle Require Import utils.
+Local Open Scope ring_scope.
+Local Open Scope order_scope.
+Local Open Scope form_scope.
+Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
-Parameter f : 'nT[R]_(2%N :: (2%N :: nil)) -> 'nT[R]_(2%N :: (2%N :: nil)).
+Parameter f : 'nT[R]_[2, 2] -> 'nT[R]_[2, 2].
 
-Definition zeroD : 'nT[R]_(nil) := const_t (5 / 2 : R).
+Definition zeroD : 'sT[R] := const_t (5 / 2 : R).
 
-Definition oneD : 'nT[R]_(2%N :: nil) := nstack_tuple [tuple zeroD; const_t (1 : R)].
+Definition oneD : 'nT[R]_[2] := nstack_tuple [tuple zeroD; const_t (1 : R)].
 
-Definition twoD : 'nT[R]_(2%N :: (2%N :: nil)) := nstack_tuple [tuple oneD; [tensor^^= (2 : R); (3 : R)]].
+Definition twoD : 'nT[R]_[2, 2] := nstack_tuple [tuple oneD; ntensor_of_tuple (x := 2%:posnat) [tuple of (2 : R) :: (3 : R) :: [::]]].
 
-Definition lookup2D : 'nT[R]_(nil) := (twoD ^^ 0) ^^ 1.
+Definition lookup2D : 'sT[R] := (twoD ^^ 0) ^^ 1.
 
-Definition addition : 'nT[R]_(2%N :: (2%N :: nil)) := twoD + twoD.
+Definition addition : 'nT[R]_[2, 2] := twoD + twoD.
 
-Definition subtraction : 'nT[R]_(2%N :: (2%N :: nil)) := twoD - twoD.
+Definition subtraction : 'nT[R]_[2, 2] := twoD - twoD.
 
 Axiom p : forallIndex (fun i => forallIndex (fun j => ((f subtraction + addition) ^^ i) ^^ j >= const_t (0 : R))).

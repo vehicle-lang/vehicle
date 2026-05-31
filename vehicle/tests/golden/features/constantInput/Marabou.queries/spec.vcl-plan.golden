@@ -80,14 +80,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "spec",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "f",

@@ -6,18 +6,19 @@
 
 From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
+From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
-Require Import vehicle.tensor.
-Require Import vehicle.utils.
-Open Scope ring_scope.
-Open Scope order_scope.
-Open Scope form_scope.
+From vehicle Require Import utils.
+Local Open Scope ring_scope.
+Local Open Scope order_scope.
+Local Open Scope form_scope.
+Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
-Definition pi : 'nT[R]_(nil) := const_t (392699 / 125000 : R).
+Definition pi : 'sT[R] := const_t (392699 / 125000 : R).
 
-Definition InputVector : Type := 'nT[R]_(5%N :: nil).
+Definition InputVector : Type := 'nT[R]_[5].
 
 Definition distanceToIntruder : 'I_5%N := 0.
 
@@ -29,7 +30,7 @@ Definition speed : 'I_5%N := 3.
 
 Definition intruderSpeed : 'I_5%N := 4.
 
-Definition OutputVector : Type := 'nT[R]_(5%N :: nil).
+Definition OutputVector : Type := 'nT[R]_[5].
 
 Definition clearOfConflict : 'I_5%N := 0.
 
@@ -43,7 +44,7 @@ Definition strongRight : 'I_5%N := 4.
 
 Parameter acasXu : InputVector -> OutputVector.
 
-Definition UnnormalisedInputVector : Type := 'nT[R]_(5%N :: nil).
+Definition UnnormalisedInputVector : Type := 'nT[R]_[5].
 
 Definition minimumInputValues : UnnormalisedInputVector := nstack_tuple [tuple const_t (0 : R); - pi; - pi; const_t (100 : R); const_t (0 : R)].
 
@@ -51,7 +52,7 @@ Definition maximumInputValues : UnnormalisedInputVector := nstack_tuple [tuple c
 
 Definition validInput (x : UnnormalisedInputVector) : Prop := forallIndex (fun i => minimumInputValues ^^ i <= x ^^ i /\ x ^^ i <= maximumInputValues ^^ i).
 
-Definition meanScalingValues : UnnormalisedInputVector := [tensor^^= (19791091 / 1000 : R); (0 : R); (0 : R); (650 : R); (600 : R)].
+Definition meanScalingValues : UnnormalisedInputVector := ntensor_of_tuple (x := 5%:posnat) [tuple of (19791091 / 1000 : R) :: (0 : R) :: (0 : R) :: (650 : R) :: (600 : R) :: [::]].
 
 Definition normalise (x : UnnormalisedInputVector) : InputVector := nstack (fun i => (x ^^ i - meanScalingValues ^^ i) / (maximumInputValues ^^ i - minimumInputValues ^^ i)).
 
@@ -61,7 +62,7 @@ Definition minimalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := for
 
 Definition maximalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> (normAcasXu x) ^^ i > (normAcasXu x) ^^ j).
 
-Definition scaleCOCOutput (x : 'nT[R]_(nil)) : 'nT[R]_(nil) := (x - const_t (1879721 / 250000 : R)) / const_t (2337187 / 6250 : R).
+Definition scaleCOCOutput (x : 'sT[R]) : 'sT[R] := (x - const_t (1879721 / 250000 : R)) / const_t (2337187 / 6250 : R).
 
 Definition intruderDistantAndSlower (x : UnnormalisedInputVector) : Prop := x ^^ distanceToIntruder >= const_t (55947691 / 1000 : R) /\ (x ^^ speed >= const_t (1145 : R) /\ x ^^ intruderSpeed <= const_t (60 : R)).
 

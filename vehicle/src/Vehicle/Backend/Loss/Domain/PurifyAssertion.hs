@@ -24,7 +24,8 @@ import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial (MaybeTrivial)
-import Vehicle.Data.Tensor (Tensor (..))
+import Vehicle.Data.Real (ExtendedRational (..))
+import Vehicle.Data.Tensor (ExtendedRatTensor, Tensor (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
@@ -127,7 +128,7 @@ compileLinearExpr dims expr =
 compileTensorLiteral ::
   (MonadPurifyAssertion m) =>
   VDims Builtin ->
-  Tensor Rational ->
+  ExtendedRatTensor ->
   m BranchingResult
 compileTensorLiteral dims t = do
   return $
@@ -300,6 +301,11 @@ purifyBoundVar lv = do
 --------------------------------------------------------------------------------
 -- Utility functions
 
+isFiniteConstant :: DimensionedTensorValue Builtin -> Maybe Rational
+isFiniteConstant = \case
+  TensorValue _ (IRatTensor (ConstantTensor _ (Finite c1))) -> Just c1
+  _ -> Nothing
+
 addLinearExprs ::
   Coefficient ->
   Coefficient ->
@@ -313,8 +319,8 @@ multiplyLinearExprs ::
   TensorValueLinearExpr Builtin ->
   Maybe (TensorValueLinearExpr Builtin)
 multiplyLinearExprs le1 le2 = case (isConstant le1, isConstant le2) of
-  (Just (TensorValue _ (IRatTensor (ConstantTensor _ c1))), _) -> Just $ scaleExpr c1 le2
-  (_, Just (TensorValue _ (IRatTensor (ConstantTensor _ c2)))) -> Just $ scaleExpr c2 le1
+  (Just (isFiniteConstant -> Just c1), _) -> Just $ scaleExpr c1 le2
+  (_, Just (isFiniteConstant -> Just c2)) -> Just $ scaleExpr c2 le1
   (Just (TensorValue dims c1), Just (TensorValue _ c2)) -> Just $ do
     let value = fromRatTensorValue $ VMulRatTensor $ TensorOp2Args dims c1 c2
     constantExpr $ TensorValue dims value
@@ -325,7 +331,7 @@ divideLinearExprs ::
   TensorValueLinearExpr Builtin ->
   Maybe (TensorValueLinearExpr Builtin)
 divideLinearExprs le1 le2 = case (isConstant le1, isConstant le2) of
-  (_, Just (TensorValue _ (IRatTensor (ConstantTensor _ c2)))) -> Just $ scaleExpr (1 / c2) le1
+  (_, Just (isFiniteConstant -> Just c2)) -> Just $ scaleExpr (1 / c2) le1
   (Just (TensorValue dims c1), Just (TensorValue _ c2)) -> Just $ do
     let value = fromRatTensorValue $ VDivRatTensor $ TensorOp2Args dims c1 c2
     constantExpr $ TensorValue dims value

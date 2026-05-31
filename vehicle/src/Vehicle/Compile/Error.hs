@@ -1,7 +1,8 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Vehicle.Compile.Error
-  ( VehicleError (..),
+  ( VehicleUserError (..),
+    VehicleError,
     CompileError (..),
     ParseError (..),
     TypingError (..),
@@ -24,7 +25,7 @@ where
 
 import Control.Exception (IOException)
 import Control.Monad.Except (MonadError, throwError)
-import Data.Aeson (ToJSON)
+import Data.Aeson (ToJSON, genericToJSON)
 import Data.Aeson.Types (ToJSON (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
@@ -250,14 +251,17 @@ compilerDeveloperError message = throwError $ DevError message
 -- The final error type
 
 -- | Errors that are the user's responsibility to fix.
-data VehicleError = VehicleError
+data VehicleUserError a = VehicleUserError
   { provenance :: Maybe Provenance,
-    problem :: UnAnnDoc,
-    fix :: Maybe UnAnnDoc
+    problem :: a,
+    fix :: Maybe a
   }
+  deriving (Generic)
 
-instance Pretty VehicleError where
-  pretty VehicleError {..} =
+type VehicleError = VehicleUserError UnAnnDoc
+
+instance Pretty (VehicleUserError UnAnnDoc) where
+  pretty VehicleUserError {..} =
     unAnnotate $
       "Error"
         <> maybe "" (\p -> " in" <+> pretty p) provenance
@@ -265,25 +269,14 @@ instance Pretty VehicleError where
           <+> problem
         <> maybe "" (\f -> line <> "Fix:" <+> f) fix
 
-instance ToJSON VehicleError where
-  toJSON = toJSON . toJSONError
-
-toJSONError :: VehicleError -> JSONError
-toJSONError VehicleError {..} =
-  JSONError
-    { provenance = provenance,
-      problem = layoutAsText problem,
-      fix = fmap layoutAsText fix
-    }
-
-data JSONError = JSONError
-  { provenance :: Maybe Provenance,
-    problem :: Text,
-    fix :: Maybe Text
-  }
-  deriving (Generic)
-
-instance ToJSON JSONError
+instance ToJSON (VehicleUserError UnAnnDoc) where
+  toJSON VehicleUserError {..} =
+    genericToJSON jsonOptions $
+      VehicleUserError
+        { provenance = provenance,
+          problem = layoutAsText problem,
+          fix = fmap layoutAsText fix
+        }
 
 -- developer error for unsupported tensorLike quantification
 unsupportedTensorLikeQuantifier :: forall b. (HasCallStack) => b

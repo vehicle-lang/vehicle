@@ -8,6 +8,29 @@
 
 * Added undocumented operations to language documentation.
 
+* Added support for `infinity : Real` to language. Note only works for loss function backend currently as it is primarily designed to be used in differentiable logics.
+
+### Rocq backend
+
+* Reworked the tensor representation to use the new `tensor` module from
+  mathcomp 2.6.0; generated specifications now use the `'nT[R]_[n1, .., nk]`
+  / `'sT[R]` shorthand notations.
+
+* Generated `@property` declarations now integrate with the verification
+  cache: when `--cache` is supplied, properties are emitted as
+  `Lemma p : <type>. Proof. vehicle_validate "...". Qed.` instead of
+  bare `Axiom`s. The new `vehicle_validate` tactic (provided by
+  `vehicle-rocq`) invokes `vehicle validate --cache=...` at proof-checking
+  time and closes the goal only if validation succeeds. Mirrors the
+  Agda `checkSpecification` macro.
+
+* Cache paths supplied via `--cache` are canonicalised to absolute paths
+  before being embedded in the generated `.v` so `rocq compile` works
+  from any working directory.
+
+* `vehicle-rocq` switched to a Dune-based build; the OCaml plugin lives
+  in `vehicle-rocq/plugin/`.
+
 ### Loss backend
 
 * Added the ability to declare custom Differentiable Logics internally in Vehicle (see documentation for details).
@@ -15,6 +38,24 @@
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
 
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
+
+* Fixed the differentiable logic `DL2Loss` to use `infinity` instead of `100000` for the translation of `false`.
+
+### Python bindings
+
+There has been a major refactoring of the Python bindings to improve usability. The following are all breaking changes.
+
+* All methods that call the Vehicle compiler now throw either a structured `VehicleUserError` or an unstructured `VehicleInternalError`.
+
+* Removed the unused `VehiclePropertyNotFound`, `VehicleBuiltinUnsupported`, and `VehiclePropertyNotCallable` error types.
+
+* The method `verify` from `vehicle_lang` now i) takes an extra argument `verifier_args`, ii) the `verifier` argument has changed from the `Verifier` class to a simple string, iii) the return type has been changed from a string to a list of structured `ProgressEvent` objects.
+
+* The method `list` from `vehicle_lang` has been renamed to `list_entities` and now returns structured Python objects instead of a JSON string.
+
+* The method `typecheck` from `vehicle_lang` now does not accept a `TypeSystem` parameter and now returns an `Optional[VehicleUserError]` instead of a JSON string.
+
+* A new method `vehicle_lang.typecheck_with_typesystem` has been added which accepts a secondary type system parameter `SecondaryTypeSystem` that supports the functionality removed from the `typecheck`.
 
 ## v0.24.1
 

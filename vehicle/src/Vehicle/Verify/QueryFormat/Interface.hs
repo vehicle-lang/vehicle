@@ -2,7 +2,7 @@ module Vehicle.Verify.QueryFormat.Interface where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
-import Vehicle.Compile.Prelude (Coefficient, ExternalOutputFormat, InputOrOutput, MonadLogger, Name)
+import Vehicle.Compile.Prelude (ExternalOutputFormat, InputOrOutput, MonadLogger, Name)
 import Vehicle.Data.Bound (BoundedValue, Domain)
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll)
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
@@ -34,7 +34,7 @@ data QueryVariableInfo = QueryVariableInfo
 
 -- A single assertion for a query.
 data QueryAssertion variable = QueryAssertion
-  { lhs :: !(NonEmpty (Coefficient, variable)),
+  { lhs :: !(NonEmpty (Rational, variable)),
     rel :: !QueryRelation,
     rhs :: !Rational
   }

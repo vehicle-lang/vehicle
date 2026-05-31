@@ -81,14 +81,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "prop2",
-                  "propertyIndices": [],
-                  "propertyID": 1
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "f",
@@ -224,14 +225,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 2,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "prop2",
-                  "propertyIndices": [],
-                  "propertyID": 1
-                },
-                2
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "f",

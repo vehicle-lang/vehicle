@@ -38,8 +38,7 @@ reconstructUserVars ::
   VariableCompilationTrace ->
   QueryVariableAssignment ->
   m UserVariableAssignment
-reconstructUserVars variables (Reconstruction steps) networkVariableAssignment =
-  logCompilerPass WitnessReconstruction $ do
+reconstructUserVars variables (Reconstruction steps) networkVariableAssignment = do
     let queryVariableMap = getQueryVariableMap variables
     let vehicleVariableCtx = getVehicleVariableCtx variables
     let userVariables = getUserVariables variables
@@ -240,7 +239,9 @@ reconstructFourierMotzkinVariableValue solution assignment = do
           -- Only 99% sure about this. Can't find a good reference to the reconstruction phase of the
           -- algorithm. Closest to referencing this impossibility is:
           -- https://people.math.carleton.ca/~kcheung/math/notes/MATH5801/02/2_1_fourier_motzkin.html
-          developerError "Fourier-Motzkin reconstruction failed. This isn't supposed to be possible..."
+          developerError $
+            "Fourier-Motzkin reconstruction failed with range" <+> pretty value1 <+> pretty rel1 <+> "<var>" <+> pretty rel2 <+> pretty value2
+              <> ". This isn't supposed to be possible..."
 
 createFinalAssignment ::
   (MonadLogger m) =>

@@ -64,9 +64,10 @@ instance IsTest TestSpec where
     if not $ isEnabled testSpec
       then return $ testSkip "disabled"
       else do
-        let missingExternals = checkExternals (lookupOption options) testSpec
+        let allowedExternals = lookupOption options
+        let missingExternals = checkExternals allowedExternals testSpec
         if not $ null missingExternals
-          then return $ testSkip $ "missing externals: " <> show missingExternals
+          then return $ testSkip $ "externals not on allowlist: " <> show missingExternals
           else do
             -- Create loose equality based on the ignore options
             let maybeLooseEq

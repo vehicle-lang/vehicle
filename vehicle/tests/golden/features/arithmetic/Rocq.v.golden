@@ -6,18 +6,20 @@
 
 From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
+From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
-Require Import vehicle.tensor.
-Open Scope ring_scope.
-Open Scope order_scope.
-Open Scope form_scope.
+From vehicle Require Import utils.
+Local Open Scope ring_scope.
+Local Open Scope order_scope.
+Local Open Scope form_scope.
+Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
-Definition precedence (x : 'nT[R]_(nil)) (y : 'nT[R]_(nil)) (z : 'nT[R]_(nil)) : 'nT[R]_(nil) := (x + const_t (2 : R) * y) - z / y.
+Definition precedence (x : 'sT[R]) (y : 'sT[R]) (z : 'sT[R]) : 'sT[R] := (x + const_t (2 : R) * y) - z / y.
 
-Definition natLitNatLitDiv : 'nT[R]_(nil) := const_t (1 : R) / const_t (2 : R).
+Definition natLitNatLitDiv : 'sT[R] := const_t (1 : R) / const_t (2 : R).
 
-Parameter f : 'nT[R]_(1%N :: nil) -> 'nT[R]_(1%N :: nil).
+Parameter f : 'nT[R]_[1] -> 'nT[R]_[1].
 
 Axiom property : (f (nstack_tuple [tuple natLitNatLitDiv])) ^^ 0 >= const_t (0 : R).
