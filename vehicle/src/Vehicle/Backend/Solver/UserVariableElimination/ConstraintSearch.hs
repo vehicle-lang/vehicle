@@ -61,11 +61,11 @@ findSingleConstraint var = go
     go = \case
       Disjunct xs -> disjunctSingleResults xs =<< traverse go xs
       Conjunct xs -> conjunctSingleConstraints go xs
-      Query assertion -> case getEquality assertion of
-        Nothing -> return $ That $ Query assertion
+      Atom assertion -> case getEquality assertion of
+        Nothing -> return $ That $ Atom assertion
         Just constraint
           | assertion `containsVariable` var -> return $ This (DisjunctAll [(constraint, Nothing)])
-          | otherwise -> return $ That $ Query assertion
+          | otherwise -> return $ That $ Atom assertion
 
 disjunctSingleResults ::
   forall m.
@@ -147,7 +147,7 @@ conjunctSingleConstraints search conjuncts = searchConjuncts $ unConjunctAll con
 
     collapseTrees :: DisjunctAll ConstrainedTree -> LinearAssertionTree
     collapseTrees t2 = do
-      let eqToAssertion = Query . equalityToAssertion
+      let eqToAssertion = Atom . equalityToAssertion
       disjunctExprs $ fmap (\(a, b) -> maybe (eqToAssertion a) (andBoolExpr (eqToAssertion a)) b) t2
 
     andConstraints :: NonEmpty LinearAssertionTree -> DisjunctAll ConstrainedTree -> DisjunctAll ConstrainedTree
@@ -186,10 +186,10 @@ findAllBounds assertionToConstraint = go
     go = \case
       Disjunct xs -> findAllBoundsDisjunct =<< traverse go xs
       Conjunct xs -> findAllBoundsConjunct =<< traverse go xs
-      Query assertion -> do
+      Atom assertion -> do
         maybeConstraint <- assertionToConstraint assertion
         case maybeConstraint of
-          Nothing -> return $ noResults (Query assertion)
+          Nothing -> return $ noResults (Atom assertion)
           Just constraint -> return $ oneResult constraint
 
 findAllBoundsDisjunct ::

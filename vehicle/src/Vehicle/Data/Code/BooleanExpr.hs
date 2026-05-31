@@ -101,7 +101,7 @@ collapseTrivialConjunctions = fmap concatConjuncts . eliminateTrivialConjunction
 data BooleanExpr a
   = Conjunct !(ConjunctAll (BooleanExpr a))
   | Disjunct !(DisjunctAll (BooleanExpr a))
-  | Query !a
+  | Atom !a
   deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
 
 instance (NFData a) => NFData (BooleanExpr a)
@@ -112,7 +112,7 @@ instance (FromJSON a) => FromJSON (BooleanExpr a)
 
 instance (Pretty a) => Pretty (BooleanExpr a) where
   pretty = \case
-    Query x -> pretty x
+    Atom x -> pretty x
     Disjunct xs -> pretty xs
     Conjunct xs -> pretty xs
 
@@ -128,14 +128,14 @@ disjunctExprs = \case
 
 evaluate :: (a -> Bool) -> BooleanExpr a -> Bool
 evaluate f = \case
-  Query v -> f v
+  Atom v -> f v
   Disjunct xs -> any (evaluate f) xs
   Conjunct xs -> all (evaluate f) xs
 
 eliminateTrivialAtoms :: BooleanExpr (MaybeTrivial a) -> MaybeTrivial (BooleanExpr a)
 eliminateTrivialAtoms = \case
-  Query (NonTrivial a) -> NonTrivial (Query a)
-  Query (Trivial b) -> Trivial b
+  Atom (NonTrivial a) -> NonTrivial (Atom a)
+  Atom (Trivial b) -> Trivial b
   Conjunct xs -> conjunctExprs <$> eliminateTrivialConjunctions (fmap eliminateTrivialAtoms xs)
   Disjunct xs -> disjunctExprs <$> eliminateTrivialDisjunctions (fmap eliminateTrivialAtoms xs)
 
@@ -144,13 +144,13 @@ filterTrivialAtoms = flattenTrivial . fmap eliminateTrivialAtoms
 
 flattenBoolExpr :: BooleanExpr (BooleanExpr a) -> BooleanExpr a
 flattenBoolExpr = \case
-  Query x -> x
+  Atom x -> x
   Conjunct xs -> conjunctExprs $ fmap flattenBoolExpr xs
   Disjunct xs -> disjunctExprs $ fmap flattenBoolExpr xs
 
 conjunct :: [a] -> MaybeTrivial (BooleanExpr a)
 conjunct [] = Trivial True
-conjunct (x : xs) = NonTrivial $ Conjunct (ConjunctAll (fmap Query (x :| xs)))
+conjunct (x : xs) = NonTrivial $ Conjunct (ConjunctAll (fmap Atom (x :| xs)))
 
 andBoolExpr :: BooleanExpr a -> BooleanExpr a -> BooleanExpr a
 andBoolExpr (Conjunct (ConjunctAll xs)) (Conjunct (ConjunctAll ys)) = Conjunct (ConjunctAll (xs <> ys))
@@ -181,7 +181,7 @@ singletonDNF a = DisjunctAll [ConjunctAll [a]]
 
 exprToDNF :: BooleanExpr a -> DNFTree a
 exprToDNF = \case
-  Query a -> singletonDNF a
+  Atom a -> singletonDNF a
   Conjunct xs -> foldr1 andDNF (fmap exprToDNF xs)
   Disjunct xs -> foldr1 orDNF (fmap exprToDNF xs)
 

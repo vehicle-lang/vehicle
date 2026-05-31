@@ -338,7 +338,6 @@ library
     Vehicle.Verify.Specification.Execute
     Vehicle.Verify.Specification.Execute.Reporting
     Vehicle.Verify.Specification.IO
-    Vehicle.Verify.Specification.Status
     Vehicle.Verify.Verifier.Core
     Vehicle.Verify.Verifier.Marabou
     Vehicle.Verify.Verifier.Test

@@ -5,13 +5,11 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Data.List (elemIndex, findIndex)
-import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text (pack, splitOn, strip)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
-import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Core
 
 --------------------------------------------------------------------------------
@@ -43,16 +41,16 @@ parseMarabouOutput output = do
       throwError $ VerifierOutputMalformed "Cannot find 'sat', 'unsat' or 'timeout'"
     Just i
       | outputLines !! i == "Timeout" -> throwError VerifierTimedOut
-      | outputLines !! i == "unsat" -> return UnSAT
+      | outputLines !! i == "unsat" -> return QueryUnSAT
       | otherwise -> do
           let assignmentOutput = drop (i + 1) outputLines
           ioVarAssignment <- parseSATAssignment (filter (/= "") assignmentOutput)
-          return $ SAT $ Just ioVarAssignment
+          return $ QuerySAT $ Just ioVarAssignment
 
 parseSATAssignment ::
   (MonadError VerifierError m) =>
   [Text] ->
-  m QueryVariableAssignment
+  m QueryVariablesAssignment
 parseSATAssignment output = do
   -- let variableMap = Map.fromList $ fmap (\var -> (layoutAsText $ compileMarabouVar var, var)) (variables metaNetwork)
   let mInputIndex = elemIndex "Input assignment:" output
@@ -61,8 +59,7 @@ parseSATAssignment output = do
     (Just inputIndex, Just outputIndex) -> do
       let inputVarLines = take (outputIndex - inputIndex - 1) $ drop (inputIndex + 1) output
       let outputVarLines = drop (outputIndex + 1) output
-      values <- traverse parseSATAssignmentLine (inputVarLines <> outputVarLines)
-      return $ QueryVariableAssignment $ Map.fromList values
+      traverse parseSATAssignmentLine (inputVarLines <> outputVarLines)
     _ -> throwError $ VerifierOutputMalformed "Could not find strings 'Input assignment:' and 'Output:'"
 
 parseSATAssignmentLine ::
@@ -73,4 +70,4 @@ parseSATAssignmentLine txt = do
   let parts = Text.strip <$> Text.splitOn "=" txt
   case parts of
     [namePart, valuePart] -> return (namePart, readFloatAsRational valuePart)
-    _ -> throwError $ VerifierOutputMalformed $ "Could not split assignment line" <+> quotePretty txt <+> "on '=' sign"
+    _ -> throwError $ VerifierOutputMalformed $ layoutAsString $ "Could not split assignment line" <+> quotePretty txt <+> "on '=' sign"

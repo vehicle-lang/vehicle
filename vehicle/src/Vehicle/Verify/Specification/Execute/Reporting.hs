@@ -30,9 +30,7 @@ import System.Console.ANSI (Color (..))
 import System.IO (stdout)
 import System.ProgressBar
 import Vehicle.Compile.Prelude
-import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Verify.Core
-import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Core as Core
 
 --------------------------------------------------------------------------------
@@ -51,15 +49,8 @@ data VerificationSettings = VerificationSettings
 
 class (Monad m, MonadReader VerificationSettings m) => MonadProgressReporter m where
   reportMultiProperty :: PropertyName -> m () -> m ()
-  reportProperty :: PropertyAddress -> Int -> m PropertyStatus -> m PropertyStatus
-  reportQuery :: QueryAddress -> m (Either VerifierError (QueryResult UserVariableAssignment)) -> m (Either VerifierError (QueryResult UserVariableAssignment))
-
-{-
-instance (MonadProgressReporter m) => MonadProgressReporter (ReaderT a m) where
-  reportMultiProperty a s = mapReaderT (reportMultiProperty a s)
-  reportProperty a i = mapReaderT (reportProperty a i)
-  reportQuery s q = mapReaderT (reportQuery s q)
--}
+  reportProperty :: PropertyAddress -> Int -> m PropertyResult -> m PropertyResult
+  reportQuery :: QueryAddress -> m QueryResult -> m QueryResult
 
 -- If error reporting is doing funny things, I have my doubts about this implementation...
 instance (MonadProgressReporter m) => MonadProgressReporter (ExceptT a m) where
@@ -98,13 +89,12 @@ instance Monoid MultiPropertySummary where
 
 instance ToJSON MultiPropertySummary
 
-makeMultiPropertyStatus :: PropertyStatus -> MultiPropertySummary
-makeMultiPropertyStatus status = case status of
-  PropertyErrored (_, VerifierTimedOut) -> mempty {numberTimedOut = 1}
-  PropertyErrored _ -> mempty {numberErrored = 1}
-  _
-    | isVerified status -> mempty {numberVerified = 1}
-    | otherwise -> mempty {numberFalsified = 1}
+makeMultiPropertyStatus :: PropertyResult -> MultiPropertySummary
+makeMultiPropertyStatus result = case calculatePropertyVerified result of
+  Left VerifierTimedOut -> mempty {numberTimedOut = 1}
+  Left _ -> mempty {numberErrored = 1}
+  Right True -> mempty {numberVerified = 1}
+  Right False -> mempty {numberFalsified = 1}
 
 --------------------------------------------------------------------------------
 -- Query event
@@ -133,7 +123,7 @@ getAndClearMultiPropertyState = do
   put (mempty, 0)
   return summary
 
-getAndClearPropertyState :: (MonadState SharedState m) => PropertyStatus -> m Int
+getAndClearPropertyState :: (MonadState SharedState m) => PropertyResult -> m Int
 getAndClearPropertyState result = do
   (summary, queryCount) <- get
   put (summary <> makeMultiPropertyStatus result, 0)
@@ -231,19 +221,21 @@ createProgressBar (PropertyAddress name indices) numberOfQueries = do
 propertyCompleteText ::
   (MonadStdIO m) =>
   VerificationSettings ->
-  PropertyStatus ->
+  PropertyResult ->
   Int ->
   Int ->
   ProgressBar () ->
   m ()
-propertyCompleteText VerificationSettings {..} propertyStatus numberOfQueries queriesVerified progressBar = do
+propertyCompleteText VerificationSettings {..} propertyResult numberOfQueries queriesVerified progressBar = do
   -- Close progress bar if human mode and incomplete
   when (queriesVerified < numberOfQueries) $
     closeProgressBar progressBar
 
   -- Print result to command line
   let verifierName = pretty (verifierID verifier)
-  let (verified, evidenceText) = case propertyStatus of
+  let (verified, evidenceText) = _
+  {-
+  case propertyResult of
         PropertyCompleted status -> do
           case status of
             Trivial value -> (Just value, "(trivial)")
@@ -259,6 +251,7 @@ propertyCompleteText VerificationSettings {..} propertyStatus numberOfQueries qu
         PropertyErrored (_, err) -> do
           let cause = if isTimeoutError err then "timed out" else "errored"
           (Nothing, verifierName <+> cause)
+          -}
   writeStdoutLn (layoutAsText $ "    result: " <> pretty (statusSymbol verified) <+> "-" <+> evidenceText)
 
 statusSymbol :: Maybe Bool -> String
@@ -269,8 +262,8 @@ statusSymbol verified = do
         Just False -> (Red, "✗")
   setTextColour colour symbol
 
-prettyUserVariableAssignment :: UserVariableAssignment -> Doc a
-prettyUserVariableAssignment (UserVariableAssignment assignment) = do
+prettyUserVariableAssignment :: UserVariablesAssignment -> Doc a
+prettyUserVariableAssignment (UserVariablesAssignment assignment) = do
   let prettyLine (var, value) = pretty var <> ":" <+> pretty value
   vsep (fmap prettyLine assignment)
 
@@ -333,22 +326,16 @@ instance (MonadStdIO m, MonadReader VerificationSettings m) => MonadProgressRepo
 
   reportProperty propertyAddress _numberOfQueries checkPropertyFn = JSONReporterT $ do
     outputEvent $ PropertyStart propertyAddress
-    status <- unJSONReporterT checkPropertyFn
-    _ <- getAndClearPropertyState status
-    case status of
-      PropertyCompleted {} -> outputEvent $ PropertyFinish propertyAddress (isVerified status)
-      PropertyErrored {} -> return ()
-    return status
+    result <- unJSONReporterT checkPropertyFn
+    _ <- getAndClearPropertyState result
+    outputEvent $ PropertyFinish propertyAddress result
+    return result
 
   reportQuery queryAddress checkQueryFn = JSONReporterT $ do
     outputEvent $ QueryStart queryAddress
-    errorOrResult <- unJSONReporterT checkQueryFn
-    case errorOrResult of
-      Right result -> outputEvent $ QueryFinish queryAddress (querySatisified result)
-      Left err -> do
-        verifierUsed <- asks verifier
-        outputEvent $ QueryError queryAddress (layoutAsString $ verificationErrorMessage $ convertVerificationError verifierUsed queryAddress err)
-    return errorOrResult
+    result <- unJSONReporterT checkQueryFn
+    outputEvent $ QueryFinish queryAddress result
+    return result
 
 instance MonadTrans JSONReporterT where
   lift = JSONReporterT . lift
@@ -384,10 +371,9 @@ data ProgressEvent
   | MultiPropertyStart PropertyName
   | MultiPropertyFinish PropertyName
   | PropertyStart PropertyAddress
-  | PropertyFinish PropertyAddress Bool
+  | PropertyFinish PropertyAddress PropertyResult
   | QueryStart QueryAddress
-  | QueryFinish QueryAddress Bool
-  | QueryError QueryAddress String
+  | QueryFinish QueryAddress QueryResult
   | VerificationFinish
   deriving (Generic)
 

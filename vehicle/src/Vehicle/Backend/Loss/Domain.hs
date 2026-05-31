@@ -297,12 +297,12 @@ notConstraint :: (MonadDomain m) => UserVariableConstraint LossBuiltin -> m (Boo
 notConstraint (NormalisedRelation rel expr) = do
   let negExpr = scaleExpr (-1) expr
   return $ case rel of
-    OLe -> Query $ NormalisedRelation OLt negExpr
-    OLt -> Query $ NormalisedRelation OLe negExpr
+    OLe -> Atom $ NormalisedRelation OLt negExpr
+    OLt -> Atom $ NormalisedRelation OLe negExpr
     OEq -> do
       let less = NormalisedRelation OLe expr
       let greater = NormalisedRelation OLe negExpr
-      Disjunct $ DisjunctAll [Query less, Query greater]
+      Disjunct $ DisjunctAll [Atom less, Atom greater]
 
 -- | Note that the constraints live in the extended tensor context, where as the remaining value lives
 -- in the original unextended context.
@@ -471,7 +471,7 @@ compileComparison (op, args) = do
               return $ TensorValue lossDims lossConstant
 
             let lossAssertion = NormalisedRelation rel (Sparse coeffs lossConstant)
-            let partitions = Map.singleton (Just (Query lossAssertion)) Nothing
+            let partitions = Map.singleton (Just (Atom lossAssertion)) Nothing
             logDebugM MaxDetail $ do
               doc <- prettyFriendlyInCtx lossAssertion
               return $ "Found domain constraint:" <+> doc

@@ -8,11 +8,9 @@ import System.Posix.Signals
 # endif
 
 import Control.Monad.Error.Class (MonadError (..))
-import Data.Map (Map)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
-import Vehicle.Verify.Specification.Status
 
 --------------------------------------------------------------------------------
 -- Verifier interface
@@ -34,19 +32,14 @@ instance Pretty VerifierID where
 type VerifierExecutable = FilePath
 
 -- | The type of methods that prepare the command line arguments for the verifier
-type PrepareVerifierArgs =
-  MetaNetwork -> QueryFile -> [String]
-
--- | A (satisfying) assignment to a set of reduced network-level variables.
-newtype QueryVariableAssignment
-  = QueryVariableAssignment (Map QueryVariable Rational)
+type PrepareVerifierArgs = MetaNetwork -> QueryFile -> [String]
 
 -- | The type of methods that parse the output of the verifier.
 type ParseVerifierOutput =
   forall m.
   (MonadError VerifierError m, MonadLogger m) =>
   String ->
-  m (QueryResult QueryVariableAssignment)
+  m QueryResult
 
 -- | A complete verifier implementation
 data Verifier = Verifier
@@ -94,7 +87,7 @@ convertVerificationError Verifier {..} (QueryAddress propertyAddress queryID) = 
   VerifierOutputMalformed message ->
     VerificationErrorAction
       { reproducerIsUseful = True,
-        verificationErrorMessage = "Unexpected output from the" <+> verifierDoc <> "." <+> message
+        verificationErrorMessage = "Unexpected output from the" <+> verifierDoc <> "." <+> pretty message
       }
   VerifierTimedOut ->
     VerificationErrorAction

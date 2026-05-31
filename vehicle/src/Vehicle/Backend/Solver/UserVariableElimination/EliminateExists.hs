@@ -148,10 +148,10 @@ reduceInequalitiesInvolving dim variable tree = do
   where
     reduceAssertion :: LinearAssertion -> m (MaybeTrivial LinearAssertionTree)
     reduceAssertion ass@(NormalisedRelation rel linearExpr)
-      | rel == OEq || not (linearExpr `containsVariable` variable) = return $ NonTrivial $ Query ass
+      | rel == OEq || not (linearExpr `containsVariable` variable) = return $ NonTrivial $ Atom ass
       | otherwise = do
           conjunctedAssertions <- reduceComparison dim lookupChildVariablesCertain ass
-          return $ maybe (Trivial True) ((NonTrivial . Conjunct) . fmap Query) conjunctedAssertions
+          return $ maybe (Trivial True) ((NonTrivial . Conjunct) . fmap Atom) conjunctedAssertions
 
 --------------------------------------------------------------------------------
 -- Attempt 3
@@ -182,7 +182,7 @@ solveVariableViaInequalities var steps (bounds, remainingTree) = do
         Trivial False -> Trivial False
         Trivial True -> maybe (Trivial True) NonTrivial remainingTree
         NonTrivial ineqs -> do
-          let newIneqTree = Conjunct $ fmap (Query . inequalityToNormRelation) ineqs
+          let newIneqTree = Conjunct $ fmap (Atom . inequalityToNormRelation) ineqs
           NonTrivial $ maybe newIneqTree (andBoolExpr newIneqTree) remainingTree
 
   let step = SolveInequalities (toSliceVar var) bounds

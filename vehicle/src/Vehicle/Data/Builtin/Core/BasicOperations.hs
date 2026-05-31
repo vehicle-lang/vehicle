@@ -2,13 +2,14 @@
 module Vehicle.Data.Builtin.Core.BasicOperations where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (ToJSON)
+import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..))
+import Vehicle.Prelude.Misc (jsonOptions)
 
 --------------------------------------------------------------------------------
 -- Function positions
@@ -116,7 +117,10 @@ instance NFData Quantifier
 
 instance Hashable Quantifier
 
-instance ToJSON Quantifier
+instance ToJSON Quantifier where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON Quantifier
 
 instance Serialize Quantifier
 

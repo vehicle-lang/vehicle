@@ -35,8 +35,8 @@ reconstructUserVars ::
   (MonadLogger m) =>
   VariableStore ->
   VariableCompilationTrace ->
-  QueryVariableAssignment ->
-  m UserVariableAssignment
+  QueryVariablesAssignment ->
+  m UserVariablesAssignment
 reconstructUserVars variables (Reconstruction steps) networkVariableAssignment = do
   let queryVariableMap = getQueryVariableMap variables
   let vehicleVariableCtx = getVehicleVariableCtx variables
@@ -59,12 +59,12 @@ prettyAssignment ctx assignment = do
 
 createInitialAssignment ::
   Map QueryVariable NetworkIOElementVariable ->
-  QueryVariableAssignment ->
+  QueryVariablesAssignment ->
   MixedVariableAssignment
-createInitialAssignment queryVariableMap (QueryVariableAssignment valuesByQueryVar) = do
+createInitialAssignment queryVariableMap valuesByQueryVar = do
   let missingVariable var = developerError ("Solver returned additional unknown variable" <+> pretty var)
-  let mapQueryVariable var = coerce $ fromMaybe (missingVariable var) (Map.lookup var queryVariableMap)
-  let valuesByNetworkVar = ZeroDimTensor <$> Map.mapKeys mapQueryVariable valuesByQueryVar
+  let mapQueryVariable var = toSliceVar $ fromMaybe (missingVariable var) (Map.lookup var queryVariableMap)
+  let valuesByNetworkVar = Map.fromList $ fmap (bimap mapQueryVariable ZeroDimTensor) valuesByQueryVar
   valuesByNetworkVar
 
 applyReconstructionStep ::
@@ -206,10 +206,10 @@ createFinalAssignment ::
   CompleteNamedBoundCtx ->
   Set UserSliceVariable ->
   MixedVariableAssignment ->
-  m UserVariableAssignment
+  m UserVariablesAssignment
 createFinalAssignment vehicleVariables userVariables assignment = do
   let userVariableValues = mapMaybe isUserVar $ Map.toList assignment
-  return $ UserVariableAssignment userVariableValues
+  return $ UserVariablesAssignment userVariableValues
   where
     isUserVar :: (SliceVariable, RatTensor) -> Maybe (Name, RatTensor)
     isUserVar (var, value) =

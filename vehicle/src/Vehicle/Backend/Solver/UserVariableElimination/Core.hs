@@ -255,4 +255,4 @@ mkSingletonPartitions (steps, maybeAssertion) =
 
 mkTrivialPartition :: LinearAssertion -> MaybeTrivial Partitions
 mkTrivialPartition assertion =
-  mkSingletonPartitions (mempty, NonTrivial $ Query assertion)
+  mkSingletonPartitions (mempty, NonTrivial $ Atom assertion)

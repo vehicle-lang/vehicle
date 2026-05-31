@@ -4,13 +4,11 @@ module Vehicle.Verify.Verifier.Test
 where
 
 import Control.Monad.Except (MonadError (..))
-import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text (pack, splitOn, strip)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
-import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Core
 
 -- This is a verifier only used for testing.
@@ -38,24 +36,16 @@ parseTestVerifierOutput output = do
   case outputLines of
     [] -> throwError $ VerifierOutputMalformed "No output lines"
     l : ls
-      | l == "unsat" -> return UnSAT
+      | l == "unsat" -> return QueryUnSAT
       | l == "timeout" -> throwError VerifierTimedOut
-      | otherwise -> SAT . Just <$> parseSATAssignment ls
+      | otherwise -> QuerySAT . Just <$> parseSATAssignment ls
 
 parseSATAssignment ::
   (MonadError VerifierError m, MonadLogger m) =>
   [Text] ->
-  m QueryVariableAssignment
-parseSATAssignment ls = do
-  values <- traverse parseSATAssignmentLine ls
-  return $ QueryVariableAssignment $ Map.fromList values
-
-parseSATAssignmentLine ::
-  (MonadError VerifierError m) =>
-  Text ->
-  m (QueryVariable, Rational)
-parseSATAssignmentLine txt = do
+  m QueryVariablesAssignment
+parseSATAssignment = traverse $ \txt -> do
   let parts = Text.strip <$> Text.splitOn "=" txt
   case parts of
     [namePart, valuePart] -> return (namePart, readFloatAsRational valuePart)
-    _ -> throwError $ VerifierOutputMalformed $ "Could not split assignment line" <+> quotePretty txt <+> "on '=' sign"
+    _ -> throwError $ VerifierOutputMalformed $ layoutAsString $ "Could not split assignment line" <+> quotePretty txt <+> "on '=' sign"

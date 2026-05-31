@@ -1037,7 +1037,7 @@ instance
   PrettyUsing ('Functor rest) (BooleanExpr a `In` ctx)
   where
   prettyUsing (e, ctx) = case e of
-    Query x -> prettyUsing @rest (x, ctx)
+    Atom x -> prettyUsing @rest (x, ctx)
     Disjunct xs -> prettyUsing @('Functor ('Functor rest)) (xs, ctx)
     Conjunct xs -> prettyUsing @('Functor ('Functor rest)) (xs, ctx)
 

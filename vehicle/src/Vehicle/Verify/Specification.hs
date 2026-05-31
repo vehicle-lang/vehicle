@@ -5,8 +5,6 @@ module Vehicle.Verify.Specification
     QueryID,
     QuerySet (..),
     Property,
-    traverseProperty,
-    forQueryInProperty,
     propertySize,
     MultiProperty (..),
     multiPropertyAddresses,
@@ -141,28 +139,19 @@ instance FromJSON QueryMetaData
 --------------------------------------------------------------------------------
 -- Query set
 
-data QuerySet a = QuerySet
-  { negated :: !QuerySetNegationStatus,
-    queries :: !(DisjunctAll a)
+data QuerySet = QuerySet
+  { polarity :: !QuerySetPolarity,
+    queries :: !(DisjunctAll QueryMetaData)
   }
-  deriving (Show, Generic, Functor, Foldable, Traversable)
+  deriving (Generic)
 
-instance (NFData a) => NFData (QuerySet a)
+instance NFData QuerySet
 
-instance (ToJSON a) => ToJSON (QuerySet a)
+instance ToJSON QuerySet
 
-instance (FromJSON a) => FromJSON (QuerySet a)
+instance FromJSON QuerySet
 
-traverseQuerySet ::
-  (Monad m) =>
-  (a -> m b) ->
-  QuerySet a ->
-  m (QuerySet b)
-traverseQuerySet f QuerySet {..} = do
-  queries' <- traverse f queries
-  return $ QuerySet negated queries'
-
-querySetSize :: QuerySet a -> Int
+querySetSize :: QuerySet -> Int
 querySetSize QuerySet {..} = length queries
 
 --------------------------------------------------------------------------------
@@ -174,26 +163,9 @@ querySetSize QuerySet {..} = length queries
 --
 -- This type captures this boolean structure, and is parameterised by the type
 -- of data stored at the position of each query.
-type Property a = MaybeTrivial (BooleanExpr (QuerySet a))
+type Property = MaybeTrivial (BooleanExpr QuerySet)
 
-traverseProperty ::
-  forall m a b.
-  (Monad m) =>
-  (a -> m b) ->
-  Property a ->
-  m (Property b)
-traverseProperty f = traverse (traverse (traverseQuerySet f))
-
-forQueryInProperty ::
-  (Monad m) =>
-  Property a ->
-  (a -> m ()) ->
-  m ()
-forQueryInProperty p f = do
-  _ <- traverseProperty f p
-  return ()
-
-propertySize :: Property a -> Int
+propertySize :: Property -> Int
 propertySize = \case
   Trivial {} -> 0
   NonTrivial p -> sum (fmap querySetSize p)
@@ -255,7 +227,7 @@ instance FromJSON SpecificationCacheIndex
 -- | The object that provides the required information to perform the
 -- verification of a single property within a specification.
 newtype PropertyVerificationPlan = PropertyVerificationPlan
-  { queryMetaData :: Property QueryMetaData
+  { queryMetaData :: Property
   }
   deriving (Generic)
 

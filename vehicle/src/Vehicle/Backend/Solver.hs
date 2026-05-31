@@ -194,7 +194,7 @@ compileQueries ::
   forall m.
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Value Builtin ->
-  m (Property QueryMetaData)
+  m Property
 compileQueries expr = do
   showTopLevelEntry expr
   showTopLevelExit =<< case toBoolValue expr of
@@ -202,11 +202,11 @@ compileQueries expr = do
     -- Base cases --
     ----------------
     VBoolLiteral b -> return $ Trivial b
-    VQuantifyRatTensor (Exists, args) -> compileQuantifiedQuerySet False args
+    VQuantifyRatTensor (Exists, args) -> compileQuantifiedQuerySet Exists args
     VQuantifyRatTensor (Forall, args) -> do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       negatedArgs <- negateRatTensorQuantifierBody args
-      compileQuantifiedQuerySet True negatedArgs
+      compileQuantifiedQuerySet Forall negatedArgs
     VQuantifyRecord (q, args) -> do
       wrappedBinderArgs <- wrapQuantifyRecord args
       compileQueries (fromBoolValue $ VQuantifyRatTensor (q, wrappedBinderArgs))
@@ -241,13 +241,13 @@ compileQueries expr = do
 
 compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
-  Bool ->
+  QuerySetPolarity ->
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
-  m (Property QueryMetaData)
-compileQuantifiedQuerySet isPropertyNegated args =
+  m Property
+compileQuantifiedQuerySet polarity args =
   logCompilerSection2 MaxDetail "compilation of query set" $ do
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
-    compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
+    compileQuerySetPartitions globalCtx polarity maybePartitions
 
 -- | Takes a record quantifier and wraps the binder & body in a tensor quantifier
 --  e.g. given Pair has fields { a : Real, b : Real }
@@ -293,27 +293,27 @@ wrapQuantifyRecord QuantifyRecordArgs {..} = do
 compileUnquantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Value Builtin ->
-  m (Property QueryMetaData)
+  m Property
 compileUnquantifiedQuerySet value = do
   let subsectionDoc = "compilation of set of unquantified queries:" <+> prettyFriendlyEmptyCtx value
   logCompilerSection2 MaxDetail subsectionDoc $ do
     (maybePartitions, globalCtx) <- runStateT (eliminateExistless value) emptyGlobalCtx
-    compileQuerySetPartitions globalCtx False maybePartitions
+    compileQuerySetPartitions globalCtx Exists maybePartitions
 
 compileQuerySetPartitions ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   GlobalCtx ->
-  QuerySetNegationStatus ->
+  QuerySetPolarity ->
   MaybeTrivial Partitions ->
-  m (Property QueryMetaData)
-compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case maybePartitions of
-  Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
+  m Property
+compileQuerySetPartitions globalCtx polarity maybePartitions = case maybePartitions of
+  Trivial b -> return $ Trivial (b `xor` (polarity == Forall))
   NonTrivial partitions -> do
     propertyMetaData <- ask
     maybeQueries <- runReaderT (compilePartitionsToQueries partitions) (propertyMetaData, globalCtx)
     case maybeQueries of
       Trivial b -> return $ Trivial b
-      NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
+      NonTrivial queries -> return $ NonTrivial $ Atom $ QuerySet polarity queries
 
 topLevelUnblockingActions :: (Monad m) => UnblockingActions m
 topLevelUnblockingActions =
