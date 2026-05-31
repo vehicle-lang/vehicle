@@ -19,21 +19,6 @@
   ],
   "parameters": [
     {
-      "typeText": "Nat",
-      "tag": "ParameterSummary",
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          72,
-          1,
-          72,
-          2
-        ]
-      },
-      "name": "n",
-      "inferable": true
-    },
-    {
       "typeText": "Real",
       "tag": "ParameterSummary",
       "provenance": {
@@ -47,6 +32,21 @@
       },
       "name": "epsilon",
       "inferable": false
+    },
+    {
+      "typeText": "Nat",
+      "tag": "ParameterSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          72,
+          1,
+          72,
+          2
+        ]
+      },
+      "name": "n",
+      "inferable": true
     }
   ],
   "networks": [
@@ -67,20 +67,6 @@
   ],
   "datasets": [
     {
-      "typeText": "Vector (Index 10) n",
-      "tag": "DatasetSummary",
-      "provenance": {
-        "tag": "Provenance",
-        "contents": [
-          81,
-          1,
-          81,
-          15
-        ]
-      },
-      "name": "trainingLabels"
-    },
-    {
       "typeText": "Vector (Tensor Real [28, 28]) n",
       "tag": "DatasetSummary",
       "provenance": {
@@ -93,6 +79,20 @@
         ]
       },
       "name": "trainingImages"
+    },
+    {
+      "typeText": "Vector (Index 10) n",
+      "tag": "DatasetSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          81,
+          1,
+          81,
+          15
+        ]
+      },
+      "name": "trainingLabels"
     }
   ]
 }
