@@ -919,9 +919,12 @@ formatCompileError = \case
       }
   UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputValue, userVariables, unboundedInputs) :| _) ->
     case toTypeValue inputValue of
-      (VRecordType t fields) -> do
+      (VRecordType typ fields) -> do
         let varName = "x" :: Name
-        let fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
+            fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
+            typeIdent = case typ of 
+              (VFreeVar i _) -> Just i
+              _ -> Nothing
         VehicleUserError
           { provenance = Just p,
             problem =
@@ -934,6 +937,7 @@ formatCompileError = \case
                 <> "In particular,"
                   <+> missingBoundsRecord varName fieldNames unboundedInputs
                   <+> "for"
+                  <+> maybe mempty (\t -> pretty $ nameOf t) typeIdent
                   <+> squotes (pretty varName),
             fix =
               Just $
@@ -952,7 +956,7 @@ formatCompileError = \case
                 <> line
                 <> "In particular,"
                   <+> missingBounds unboundedInputs
-                  <+> "for"
+                  <+> "for tensor"
                   <+> squotes (prettyFriendly (WithContext inputValue ctx)),
             fix =
               Just $
