@@ -155,14 +155,14 @@ prettySetLike xs =
     <> line
     <> "}"
 
-prettyRecordEntries :: [(Doc a, Doc a)] -> Doc a
-prettyRecordEntries entries = prettyRecord entries'
+prettyRecordValueEntries :: [(Doc a, Doc a)] -> Doc a
+prettyRecordValueEntries entries = prettyRecordValue entries'
   where
     (keys, values) = unzip entries
-    entries' = zipWith (\k v -> k <+> ":" <+> v) keys values
+    entries' = zipWith (\k v -> k <+> "=" <+> v) keys values
 
-prettyRecord :: [Doc a] -> Doc a
-prettyRecord xs =
+prettyRecordValue :: [Doc a] -> Doc a
+prettyRecordValue xs =
   "{"
     <+> concatWith (\x y -> x <> line <> "," <+> y) xs
     <> line

@@ -25,7 +25,7 @@ import Data.ByteString.Lazy.Char8 qualified as ByteString (unpack)
 import Data.Text (intercalate, pack)
 import Data.Text.Lazy qualified as LazyText
 import GHC.Generics (Generic)
-import Prettyprinter (fill, fillSep)
+import Prettyprinter (fill)
 import System.Console.ANSI (Color (..))
 import System.IO (stdout)
 import System.ProgressBar
@@ -276,7 +276,11 @@ prettyUserVariableAssignment (UserVariableAssignment assignment) = do
     prettyLine a = do
       case a of
         (var, TensorValue value) -> pretty var <> ":" <+> pretty value
-        (var, RecordValue fields) -> pretty var <> ":" <+> "{" <+> fillSep (fmap (\(name, tens) -> pretty name <+> "=" <+> pretty tens) fields) <+> "}"
+        (var, RecordValue fields) ->
+          pretty var
+            <> ":"
+            <> line
+            <> prettyRecordValueEntries (map (Data.Bifunctor.bimap pretty pretty) fields)
 
 closeProgressBar :: (MonadStdIO m) => ProgressBar () -> m ()
 closeProgressBar _ = writeStdoutLn ""

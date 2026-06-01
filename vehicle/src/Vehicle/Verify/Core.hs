@@ -4,6 +4,7 @@ module Vehicle.Verify.Core where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
+import Data.Bifunctor qualified
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
 import Prettyprinter (brackets)
@@ -209,5 +210,4 @@ instance FromJSON UserVariableValue
 instance Pretty UserVariableValue where
   pretty t = case t of
     TensorValue tens -> pretty tens
-    -- LAUREN TODO: this is probably pretty dodgy
-    RecordValue fields -> vsep (fmap (\(name, tens) -> pretty name <+> pretty tens) fields)
+    RecordValue fields -> prettyRecordValueEntries $ map (Data.Bifunctor.bimap pretty pretty) fields

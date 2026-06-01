@@ -1,4 +1,7 @@
 Verifying properties:
   p [==============================================================] 1/1 queries 0/1 queries
     result: [91m✗[m - TestVerifier found a counterexample
-      x: { a = 0.2 b = 0.2 }
+      x:
+      { a = 0.2
+      , b = 0.2
+      }
