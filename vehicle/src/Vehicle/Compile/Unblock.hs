@@ -15,9 +15,11 @@ import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Normalise (evalTranspose)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
@@ -173,7 +175,7 @@ unblockBoolMultiDimTensorValue actions expr = do
   showExit =<< case toMultiDimBoolTensorValue expr of
     VMultiDimBoolTensorLiteral {} -> return expr
     VMultiDimBoolConstTensor {} -> return expr
-    VMultiDimBoolStackTensor {} -> return expr
+    VMultiDimBoolStackTensor args -> unblockStackTensor unblock args
     VMultiDimBoolIf {} -> return expr
     VMultiDimBoolGlobally {} -> return expr
     VMultiDimBoolFinally {} -> return expr
@@ -183,7 +185,9 @@ unblockBoolMultiDimTensorValue actions expr = do
     VPointwiseOr args -> unblockTensorOp2 unblock evalOr args
     VCompareRatTensorPointwise (op, args) -> unblockTensorOp2 (unblockRatTensorValue actions DifferentDimensions) (evalCompareRatTensorPointwise op) args
     VMultiDimBoolAt args -> unblockAtTensor unblock args
-    VBoolForeach args -> unblockForeachTensor args
+    VBoolForeach args -> unblockForeachTensorRec unblock args
+    VMultiDimBoolReduceAnd args -> unblockReduceTensor unblock unoptimisedEvalReduceAndTensor args
+    VMultiDimBoolReduceOr args -> unblockReduceTensor unblock evalReduceOrTensor args
   where
     unblock = unblockBoolMultiDimTensorValue actions
 
@@ -222,7 +226,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
     VRatTensorRollout {} -> return expr
-    VRatTensorTranspose {} -> return expr
+    VRatTensorTranspose args -> unblockTransposeTensor (unblock DifferentDimensions) args
   where
     unblock = unblockRatTensorValue actions
 
@@ -310,10 +314,16 @@ unblockReduceTensor ::
   EvalSimple TensorReductionArgs Value Builtin m ->
   TensorReductionArgs (Value Builtin) ->
   m (Value Builtin)
-unblockReduceTensor unblock evalFn (TensorReductionArgs ds e xs) = do
+unblockReduceTensor unblock evalFn (TensorReductionArgs keepDs reduceDs e xs) = do
   xs' <- unblock xs
-  liftIf xs' $ \xs'' ->
-    evalFn $ TensorReductionArgs ds e xs''
+  liftIf xs' $ \xs'' -> do
+    -- Unrolling needed: constraint lowering wants concrete per-index values.
+    xs''' <- case getExpr accessForeachTensor xs'' of
+      Just args -> do
+        nameCtx <- getNameContext
+        unoptimisedEvalForeachTensor nameCtx evalApp args
+      Nothing -> return xs''
+    evalFn $ TensorReductionArgs keepDs reduceDs e xs'''
 
 unblockConstTensor ::
   (MonadUnblock m) =>
@@ -378,6 +388,34 @@ rewriteTransposeAt topArgs@(AtTensorArgs tElem _ outerRemDims _ _) = do
           Just innerArgs -> collect innerArgs ((d, idx) : acc)
           Nothing -> Nothing
 
+-- | Materialise `transpose t` once the underlying `t` is unblocked.
+-- First lets `evalTranspose` fold the case (const, 2-D Stack-of-Stacks);
+-- only falls back to rank-N index-chain materialisation when both 2-D and
+-- const arms missed. `transposeDims` is the *input* tensor's shape; the
+-- output shape is its reverse. The recursive `unblock` on the leaf-bearing
+-- Stack lets `evalAtTensor`'s `Stack ! literal` fold the chains.
+unblockTransposeTensor ::
+  (MonadUnblock m) =>
+  (Value Builtin -> m (Value Builtin)) ->
+  TransposeArgs (Value Builtin) ->
+  m (Value Builtin)
+unblockTransposeTensor unblock origArgs@(TransposeArgs elemType origDims tensor) = do
+  unblockedTensor <- unblock tensor
+  liftIf unblockedTensor $ \tensor' -> do
+    folded <- evalTranspose (TransposeArgs elemType origDims tensor')
+    case getExpr accessTranspose folded of
+      Nothing -> return folded -- goConst / goStack2D handled it.
+      Just (TransposeArgs _ _ tensor'')
+        | Just origShape <- getDims origDims -> do
+            let resultShape = reverse origShape
+            let build :: TensorShape -> TensorIndices -> Value Builtin
+                build [] accIdx = mkIndexInto elemType tensor'' origShape accIdx
+                build (d : rest) accIdx =
+                  let elements = [build rest (i : accIdx) | i <- [0 .. d - 1]]
+                   in mkExpr accessStackTensor (StackTensorArgs elemType (INatLiteral d) (mkDims rest) elements)
+            unblock (build resultShape [])
+        | otherwise -> return $ mkExpr accessTranspose origArgs
+
 unblockForeachTensor ::
   (MonadUnblock m) =>
   ForeachTensorArgs (Value Builtin) ->
@@ -387,6 +425,24 @@ unblockForeachTensor (ForeachTensorArgs tElem d ds fn) = do
   liftIf d' $ \d'' -> do
     nameCtx <- getNameContext
     unoptimisedEvalForeachTensor nameCtx evalApp $ ForeachTensorArgs tElem d'' ds fn
+
+-- | Unroll a foreach and then recursively unblock each element of the
+-- resulting Stack. Required when the foreach body contains *another*
+-- foreach over the same Index type (the inner one only becomes ready to
+-- evaluate once the outer index is a literal). Without this recursion the
+-- inner foreach is returned symbolic and the solver fails to handle it.
+unblockForeachTensorRec ::
+  (MonadUnblock m) =>
+  UnblockingFunction m ->
+  ForeachTensorArgs (Value Builtin) ->
+  m (Value Builtin)
+unblockForeachTensorRec unblock args = do
+  unrolled <- unblockForeachTensor args
+  case getExpr accessStackTensor unrolled of
+    Just (StackTensorArgs t dim dims xs) -> do
+      xs' <- traverse unblock xs
+      return $ mkExpr accessStackTensor (StackTensorArgs t dim dims xs')
+    Nothing -> return unrolled
 
 --------------------------------------------------------------------------------
 -- Unblocking operations

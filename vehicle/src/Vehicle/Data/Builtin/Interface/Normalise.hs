@@ -7,7 +7,6 @@ import Control.Applicative ((<|>))
 import Control.Monad (foldM, zipWithM)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Ratio (denominator, numerator)
-import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Core
@@ -16,7 +15,7 @@ import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (Tensor, TensorShape, at, extendTensor, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor, TensorShape, at, extendTensor, foldTensorPartial, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 
 -- Okay so the important thing to remember about this module is that we have
@@ -211,7 +210,7 @@ evalHeteroTensorOp2 b inputLit outputLit op leftUnit rightUnit leftZero rightZer
 
 evalReduceTensor ::
   forall builtin a m.
-  (MonadNormBuiltin m, HasTensorExpr Value builtin, PrintableBuiltin builtin) =>
+  (MonadNormBuiltin m, HasTensorExpr Value builtin, PrintableBuiltin builtin, Eq a) =>
   Accessor builtin () ->
   Accessor (Value builtin) (Tensor a) ->
   EvalSimple TensorOp2Args Value builtin m ->
@@ -222,16 +221,37 @@ evalReduceTensor accessReductionOp accessLit evalOp2 op2 args = do
   where
     eval :: EvalSimplePartial TensorReductionArgs builtin m
     eval = \case
-      TensorReductionArgs _ (getExpr accessLit -> Just e) (getExpr accessLit -> Just xs) ->
-        Just $ return $ mkExpr accessLit $ foldTensor op2 e xs
-      TensorReductionArgs (IDimCons _ ds) e (getExpr accessStackTensor -> Just xs) ->
-        Just $ foldM (foldFn e ds) e (stackElements xs)
-      TensorReductionArgs IDimNil _e xs ->
+      -- Identity: nothing to reduce.
+      TensorReductionArgs _ IDimNil _e xs ->
         Just $ return xs
+      -- Literal tensor: partial reduction folds the trailing `reduceDims`
+      -- axes, leaving the leading `keepDims` axes. Total reduction is the
+      -- `keepDims = IDimNil` special case.
+      TensorReductionArgs keepDsV reduceDsV (getExpr accessLit -> Just e) (getExpr accessLit -> Just xs)
+        | Just keepShape <- getDims keepDsV,
+          Just reduceShape <- getDims reduceDsV ->
+            Just $ return $ mkExpr accessLit $ foldTensorPartial keepShape reduceShape op2 e xs
+      -- Stack along an outermost reduce-axis (keepDims empty): fold across it.
+      -- For non-empty stacks, seed the fold with the first element so the
+      -- identity `e` doesn't leak into the result (matters when the logic uses
+      -- a sentinel like `falseElement = 1e6` that isn't the algebraic identity
+      -- of the reduction op).
+      TensorReductionArgs IDimNil (IDimCons _ ds) e (getExpr accessStackTensor -> Just xs) ->
+        case stackElements xs of
+          [] -> Just $ return e
+          x0 : rest -> Just $ do
+            x0' <- evalFull ds e x0
+            foldM (foldFn e ds) x0' rest
+      -- Partial reduction: outermost axis is a keep-axis materialised as a
+      -- Stack. Peel and recurse with the residual reduction on each element.
+      TensorReductionArgs (IDimCons _ keepDs) reduceDsV e (getExpr accessStackTensor -> Just (StackTensorArgs t outerDim _ xs)) ->
+        Just $ do
+          reduced <- traverse (\x -> evalSimple (mkExpr accessReductionOp ()) eval (TensorReductionArgs keepDs reduceDsV e x)) xs
+          return $ mkExpr accessStackTensor (StackTensorArgs t outerDim keepDs reduced)
       _ -> Nothing
 
     evalFull :: VDims builtin -> Value builtin -> Value builtin -> m (Value builtin)
-    evalFull ds e xs = evalSimple (mkExpr accessReductionOp ()) eval (TensorReductionArgs ds e xs)
+    evalFull ds e xs = evalSimple (mkExpr accessReductionOp ()) eval (TensorReductionArgs IDimNil ds e xs)
 
     evalBop :: VDims builtin -> Value builtin -> Value builtin -> m (Value builtin)
     evalBop ds xs ys = evalOp2 (TensorOp2Args ds xs ys)
@@ -278,7 +298,7 @@ evalReduceAndTensor ::
   EvalApp builtin m ->
   Eval builtin m ->
   EvalSimple TensorReductionArgs Value builtin m
-evalReduceAndTensor ctx evalApp eval args@(TensorReductionArgs dims e tensor) = case e of
+evalReduceAndTensor ctx evalApp eval args@(TensorReductionArgs keepDims reduceDims e tensor) = case e of
   IBoolLiteral True -> go tensor
   _ -> unoptimisedEvalReduceAndTensor args
   where
@@ -288,11 +308,26 @@ evalReduceAndTensor ctx evalApp eval args@(TensorReductionArgs dims e tensor) = 
         xs' <- go xs
         ys' <- go ys
         evalAnd (TensorOp2Args ds xs' ys')
+      -- Flatten `reduceAnd True (reduceAnd True X)` to a single total
+      -- reduction over the combined dims. Recurse on the inner tensor in
+      -- case it's itself another nested reduceAnd.
+      (getExpr accessReduceAnd -> Just (TensorReductionArgs innerKeepDs innerReduceDs (IBoolLiteral True) innerTensor))
+        | IDimNil <- keepDims ->
+            go innerTensor >>= \fused -> case getExpr accessReduceAnd fused of
+              Just (TensorReductionArgs IDimNil deeperReduceDs (IBoolLiteral True) deeperTensor) ->
+                unoptimisedEvalReduceAndTensor (TensorReductionArgs IDimNil (appendIDims innerKeepDs (appendIDims innerReduceDs deeperReduceDs)) (IBoolLiteral True) deeperTensor)
+              _ ->
+                unoptimisedEvalReduceAndTensor (TensorReductionArgs IDimNil (appendIDims innerKeepDs innerReduceDs) (IBoolLiteral True) fused)
       vs -> do
         result <- fuseReduceAndForeachTensor ctx evalApp eval tensor
         case result of
-          Nothing -> unoptimisedEvalReduceAndTensor (TensorReductionArgs dims e vs)
-          Just (newDims, fusedTensor) -> return $ mkExpr accessReduceAnd (TensorReductionArgs newDims e fusedTensor)
+          Nothing -> unoptimisedEvalReduceAndTensor (TensorReductionArgs keepDims reduceDims e vs)
+          Just (newDims, fusedTensor) -> return $ mkExpr accessReduceAnd (TensorReductionArgs keepDims newDims e fusedTensor)
+
+    appendIDims :: Value builtin -> Value builtin -> Value builtin
+    appendIDims IDimNil ys = ys
+    appendIDims (IDimCons x xs) ys = IDimCons x (appendIDims xs ys)
+    appendIDims xs _ = xs -- non-canonical (shouldn't occur in practice)
 
 -- | An optimised evaluation procedure for `Foreach` that attempts to minimise the
 -- amount of work needed by lifting operations to higher-tensor levels.
@@ -307,16 +342,23 @@ fuseReduceAndForeachTensor ::
 fuseReduceAndForeachTensor ctx evalApp eval value = do
   fusionEnter ctx value
   fusionExit ctx =<< case getExpr accessForeachTensor value of
-    Just (ForeachTensorArgs typ d _ (VLam binder (Closure env body))) -> do
+    Just (ForeachTensorArgs typ d _ (VLam binder closure)) -> do
       let lv = boundCtxLv ctx
-      let newEnv = extendEnvWithBound lv binder env
       let newCtx = nameOf binder : ctx
-      body' <- eval newCtx newEnv body
+      body' <- case closure of
+        ExprClosure env body -> do
+          let newEnv = extendEnvWithBound lv binder env
+          eval newCtx newEnv body
+        ValueClosure {} ->
+          -- Apply the lambda to its binder Lv: substLvInValue (used by
+          -- evalApp's VLam case) re-applies VBuiltins as it substitutes,
+          -- matching the renormalisation that the ExprClosure path gets
+          -- from `eval`.
+          evalApp newCtx (VLam binder closure) [explicit (VBoundVar lv [])]
       case getExpr accessReduceAnd body' of
-        Just (TensorReductionArgs tensorDims (IBoolLiteral True) tensor) -> do
+        Just (TensorReductionArgs IDimNil tensorDims (IBoolLiteral True) tensor) -> do
           (newDims, newTensor) <- fromMaybe (tensorDims, tensor) <$> fuseReduceAndForeachTensor newCtx evalApp eval tensor
-          let newTensor' = quote mempty (lv + 1) newTensor
-          let newLam = VLam binder (Closure (namedBoundContextToEnv ctx) newTensor')
+          let newLam = VLam binder (ValueClosure lv newTensor)
           let newForeachArgs = ForeachTensorArgs typ d newDims newLam
           newBody' <- evalForeachTensor newCtx evalApp eval newForeachArgs
           return $ Just (IDimCons d newDims, newBody')
@@ -555,6 +597,8 @@ type TensorOpEvalData args builtin m =
 class HasLiftableTensorOperations builtin where
   liftableTensorOp1s :: (MonadNormBuiltin m) => [TensorOpEvalData TensorOp1Args builtin m]
   liftableTensorOp2s :: (MonadNormBuiltin m) => [TensorOpEvalData TensorOp2Args builtin m]
+  liftableTensorReductions :: (MonadNormBuiltin m) => [TensorOpEvalData TensorReductionArgs builtin m]
+  liftableTensorReductions = []
 
 data TensorLiteralAccessor expr builtin
   = forall a. (Eq a) => Wrapper (Accessor (expr builtin) (Tensor a))
@@ -660,20 +704,23 @@ evalForeachTensor ::
   Eval builtin m ->
   ForeachTensorArgs (Value builtin) ->
   m (Value builtin)
-evalForeachTensor ctx evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
-  VLam binder (Closure env body) -> do
-    logDebug MaxDetail "Hit"
+evalForeachTensor ctx _evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
+  VLam binder closure -> do
     let lv = boundCtxLv ctx
-    let newEnv = extendEnvWithBound lv binder env
     let newCtx = nameOf binder : ctx
-    body' <- eval newCtx newEnv body
+    body' <- case closure of
+      ExprClosure env body -> do
+        let newEnv = extendEnvWithBound lv binder env
+        eval newCtx newEnv body
+      ValueClosure binderLv body ->
+        -- Lift rules below assume the binder is at `lv` (e.g. `containsBoundVar lv`,
+        -- `goAt`'s match). Rebind from the construction-time `binderLv`.
+        pure $ relabelLvInValue binderLv lv body
     let createForeach t newBody = do
-          let newBody' = quote mempty (lv + 1) newBody
-          let newLam = VLam binder (Closure (namedBoundContextToEnv ctx) newBody')
+          let newLam = VLam binder (ValueClosure lv newBody)
           let args = ForeachTensorArgs t d ds newLam
-          unoptimisedEvalForeachTensor ctx evalApp args
-    result <- liftForeach newCtx createForeach lv d typ body'
-    return result
+          return $ mkExpr accessForeachTensor args
+    liftForeach newCtx createForeach lv d typ body'
   e -> unexpectedExprError "NBE" ("foreachIndex" <+> prettyVerbose e)
 
 liftForeach ::
@@ -694,6 +741,7 @@ liftForeach ctx evalForeach lv d = go
       let maybeResult =
             goOp1 body liftableTensorOp1s
               <|> goOp2 body liftableTensorOp2s
+              <|> goReduce body liftableTensorReductions
               <|> goAt body
               <|> goConst body
               <|> goLiterals body tensorLiterals
@@ -731,6 +779,36 @@ liftForeach ctx evalForeach lv d = go
     goAt value = case getExpr accessAtTensor value of
       Just (AtTensorArgs _ _ _ xs (VBoundVar lv1 [])) | lv1 == lv -> Just $ return xs
       _ -> Nothing
+
+    -- Sound over-approximation: closures count as containing the target.
+    containsBoundVar :: Lv -> Value builtin -> Bool
+    containsBoundVar target = go'
+      where
+        go' :: Value builtin -> Bool
+        go' = \case
+          VBoundVar lv2 spine -> lv2 == target || anyArg spine
+          VFreeVar _ spine -> anyArg spine
+          VMeta _ spine -> anyArg spine
+          VBuiltin _ spine -> anyArg spine
+          VRecord _ fields -> any go' fields
+          VRecordAcc _ record _ spine -> go' record || anyArg spine
+          VLam {} -> True
+          VPi {} -> True
+          VUniverse {} -> False
+        anyArg = any (go' . argExpr)
+
+    --   foreach i . reduceFoo keepDs reduceDs e (xs(i))
+    --     ==  reduceFoo (i_dim :: keepDs) reduceDs e (foreach i . xs(i))
+    -- when `e` (the reduction unit) is free of the foreach binder.
+    goReduce :: Value builtin -> [TensorOpEvalData TensorReductionArgs builtin m] -> Maybe (m (Value builtin))
+    goReduce body = \case
+      (accessReduce, evalReduce, typ) : remainingReductions -> case accessReduce body of
+        Just (TensorReductionArgs keepDs reduceDs e xs)
+          | not (containsBoundVar lv e) -> Just $ do
+              xs' <- go typ xs
+              evalReduce (TensorReductionArgs (IDimCons d keepDs) reduceDs e xs')
+        _ -> goReduce body remainingReductions
+      [] -> Nothing
 
     goLiterals :: Value builtin -> [TensorLiteralAccessor Value builtin] -> Maybe (m (Value builtin))
     goLiterals value literals = case literals of

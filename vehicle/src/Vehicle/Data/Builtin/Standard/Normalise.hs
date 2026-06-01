@@ -1,7 +1,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Data.Builtin.Standard.Normalise
-  ( foldReduceAndComparison,
+  ( evalTranspose,
+    foldReduceAndComparison,
   )
 where
 
@@ -50,6 +51,15 @@ instance HasLiftableTensorOperations Builtin where
     ]
     where
       compPointwise op = (getExpr (accessArgsForOp accessCompareRatTensorPointwise op), evalCompareRatTensorPointwise op, IBoolType)
+
+  liftableTensorReductions =
+    [ (getExpr accessReduceAnd, unoptimisedEvalReduceAndTensor, IBoolType),
+      (getExpr accessReduceOr, evalReduceOrTensor, IBoolType),
+      (getExpr accessReduceAddRat, evalReduceAddRatTensor, IRatType),
+      (getExpr accessReduceMulRat, evalReduceMulRatTensor, IRatType),
+      (getExpr accessReduceMinRat, evalReduceMinRatTensor, IRatType),
+      (getExpr accessReduceMaxRat, evalReduceMaxRatTensor, IRatType)
+    ]
 
 instance NormalisableBuiltin Builtin where
   evalScheme = \case
@@ -167,12 +177,11 @@ evalVectorToList args@(VectorToListArgs t d xs) =
     _ -> mkExpr accessFromVectorToList args
 
 -- | Transpose normalisation. Fold concrete tensors; otherwise leave it for
--- index-through-transpose in `evalAtTensor`.
+-- index-through-transpose in `evalAtTensor` or the unblocker.
 evalTranspose :: (MonadNormBuiltin m) => EvalSimple TransposeArgs Value Builtin m
 evalTranspose args@(TransposeArgs _ resultDims tensor) =
   return $
     fromMaybe (mkExpr accessTranspose args) $
-      -- ConstTensor is uniform: only dims change.
       goConst <|> goStack2D
   where
     goConst :: Maybe (Value Builtin)
@@ -188,8 +197,6 @@ evalTranspose args@(TransposeArgs _ resultDims tensor) =
         case innerStacks of
           [] -> Nothing
           firstStack@(StackTensorArgs _ innerDim innerRest _) : _ ->
-            -- Only handle 2-D for now: the inner stacks must have empty
-            -- remaining dims.
             case innerRest of
               IDimNil -> do
                 let innerCols = map stackElements innerStacks
@@ -208,9 +215,10 @@ evalTranspose args@(TransposeArgs _ resultDims tensor) =
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->
   Maybe (Value Builtin)
-foldReduceAndComparison (TensorReductionArgs _ unit tensor) =
+foldReduceAndComparison (TensorReductionArgs IDimNil _ unit tensor) =
   case (unit, getExpr accessCompareRatTensorPointwise tensor) of
     (IBoolLiteral True, Just (op, TensorOp2Args (IDimCons d ds) xs ys)) | op /= Ne -> do
       let compareArgs = TensorReduceComparisonArgs d ds xs ys
       Just $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
     _ -> Nothing
+foldReduceAndComparison _ = Nothing
