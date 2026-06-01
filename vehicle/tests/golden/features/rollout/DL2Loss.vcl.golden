@@ -1,11 +1,11 @@
 @property;
 positionStaysSmall : (Tensor Real -> Tensor Real) -> (Tensor Real -> Tensor Real -> Tensor Real) -> Tensor Real;
-positionStaysSmall = \ controller -> \ dynamics -> (\ __rollout_0 -> max 0.0 (__rollout_0 ! 0 ! 0 - 10.0) + max 0.0 (__rollout_0 ! 1 ! 0 - 10.0) + max 0.0 (__rollout_0 ! 2 ! 0 - 10.0) + max 0.0 (__rollout_0 ! 3 ! 0 - 10.0)) (stlRollout 4 controller dynamics [ 0.0, 0.0 ])
+positionStaysSmall = \ controller -> \ dynamics -> (\ __rollout_0 -> reduceAdd 0.0 (max [ 0.0, 0.0, 0.0, 0.0 ] ((foreach i . __rollout_0 ! i ! 0) - [ 10.0, 10.0, 10.0, 10.0 ]))) (stlRollout 4 controller dynamics [ 0.0, 0.0 ])
 
 @property;
 stateInBounds : (Tensor Real -> Tensor Real) -> (Tensor Real -> Tensor Real -> Tensor Real) -> Tensor Real;
-stateInBounds = \ controller -> \ dynamics -> (\ __rollout_0 -> reduceAdd 0.0 (max [ 0.0, 0.0 ] ([ -10.0, -10.0 ] - __rollout_0 ! 0)) + reduceAdd 0.0 (max [ 0.0, 0.0 ] (__rollout_0 ! 0 - [ 10.0, 10.0 ])) + (reduceAdd 0.0 (max [ 0.0, 0.0 ] ([ -10.0, -10.0 ] - __rollout_0 ! 1)) + reduceAdd 0.0 (max [ 0.0, 0.0 ] (__rollout_0 ! 1 - [ 10.0, 10.0 ]))) + (reduceAdd 0.0 (max [ 0.0, 0.0 ] ([ -10.0, -10.0 ] - __rollout_0 ! 2)) + reduceAdd 0.0 (max [ 0.0, 0.0 ] (__rollout_0 ! 2 - [ 10.0, 10.0 ]))) + (reduceAdd 0.0 (max [ 0.0, 0.0 ] ([ -10.0, -10.0 ] - __rollout_0 ! 3)) + reduceAdd 0.0 (max [ 0.0, 0.0 ] (__rollout_0 ! 3 - [ 10.0, 10.0 ])))) (stlRollout 4 controller dynamics [ 0.0, 0.0 ])
+stateInBounds = \ controller -> \ dynamics -> (\ __rollout_0 -> reduceAdd 0.0 (max [ [ 0.0, 0.0 ], [ 0.0, 0.0 ], [ 0.0, 0.0 ], [ 0.0, 0.0 ] ] ([ [ -10.0, -10.0 ], [ -10.0, -10.0 ], [ -10.0, -10.0 ], [ -10.0, -10.0 ] ] - __rollout_0)) + reduceAdd 0.0 (max [ [ 0.0, 0.0 ], [ 0.0, 0.0 ], [ 0.0, 0.0 ], [ 0.0, 0.0 ] ] (__rollout_0 - [ [ 10.0, 10.0 ], [ 10.0, 10.0 ], [ 10.0, 10.0 ], [ 10.0, 10.0 ] ]))) (stlRollout 4 controller dynamics [ 0.0, 0.0 ])
 
 @property;
 boundedInitVel : (Tensor Real -> Tensor Real) -> (Tensor Real -> Tensor Real -> Tensor Real) -> Tensor Real;
-boundedInitVel = \ controller -> \ dynamics -> search[v] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ v -> (\ __rollout_0 -> max 0.0 (__rollout_0 ! 0 ! 0 - 10.0) + max 0.0 (__rollout_0 ! 1 ! 0 - 10.0) + max 0.0 (__rollout_0 ! 2 ! 0 - 10.0) + max 0.0 (__rollout_0 ! 3 ! 0 - 10.0)) (stlRollout 4 controller dynamics [0.0, v]))
+boundedInitVel = \ controller -> \ dynamics -> search[v] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ v -> (\ __rollout_0 -> reduceAdd 0.0 (max [ 0.0, 0.0, 0.0, 0.0 ] ((foreach i . __rollout_0 ! i ! 0) - [ 10.0, 10.0, 10.0, 10.0 ]))) (stlRollout 4 controller dynamics [0.0, v]))
