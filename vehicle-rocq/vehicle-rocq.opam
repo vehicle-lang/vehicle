@@ -17,9 +17,11 @@ It also provides the vehicle_validate tactic, which invokes
 """
 
 build: [
+  [ make "-C" "utils" "-j" jobs]
   [ "dune" "build" "-p" name "-j" jobs ]
 ]
 install: [
+  [make "-C" "utils" "install"]
   [ "dune" "install" "-p" name ]
 ]
 depends: [
