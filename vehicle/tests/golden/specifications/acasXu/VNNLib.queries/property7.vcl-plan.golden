@@ -954,14 +954,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property7",
-                  "propertyIndices": [],
-                  "propertyID": 6
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "acasXu",
@@ -1940,14 +1941,15 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 2,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property7",
-                  "propertyIndices": [],
-                  "propertyID": 6
-                },
-                2
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "acasXu",

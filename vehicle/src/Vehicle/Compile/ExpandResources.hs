@@ -29,7 +29,7 @@ import Vehicle.Prelude.Warning (CompileWarning (..))
 -- inferring the values of inferable parameters.
 expandResources ::
   forall m.
-  (MonadIO m, MonadCompile m) =>
+  (MonadStdIO m, MonadCompile m) =>
   Resources ->
   Prog Builtin ->
   m (Prog Builtin, NetworkContext, ResourcesIntegrityInfo, [MissingResource], [UninferableParameter])

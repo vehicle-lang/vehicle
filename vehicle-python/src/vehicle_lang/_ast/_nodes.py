@@ -43,11 +43,16 @@ class AST(metaclass=ABCMeta):
 class Provenance(AST):
     lineno: int
     col_offset: int
-    end_lineno: Optional[int] = None
-    end_col_offset: Optional[int] = None
+    end_lineno: int
+    end_col_offset: int
+
+    def __str__(self) -> str:
+        if self.lineno == self.end_lineno:
+            return f"Line {self.lineno}:{self.col_offset}-{self.end_col_offset}"
+        return f"Lines {self.lineno}:{self.col_offset}-{self.end_lineno}:{self.end_col_offset}"
 
 
-MISSING: Provenance = Provenance(0, 0)
+MISSING: Provenance = Provenance(0, 0, 0, 0)
 
 
 ################################################################################

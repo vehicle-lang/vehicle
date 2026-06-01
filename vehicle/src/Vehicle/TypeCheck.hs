@@ -68,7 +68,7 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
 -- Useful functions that apply to multiple compiler passes
 
 typeCheckUserProg ::
-  (MonadIO m, MonadCompile m) =>
+  (MonadStdIO m, MonadCompile m) =>
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
@@ -193,7 +193,7 @@ data ModuleStack = ModuleStack
 type MonadTCMProg m =
   ( MonadState ProgramContext m,
     MonadReader ModuleStack m,
-    MonadIO m,
+    MonadStdIO m,
     MonadCompile m
   )
 
@@ -242,7 +242,7 @@ storeModule modulePath moduleInfo =
 -- Algorithm
 
 loadUserSpecification ::
-  (MonadCompile m, MonadIO m) =>
+  (MonadCompile m, MonadStdIO m) =>
   FilePath ->
   m (Prog Builtin, Map ModulePath [Decl Builtin], AdjacencyGraph ModulePath)
 loadUserSpecification specificationFile = do

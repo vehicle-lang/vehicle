@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Type
 
 import pytest
-from vehicle_lang.loss._ast._nodes import Program
+from vehicle_lang._ast._nodes import Program
 
 torch = pytest.importorskip(
     "torch", reason="PyTorch extra is required for PyTorch integration tests"

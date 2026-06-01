@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## Next release
+## v0.25
 
 ### General
 
@@ -8,7 +8,8 @@
 
 * Added undocumented operations to language documentation.
 
-* Added support for `infinity : Real` to language. Note only works for loss function backend currently as it is primarily designed to be used in differentiable logics.
+* Added support for `infinity : Real` to language. Note only works for
+  loss function backend currently as it is primarily designed to be used in differentiable logics.
 
 ### Rocq backend
 
@@ -43,7 +44,19 @@
 
 ### Python bindings
 
-* Breaking change: the `vehicle_lang.list` Python API now returns structured Python objects instead of a JSON string. Callers relying on the previous `str` output will need to be updated.
+There has been a major refactoring of the Python bindings to improve usability. The following are all breaking changes.
+
+* All methods that call the Vehicle compiler now throw either a structured `VehicleUserError` or an unstructured `VehicleInternalError`.
+
+* Removed the unused `VehiclePropertyNotFound`, `VehicleBuiltinUnsupported`, and `VehiclePropertyNotCallable` error types.
+
+* The method `verify` from `vehicle_lang` now i) takes an extra argument `verifier_args`, ii) the `verifier` argument has changed from the `Verifier` class to a simple string, iii) the return type has been changed from a string to a list of structured `ProgressEvent` objects.
+
+* The method `list` from `vehicle_lang` has been renamed to `list_entities` and now returns structured Python objects instead of a JSON string.
+
+* The method `typecheck` from `vehicle_lang` now does not accept a `TypeSystem` parameter and now returns an `Optional[VehicleUserError]` instead of a JSON string.
+
+* A new method `vehicle_lang.typecheck_with_typesystem` has been added which accepts a secondary type system parameter `SecondaryTypeSystem` that supports the functionality removed from the `typecheck`.
 
 ## v0.24.1
 

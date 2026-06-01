@@ -22,12 +22,11 @@ traverseMultiProperty ::
   forall m a.
   (Monad m) =>
   (PropertyAddress -> Value Builtin -> m a) ->
-  PropertyID ->
   Name ->
   Value Builtin ->
   Value Builtin ->
   m (Either MultiPropertyTraveralError (MultiProperty a))
-traverseMultiProperty compileProp propertyID propertyName declType declBody = runExceptT (go declType mempty declBody)
+traverseMultiProperty compileProp propertyName declType declBody = runExceptT (go declType mempty declBody)
   where
     go :: VType Builtin -> TensorIndices -> Value Builtin -> ExceptT MultiPropertyTraveralError m (MultiProperty a)
     go typ indices body = case toTypeValue typ of
@@ -50,7 +49,7 @@ traverseMultiProperty compileProp propertyID propertyName declType declBody = ru
     goTensor :: TensorShape -> TensorIndices -> Value Builtin -> ExceptT MultiPropertyTraveralError m (MultiProperty a)
     goTensor dims indices value = case dims of
       [] -> do
-        let address = PropertyAddress propertyID propertyName indices
+        let address = PropertyAddress propertyName indices
         SingleProperty <$> lift (compileProp address value)
       _d : ds -> case toBoolTensorValue value of
         VBoolTensorLiteral bs -> do

@@ -483,7 +483,7 @@ Ensure that you have the source code and that you have installed GHC and Cabal.
    vehicle --version
    ```
 
-   This should print `0.24.1`.
+   This should print `0.25.0`.
 
 ### Building the Vehicle Python bindings
 
@@ -584,14 +584,14 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
   uv build
   ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.24.1-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.25.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.24.1-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.25.0-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
@@ -755,7 +755,7 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
    vehicle --version
    ```
 
-   This should print `0.24.1`.
+   This should print `0.25.0`.
 
 1. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -769,8 +769,13 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
 
 #### Installing in editable mode
 
-If you are developing the Python bindings it can be cumbersome to rebuild the Vehicle compiler from source on every test run. Rely on the uv-managed project environment instead of a separate editable install—`uv sync` automatically installs the local project in editable mode whenever the lockfile changes. After syncing (for example with `uv sync --extra test --extra pytorch`), you can run pytest directly via `uv run`:
+If you are developing the Python bindings it can be cumbersome to rebuild the Vehicle compiler from source on every test run. Rely on the uv-managed project environment instead of a separate editable install—`uv sync` automatically installs the local project in editable mode whenever the lockfile changes.
 
+If the Haskell code changes then run:
+```sh
+uv sync --reinstall-package vehicle_lang -v
+```
+and then run pytest directly via `uv run`:
 ```sh
 uv run python -m pytest
 ```
@@ -964,11 +969,11 @@ The procedure to create a new release is:
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.24.1-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.24.1-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.24.1-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.24.1-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.24.1-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.25.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.25.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.25.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.25.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.25.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -989,7 +994,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.24.1>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.25.0>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

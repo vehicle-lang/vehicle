@@ -78,7 +78,7 @@ compilePartitionToQuery metaNetworkApps compilationSteps (BoundedAssertions boun
 
   -- Calculate query address
   queryID <- demand
-  let queryAddress = (propertyAddress, queryID)
+  let queryAddress = QueryAddress propertyAddress queryID
 
   logCompilerSection2 MaxDetail ("compiling query" <+> pretty queryID) $ do
     -- Create the substitution from network variables to query variables
