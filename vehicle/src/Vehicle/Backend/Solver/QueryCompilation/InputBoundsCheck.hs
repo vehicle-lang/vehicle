@@ -202,7 +202,6 @@ checkAllBoundsPresent (Partial allPartialbounds assertions) = do
     [] -> return ()
     i : is -> do
       nameCtx <- getCompleteNamedCtx
-      _ <- logDebug MaxDetail $ pretty (show nameCtx)
       throwError $ UnboundedNetworkInputVariables propertyProvenance nameCtx (i :| is)
 
   -- If Marabou, then warn if all inputs are constant.

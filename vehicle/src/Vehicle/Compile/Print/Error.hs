@@ -919,7 +919,7 @@ formatCompileError = \case
       }
   UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputValue, userVariables, unboundedInputs) :| _) ->
     case toTypeValue inputValue of
-      (VRecordType _t fields) -> do
+      (VRecordType t fields) -> do
         let varName = "x" :: Name
         let fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
         VehicleUserError

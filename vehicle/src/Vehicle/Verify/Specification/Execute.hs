@@ -329,7 +329,7 @@ writeWitnessToFile verificationCache address (UserVariableAssignment assignments
   where
     handleAssignment a folder = do
       case a of
-        (var, TensorAssignment tensor) -> do
+        (var, TensorValue tensor) -> do
           let file = folder </> layoutAsString (pretty var)
           let dims = Vector.fromList (shapeOf tensor)
           -- TODO got to be a better way to do this conversion...
@@ -337,8 +337,8 @@ writeWitnessToFile verificationCache address (UserVariableAssignment assignments
           let idxData = IDXDoubles IDXDouble dims unboxedVector
           liftIO $ encodeIDXFile idxData file
         -- TODO: IDX is a file format for vectors and matrices - i think we want to convert back to a tensor here?
-        (var, RecordAssignment recordFields) -> do
+        (var, RecordValue recordFields) -> do
           let fieldValues = map snd recordFields
           let dims = shapeOf $ head fieldValues
-          let tensorAssignment = (var, TensorAssignment $ stack dims fieldValues)
-          handleAssignment tensorAssignment folder
+          let tensorValue = (var, TensorValue $ stack dims fieldValues)
+          handleAssignment tensorValue folder

@@ -9,7 +9,7 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe, maybeToList)
+import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Solver.QueryCompilation (compilePartitionsToQueries)
@@ -297,7 +297,7 @@ wrapQuantifyRecord QuantifyRecordArgs {..} = do
   let ratTensorArgs = QuantifyRatTensorArgs normalisedDims tensorBinder (Closure boundEnv nestedBody)
 
   fieldNames <- getRecordFieldNames recordTypeIdent
-  let name = fromMaybe (developerError "Quantified variable binder should have name") (nameOf quantifyRecordBinder)
+  let name = getBinderName quantifyRecordBinder
   return (ratTensorArgs, ConvertQuantifiedTensorLike tensorBinderName name fieldNames)
 
 -- | We only need this because we can't evaluate networks in the compiler.

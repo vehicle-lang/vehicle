@@ -155,6 +155,19 @@ prettySetLike xs =
     <> line
     <> "}"
 
+prettyRecordEntries :: [(Doc a, Doc a)] -> Doc a
+prettyRecordEntries entries = prettyRecord entries'
+  where
+    (keys, values) = unzip entries
+    entries' = zipWith (\k v -> k <+> ":" <+> v) keys values
+
+prettyRecord :: [Doc a] -> Doc a
+prettyRecord xs =
+  "{"
+    <+> concatWith (\x y -> x <> line <> "," <+> y) xs
+    <> line
+    <> "}"
+
 prettyRationalAsFloat :: Rational -> Doc a
 prettyRationalAsFloat p = do
   let f = realToFrac p :: Double

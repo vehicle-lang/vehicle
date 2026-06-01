@@ -275,8 +275,8 @@ prettyUserVariableAssignment (UserVariableAssignment assignment) = do
   where
     prettyLine a = do
       case a of
-        (var, TensorAssignment value) -> pretty var <> ":" <+> pretty value
-        (var, RecordAssignment fields) -> pretty var <> ":" <+> "{" <+> fillSep (fmap (\(name, tens) -> pretty name <+> "=" <+> pretty tens) fields) <+> "}"
+        (var, TensorValue value) -> pretty var <> ":" <+> pretty value
+        (var, RecordValue fields) -> pretty var <> ":" <+> "{" <+> fillSep (fmap (\(name, tens) -> pretty name <+> "=" <+> pretty tens) fields) <+> "}"
 
 closeProgressBar :: (MonadStdIO m) => ProgressBar () -> m ()
 closeProgressBar _ = writeStdoutLn ""

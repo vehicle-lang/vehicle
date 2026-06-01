@@ -39,15 +39,15 @@ reconstructUserVars ::
   QueryVariableAssignment ->
   m UserVariableAssignment
 reconstructUserVars variables (Reconstruction steps) networkVariableAssignment = do
-    let queryVariableMap = getQueryVariableMap variables
-    let vehicleVariableCtx = getVehicleVariableCtx variables
-    let userVariables = getUserVariables variables
-    let assignment = createInitialAssignment queryVariableMap networkVariableAssignment
-    alteredAssignment <- foldlM (applyReconstructionStep vehicleVariableCtx) assignment steps
-    finalAssignment <- createFinalAssignment vehicleVariableCtx userVariables alteredAssignment
-    recordSubstAssignment <- reconstructRecords finalAssignment steps
-    logDebug MidDetail $ "User variables:" <> lineIndent (pretty recordSubstAssignment)
-    return recordSubstAssignment
+  let queryVariableMap = getQueryVariableMap variables
+  let vehicleVariableCtx = getVehicleVariableCtx variables
+  let userVariables = getUserVariables variables
+  let assignment = createInitialAssignment queryVariableMap networkVariableAssignment
+  alteredAssignment <- foldlM (applyReconstructionStep vehicleVariableCtx) assignment steps
+  finalAssignment <- createFinalAssignment vehicleVariableCtx userVariables alteredAssignment
+  recordSubstAssignment <- reconstructRecords finalAssignment steps
+  logDebug MidDetail $ "User variables:" <> lineIndent (pretty recordSubstAssignment)
+  return recordSubstAssignment
 
 reconstructRecords ::
   (MonadLogger m) =>
@@ -60,24 +60,24 @@ reconstructRecords existingAssignment steps = do
     checkStep (UserVariableAssignment assignments) step = do
       case step of
         ConvertQuantifiedTensorLike tensorName recordName fieldNames -> do
-          let tensorAssignment =
+          let tensorValue =
                 find
                   ( \case
-                      (tn, TensorAssignment _) -> tn == tensorName
+                      (tn, TensorValue _) -> tn == tensorName
                       _ -> False
                   )
                   assignments
 
-          tensorValue <- case tensorAssignment of
-            Just (_, TensorAssignment t) -> return t
+          value <- case tensorValue of
+            Just (_, TensorValue t) -> return t
             -- TODO: proper/better error message
             _ -> developerError "No assignment found"
 
           let fieldIndices = [0 .. length fieldNames - 1] :: [Int]
-          let tensorIndices = map (\i -> at tensorValue i) fieldIndices
+          let tensorIndices = map (\i -> at value i) fieldIndices
           let fields = zip fieldNames tensorIndices
-          let assignment = (recordName, RecordAssignment fields)
-          let newMap = delete (tensorName, TensorAssignment tensorValue) assignments ++ [assignment]
+          let assignment = (recordName, RecordValue fields)
+          let newMap = delete (tensorName, TensorValue value) assignments ++ [assignment]
 
           return $ UserVariableAssignment newMap
         _ -> return $ UserVariableAssignment assignments
@@ -251,7 +251,7 @@ createFinalAssignment ::
   m UserVariableAssignment
 createFinalAssignment vehicleVariables userVariables assignment = do
   let userVariableValues = mapMaybe isUserVar $ Map.toList assignment
-  return $ UserVariableAssignment (map (second TensorAssignment) userVariableValues)
+  return $ UserVariableAssignment (map (second TensorValue) userVariableValues)
   where
     isUserVar :: (SliceVariable, RatTensor) -> Maybe (Name, RatTensor)
     isUserVar (var, value) =
