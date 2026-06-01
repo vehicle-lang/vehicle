@@ -442,11 +442,13 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
       (VPi binder _, [])
         | isExplicit binder ->
             prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
-      (VPi binder (Closure env body), args) -> do
+      (VPi binder (ExprClosure env body), args) -> do
         let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
         let recType = runNorm $ normaliseInFreeCtx freeEnv (toNamedBoundCtx ctx) (alterEnv env) body
         let unnormBinder = quote mempty (boundCtxLv ctx) binder
         instantiateTelescope (unnormBinder : ctx) recType remainingArgs
+      (VPi _ ValueClosure {}, _) ->
+        developerError "VPi unexpectedly has ValueClosure body"
       (_, []) -> prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
       _ -> "Malformed type-class operation type" <+> prettyVerbose typ <+> "and args" <+> prettyVerbose (fmap fst arguments)
 

@@ -14,6 +14,7 @@ module Vehicle.Compile.Normalise.NBE
     evalInEmptyEnv,
     evalApp,
     findInstanceArg,
+    substLvInValue,
   )
 where
 
@@ -100,9 +101,13 @@ normaliseClosureInCtx ::
   VBinder builtin ->
   Closure builtin ->
   m (Value builtin)
-normaliseClosureInCtx ctx binder (Closure env body) = do
-  let newEnv = extendEnvWithBound (boundCtxLv ctx) binder env
-  eval (nameOf binder : ctx) newEnv body
+normaliseClosureInCtx ctx binder closure = case closure of
+  ExprClosure env body -> do
+    let newEnv = extendEnvWithBound (boundCtxLv ctx) binder env
+    eval (nameOf binder : ctx) newEnv body
+  ValueClosure binderLv body -> do
+    let newLv = boundCtxLv ctx
+    substLvInValue ctx binderLv (VBoundVar newLv []) body
 
 normaliseClosure ::
   (MonadNorm builtin m, MonadFreeContext builtin m, MonadReadableNameContext m) =>
@@ -180,10 +185,10 @@ eval ctx boundEnv expr = do
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
       binder' <- traverse recEval binder
-      return $ VLam binder' (Closure boundEnv body)
+      return $ VLam binder' (ExprClosure boundEnv body)
     Pi _ binder body -> do
       binder' <- traverse recEval binder
-      return $ VPi binder' (Closure boundEnv body)
+      return $ VPi binder' (ExprClosure boundEnv body)
     Let _ bound binder body -> do
       binder' <- traverse recEval binder
       boundNormExpr <- recEval bound
@@ -223,12 +228,16 @@ evalApp ctx fun args@(a : as) = do
     VFreeVar v spine -> return $ VFreeVar v (spine <> args)
     VRecordAcc recordType record field spine -> return $ VRecordAcc recordType record field (spine <> args)
     VBuiltin b spine -> evalBuiltin ctx b (spine <> args)
-    VLam binder (Closure env body)
+    VLam binder closure
       | not (visibilityMatches binder a) ->
           visibilityError ctx fun a
       | otherwise -> do
-          let newEnv = extendEnvWithDefined (argExpr a) binder env
-          body' <- eval ctx newEnv body
+          body' <- case closure of
+            ExprClosure env body -> do
+              let newEnv = extendEnvWithDefined (argExpr a) binder env
+              eval ctx newEnv body
+            ValueClosure binderLv body ->
+              substLvInValue ctx binderLv (argExpr a) body
           evalApp ctx body' as
     VUniverse {} -> unexpected "VUniverse"
     VPi {} -> unexpected "VPi"
@@ -237,6 +246,70 @@ evalApp ctx fun args@(a : as) = do
   return result
   where
     unexpected name = unexpectedExprError currentPass (name <+> prettyVerbose args)
+
+-- | Substitute a 'Value' for every @VBoundVar target ...@ in another 'Value',
+-- renormalising builtin spines that the substitution may unblock. Value-level
+-- analogue of @substituteDB@. If the substituted var has a spine, the
+-- replacement is 'evalApp'-ed against the substituted spine.
+substLvInValue ::
+  forall builtin m.
+  (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  NamedBoundCtx ->
+  Lv ->
+  Value builtin ->
+  Value builtin ->
+  m (Value builtin)
+substLvInValue ctx target replacement = go
+  where
+    go :: Value builtin -> m (Value builtin)
+    go = \case
+      VBoundVar lv spine
+        | lv == target -> do
+            spine' <- traverse (traverse go) spine
+            evalApp ctx replacement spine'
+        | otherwise -> do
+            spine' <- traverse (traverse go) spine
+            return $ VBoundVar lv spine'
+      VBuiltin b spine -> do
+        spine' <- traverse (traverse go) spine
+        evalBuiltin ctx b spine'
+      VFreeVar n spine -> do
+        spine' <- traverse (traverse go) spine
+        return $ VFreeVar n spine'
+      VMeta m spine -> do
+        spine' <- traverse (traverse go) spine
+        return $ VMeta m spine'
+      VRecord typ fields -> do
+        typ' <- go typ
+        fields' <- traverse go fields
+        return $ VRecord typ' fields'
+      VRecordAcc typ record field spine -> do
+        typ' <- go typ
+        record' <- go record
+        spine' <- traverse (traverse go) spine
+        return $ VRecordAcc typ' record' field spine'
+      VLam binder closure -> do
+        binder' <- traverse go binder
+        closure' <- substInClosure closure
+        return $ VLam binder' closure'
+      VPi binder closure -> do
+        binder' <- traverse go binder
+        closure' <- substInClosure closure
+        return $ VPi binder' closure'
+      VUniverse u -> return $ VUniverse u
+
+    substInClosure :: Closure builtin -> m (Closure builtin)
+    substInClosure = \case
+      ExprClosure env body -> do
+        -- Value entries in the env may mention `target`; body Expr is
+        -- Ix-relative to env, so doesn't.
+        env' <- traverseEnv go env
+        return $ ExprClosure env' body
+      ValueClosure innerLv innerBody
+        | innerLv == target -> return $ ValueClosure innerLv innerBody
+        | otherwise -> do
+            innerBody' <- go innerBody
+            return $ ValueClosure innerLv innerBody'
 
 evalBuiltin ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>

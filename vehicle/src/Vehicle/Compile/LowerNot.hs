@@ -81,21 +81,31 @@ negateQuantifierBody ::
   (MonadReadableNameContext m) =>
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
-negateQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
+negateQuantifierBody (QuantifyRatTensorArgs dims binder closure) = do
   lv <- getBinderDepth
-  let dims' = quote mempty lv dims
-  let newBody = mkExpr accessNotTensor $ TensorOp1Args dims' body
-  return $ QuantifyRatTensorArgs dims binder (Closure env newBody)
+  case closure of
+    ExprClosure env body -> do
+      let dims' = quote mempty lv dims
+      let newBody = mkExpr accessNotTensor $ TensorOp1Args dims' body
+      return $ QuantifyRatTensorArgs dims binder (ExprClosure env newBody)
+    ValueClosure binderLv body -> do
+      let newBody = mkExpr accessNotTensor $ TensorOp1Args dims body
+      return $ QuantifyRatTensorArgs dims binder (ValueClosure binderLv newBody)
 
 negateForeachArgs ::
   (MonadReadableNameContext m) =>
   ForeachTensorArgs (Value Builtin) ->
   m (ForeachTensorArgs (Value Builtin))
 negateForeachArgs (ForeachTensorArgs t dim dims fn) = do
-  (binder, Closure env body) <- case fn of
-    VLam binder closure -> return (binder, closure)
+  (binder, closure) <- case fn of
+    VLam binderInner closure -> return (binderInner, closure)
     _ -> developerError "Malformed foreachTensor"
   lv <- getBinderDepth
-  let dims' = quote mempty lv dims
-  let newBody = mkExpr accessNotTensor $ TensorOp1Args dims' body
-  return $ ForeachTensorArgs t dim dims (VLam binder (Closure env newBody))
+  case closure of
+    ExprClosure env body -> do
+      let dims' = quote mempty lv dims
+      let newBody = mkExpr accessNotTensor $ TensorOp1Args dims' body
+      return $ ForeachTensorArgs t dim dims (VLam binder (ExprClosure env newBody))
+    ValueClosure binderLv body -> do
+      let newBody = mkExpr accessNotTensor $ TensorOp1Args dims body
+      return $ ForeachTensorArgs t dim dims (VLam binder (ValueClosure binderLv newBody))

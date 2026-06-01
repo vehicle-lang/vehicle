@@ -114,7 +114,8 @@ instance HasMetas (Value builtin) where
       findMetas spine
 
 instance HasMetas (Closure builtin) where
-  findMetas (Closure env expr) = do traverseEnv_ findMetas env; findMetas expr
+  findMetas (ExprClosure env expr) = do traverseEnv_ findMetas env; findMetas expr
+  findMetas (ValueClosure _ body) = findMetas body
 
 instance (HasMetas expr) => HasMetas (GenericArg expr) where
   findMetas = mapM_ findMetas

@@ -22,6 +22,7 @@ module Vehicle.Data.Code.Value
     boundEnvToCtx,
     traverseEnv,
     traverseEnv_,
+    relabelLvInValue,
     FreeEnv,
     emptyBoundEnv,
     GluedExpr (..),
@@ -52,7 +53,13 @@ import Vehicle.Prelude
 -- WHNF closures
 
 -- | Closures for weak-head normal-form.
-data Closure builtin = Closure (BoundEnv builtin) (Expr builtin)
+--
+-- * 'ExprClosure': body is source 'Expr' with free Ix refs into the captured 'BoundEnv'.
+-- * 'ValueClosure': body is a normalised 'Value' with the binder as a free 'VBoundVar'
+--   at the given absolute 'Lv'; outer free vars use their actual NBE Lvs.
+data Closure builtin
+  = ExprClosure (BoundEnv builtin) (Expr builtin)
+  | ValueClosure !Lv (Value builtin)
   deriving (Show, Generic, Eq, Ord)
 
 -----------------------------------------------------------------------------
@@ -167,6 +174,35 @@ traverseEnv_ f (BoundEnv env) = traverse_ (\(_, v) -> f v) env
 
 traverseEnv :: (Monad m) => (Value builtin -> m (Value builtin)) -> BoundEnv builtin -> m (BoundEnv builtin)
 traverseEnv f (BoundEnv env) = BoundEnv <$> traverse (\(u, v) -> (u,) <$> f v) env
+
+-- | Rename every `VBoundVar srcLv` to `VBoundVar dstLv` inside a 'Value',
+-- skipping under inner closures that shadow `srcLv`. Pure because VBoundVar
+-- substitution can't unblock builtin reductions.
+relabelLvInValue :: forall builtin. Lv -> Lv -> Value builtin -> Value builtin
+relabelLvInValue srcLv dstLv = go
+  where
+    go :: Value builtin -> Value builtin
+    go = \case
+      VBoundVar lv spine
+        | lv == srcLv -> VBoundVar dstLv (map (fmap go) spine)
+        | otherwise -> VBoundVar lv (map (fmap go) spine)
+      VBuiltin b spine -> VBuiltin b (map (fmap go) spine)
+      VFreeVar n spine -> VFreeVar n (map (fmap go) spine)
+      VMeta m spine -> VMeta m (map (fmap go) spine)
+      VRecord typ fields -> VRecord (go typ) (fmap go fields)
+      VRecordAcc typ rec field spine ->
+        VRecordAcc (go typ) (go rec) field (map (fmap go) spine)
+      VLam binder closure -> VLam (fmap go binder) (relabelClosure closure)
+      VPi binder closure -> VPi (fmap go binder) (relabelClosure closure)
+      VUniverse u -> VUniverse u
+
+    relabelClosure :: Closure builtin -> Closure builtin
+    relabelClosure = \case
+      ExprClosure (BoundEnv env) body ->
+        ExprClosure (BoundEnv (map (fmap go) env)) body
+      ValueClosure innerLv innerBody
+        | innerLv == srcLv -> ValueClosure innerLv innerBody
+        | otherwise -> ValueClosure innerLv (go innerBody)
 
 -----------------------------------------------------------------------------
 -- Patterns

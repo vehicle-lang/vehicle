@@ -42,7 +42,7 @@ eliminateExists ::
   (MonadQueryStructure m) =>
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (MaybeTrivial Partitions)
-eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
+eliminateExists (QuantifyRatTensorArgs _ binder closure) = do
   let varName = getBinderName binder
   let subpassDoc = "elimination of existential quantifier over" <+> quotePretty varName
   logCompilerSection2 MidDetail subpassDoc $ do
@@ -60,8 +60,13 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
     put newGlobalCtx
 
     -- Normalise the expression
-    let newEnv = extendEnvWithBound (toLv userVar) binder env
-    normExpr <- eval (Just userVarName : namedCtx) newEnv body
+    let newCtx = Just userVarName : namedCtx
+    normExpr <- case closure of
+      ExprClosure env body -> do
+        let newEnv = extendEnvWithBound (toLv userVar) binder env
+        eval newCtx newEnv body
+      ValueClosure binderLv body ->
+        pure $ relabelLvInValue binderLv (toLv userVar) body
 
     -- Recursively compile the expression.
     (partitions, networkInputEqualities) <-
@@ -271,7 +276,7 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
             evalCompareRatTensor op (TensorOp2Args ds xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       let stackExpr = fromBoolTensorValue $ VBoolStackTensor (StackTensorArgs tElem d d0Arg stackElements)
-      result <- unoptimisedEvalReduceAndTensor (TensorReductionArgs (mkDims [n]) (IBoolLiteral True) stackExpr)
+      result <- unoptimisedEvalReduceAndTensor (TensorReductionArgs IDimNil (mkDims [n]) (IBoolLiteral True) stackExpr)
       return result
     _ -> compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose dims)
 

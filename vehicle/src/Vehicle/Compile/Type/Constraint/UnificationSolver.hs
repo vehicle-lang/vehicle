@@ -262,14 +262,14 @@ solveClosure ::
   (VBinder builtin, Closure builtin) ->
   (VBinder builtin, Closure builtin) ->
   m (UnificationResult builtin)
-solveClosure info (binder1, Closure env1 body1) (binder2, Closure env2 body2) = do
+solveClosure info (binder1, closure1) (binder2, closure2) = do
   -- Unify binder constraints
   binderConstraint <- subUnify info (typeOf binder1) (typeOf binder2)
 
   -- Evaluate the normalised bodies of the lambdas
-  let lv = boundCtxLv $ infoBoundCtx info
-  nbody1 <- eval (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder1 env1) body1
-  nbody2 <- eval (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder2 env2) body2
+  let ctx = toNamedBoundCtx $ infoBoundCtx info
+  nbody1 <- normaliseClosureInCtx ctx binder1 closure1
+  nbody2 <- normaliseClosureInCtx ctx binder2 closure2
 
   -- Update the context.
   let updatedInfo = updateInfoUnderBinder info (binder1, binder2)

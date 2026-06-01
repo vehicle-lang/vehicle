@@ -10,6 +10,7 @@ module Vehicle.Compile.Descope
 where
 
 import Data.Map.Ordered qualified as OMap
+import Data.Text qualified as Text
 import Vehicle.Compile.Prelude
 import Vehicle.Data.AST.Expr.Desugared qualified as S
 import Vehicle.Data.Builtin.Interface.Print
@@ -134,11 +135,15 @@ descopeClosure ::
   GenericBinder binder ->
   Closure builtin ->
   m (S.Expr Builtin)
-descopeClosure f _binder (Closure env body) = do
+descopeClosure f _binder (ExprClosure env body) = do
   body' <- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
   env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [S.Expr Builtin]
   let envExpr = S.normAppList (S.Var mempty "ENV") $ fmap (Arg Explicit Relevant) env'
   return $ S.App envExpr [explicit body']
+descopeClosure f _binder (ValueClosure binderLv body) = do
+  body' <- genericDescopeValue f body
+  let tag = S.normAppList (S.Var mempty "VALUE_CLOSURE") [Arg Explicit Relevant (S.Var mempty (Text.pack (show binderLv)))]
+  return $ S.App tag [explicit body']
 
 -- | This function is not meant to do anything sensible and is merely
 -- used for printing `WHNF`s in a readable form.

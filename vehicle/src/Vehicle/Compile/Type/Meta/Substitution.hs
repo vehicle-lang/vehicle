@@ -123,7 +123,10 @@ instance MetaSubstitutable m builtin (Value builtin) where
     VPi binder body -> VPi <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s body
 
 instance MetaSubstitutable m builtin (Closure builtin) where
-  substMetasAt ctx s (Closure env body) = Closure <$> traverseEnv (substMetasAt ctx s) env <*> substMetasAt ctx s body
+  substMetasAt ctx s (ExprClosure env body) =
+    ExprClosure <$> traverseEnv (substMetasAt ctx s) env <*> substMetasAt ctx s body
+  substMetasAt ctx s (ValueClosure binderLv body) =
+    ValueClosure binderLv <$> substMetasAt ctx s body
 
 instance MetaSubstitutable m builtin (GluedExpr builtin) where
   substMetasAt ctx s (Glued a b) = Glued <$> substMetasAt ctx s a <*> substMetasAt ctx s b
