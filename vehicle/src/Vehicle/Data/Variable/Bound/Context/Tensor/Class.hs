@@ -126,7 +126,6 @@ lookupVariableInNestedCtx ::
   m (OriginalLv, Maybe (NestedSliceVariable, SliceVariable))
 lookupVariableInNestedCtx lv = do
   ctx <- getNestedVariableCtx
-  -- TODO turn this into a binary search for added efficiency?
   return $ case findCorrespondingVariableInOriginalCtx ctx (Set.singleton lv) of
     [(originalCtxLv, maybeParentVar)] -> (originalCtxLv, fmap (,SliceVariable lv) maybeParentVar)
     _ -> developerError "could not find variable in nested context"

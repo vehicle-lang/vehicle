@@ -45,33 +45,39 @@ findCorrespondingVariableInOriginalCtx ::
   [(OriginalLv, Maybe NestedSliceVariable)]
 findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx nameCtx) vars = do
   let sortedVarList = sortBy (comparing Down) (Set.toList vars)
-  go 0 (boundCtxLv nameCtx) wholeCtx sortedVarList
+  -- Returns Lvs in *shrunken* (binder-count) space. NBE-emitted VBoundVars
+  -- live in nameCtx space (one Lv per slice slot); we walk the binder ctx
+  -- right-to-left, mapping each input var's nameCtx-Lv to the originating
+  -- binder's shrunken-Lv. The shrunken Lv for the binder at walking
+  -- position `lv` (0=leftmost/outermost) is `ctxLen - 1 - lv`.
+  let ctxLen = boundCtxLv wholeCtx
+  go 0 ctxLen (boundCtxLv nameCtx) wholeCtx sortedVarList
   where
-    ctxLen :: Lv
-    ctxLen = Lv (length wholeCtx)
-    go :: (VariableLike var) => OriginalLv -> Lv -> GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> [var] -> [(Lv, Maybe NestedSliceVariable)]
-    go _ _ [] _ = []
-    go _ _ _ [] = []
-    go lv topSlice ((_binder, maybeTensorVar) : ctx) (v : vs) = case maybeTensorVar of
+    go :: (VariableLike var) => Lv -> Lv -> Lv -> GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> [var] -> [(OriginalLv, Maybe NestedSliceVariable)]
+    go _ _ _ [] _ = []
+    go _ _ _ _ [] = []
+    go lv ctxLen topSlice ((_binder, maybeTensorVar) : ctx) (v : vs) = case maybeTensorVar of
       Nothing -> do
-        -- Match against the slice-level position so non-tensor binders above
-        -- tensor binders (e.g. a rollout's projection lambda above a `forall
-        -- (x : Tensor)`) don't slip through and trip the assertion below.
+        -- Non-tensor binder: 1 slot in shrunken AND 1 slot in nameCtx.
         let mySlice = topSlice - 1
+        let shrunkenLv = ctxLen - 1 - lv
         if mySlice == toLv v
-          then (ctxLen - 1 - lv, Nothing) : go (lv + 1) mySlice ctx vs
-          else go (lv + 1) mySlice ctx (v : vs)
+          then (shrunkenLv, Nothing) : go (lv + 1) ctxLen mySlice ctx vs
+          else go (lv + 1) ctxLen mySlice ctx (v : vs)
       Just tensorVar -> do
         let startPoint = toLv tensorVar
         let endPoint = startPoint + Lv (numberOfSliceVariablesIn $ shapeOf tensorVar)
+        let shrunkenLv = ctxLen - 1 - lv
         if toLv v >= endPoint
           then developerError "Incorrectly sorted slice variables"
           else
             if toLv v < startPoint
-              then go (lv + 1) startPoint ctx (v : vs)
+              then go (lv + 1) ctxLen startPoint ctx (v : vs)
               else do
                 let newVars = dropWhile (\u -> toLv u >= startPoint) vs
-                (lv, Just tensorVar) : go (lv + 1) startPoint ctx newVars
+                -- Parent tensor binder maps to its shrunken-Lv; slice
+                -- indices are derived from the nameCtx offset by callers.
+                (shrunkenLv, Just tensorVar) : go (lv + 1) ctxLen startPoint ctx newVars
 
 appendNonTensorVariableToNestedCtx :: GenericBinder () -> NestedTensorVariableCtx -> NestedTensorVariableCtx
 appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx) = do
