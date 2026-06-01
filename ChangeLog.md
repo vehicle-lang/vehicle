@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## Next release
+## v0.25
 
 ### General
 
@@ -8,7 +8,8 @@
 
 * Added undocumented operations to language documentation.
 
-* Added support for `infinity : Real` to language. Note only works for loss function backend currently as it is primarily designed to be used in differentiable logics.
+* Added support for `infinity : Real` to language. Note only works for
+  loss function backend currently as it is primarily designed to be used in differentiable logics.
 
 ### Rocq backend
 
