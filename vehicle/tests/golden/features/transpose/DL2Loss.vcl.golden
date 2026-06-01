@@ -8,4 +8,4 @@ positionUnderLimit = \ f -> reduceAdd 0.0 (max [ 0.0, 0.0, 0.0, 0.0 ] (transpose
 
 @property;
 boundedScalar : (Tensor Real -> Tensor Real) -> Tensor Real;
-boundedScalar = \ f -> search[v] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ v -> max [ 0.0, 0.0, 0.0, 0.0 ] ([v, v, v, v] - transpose (f [ 0.0, 0.0 ]) ! 0))
+boundedScalar = \ f -> search[v] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ v -> reduceAdd 0.0 (max [ 0.0, 0.0, 0.0, 0.0 ] ((foreach i . v) - transpose (f [ 0.0, 0.0 ]) ! 0)))

@@ -2,982 +2,147 @@
   "queryMetaData": {
     "tag": "NonTrivial",
     "contents": {
-      "tag": "Conjunct",
+      "tag": "Query",
       "contents": {
-        "unConjunctAll": [
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "unDisjunctAll": [
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "g₀[output]!1!2!3",
+                  "g₀[output]!1!2!2",
+                  "g₀[output]!1!2!1",
+                  "g₀[output]!1!2!0",
+                  "g₀[output]!1!2",
+                  "g₀[output]!1!1!3",
+                  "g₀[output]!1!1!2",
+                  "g₀[output]!1!1!1",
+                  "g₀[output]!1!1!0",
+                  "g₀[output]!1!1",
+                  "g₀[output]!1!0!3",
+                  "g₀[output]!1!0!2",
+                  "g₀[output]!1!0!1",
+                  "g₀[output]!1!0!0",
+                  "g₀[output]!1!0",
+                  "g₀[output]!1",
+                  "g₀[output]!0!2!3",
+                  "g₀[output]!0!2!2",
+                  "g₀[output]!0!2!1",
+                  "g₀[output]!0!2!0",
+                  "g₀[output]!0!2",
+                  "g₀[output]!0!1!3",
+                  "g₀[output]!0!1!2",
+                  "g₀[output]!0!1!1",
+                  "g₀[output]!0!1!0",
+                  "g₀[output]!0!1",
+                  "g₀[output]!0!0!3",
+                  "g₀[output]!0!0!2",
+                  "g₀[output]!0!0!1",
+                  "g₀[output]!0!0!0",
+                  "g₀[output]!0!0",
+                  "g₀[output]!0",
+                  "g₀[output]",
+                  "g₀[input]!1",
+                  "g₀[input]!0",
+                  "g₀[input]"
+                ],
+                "userVariables": [],
+                "queryVariableMapping": {
+                  "y9": 17,
+                  "y8": 16,
+                  "y7": 14,
+                  "y6": 13,
+                  "y5": 12,
+                  "y4": 11,
+                  "y3": 9,
+                  "y23": 35,
+                  "y22": 34,
+                  "y21": 33,
+                  "y20": 32,
+                  "y2": 8,
+                  "y19": 30,
+                  "y18": 29,
+                  "y17": 28,
+                  "y16": 27,
+                  "y15": 25,
+                  "y14": 24,
+                  "y13": 23,
+                  "y12": 22,
+                  "y11": 19,
+                  "y10": 18,
+                  "y1": 7,
+                  "y0": 6,
+                  "x1": 2,
+                  "x0": 1
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
                   {
-                    "variableStore": {
-                      "vehicleVariableCtx": [
-                        "g₁[output]!1!2!3",
-                        "g₁[output]!1!2!2",
-                        "g₁[output]!1!2!1",
-                        "g₁[output]!1!2!0",
-                        "g₁[output]!1!2",
-                        "g₁[output]!1!1!3",
-                        "g₁[output]!1!1!2",
-                        "g₁[output]!1!1!1",
-                        "g₁[output]!1!1!0",
-                        "g₁[output]!1!1",
-                        "g₁[output]!1!0!3",
-                        "g₁[output]!1!0!2",
-                        "g₁[output]!1!0!1",
-                        "g₁[output]!1!0!0",
-                        "g₁[output]!1!0",
-                        "g₁[output]!1",
-                        "g₁[output]!0!2!3",
-                        "g₁[output]!0!2!2",
-                        "g₁[output]!0!2!1",
-                        "g₁[output]!0!2!0",
-                        "g₁[output]!0!2",
-                        "g₁[output]!0!1!3",
-                        "g₁[output]!0!1!2",
-                        "g₁[output]!0!1!1",
-                        "g₁[output]!0!1!0",
-                        "g₁[output]!0!1",
-                        "g₁[output]!0!0!3",
-                        "g₁[output]!0!0!2",
-                        "g₁[output]!0!0!1",
-                        "g₁[output]!0!0!0",
-                        "g₁[output]!0!0",
-                        "g₁[output]!0",
-                        "g₁[output]",
-                        "g₁[input]!1",
-                        "g₁[input]!0",
-                        "g₁[input]",
-                        "g₀[output]!1!2!3",
-                        "g₀[output]!1!2!2",
-                        "g₀[output]!1!2!1",
-                        "g₀[output]!1!2!0",
-                        "g₀[output]!1!2",
-                        "g₀[output]!1!1!3",
-                        "g₀[output]!1!1!2",
-                        "g₀[output]!1!1!1",
-                        "g₀[output]!1!1!0",
-                        "g₀[output]!1!1",
-                        "g₀[output]!1!0!3",
-                        "g₀[output]!1!0!2",
-                        "g₀[output]!1!0!1",
-                        "g₀[output]!1!0!0",
-                        "g₀[output]!1!0",
-                        "g₀[output]!1",
-                        "g₀[output]!0!2!3",
-                        "g₀[output]!0!2!2",
-                        "g₀[output]!0!2!1",
-                        "g₀[output]!0!2!0",
-                        "g₀[output]!0!2",
-                        "g₀[output]!0!1!3",
-                        "g₀[output]!0!1!2",
-                        "g₀[output]!0!1!1",
-                        "g₀[output]!0!1!0",
-                        "g₀[output]!0!1",
-                        "g₀[output]!0!0!3",
-                        "g₀[output]!0!0!2",
-                        "g₀[output]!0!0!1",
-                        "g₀[output]!0!0!0",
-                        "g₀[output]!0!0",
-                        "g₀[output]!0",
-                        "g₀[output]",
-                        "g₀[input]!1",
-                        "g₀[input]!0",
-                        "g₀[input]",
-                        "g₁[output]!1!2!3",
-                        "g₁[output]!1!2!2",
-                        "g₁[output]!1!2!1",
-                        "g₁[output]!1!2!0",
-                        "g₁[output]!1!2",
-                        "g₁[output]!1!1!3",
-                        "g₁[output]!1!1!2",
-                        "g₁[output]!1!1!1",
-                        "g₁[output]!1!1!0",
-                        "g₁[output]!1!1",
-                        "g₁[output]!1!0!3",
-                        "g₁[output]!1!0!2",
-                        "g₁[output]!1!0!1",
-                        "g₁[output]!1!0!0",
-                        "g₁[output]!1!0",
-                        "g₁[output]!1",
-                        "g₁[output]!0!2!3",
-                        "g₁[output]!0!2!2",
-                        "g₁[output]!0!2!1",
-                        "g₁[output]!0!2!0",
-                        "g₁[output]!0!2",
-                        "g₁[output]!0!1!3",
-                        "g₁[output]!0!1!2",
-                        "g₁[output]!0!1!1",
-                        "g₁[output]!0!1!0",
-                        "g₁[output]!0!1",
-                        "g₁[output]!0!0!3",
-                        "g₁[output]!0!0!2",
-                        "g₁[output]!0!0!1",
-                        "g₁[output]!0!0!0",
-                        "g₁[output]!0!0",
-                        "g₁[output]!0",
-                        "g₁[output]",
-                        "g₁[input]!1",
-                        "g₁[input]!0",
-                        "g₁[input]",
-                        "g₀[output]!1!2!3",
-                        "g₀[output]!1!2!2",
-                        "g₀[output]!1!2!1",
-                        "g₀[output]!1!2!0",
-                        "g₀[output]!1!2",
-                        "g₀[output]!1!1!3",
-                        "g₀[output]!1!1!2",
-                        "g₀[output]!1!1!1",
-                        "g₀[output]!1!1!0",
-                        "g₀[output]!1!1",
-                        "g₀[output]!1!0!3",
-                        "g₀[output]!1!0!2",
-                        "g₀[output]!1!0!1",
-                        "g₀[output]!1!0!0",
-                        "g₀[output]!1!0",
-                        "g₀[output]!1",
-                        "g₀[output]!0!2!3",
-                        "g₀[output]!0!2!2",
-                        "g₀[output]!0!2!1",
-                        "g₀[output]!0!2!0",
-                        "g₀[output]!0!2",
-                        "g₀[output]!0!1!3",
-                        "g₀[output]!0!1!2",
-                        "g₀[output]!0!1!1",
-                        "g₀[output]!0!1!0",
-                        "g₀[output]!0!1",
-                        "g₀[output]!0!0!3",
-                        "g₀[output]!0!0!2",
-                        "g₀[output]!0!0!1",
-                        "g₀[output]!0!0!0",
-                        "g₀[output]!0!0",
-                        "g₀[output]!0",
-                        "g₀[output]",
-                        "g₀[input]!1",
-                        "g₀[input]!0",
-                        "g₀[input]",
-                        "g₁[output]!1!2!3",
-                        "g₁[output]!1!2!2",
-                        "g₁[output]!1!2!1",
-                        "g₁[output]!1!2!0",
-                        "g₁[output]!1!2",
-                        "g₁[output]!1!1!3",
-                        "g₁[output]!1!1!2",
-                        "g₁[output]!1!1!1",
-                        "g₁[output]!1!1!0",
-                        "g₁[output]!1!1",
-                        "g₁[output]!1!0!3",
-                        "g₁[output]!1!0!2",
-                        "g₁[output]!1!0!1",
-                        "g₁[output]!1!0!0",
-                        "g₁[output]!1!0",
-                        "g₁[output]!1",
-                        "g₁[output]!0!2!3",
-                        "g₁[output]!0!2!2",
-                        "g₁[output]!0!2!1",
-                        "g₁[output]!0!2!0",
-                        "g₁[output]!0!2",
-                        "g₁[output]!0!1!3",
-                        "g₁[output]!0!1!2",
-                        "g₁[output]!0!1!1",
-                        "g₁[output]!0!1!0",
-                        "g₁[output]!0!1",
-                        "g₁[output]!0!0!3",
-                        "g₁[output]!0!0!2",
-                        "g₁[output]!0!0!1",
-                        "g₁[output]!0!0!0",
-                        "g₁[output]!0!0",
-                        "g₁[output]!0",
-                        "g₁[output]",
-                        "g₁[input]!1",
-                        "g₁[input]!0",
-                        "g₁[input]",
-                        "g₀[output]!1!2!3",
-                        "g₀[output]!1!2!2",
-                        "g₀[output]!1!2!1",
-                        "g₀[output]!1!2!0",
-                        "g₀[output]!1!2",
-                        "g₀[output]!1!1!3",
-                        "g₀[output]!1!1!2",
-                        "g₀[output]!1!1!1",
-                        "g₀[output]!1!1!0",
-                        "g₀[output]!1!1",
-                        "g₀[output]!1!0!3",
-                        "g₀[output]!1!0!2",
-                        "g₀[output]!1!0!1",
-                        "g₀[output]!1!0!0",
-                        "g₀[output]!1!0",
-                        "g₀[output]!1",
-                        "g₀[output]!0!2!3",
-                        "g₀[output]!0!2!2",
-                        "g₀[output]!0!2!1",
-                        "g₀[output]!0!2!0",
-                        "g₀[output]!0!2",
-                        "g₀[output]!0!1!3",
-                        "g₀[output]!0!1!2",
-                        "g₀[output]!0!1!1",
-                        "g₀[output]!0!1!0",
-                        "g₀[output]!0!1",
-                        "g₀[output]!0!0!3",
-                        "g₀[output]!0!0!2",
-                        "g₀[output]!0!0!1",
-                        "g₀[output]!0!0!0",
-                        "g₀[output]!0!0",
-                        "g₀[output]!0",
-                        "g₀[output]",
-                        "g₀[input]!1",
-                        "g₀[input]!0",
-                        "g₀[input]"
-                      ],
-                      "userVariables": [],
-                      "queryVariableMapping": {
-                        "y9": 161,
-                        "y8": 160,
-                        "y7": 158,
-                        "y6": 157,
-                        "y5": 156,
-                        "y4": 155,
-                        "y3": 153,
-                        "y23": 179,
-                        "y22": 178,
-                        "y21": 177,
-                        "y20": 176,
-                        "y2": 152,
-                        "y19": 174,
-                        "y18": 173,
-                        "y17": 172,
-                        "y16": 171,
-                        "y15": 169,
-                        "y14": 168,
-                        "y13": 167,
-                        "y12": 166,
-                        "y11": 163,
-                        "y10": 162,
-                        "y1": 151,
-                        "y0": 150,
-                        "x1": 146,
-                        "x0": 145
-                      }
-                    },
-                    "variableCompilationTrace": {
-                      "reconstructionSteps": [
-                        {
-                          "tag": "ReconstructTensorVariable",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2
-                              ],
-                              "nestedStartingVariable": 144
-                            },
-                            "AllDimensions"
-                          ]
-                        },
-                        {
-                          "tag": "ReconstructTensorVariable",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2,
-                                3,
-                                4
-                              ],
-                              "nestedStartingVariable": 147
-                            },
-                            "AllDimensions"
-                          ]
-                        },
-                        {
-                          "tag": "SolveEquality",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2,
-                                3,
-                                4
-                              ],
-                              "nestedStartingVariable": 183
-                            },
-                            {
-                              "constantValue": {
-                                "tag": "ConstantTensor",
-                                "contents": [
-                                  [
-                                    2,
-                                    3,
-                                    4
-                                  ],
-                                  {
-                                    "numerator": 0,
-                                    "denominator": 1
-                                  }
-                                ]
-                              },
-                              "coefficients": [
-                                [
-                                  147,
-                                  {
-                                    "numerator": 1,
-                                    "denominator": 1
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "SolveEquality",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2
-                              ],
-                              "nestedStartingVariable": 180
-                            },
-                            {
-                              "constantValue": {
-                                "tag": "ConstantTensor",
-                                "contents": [
-                                  [
-                                    2
-                                  ],
-                                  {
-                                    "numerator": 0,
-                                    "denominator": 1
-                                  }
-                                ]
-                              },
-                              "coefficients": [
-                                [
-                                  144,
-                                  {
-                                    "numerator": 1,
-                                    "denominator": 1
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    "queryAddress": [
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
                       {
-                        "propertyName": "firstAxisSlice",
-                        "propertyIndices": [],
-                        "propertyID": 1
+                        "nestedTensorShape": [
+                          2
+                        ],
+                        "nestedStartingVariable": 0
                       },
-                      3
-                    ],
-                    "metaNetwork": [
-                      [
-                        "g",
-                        {
-                          "networkType": {
-                            "outputTensor": {
-                              "dimensions": [
-                                2,
-                                3,
-                                4
-                              ],
-                              "baseType": []
-                            },
-                            "inputTensor": {
-                              "dimensions": [
-                                2
-                              ],
-                              "baseType": []
-                            }
-                          },
-                          "networkFilepath": "fake.onnx"
-                        },
-                        1
-                      ]
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          2,
+                          3,
+                          4
+                        ],
+                        "nestedStartingVariable": 3
+                      },
+                      "AllDimensions"
                     ]
                   }
                 ]
               },
-              "negated": false
-            }
-          },
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "unDisjunctAll": [
+              "queryAddress": [
+                {
+                  "propertyName": "firstAxisSlice",
+                  "propertyIndices": [],
+                  "propertyID": 1
+                },
+                1
+              ],
+              "metaNetwork": [
+                [
+                  "g",
                   {
-                    "variableStore": {
-                      "vehicleVariableCtx": [
-                        "g₁[output]!1!2!3",
-                        "g₁[output]!1!2!2",
-                        "g₁[output]!1!2!1",
-                        "g₁[output]!1!2!0",
-                        "g₁[output]!1!2",
-                        "g₁[output]!1!1!3",
-                        "g₁[output]!1!1!2",
-                        "g₁[output]!1!1!1",
-                        "g₁[output]!1!1!0",
-                        "g₁[output]!1!1",
-                        "g₁[output]!1!0!3",
-                        "g₁[output]!1!0!2",
-                        "g₁[output]!1!0!1",
-                        "g₁[output]!1!0!0",
-                        "g₁[output]!1!0",
-                        "g₁[output]!1",
-                        "g₁[output]!0!2!3",
-                        "g₁[output]!0!2!2",
-                        "g₁[output]!0!2!1",
-                        "g₁[output]!0!2!0",
-                        "g₁[output]!0!2",
-                        "g₁[output]!0!1!3",
-                        "g₁[output]!0!1!2",
-                        "g₁[output]!0!1!1",
-                        "g₁[output]!0!1!0",
-                        "g₁[output]!0!1",
-                        "g₁[output]!0!0!3",
-                        "g₁[output]!0!0!2",
-                        "g₁[output]!0!0!1",
-                        "g₁[output]!0!0!0",
-                        "g₁[output]!0!0",
-                        "g₁[output]!0",
-                        "g₁[output]",
-                        "g₁[input]!1",
-                        "g₁[input]!0",
-                        "g₁[input]",
-                        "g₀[output]!1!2!3",
-                        "g₀[output]!1!2!2",
-                        "g₀[output]!1!2!1",
-                        "g₀[output]!1!2!0",
-                        "g₀[output]!1!2",
-                        "g₀[output]!1!1!3",
-                        "g₀[output]!1!1!2",
-                        "g₀[output]!1!1!1",
-                        "g₀[output]!1!1!0",
-                        "g₀[output]!1!1",
-                        "g₀[output]!1!0!3",
-                        "g₀[output]!1!0!2",
-                        "g₀[output]!1!0!1",
-                        "g₀[output]!1!0!0",
-                        "g₀[output]!1!0",
-                        "g₀[output]!1",
-                        "g₀[output]!0!2!3",
-                        "g₀[output]!0!2!2",
-                        "g₀[output]!0!2!1",
-                        "g₀[output]!0!2!0",
-                        "g₀[output]!0!2",
-                        "g₀[output]!0!1!3",
-                        "g₀[output]!0!1!2",
-                        "g₀[output]!0!1!1",
-                        "g₀[output]!0!1!0",
-                        "g₀[output]!0!1",
-                        "g₀[output]!0!0!3",
-                        "g₀[output]!0!0!2",
-                        "g₀[output]!0!0!1",
-                        "g₀[output]!0!0!0",
-                        "g₀[output]!0!0",
-                        "g₀[output]!0",
-                        "g₀[output]",
-                        "g₀[input]!1",
-                        "g₀[input]!0",
-                        "g₀[input]"
-                      ],
-                      "userVariables": [],
-                      "queryVariableMapping": {
-                        "y9": 17,
-                        "y8": 16,
-                        "y7": 14,
-                        "y6": 13,
-                        "y5": 12,
-                        "y4": 11,
-                        "y3": 9,
-                        "y23": 35,
-                        "y22": 34,
-                        "y21": 33,
-                        "y20": 32,
-                        "y2": 8,
-                        "y19": 30,
-                        "y18": 29,
-                        "y17": 28,
-                        "y16": 27,
-                        "y15": 25,
-                        "y14": 24,
-                        "y13": 23,
-                        "y12": 22,
-                        "y11": 19,
-                        "y10": 18,
-                        "y1": 7,
-                        "y0": 6,
-                        "x1": 2,
-                        "x0": 1
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          2,
+                          3,
+                          4
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          2
+                        ],
+                        "baseType": []
                       }
                     },
-                    "variableCompilationTrace": {
-                      "reconstructionSteps": [
-                        {
-                          "tag": "ReconstructTensorVariable",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2
-                              ],
-                              "nestedStartingVariable": 0
-                            },
-                            "AllDimensions"
-                          ]
-                        },
-                        {
-                          "tag": "ReconstructTensorVariable",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2,
-                                3,
-                                4
-                              ],
-                              "nestedStartingVariable": 3
-                            },
-                            "AllDimensions"
-                          ]
-                        },
-                        {
-                          "tag": "SolveEquality",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2,
-                                3,
-                                4
-                              ],
-                              "nestedStartingVariable": 39
-                            },
-                            {
-                              "constantValue": {
-                                "tag": "ConstantTensor",
-                                "contents": [
-                                  [
-                                    2,
-                                    3,
-                                    4
-                                  ],
-                                  {
-                                    "numerator": 0,
-                                    "denominator": 1
-                                  }
-                                ]
-                              },
-                              "coefficients": [
-                                [
-                                  3,
-                                  {
-                                    "numerator": 1,
-                                    "denominator": 1
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "SolveEquality",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2
-                              ],
-                              "nestedStartingVariable": 36
-                            },
-                            {
-                              "constantValue": {
-                                "tag": "ConstantTensor",
-                                "contents": [
-                                  [
-                                    2
-                                  ],
-                                  {
-                                    "numerator": 0,
-                                    "denominator": 1
-                                  }
-                                ]
-                              },
-                              "coefficients": [
-                                [
-                                  0,
-                                  {
-                                    "numerator": 1,
-                                    "denominator": 1
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    "queryAddress": [
-                      {
-                        "propertyName": "firstAxisSlice",
-                        "propertyIndices": [],
-                        "propertyID": 1
-                      },
-                      1
-                    ],
-                    "metaNetwork": [
-                      [
-                        "g",
-                        {
-                          "networkType": {
-                            "outputTensor": {
-                              "dimensions": [
-                                2,
-                                3,
-                                4
-                              ],
-                              "baseType": []
-                            },
-                            "inputTensor": {
-                              "dimensions": [
-                                2
-                              ],
-                              "baseType": []
-                            }
-                          },
-                          "networkFilepath": "fake.onnx"
-                        },
-                        1
-                      ]
-                    ]
-                  }
+                    "networkFilepath": "fake.onnx"
+                  },
+                  1
                 ]
-              },
-              "negated": false
+              ]
             }
-          },
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "unDisjunctAll": [
-                  {
-                    "variableStore": {
-                      "vehicleVariableCtx": [
-                        "g₁[output]!1!2!3",
-                        "g₁[output]!1!2!2",
-                        "g₁[output]!1!2!1",
-                        "g₁[output]!1!2!0",
-                        "g₁[output]!1!2",
-                        "g₁[output]!1!1!3",
-                        "g₁[output]!1!1!2",
-                        "g₁[output]!1!1!1",
-                        "g₁[output]!1!1!0",
-                        "g₁[output]!1!1",
-                        "g₁[output]!1!0!3",
-                        "g₁[output]!1!0!2",
-                        "g₁[output]!1!0!1",
-                        "g₁[output]!1!0!0",
-                        "g₁[output]!1!0",
-                        "g₁[output]!1",
-                        "g₁[output]!0!2!3",
-                        "g₁[output]!0!2!2",
-                        "g₁[output]!0!2!1",
-                        "g₁[output]!0!2!0",
-                        "g₁[output]!0!2",
-                        "g₁[output]!0!1!3",
-                        "g₁[output]!0!1!2",
-                        "g₁[output]!0!1!1",
-                        "g₁[output]!0!1!0",
-                        "g₁[output]!0!1",
-                        "g₁[output]!0!0!3",
-                        "g₁[output]!0!0!2",
-                        "g₁[output]!0!0!1",
-                        "g₁[output]!0!0!0",
-                        "g₁[output]!0!0",
-                        "g₁[output]!0",
-                        "g₁[output]",
-                        "g₁[input]!1",
-                        "g₁[input]!0",
-                        "g₁[input]",
-                        "g₀[output]!1!2!3",
-                        "g₀[output]!1!2!2",
-                        "g₀[output]!1!2!1",
-                        "g₀[output]!1!2!0",
-                        "g₀[output]!1!2",
-                        "g₀[output]!1!1!3",
-                        "g₀[output]!1!1!2",
-                        "g₀[output]!1!1!1",
-                        "g₀[output]!1!1!0",
-                        "g₀[output]!1!1",
-                        "g₀[output]!1!0!3",
-                        "g₀[output]!1!0!2",
-                        "g₀[output]!1!0!1",
-                        "g₀[output]!1!0!0",
-                        "g₀[output]!1!0",
-                        "g₀[output]!1",
-                        "g₀[output]!0!2!3",
-                        "g₀[output]!0!2!2",
-                        "g₀[output]!0!2!1",
-                        "g₀[output]!0!2!0",
-                        "g₀[output]!0!2",
-                        "g₀[output]!0!1!3",
-                        "g₀[output]!0!1!2",
-                        "g₀[output]!0!1!1",
-                        "g₀[output]!0!1!0",
-                        "g₀[output]!0!1",
-                        "g₀[output]!0!0!3",
-                        "g₀[output]!0!0!2",
-                        "g₀[output]!0!0!1",
-                        "g₀[output]!0!0!0",
-                        "g₀[output]!0!0",
-                        "g₀[output]!0",
-                        "g₀[output]",
-                        "g₀[input]!1",
-                        "g₀[input]!0",
-                        "g₀[input]",
-                        "g₁[output]!1!2!3",
-                        "g₁[output]!1!2!2",
-                        "g₁[output]!1!2!1",
-                        "g₁[output]!1!2!0",
-                        "g₁[output]!1!2",
-                        "g₁[output]!1!1!3",
-                        "g₁[output]!1!1!2",
-                        "g₁[output]!1!1!1",
-                        "g₁[output]!1!1!0",
-                        "g₁[output]!1!1",
-                        "g₁[output]!1!0!3",
-                        "g₁[output]!1!0!2",
-                        "g₁[output]!1!0!1",
-                        "g₁[output]!1!0!0",
-                        "g₁[output]!1!0",
-                        "g₁[output]!1",
-                        "g₁[output]!0!2!3",
-                        "g₁[output]!0!2!2",
-                        "g₁[output]!0!2!1",
-                        "g₁[output]!0!2!0",
-                        "g₁[output]!0!2",
-                        "g₁[output]!0!1!3",
-                        "g₁[output]!0!1!2",
-                        "g₁[output]!0!1!1",
-                        "g₁[output]!0!1!0",
-                        "g₁[output]!0!1",
-                        "g₁[output]!0!0!3",
-                        "g₁[output]!0!0!2",
-                        "g₁[output]!0!0!1",
-                        "g₁[output]!0!0!0",
-                        "g₁[output]!0!0",
-                        "g₁[output]!0",
-                        "g₁[output]",
-                        "g₁[input]!1",
-                        "g₁[input]!0",
-                        "g₁[input]",
-                        "g₀[output]!1!2!3",
-                        "g₀[output]!1!2!2",
-                        "g₀[output]!1!2!1",
-                        "g₀[output]!1!2!0",
-                        "g₀[output]!1!2",
-                        "g₀[output]!1!1!3",
-                        "g₀[output]!1!1!2",
-                        "g₀[output]!1!1!1",
-                        "g₀[output]!1!1!0",
-                        "g₀[output]!1!1",
-                        "g₀[output]!1!0!3",
-                        "g₀[output]!1!0!2",
-                        "g₀[output]!1!0!1",
-                        "g₀[output]!1!0!0",
-                        "g₀[output]!1!0",
-                        "g₀[output]!1",
-                        "g₀[output]!0!2!3",
-                        "g₀[output]!0!2!2",
-                        "g₀[output]!0!2!1",
-                        "g₀[output]!0!2!0",
-                        "g₀[output]!0!2",
-                        "g₀[output]!0!1!3",
-                        "g₀[output]!0!1!2",
-                        "g₀[output]!0!1!1",
-                        "g₀[output]!0!1!0",
-                        "g₀[output]!0!1",
-                        "g₀[output]!0!0!3",
-                        "g₀[output]!0!0!2",
-                        "g₀[output]!0!0!1",
-                        "g₀[output]!0!0!0",
-                        "g₀[output]!0!0",
-                        "g₀[output]!0",
-                        "g₀[output]",
-                        "g₀[input]!1",
-                        "g₀[input]!0",
-                        "g₀[input]"
-                      ],
-                      "userVariables": [],
-                      "queryVariableMapping": {
-                        "y9": 89,
-                        "y8": 88,
-                        "y7": 86,
-                        "y6": 85,
-                        "y5": 84,
-                        "y4": 83,
-                        "y3": 81,
-                        "y23": 107,
-                        "y22": 106,
-                        "y21": 105,
-                        "y20": 104,
-                        "y2": 80,
-                        "y19": 102,
-                        "y18": 101,
-                        "y17": 100,
-                        "y16": 99,
-                        "y15": 97,
-                        "y14": 96,
-                        "y13": 95,
-                        "y12": 94,
-                        "y11": 91,
-                        "y10": 90,
-                        "y1": 79,
-                        "y0": 78,
-                        "x1": 74,
-                        "x0": 73
-                      }
-                    },
-                    "variableCompilationTrace": {
-                      "reconstructionSteps": [
-                        {
-                          "tag": "ReconstructTensorVariable",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2
-                              ],
-                              "nestedStartingVariable": 72
-                            },
-                            "AllDimensions"
-                          ]
-                        },
-                        {
-                          "tag": "ReconstructTensorVariable",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2,
-                                3,
-                                4
-                              ],
-                              "nestedStartingVariable": 75
-                            },
-                            "AllDimensions"
-                          ]
-                        },
-                        {
-                          "tag": "SolveEquality",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2,
-                                3,
-                                4
-                              ],
-                              "nestedStartingVariable": 111
-                            },
-                            {
-                              "constantValue": {
-                                "tag": "ConstantTensor",
-                                "contents": [
-                                  [
-                                    2,
-                                    3,
-                                    4
-                                  ],
-                                  {
-                                    "numerator": 0,
-                                    "denominator": 1
-                                  }
-                                ]
-                              },
-                              "coefficients": [
-                                [
-                                  75,
-                                  {
-                                    "numerator": 1,
-                                    "denominator": 1
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          "tag": "SolveEquality",
-                          "contents": [
-                            {
-                              "nestedTensorShape": [
-                                2
-                              ],
-                              "nestedStartingVariable": 108
-                            },
-                            {
-                              "constantValue": {
-                                "tag": "ConstantTensor",
-                                "contents": [
-                                  [
-                                    2
-                                  ],
-                                  {
-                                    "numerator": 0,
-                                    "denominator": 1
-                                  }
-                                ]
-                              },
-                              "coefficients": [
-                                [
-                                  72,
-                                  {
-                                    "numerator": 1,
-                                    "denominator": 1
-                                  }
-                                ]
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    "queryAddress": [
-                      {
-                        "propertyName": "firstAxisSlice",
-                        "propertyIndices": [],
-                        "propertyID": 1
-                      },
-                      2
-                    ],
-                    "metaNetwork": [
-                      [
-                        "g",
-                        {
-                          "networkType": {
-                            "outputTensor": {
-                              "dimensions": [
-                                2,
-                                3,
-                                4
-                              ],
-                              "baseType": []
-                            },
-                            "inputTensor": {
-                              "dimensions": [
-                                2
-                              ],
-                              "baseType": []
-                            }
-                          },
-                          "networkFilepath": "fake.onnx"
-                        },
-                        1
-                      ]
-                    ]
-                  }
-                ]
-              },
-              "negated": false
-            }
-          }
-        ]
+          ]
+        },
+        "negated": false
       }
     }
   }
