@@ -63,7 +63,7 @@ reconstructRecords existingAssignment steps = do
           tensorValues <- case Map.lookup tensorName (Map.fromList assignments) of
             Just (TensorValue v) -> pure v
             _ -> developerError "No assignment found"
-          tensorIndices <- case NonEmpty.nonEmpty (unstack tensorValues) of 
+          tensorIndices <- case NonEmpty.nonEmpty (unstack tensorValues) of
             Just xs -> pure xs
             _ -> developerError "Values must be present for tensor assignment"
 
