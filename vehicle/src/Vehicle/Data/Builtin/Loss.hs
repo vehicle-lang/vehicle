@@ -313,6 +313,13 @@ instance HasLiftableTensorOperations LossBuiltin where
       (getExpr accessLogRatTensor, evalLogRat, IRatType)
     ]
 
+  liftableTensorReductions =
+    [ (getExpr accessReduceAddRat, evalReduceAddRatTensor, IRatType),
+      (getExpr accessReduceMulRat, evalReduceMulRatTensor, IRatType),
+      (getExpr accessReduceMinRat, evalReduceMinRatTensor, IRatType),
+      (getExpr accessReduceMaxRat, evalReduceMaxRatTensor, IRatType)
+    ]
+
 instance NormalisableBuiltin LossBuiltin where
   evalScheme = \case
     LossBuiltinFunction f -> case f of

@@ -22,6 +22,7 @@ module Vehicle.Data.Tensor
     unstack,
     at,
     foldTensor,
+    foldTensorPartial,
     foldMapTensor,
     mapTensor,
     traverseTensor,
@@ -159,6 +160,15 @@ foldTensor :: (a -> a -> a) -> Tensor a -> Tensor a -> Tensor a
 foldTensor f e t = case toList t of
   [] -> e
   (x : xs) -> ZeroDimTensor $ foldr f x xs
+
+-- | Partial reduction. Input shape `keepDims ++ reduceDims`, output shape
+-- `keepDims`. `foldTensor` is the `keepDims = []` case.
+foldTensorPartial :: (Eq a) => TensorShape -> TensorShape -> (a -> a -> a) -> Tensor a -> Tensor a -> Tensor a
+foldTensorPartial keepDims reduceDims f e t = case keepDims of
+  [] -> foldTensor f e t
+  (d : ds) ->
+    let slices = [foldTensorPartial ds reduceDims f e (at t i) | i <- [0 .. d - 1]]
+     in stack ds slices
 
 at :: (HasCallStack, Eq a) => Tensor a -> Int -> Tensor a
 at xs i = case shapeOf xs of

@@ -292,8 +292,8 @@ record DifferentiableTensorLogic where
   , pointwiseGreaterEqualThan : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseEqual            : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseNotEqual         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
-  , reduceConjunction         : Real -> Tensor Real dims -> Real
-  , reduceDisjunction         : Real -> Tensor Real dims -> Real
+  , reduceConjunction         : Real -> Tensor Real reduceDs -> Tensor Real keepDs
+  , reduceDisjunction         : Real -> Tensor Real reduceDs -> Tensor Real keepDs
   }
 
 VehicleLoss : DifferentiableTensorLogic

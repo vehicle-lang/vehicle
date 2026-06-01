@@ -120,25 +120,30 @@ traverseTensorOp2Args f (TensorOp2Args ds xs ys) = TensorOp2Args ds <$> f xs <*>
 --------------------------------------------------------------------------------
 -- Tensor reduction args
 
--- | Arguments for tensor reduction operations (e.g. reduceAnd, reduceAdd)
+-- | Arguments for tensor reduction operations (e.g. reduceAnd, reduceAdd).
+-- Input has shape `keepDims ++ reduceDims`; reduction folds the trailing
+-- `reduceDims`, leaving shape `keepDims`. Total reduction is `keepDims = IDimNil`.
 data TensorReductionArgs expr = TensorReductionArgs
-  { tensorReductionDims :: expr,
+  { tensorReductionKeepDims :: expr,
+    tensorReductionReduceDims :: expr,
     tensorReductionUnit :: expr,
     tensorReductionTensor :: expr
   }
 
 instance IsArgs TensorReductionArgs where
+  -- Spine order is `[reduceDs, keepDs, e, xs]` — reversed from the record field
+  -- order to match the elaborator's left-to-right implicit promotion.
   accessSpine =
     Access
       { getExpr = \case
-          (fmap argExpr -> [ds, e, xs]) -> Just $ TensorReductionArgs ds e xs
+          (fmap argExpr -> [reduceDs, keepDs, e, xs]) -> Just $ TensorReductionArgs keepDs reduceDs e xs
           _ -> Nothing,
-        mkExpr = \(TensorReductionArgs ds e xs) -> [implicitIrrelevant ds, explicit e, explicit xs]
+        mkExpr = \(TensorReductionArgs keepDs reduceDs e xs) -> [implicitIrrelevant reduceDs, implicitIrrelevant keepDs, explicit e, explicit xs]
       }
 
 traverseReductionArgs :: (Applicative f) => (t -> f t) -> TensorReductionArgs t -> f (TensorReductionArgs t)
-traverseReductionArgs f (TensorReductionArgs ds e xs) =
-  TensorReductionArgs ds <$> f e <*> f xs
+traverseReductionArgs f (TensorReductionArgs keepDs reduceDs e xs) =
+  TensorReductionArgs keepDs reduceDs <$> f e <*> f xs
 
 --------------------------------------------------------------------------------
 -- Temporal args

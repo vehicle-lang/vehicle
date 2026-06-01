@@ -159,12 +159,16 @@ typeOfConstTensor =
   forAll "A" type0 $ \tElem ->
     tTensor tElem dimNil ~> forAllExpl "dims" tDims (\dims -> tTensor tElem dims)
 
+-- | Split-axes reduction: input shape `keepDs ++ reduceDs`, output shape `keepDs`.
+-- Source-level total reductions unify `keepDs` to `dimNil`.
 typeOfTensorReduceOp ::
   (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) =>
   DSLExpr builtin ->
   DSLExpr builtin
 typeOfTensorReduceOp tElem =
-  forAllDims $ \dims -> tTensor tElem dimNil ~> tTensor tElem dims ~> tTensor tElem dimNil
+  forAllDims $ \reduceDs ->
+    forAllDims $ \keepDs ->
+      tTensor tElem dimNil ~> tTensor tElem reduceDs ~> tTensor tElem keepDs
 
 typeOfTensorRatReduceOp :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin
 typeOfTensorRatReduceOp = typeOfTensorReduceOp tRat

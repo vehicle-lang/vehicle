@@ -355,6 +355,10 @@ data MultiDimBoolTensorValue
   | VMultiDimBoolIf (IfArgs (Value Builtin))
   | VMultiDimBoolAt (AtTensorArgs (Value Builtin))
   | VBoolForeach (ForeachTensorArgs (Value Builtin))
+  | -- Partial bool reductions (`keepDims` non-empty). Totals reach
+    -- `BoolTensorValue` via the scalar-result view.
+    VMultiDimBoolReduceAnd (TensorReductionArgs (Value Builtin))
+  | VMultiDimBoolReduceOr (TensorReductionArgs (Value Builtin))
 
 toMultiDimBoolTensorValue :: (HasCallStack) => Value Builtin -> MultiDimBoolTensorValue
 toMultiDimBoolTensorValue expr = case expr of
@@ -371,6 +375,8 @@ toMultiDimBoolTensorValue expr = case expr of
   (getExpr accessIf -> Just args) -> VMultiDimBoolIf args
   (getExpr accessAtTensor -> Just args) -> VMultiDimBoolAt args
   (getExpr accessForeachTensor -> Just args) -> VBoolForeach args
+  (getExpr accessReduceAnd -> Just args) -> VMultiDimBoolReduceAnd args
+  (getExpr accessReduceOr -> Just args) -> VMultiDimBoolReduceOr args
   _ -> developerError $ "ill-typed MultiDimBoolTensor expression:" <+> prettyVerbose expr
 
 fromMultiDimBoolTensorValue :: MultiDimBoolTensorValue -> Value Builtin
@@ -387,6 +393,8 @@ fromMultiDimBoolTensorValue = \case
   VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
   VMultiDimBoolIf args -> mkExpr accessIf args
   VMultiDimBoolAt args -> mkExpr accessAtTensor args
+  VMultiDimBoolReduceAnd args -> mkExpr accessReduceAnd args
+  VMultiDimBoolReduceOr args -> mkExpr accessReduceOr args
   VBoolForeach args -> mkExpr accessForeachTensor args
 
 -------------------------------------------------------------------------------

@@ -127,8 +127,8 @@ typeDecidableTypeClassOp = \case
               FieldAnd -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
               FieldOr -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
               FieldImplies -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
-              FieldReduceAnd -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
-              FieldReduceOr -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
+              FieldReduceAnd -> forAllDims $ \reduceDs -> forAllDims $ \keepDs -> tensor tBool dimNil ~> tensor tBool reduceDs ~> tensor tBool keepDs
+              FieldReduceOr -> forAllDims $ \reduceDs -> forAllDims $ \keepDs -> tensor tBool dimNil ~> tensor tBool reduceDs ~> tensor tBool keepDs
               FieldForeachTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> (tIndex d ~> tensor tElem ds) ~> tensor tElem (dimCons d ds)
               FieldAtTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> tensor tElem (dimCons d ds) ~> (tIndex d ~> tensor tElem ds)
               FieldCompareIndex {} -> typeOfCompareIndex (tensor tBool dimNil)

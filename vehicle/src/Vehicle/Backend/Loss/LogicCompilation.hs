@@ -437,7 +437,7 @@ reduceOp2Body ::
   m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
 reduceOp2Body = convertHigherOrderFunction "reduction" $ \case
   VBuiltin (BuiltinFunction (reduceOp -> Just reducedOp)) (getExpr accessSpine -> Just (TensorOp2Args _ (VBoundVar 0 []) (VBoundVar 1 []))) ->
-    return $ \dims e xs -> builtinFunction reducedOp .@@@ [dims] @@ [e, xs]
+    return $ \dims e xs -> builtinFunction reducedOp .@@@ [dims, dimNil] @@ [e, xs]
   blockedExpr -> do
     logDebug MaxDetail $ prettyVerbose blockedExpr
     throwError blockedExpr
