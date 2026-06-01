@@ -922,7 +922,7 @@ formatCompileError = \case
       (VRecordType typ fields) -> do
         let varName = "x" :: Name
             fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
-            typeIdent = case typ of 
+            typeIdent = case typ of
               (VFreeVar i _) -> Just i
               _ -> Nothing
         VehicleUserError
