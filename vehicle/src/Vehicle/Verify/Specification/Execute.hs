@@ -327,18 +327,20 @@ writeWitnessToFile verificationCache address (UserVariableAssignment assignments
   forM_ assignments $ \assignment -> do
     handleAssignment assignment witnessFolder
   where
-    handleAssignment a folder = do
-      case a of
-        (var, TensorValue tensor) -> do
-          let file = folder </> layoutAsString (pretty var)
-          let dims = Vector.fromList (shapeOf tensor)
-          -- TODO got to be a better way to do this conversion...
-          let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac (Tensor.toVector tensor))
-          let idxData = IDXDoubles IDXDouble dims unboxedVector
-          liftIO $ encodeIDXFile idxData file
-        -- TODO: IDX is a file format for vectors and matrices - i think we want to convert back to a tensor here?
-        (var, RecordValue recordFields) -> do
-          let fieldValues = map snd recordFields
-          let dims = shapeOf $ head fieldValues
-          let tensorValue = (var, TensorValue $ stack dims fieldValues)
-          handleAssignment tensorValue folder
+    handleAssignment a folder = case a of
+      (var, TensorValue tensor) -> handleTensorAssignment var tensor folder
+      (var, RecordValue recordFields) -> handleRecordAssignment var recordFields folder
+
+    handleTensorAssignment var tensor folder = do
+      let file = folder </> layoutAsString (pretty var)
+      let dims = Vector.fromList (shapeOf tensor)
+      -- TODO got to be a better way to do this conversion...
+      let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac (Tensor.toVector tensor))
+      let idxData = IDXDoubles IDXDouble dims unboxedVector
+      liftIO $ encodeIDXFile idxData file
+
+    handleRecordAssignment var recordFields folder = do
+      let fieldValues = map snd recordFields
+      let dims = shapeOf $ head fieldValues
+      let tensorValue = (var, TensorValue $ stack dims fieldValues)
+      handleAssignment tensorValue folder

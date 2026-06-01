@@ -7,7 +7,7 @@ import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (coerce)
 import Data.Foldable (foldlM)
-import Data.List (delete, find)
+import Data.List (delete)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -21,7 +21,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion (InequalityRelation (..))
 import Vehicle.Data.Bound
 import Vehicle.Data.Code.LinearExpr (LinearExpr, evaluateExpr)
-import Vehicle.Data.Tensor (RatTensor, at, mapTensor, shapeOf, stack, zipWithTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (RatTensor, at, mapTensor, shapeOf, stack, unstack, zipWithTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Verify.Core
@@ -60,22 +60,11 @@ reconstructRecords existingAssignment steps = do
     checkStep (UserVariableAssignment assignments) step = do
       case step of
         ConvertQuantifiedTensorLike tensorName recordName fieldNames -> do
-          let tensorValue =
-                find
-                  ( \case
-                      (tn, TensorValue _) -> tn == tensorName
-                      _ -> False
-                  )
-                  assignments
-
-          value <- case tensorValue of
-            Just (_, TensorValue t) -> return t
-            -- TODO: proper/better error message
+          value <- case Map.lookup tensorName (Map.fromList assignments) of
+            Just (TensorValue v) -> pure v
             _ -> developerError "No assignment found"
 
-          let fieldIndices = [0 .. length fieldNames - 1] :: [Int]
-          let tensorIndices = map (\i -> at value i) fieldIndices
-          let fields = zip fieldNames tensorIndices
+          let fields = zip fieldNames (unstack value)
           let assignment = (recordName, RecordValue fields)
           let newMap = delete (tensorName, TensorValue value) assignments ++ [assignment]
 

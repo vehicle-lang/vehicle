@@ -12,6 +12,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Ordered qualified as OMap
 import Data.These (mergeTheseWith)
+import Prettyprinter (surround)
 import System.FilePath
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -27,7 +28,6 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Prettyprinter (surround)
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -1171,6 +1171,8 @@ missingOneSidedBoundsRecord :: Name -> [Name] -> Bool -> NonEmpty TensorIndices 
 missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
   "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <+> case missingFields of
     [[]] -> ""
-    _ -> "for fields"
-          <+> concatWith (surround ", ")
-            (fmap (\t -> pretty $ varName <> "." <> fieldNames !! head t) missingFields)
+    _ ->
+      "for fields"
+        <+> concatWith
+          (surround ", ")
+          (fmap (\t -> pretty $ varName <> "." <> fieldNames !! head t) missingFields)
