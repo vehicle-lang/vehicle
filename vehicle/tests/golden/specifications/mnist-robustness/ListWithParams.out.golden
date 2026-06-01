@@ -1,51 +1,29 @@
-[
-  {
-    "tag": "Network",
-    "contents": {
-      "tag": "NetworkSummary",
-      "sharedData": {
-        "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
-        "tag": "SharedData",
-        "provenance": {
-          "tag": "Provenance",
-          "contents": [
-            22,
-            1,
-            22,
-            11
-          ]
-        },
-        "name": "classifier"
-      }
-    }
-  },
-  {
-    "tag": "Property",
-    "contents": {
+{
+  "tag": "SpecificationSummary",
+  "properties": [
+    {
+      "typeText": "Vector Bool 2",
       "tag": "PropertySummary",
-      "subcomponents": {
+      "quantifiedVariables": {
         "tag": "MultiProperty",
         "contents": [
           {
             "tag": "SingleProperty",
             "contents": [
               {
+                "typeText": "Tensor Real [28, 28]",
                 "tag": "QuantifiedVariableSummary",
-                "sharedData": {
-                  "typeText": "Tensor Real [28, 28]",
-                  "tag": "SharedData",
-                  "provenance": {
-                    "tag": "Provenance",
-                    "contents": [
-                      49,
-                      35,
-                      49,
-                      47
-                    ]
-                  },
-                  "name": "perturbation"
+                "quantifier": "Forall",
+                "provenance": {
+                  "tag": "Provenance",
+                  "contents": [
+                    49,
+                    35,
+                    49,
+                    47
+                  ]
                 },
-                "quantifier": "Forall"
+                "name": "perturbation"
               }
             ]
           },
@@ -53,41 +31,52 @@
             "tag": "SingleProperty",
             "contents": [
               {
+                "typeText": "Tensor Real [28, 28]",
                 "tag": "QuantifiedVariableSummary",
-                "sharedData": {
-                  "typeText": "Tensor Real [28, 28]",
-                  "tag": "SharedData",
-                  "provenance": {
-                    "tag": "Provenance",
-                    "contents": [
-                      49,
-                      35,
-                      49,
-                      47
-                    ]
-                  },
-                  "name": "perturbation"
+                "quantifier": "Forall",
+                "provenance": {
+                  "tag": "Provenance",
+                  "contents": [
+                    49,
+                    35,
+                    49,
+                    47
+                  ]
                 },
-                "quantifier": "Forall"
+                "name": "perturbation"
               }
             ]
           }
         ]
       },
-      "sharedData": {
-        "typeText": "Vector Bool 2",
-        "tag": "SharedData",
-        "provenance": {
-          "tag": "Provenance",
-          "contents": [
-            92,
-            1,
-            92,
-            7
-          ]
-        },
-        "name": "robust"
-      }
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          92,
+          1,
+          92,
+          7
+        ]
+      },
+      "name": "robust"
     }
-  }
-]
+  ],
+  "parameters": [],
+  "networks": [
+    {
+      "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
+      "tag": "NetworkSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          22,
+          1,
+          22,
+          11
+        ]
+      },
+      "name": "classifier"
+    }
+  ],
+  "datasets": []
+}
