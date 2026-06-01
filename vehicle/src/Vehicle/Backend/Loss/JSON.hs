@@ -18,8 +18,9 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseInEmptyFreeEnv)
-import Vehicle.Compile.Prelude (Ix (..))
+import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseInEmptyFreeEnv)
+import Vehicle.Compile.Normalise.Quote (quoteValueWithBinder)
+import Vehicle.Compile.Prelude (Ix (..), implicit, isImplicit)
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
@@ -31,7 +32,7 @@ import Vehicle.Data.AST.Expr.Scoped (normAppList)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, LossBuiltinFunction, LossBuiltinType)
 import Vehicle.Data.Builtin.Loss qualified as L
-import Vehicle.Data.Code.Interface.Args
+import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic (DifferentiableLogicImplementation, TensorDifferentiableLogicField (..))
 import Vehicle.Data.Tensor (Tensor, mapTensor)
@@ -269,10 +270,16 @@ convertValue expr = do
     VRecord {} -> resolutionError currentPass "VRecord"
     VRecordAcc {} -> resolutionError currentPass "VRecordAcc"
     VPi {} -> resolutionError currentPass "VPi"
-    VLam binder closure -> do
-      binder' <- convertBinder binder
-      closure' <- convertClosure convertExpr binder closure
-      return $ Lam binder' closure'
+    VLam binder closure
+      | isImplicit binder -> do
+          -- Loss surface carries only explicit binders; strip the implicit
+          -- by beta-reducing with `IDimNil`.
+          reduced <- normaliseAppInEmptyFreeEnv mempty (VLam binder closure) [implicit IDimNil]
+          convertValue reduced
+      | otherwise -> do
+          binder' <- convertBinder binder
+          closure' <- convertClosure convertExpr binder closure
+          return $ Lam binder' closure'
     VBuiltin b spine -> convertBuiltin b spine
     VBoundVar v spine -> do
       name <- lvToProperName mempty v
@@ -293,12 +300,22 @@ convertClosure ::
   VBinder LossBuiltin ->
   Closure LossBuiltin ->
   m a
-convertClosure f binder (Closure env body) = do
+convertClosure f binder closure = do
   lv <- getBinderDepth
-  let newEnv = extendEnvWithBound lv binder env
-  addNameToContext binder $ do
-    debugFriendly body
-    f newEnv body
+  case closure of
+    ExprClosure env body -> do
+      let newEnv = extendEnvWithBound lv binder env
+      addNameToContext binder $ do
+        debugFriendly body
+        f newEnv body
+    ValueClosure binderLv body -> do
+      nameCtx <- getNameContext
+      let bodyExpr = quoteValueWithBinder mempty lv binderLv body
+      let outerEnv = namedBoundContextToEnv nameCtx
+      let newEnv = extendEnvWithBound lv binder outerEnv
+      addNameToContext binder $ do
+        debugFriendly bodyExpr
+        f newEnv bodyExpr
 
 convertBuiltin :: (MonadJSON m) => LossBuiltin -> Spine LossBuiltin -> m JExpr
 convertBuiltin b spine = case b of
@@ -394,7 +411,7 @@ convertTensorReduction ::
   Spine LossBuiltin ->
   m a
 convertTensorReduction convert b fn spine = case getExpr accessSpine spine of
-  Just (TensorReductionArgs _ e xs) -> fn <$> convert e <*> convert xs
+  Just (TensorReductionArgs _ _ e xs) -> fn <$> convert e <*> convert xs
   Nothing -> arityError b 2 spine
 
 convertTemporalOp1 ::

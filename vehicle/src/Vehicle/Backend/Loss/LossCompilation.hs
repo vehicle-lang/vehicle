@@ -33,8 +33,9 @@ module Vehicle.Backend.Loss.LossCompilation
   )
 where
 
+import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.Core hiding (currentPass)
-import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
+import Vehicle.Compile.Normalise.NBE (evalApp, normaliseAppInEmptyFreeEnv, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print ()
@@ -50,6 +51,7 @@ import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level (findSliceIndices)
+import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
 
 --------------------------------------------------------------------------------
 -- Types
@@ -130,13 +132,24 @@ convertClosure ::
   VBinder Builtin ->
   Closure Builtin ->
   m (Closure LossBuiltin)
-convertClosure convertValue binder closure = do
-  normBody <- normaliseClosure binder closure
-  finalCtx <- getShrunkenContext
-  lossBody <- addNonTensorBinderToContext binder $ do
-    normLossBody <- convertFunction convertValue normBody
-    return $ quote mempty (1 + boundCtxLv finalCtx) normLossBody
-  return $ Closure (boundContextToEnv finalCtx) lossBody
+convertClosure convertValue binder closure = case closure of
+  ExprClosure {} -> do
+    normBody <- normaliseClosure binder closure
+    finalCtx <- getShrunkenContext
+    lossBody <- addNonTensorBinderToContext binder $ do
+      normLossBody <- convertFunction convertValue normBody
+      return $ quote mempty (1 + boundCtxLv finalCtx) normLossBody
+    return $ ExprClosure (boundContextToEnv finalCtx) lossBody
+  ValueClosure binderLv body -> do
+    finalCtx <- getShrunkenContext
+    -- Relabel the body's binder refs from construction-time `binderLv` to
+    -- the slot the new addNonTensorBinderToContext will create.
+    let newLv = boundCtxLv finalCtx
+    let body' = relabelLvInValue binderLv newLv body
+    lossBody <- addNonTensorBinderToContext binder $ do
+      normLossBody <- convertFunction convertValue body'
+      return $ quote mempty (1 + newLv) normLossBody
+    return $ ExprClosure (boundContextToEnv finalCtx) lossBody
 
 -- | This function converts a DeBruijn level back into a loss value.
 -- Crucially if the variable represents a slice of a quantified user variable
@@ -184,12 +197,27 @@ convertBoolTensorLiteral tensor = do
   falseExpr <- getLogicField FalsityElement
 
   let convertBool b = if b then trueExpr else falseExpr
-  let foldLayer shape elems = do
+  -- Build the tensor structure via well-formed Stack args (element type first,
+  -- then outer dim, then remaining dims) so `evalStackTensor` can fold
+  -- fully-literal stacks into canonical tensor literals. The prior arg ordering
+  -- left every Stack in non-canonical form, which then blocked `getConstValue`
+  -- from spotting the trueElement (=0 for DL2) and stopped the `True AND X`
+  -- identity drop in `evalAddRatTensor`.
+  let foldLayer shape elems =
         let dim = length elems
-        let dims = implicitIrrelevant (mkDims shape)
-        let args = implicit (INatLiteral dim) : dims : implicit INatType : fmap explicit elems
-        VBuiltin (LossBuiltinFunction StackTensor) args
-  return $ foldMapTensor convertBool foldLayer tensor
+            remDims = implicitIrrelevant (mkDims shape)
+            args = implicit IRatType : implicit (INatLiteral dim) : remDims : fmap explicit elems
+         in VBuiltin (LossBuiltinFunction StackTensor) args
+  evalLossStackTree $ foldMapTensor convertBool foldLayer tensor
+
+-- | Recursively normalise nested Stack constructors so literal stacks fold
+-- to canonical tensor literals.
+evalLossStackTree :: (MonadLogic m) => Value LossBuiltin -> m (Value LossBuiltin)
+evalLossStackTree v = case getExpr accessStackTensor v of
+  Just (StackTensorArgs t d ds xs) -> do
+    xs' <- traverse evalLossStackTree xs
+    evalStackTensor (StackTensorArgs t d ds xs')
+  Nothing -> return v
 
 convertNot :: (MonadLogic m) => TensorOp1Args (Value LossBuiltin) -> m (Value LossBuiltin)
 convertNot = convertLogicField PointwiseNegation
@@ -201,10 +229,24 @@ convertOr :: (MonadLogic m) => TensorOp2Args (Value LossBuiltin) -> m (Value Los
 convertOr = convertLogicField PointwiseDisjunction
 
 convertReduceAnd :: (MonadLogic m) => TensorReductionArgs (Value LossBuiltin) -> m (Value LossBuiltin)
-convertReduceAnd = convertLogicField ReduceConjunction
+convertReduceAnd = reduceWithTrivialSingleton ReduceConjunction
 
 convertReduceOr :: (MonadLogic m) => TensorReductionArgs (Value LossBuiltin) -> m (Value LossBuiltin)
-convertReduceOr = convertLogicField ReduceDisjunction
+convertReduceOr = reduceWithTrivialSingleton ReduceDisjunction
+
+-- | Reducing over a singleton axis (`Cons 1 Nil`) is algebraically an
+-- identity: `OR [x] = AND [x] = x`. Substituting the logic's reduction
+-- (e.g. DL2's `reduceMul falseElement`) here would multiply the body by the
+-- sentinel `falseElement = 1e6`, blowing up the loss. Skip the wrap.
+reduceWithTrivialSingleton ::
+  (MonadLogic m) =>
+  TensorDifferentiableLogicField ->
+  TensorReductionArgs (Value LossBuiltin) ->
+  m (Value LossBuiltin)
+reduceWithTrivialSingleton field args@(TensorReductionArgs _ reduceDs _ xs) =
+  case getDims reduceDs of
+    Just [1] -> return xs
+    _ -> convertLogicField field args
 
 -- Emitted as opaque IR nodes; runtime semantics come from the DL record's
 -- pointwise{Conjunction,Disjunction} + {true,false}Element fields, packaged
@@ -259,7 +301,7 @@ convertRatTensorReducedComparison (op, TensorReduceComparisonArgs d ds e1 e2) = 
   compResult <- convertLogicField (comparisonOpToField op) compArgs
   -- 2. Wrap in reduceAnd
   truthId <- getLogicField TruthityElement
-  convertReduceAnd (TensorReductionArgs (tensorOp2Dims compArgs) truthId compResult)
+  convertReduceAnd (TensorReductionArgs IDimNil (tensorOp2Dims compArgs) truthId compResult)
 
 convertIf ::
   (MonadLogic m) =>
@@ -384,8 +426,8 @@ convertTensorReduction ::
   (Value Builtin -> m (Value LossBuiltin)) ->
   TensorReductionArgs (Value Builtin) ->
   m (TensorReductionArgs (Value LossBuiltin))
-convertTensorReduction go (TensorReductionArgs dims e xs) =
-  TensorReductionArgs <$> convertDims dims <*> go e <*> go xs
+convertTensorReduction go (TensorReductionArgs keepDims reduceDims e xs) =
+  TensorReductionArgs <$> convertDims keepDims <*> convertDims reduceDims <*> go e <*> go xs
 
 convertTemporalOp1 ::
   (MonadLogic m) =>
@@ -452,12 +494,39 @@ convertForeachTensor ::
   (Value Builtin -> m (Value LossBuiltin)) ->
   ForeachTensorArgs (Value Builtin) ->
   m (Value LossBuiltin)
-convertForeachTensor convertValue (ForeachTensorArgs t dim dims fn) = do
-  t' <- convertType t
-  dim' <- convertDim dim
-  dims' <- convertDims dims
-  fn' <- convertFunction convertValue fn
-  return $ mkExpr accessForeachTensor $ ForeachTensorArgs t' dim' dims' fn'
+convertForeachTensor convertValue args@(ForeachTensorArgs t dim dims fn) = do
+  -- If the body contains an `IndexComparison`, the loss compiler cannot
+  -- emit it symbolically. Materialise the foreach over its literal dim so
+  -- per-iteration substitution reduces `(IIndexLiteral _ _ != IIndexLiteral _ _)`
+  -- to a Bool literal before descending.
+  if containsIndexComparison fn
+    then do
+      ctx <- getNameContext
+      materialised <-
+        runFreshFreeContextT (Proxy @Builtin) $
+          unoptimisedEvalForeachTensor ctx evalApp args
+      convertValue materialised
+    else do
+      t' <- convertType t
+      dim' <- convertDim dim
+      dims' <- convertDims dims
+      fn' <- convertFunction convertValue fn
+      return $ mkExpr accessForeachTensor $ ForeachTensorArgs t' dim' dims' fn'
+
+-- | Conservatively check whether a value's syntax tree contains an
+-- `IndexComparison` builtin. Used by `convertForeachTensor` to decide
+-- whether to materialise the foreach for the loss compiler.
+containsIndexComparison :: Value Builtin -> Bool
+containsIndexComparison v
+  | Just _ <- getExpr accessCompareIndex v = True
+  | otherwise = case v of
+      VBuiltin _ spine -> any (containsIndexComparison . argExpr) spine
+      VBoundVar _ spine -> any (containsIndexComparison . argExpr) spine
+      VFreeVar _ spine -> any (containsIndexComparison . argExpr) spine
+      VLam _ closure -> case closure of
+        ExprClosure _ _ -> False -- opaque; over-approximate as no-match
+        ValueClosure _ body -> containsIndexComparison body
+      _ -> False
 
 convertTranspose ::
   (MonadLogic m) =>

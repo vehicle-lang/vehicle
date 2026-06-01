@@ -299,7 +299,7 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
     -- in the final context (i.e. without any reference to slice variables!)
     let lossBody = quote mempty (1 + boundCtxLv finalCtx) remainingBody
     let finalEnv = boundContextToEnv finalCtx
-    let remainder = Closure finalEnv lossBody
+    let remainder = ExprClosure finalEnv lossBody
 
     -- Find the bounds on the quantified variable from the constraints
     let partialShape = extractPartialShape dims
@@ -659,8 +659,17 @@ compileNonBoundComparison ::
   (MonadDomain m) =>
   (ComparisonOp, TensorOp2Args (Value Builtin)) ->
   m (MaybeTrivial Partitions)
-compileNonBoundComparison args = do
-  value <- convertRatTensorPointwiseComparison args
+compileNonBoundComparison (op, args@(TensorOp2Args dims e1 e2)) = do
+  -- `BoolValue.VCompareRatTensor` collapses both pointwise and reduced
+  -- comparison forms. Recover the distinction from `dims`:
+  -- `VDimsNil` is a scalar (pointwise) comparison; `VDimsCons` means the
+  -- comparison is over tensors and an implicit `reduceAnd` wraps the
+  -- per-element bool tensor. The reduced converter is what wraps the
+  -- per-element loss in `reduceAnd` (which DL2 substitutes for `reduceAdd`).
+  value <- case toDimensionsValue dims of
+    VDimsNil -> convertRatTensorPointwiseComparison (op, args)
+    VDimsCons d ds -> convertRatTensorReducedComparison (op, TensorReduceComparisonArgs d ds e1 e2)
+    _ -> developerError "compileNonBoundComparison: dims neither nil nor cons"
   NonTrivial <$> singletonUnconstrainedPartition value
 
 -- | Unblocking a boolean value is a little complicated.
