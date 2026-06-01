@@ -60,13 +60,16 @@ reconstructRecords existingAssignment steps = do
     checkStep (UserVariableAssignment assignments) step = do
       case step of
         ConvertQuantifiedTensorLike tensorName recordName fieldNames -> do
-          value <- case Map.lookup tensorName (Map.fromList assignments) of
+          tensorValues <- case Map.lookup tensorName (Map.fromList assignments) of
             Just (TensorValue v) -> pure v
             _ -> developerError "No assignment found"
+          tensorIndices <- case NonEmpty.nonEmpty (unstack tensorValues) of 
+            Just xs -> pure xs
+            _ -> developerError "Values must be present for tensor assignment"
 
-          let fields = zip fieldNames (unstack value)
+          let fields = NonEmpty.zip fieldNames tensorIndices
           let assignment = (recordName, RecordValue fields)
-          let newMap = delete (tensorName, TensorValue value) assignments ++ [assignment]
+          let newMap = delete (tensorName, TensorValue tensorValues) assignments ++ [assignment]
 
           return $ UserVariableAssignment newMap
         _ -> return $ UserVariableAssignment assignments

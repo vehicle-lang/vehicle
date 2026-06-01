@@ -34,6 +34,7 @@ import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Core as Core
+import Data.List.NonEmpty qualified as NonEmpty
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -280,7 +281,7 @@ prettyUserVariableAssignment (UserVariableAssignment assignment) = do
           pretty var
             <> ":"
             <> line
-            <> prettyRecordValueEntries (map (Data.Bifunctor.bimap pretty pretty) fields)
+            <> prettyRecordValueEntries (map (Data.Bifunctor.bimap pretty pretty) (NonEmpty.toList fields))
 
 closeProgressBar :: (MonadStdIO m) => ProgressBar () -> m ()
 closeProgressBar _ = writeStdoutLn ""

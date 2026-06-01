@@ -296,7 +296,7 @@ wrapQuantifyRecord QuantifyRecordArgs {..} = do
   let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
   let ratTensorArgs = QuantifyRatTensorArgs normalisedDims tensorBinder (Closure boundEnv nestedBody)
 
-  fieldNames <- getRecordFieldNames recordTypeIdent
+  fieldNames <- getRecordFieldNamesNE recordTypeIdent
   let name = getBinderName quantifyRecordBinder
   return (ratTensorArgs, ConvertQuantifiedTensorLike tensorBinderName name fieldNames)
 

@@ -14,6 +14,8 @@ import Vehicle.Data.Assertion (InequalityRelation (..), Relation (..))
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Tensor (RatTensor, TensorIndices, TensorShape, showTensorIndices)
 import Vehicle.Prelude
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 
 --------------------------------------------------------------------------------
 -- Meta-network
@@ -199,8 +201,7 @@ instance FromJSON UserVariableAssignment
 
 data UserVariableValue
   = TensorValue RatTensor
-  | -- Attempting to cheat recordfields here
-    RecordValue [(Name, RatTensor)]
+  | RecordValue (NonEmpty (Name, RatTensor))
   deriving (Show, Generic, Eq)
 
 instance ToJSON UserVariableValue
@@ -210,4 +211,4 @@ instance FromJSON UserVariableValue
 instance Pretty UserVariableValue where
   pretty t = case t of
     TensorValue tens -> pretty tens
-    RecordValue fields -> prettyRecordValueEntries $ map (Data.Bifunctor.bimap pretty pretty) fields
+    RecordValue fields -> prettyRecordValueEntries $ map (Data.Bifunctor.bimap pretty pretty) (NonEmpty.toList fields)

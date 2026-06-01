@@ -40,6 +40,7 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Resource (ResourcesIntegrityInfo)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
+import Data.List.NonEmpty (NonEmpty)
 
 --------------------------------------------------------------------------------
 -- User variable
@@ -66,7 +67,7 @@ data CompilationStep
   = SolveEquality NestedSliceVariable LinearExpression
   | SolveInequalities SliceVariable LinearBounds
   | ReconstructTensorVariable NestedSliceVariable ReconstructionDepth
-  | ConvertQuantifiedTensorLike Name Name [Name]
+  | ConvertQuantifiedTensorLike Name Name (NonEmpty Name)
   deriving (Show, Eq, Ord, Generic)
 
 instance NFData CompilationStep

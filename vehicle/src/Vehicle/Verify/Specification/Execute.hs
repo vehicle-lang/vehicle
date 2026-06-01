@@ -35,6 +35,7 @@ import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier
 import Vehicle.Verify.Verifier.Core (QueryVariableAssignment (..))
+import qualified Data.List.NonEmpty as NonEmpty
 
 --------------------------------------------------------------------------------
 -- Verification
@@ -340,7 +341,7 @@ writeWitnessToFile verificationCache address (UserVariableAssignment assignments
       liftIO $ encodeIDXFile idxData file
 
     handleRecordAssignment var recordFields folder = do
-      let fieldValues = map snd recordFields
+      let fieldValues = map snd (NonEmpty.toList recordFields)
       let dims = shapeOf $ head fieldValues
       let tensorValue = (var, TensorValue $ stack dims fieldValues)
       handleAssignment tensorValue folder
