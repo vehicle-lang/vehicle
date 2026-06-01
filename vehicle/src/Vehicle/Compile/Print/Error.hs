@@ -27,6 +27,7 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Data.Variable.Bound.Context.Name
+import Prettyprinter (surround)
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -1079,13 +1080,13 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
       LHSImpliesProvenance p pp ->
         transform p ("being on the LHS of the" <+> quotePretty Implies) : go (neg q) pp
       PolFunctionProvenance p pp position ->
-        surround p (prettyAuxiliaryFunctionProvenance position) : go q pp
+        wrap p (prettyAuxiliaryFunctionProvenance position) : go q pp
       where
-        surround p x =
+        wrap p x =
           "which is" <+> x <+> "in" <+> pretty p
 
         transform p x =
-          surround p ("turned into" <+> prettyQuantifierArticle q <+> "by" <+> x)
+          wrap p ("turned into" <+> prettyQuantifierArticle q <+> "by" <+> x)
 
     finalLine :: Doc a
     finalLine =
@@ -1168,6 +1169,8 @@ missingBoundsRecord varName fieldNames = mergeTheseWith (missingOneSidedBoundsRe
 
 missingOneSidedBoundsRecord :: Name -> [Name] -> Bool -> NonEmpty TensorIndices -> Doc a
 missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
-  "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <> case missingFields of
+  "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <+> case missingFields of
     [[]] -> ""
-    _ -> " for fields" <+> hsep (fmap (\t -> pretty $ varName <> "." <> fieldNames !! head t) missingFields)
+    _ -> "for fields"
+          <+> concatWith (surround ", ")
+            (fmap (\t -> pretty $ varName <> "." <> fieldNames !! head t) missingFields)
