@@ -39,11 +39,11 @@ Parameter score : Image -> 'nT[R]_[6].
 
 Definition validPixel (p : 'sT[R]) : Prop := const_t (0 : R) <= p /\ p <= const_t (1 : R).
 
-Definition validImage (x : Image) : Prop := forallIndex (fun i => forallIndex (fun j => validPixel (x ^^ i) ^^ j)).
+Definition validImage (x : Image) : Prop := forallIndex (fun i => forallIndex (fun j => validPixel ((x ^^ i) ^^ j))).
 
-Definition isFirstChoice (x : Image) (dog1 : Dog) : Prop := let scores := score x in forallIndex (fun d => d != dog1 :> nat -> scores ^^ dog1 > scores ^^ d).
+Definition isFirstChoice (x : Image) (dog1 : Dog) : Prop := let scores := score x in forallIndex (fun d => (d != dog1)%N -> scores ^^ dog1 > scores ^^ d).
 
-Definition isSecondChoice (x : Image) (dog2 : Dog) : Prop := let scores := score x in existsIndex (fun dog1 => isFirstChoice x dog1 /\ forallIndex (fun d => d != dog1 :> nat /\ d != dog2 :> nat -> scores ^^ dog2 > scores ^^ d)).
+Definition isSecondChoice (x : Image) (dog2 : Dog) : Prop := let scores := score x in existsIndex (fun dog1 => isFirstChoice x dog1 /\ forallIndex (fun d => (d != dog1)%N /\ (d != dog2)%N -> scores ^^ dog2 > scores ^^ d)).
 
 Definition noConfusionWith (x : Image) (dogs1 : seq Dog) (dogs2 : seq Dog) : Prop := forallInList (fun dog1 => forallInList (fun dog2 => ~ (isFirstChoice x dog1 /\ isSecondChoice x dog2)) dogs2) dogs1.
 

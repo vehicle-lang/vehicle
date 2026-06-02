@@ -5,21 +5,19 @@
 (*  - Rocq version: 9.0.0 *)
 
 From mathcomp Require Import all_boot.
-From mathcomp Require Import all_algebra.
 From vehicle Require Import utils.
-Local Open Scope ring_scope.
 Local Open Scope order_scope.
 
 
 
-Axiom eqIndex : (0 : 'I_1%N) == (1 : 'I_2%N) :> nat.
+Axiom eqIndex : (0%N == 1%N)%N.
 
-Axiom neqIndex : (0 : 'I_1%N) != (1 : 'I_2%N) :> nat.
+Axiom neqIndex : (0%N != 1%N)%N.
 
-Axiom leqIndex : (0 : 'I_1%N) <= (1 : 'I_2%N) :> nat.
+Axiom leqIndex : (0%N <= 1%N)%N.
 
-Axiom ltIndex : (0 : 'I_1%N) < (1 : 'I_2%N) :> nat.
+Axiom ltIndex : (0%N < 1%N)%N.
 
-Axiom geqIndex : (0 : 'I_1%N) >= (1 : 'I_2%N) :> nat.
+Axiom geqIndex : (0%N >= 1%N)%N.
 
-Axiom gtIndex : (0 : 'I_1%N) > (1 : 'I_2%N) :> nat.
+Axiom gtIndex : (0%N > 1%N)%N.

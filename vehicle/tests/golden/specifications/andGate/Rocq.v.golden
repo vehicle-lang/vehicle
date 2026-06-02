@@ -24,6 +24,6 @@ Definition falsey (x : 'sT[R]) : Prop := x <= const_t (1 / 2 : R).
 
 Definition validInput (x : 'sT[R]) : Prop := const_t (0 : R) <= x /\ x <= const_t (1 : R).
 
-Definition correctOutput (x1 : 'sT[R]) (x2 : 'sT[R]) : Prop := let y := (andGate (nstack_tuple [tuple x1; x2])) ^^ 0 in (truthy x1 /\ truthy x2 -> truthy y) /\ ((truthy x1 /\ falsey x2 -> falsey y) /\ ((falsey x1 /\ truthy x2 -> falsey y) /\ (falsey x1 /\ falsey x2 -> falsey y))).
+Definition correctOutput (x1 : 'sT[R]) (x2 : 'sT[R]) : Prop := let y := andGate (nstack_tuple (x := 2%:posnat) [tuple x1; x2]) ^^ 0 in (truthy x1 /\ truthy x2 -> truthy y) /\ ((truthy x1 /\ falsey x2 -> falsey y) /\ ((falsey x1 /\ truthy x2 -> falsey y) /\ (falsey x1 /\ falsey x2 -> falsey y))).
 
 Axiom andGateCorrect : forall x1, forall x2, validInput x1 /\ validInput x2 -> correctOutput x1 x2.
