@@ -98,6 +98,16 @@ jobs:
       - name: 🛠️ Pin math-comp tensor branch
         run: opam pin add -y -k git https://github.com/hoheinzollern/math-comp.git#tensor
 
+      # The released analysis and finmap don't compile against the
+      # tensor-branch math-comp (e.g. rocq-mathcomp-finmap.2.2.2 has a proof
+      # that breaks under our notation level shifts). Pin both to their
+      # master branches, matching the local dev setup.
+      - name: 🛠️ Pin math-comp/finmap master
+        run: opam pin add -y -k git https://github.com/math-comp/finmap.git#master
+
+      - name: 🛠️ Pin math-comp/analysis master
+        run: opam pin add -y -k git https://github.com/math-comp/analysis.git#master
+
       - name: 🛠️ Install vehicle-rocq
         run: opam install -y ./vehicle-rocq
 
