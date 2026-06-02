@@ -1,0 +1,31 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "spec.vcl",
+      "fileHash": 6463227735784712046
+    },
+    "parameterSummaries": {},
+    "networkSummaries": [
+      {
+        "name": "andGate",
+        "filePath": "fake.onnx",
+        "fileHash": -1645482762009093786
+      }
+    ],
+    "datasetSummaries": []
+  },
+  "properties": [
+    [
+      "andGateCorrect",
+      {
+        "tag": "SingleProperty",
+        "contents": {
+          "tag": "PropertyAddress",
+          "propertyName": "andGateCorrect",
+          "propertyIndices": []
+        }
+      }
+    ]
+  ]
+}
