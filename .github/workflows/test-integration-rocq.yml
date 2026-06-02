@@ -91,22 +91,14 @@ jobs:
       - name: 🛠️ Install Rocq
         run: opam install -y rocq-core.${{ matrix.rocq.version }}
 
-      # TODO: The vehicle-rocq companion library currently depends on the tensor
-      # module that lives on the open math-comp PR #1535. Until that lands in
-      # a tagged math-comp release (>= 2.6.0), pin math-comp to the tensor
-      # branch so the dependency constraints in vehicle-rocq.opam resolve.
-      - name: 🛠️ Pin math-comp tensor branch
-        run: opam pin add -y -k git https://github.com/hoheinzollern/math-comp.git#tensor
-
-      # The released analysis and finmap don't compile against the
-      # tensor-branch math-comp (e.g. rocq-mathcomp-finmap.2.2.2 has a proof
-      # that breaks under our notation level shifts). Pin both to their
-      # master branches, matching the local dev setup.
-      - name: 🛠️ Pin math-comp/finmap master
-        run: opam pin add -y -k git https://github.com/math-comp/finmap.git#master
-
-      - name: 🛠️ Pin math-comp/analysis master
-        run: opam pin add -y -k git https://github.com/math-comp/analysis.git#master
+      # The Rocq backend currently compiles against math-comp master, soon to be
+      # released as 2.6.0. Analysis and finmap master need to be pinned as well to
+      # master, as current releases do not compile with math-comp master.
+      - name: 🛠️ Pin math-comp+finmap+analysis to master
+        run: |
+          opam pin add -y -k git https://github.com/math-comp/math-comp.git#master
+          opam pin add -y -k git https://github.com/math-comp/finmap.git#master
+          opam pin add -y -k git https://github.com/math-comp/analysis.git#master
 
       - name: 🛠️ Install vehicle-rocq
         run: opam install -y ./vehicle-rocq
