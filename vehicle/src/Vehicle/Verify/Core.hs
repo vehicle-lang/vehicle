@@ -3,9 +3,10 @@
 module Vehicle.Verify.Core where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
+import Prettyprinter (brackets)
 import System.FilePath ((<.>), (</>))
 import Vehicle.Compile.Resource
 import Vehicle.Data.Assertion (InequalityRelation (..), Relation (..))
@@ -80,40 +81,34 @@ querySatisified = \case
 --------------------------------------------------------------------------------
 -- Property addresses
 
--- | The number of an individual property within a specification.
-type PropertyID = Int
-
 -- | A name of a property in the specification.
 type PropertyName = Name
-
--- | A set of properties in the specification.
-type PropertyNames = [PropertyName]
 
 -- | A unique identifier for every individual property that needs to be verified.
 -- Not simply an identifier, as we need to identifier sub-properties in tensors of
 -- properties.
 data PropertyAddress = PropertyAddress
-  { propertyID :: PropertyID,
-    propertyName :: PropertyName,
+  { propertyName :: PropertyName,
     propertyIndices :: TensorIndices
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Show, Generic)
 
 instance NFData PropertyAddress
 
-instance ToJSON PropertyAddress
+instance ToJSON PropertyAddress where
+  toJSON = genericToJSON jsonOptions
 
 instance FromJSON PropertyAddress
 
 instance Pretty PropertyAddress where
-  pretty (PropertyAddress _ name indices) =
+  pretty (PropertyAddress name indices) =
     concatWith (\a b -> a <> "!" <> b) (pretty name : fmap pretty indices)
 
 calculatePropertyFilePrefix :: PropertyAddress -> FilePath
-calculatePropertyFilePrefix (PropertyAddress _ propertyName propertyIndices) = do
+calculatePropertyFilePrefix (PropertyAddress propertyName indices) = do
   let indexStr
-        | null propertyIndices = ""
-        | otherwise = showTensorIndices propertyIndices
+        | null indices = ""
+        | otherwise = showTensorIndices indices
   unpack propertyName <> indexStr
 
 --------------------------------------------------------------------------------
@@ -123,10 +118,24 @@ calculatePropertyFilePrefix (PropertyAddress _ propertyName propertyIndices) = d
 -- depth-first.
 type QueryID = Int
 
-type QueryAddress = (PropertyAddress, QueryID)
+data QueryAddress = QueryAddress
+  { property :: PropertyAddress,
+    queryID :: QueryID
+  }
+  deriving (Eq, Show, Generic)
+
+instance NFData QueryAddress
+
+instance ToJSON QueryAddress where
+  toJSON = genericToJSON jsonOptions
+
+instance FromJSON QueryAddress
+
+instance Pretty QueryAddress where
+  pretty (QueryAddress property queryID) = pretty property <+> brackets (pretty queryID)
 
 calculateQueryFileName :: FilePath -> QueryAddress -> FilePath
-calculateQueryFileName verificationCache (propertyAddress, queryID) = do
+calculateQueryFileName verificationCache (QueryAddress propertyAddress queryID) = do
   verificationCache
     </> calculatePropertyFilePrefix propertyAddress
       <> "-query"

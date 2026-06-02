@@ -178,7 +178,7 @@ compileRel = \case
   LtRel -> "<"
   GtRel -> ">"
 
-compileCoefVar :: (Coefficient, QueryVariable) -> Doc a
+compileCoefVar :: (Rational, QueryVariable) -> Doc a
 compileCoefVar (coef, var)
   | coef == 1 = pretty var
   | coef == -1 = parens ("-" <+> pretty var)

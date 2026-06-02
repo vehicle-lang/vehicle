@@ -5,8 +5,8 @@ from functools import reduce
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
+from ..._ast import _nodes as vcl
 from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
-from .._ast import _nodes as vcl
 
 
 # Helper to convert Vehicle provenance to Python AST kwargs
@@ -73,12 +73,12 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
-                # NOTE: 'vehicle_lang.loss._ast._nodes' is imported for 'Tensor'
+                # NOTE: 'vehicle_lang._ast._nodes' is imported for 'Tensor'
                 #       which is used to translate vcl.Tensor
                 py.Import(
                     names=[
                         py.alias(
-                            name="vehicle_lang.loss._ast._nodes",
+                            name="vehicle_lang._ast._nodes",
                             asname=None,
                             lineno=0,
                             col_offset=0,
@@ -489,11 +489,25 @@ def py_fraction(value: Fraction, provenance: vcl.Provenance) -> py.expr:
     )
 
 
+def py_extended_fraction(
+    value: vcl.ExtendedFraction, provenance: vcl.Provenance
+) -> py.expr:
+    match value:
+        case vcl.Finite(value=inner):
+            return py_fraction(inner, provenance=provenance)
+        case vcl.PosInfinity():
+            return py.Constant(value=float("inf"), **asdict(provenance))
+        case vcl.NegInfinity():
+            return py.Constant(value=float("-inf"), **asdict(provenance))
+        case _:
+            raise ValueError(f"Unknown extended rational type: {type(value)}")
+
+
 def py_scalar(value: vcl.DType, provenance: vcl.Provenance) -> py.expr:
     """Make a scalar."""
     match value:
-        case Fraction():
-            return py_fraction(value, provenance=provenance)
+        case vcl.ExtendedFraction():
+            return py_extended_fraction(value, provenance=provenance)
         case _:
             return py.Constant(
                 value=value,

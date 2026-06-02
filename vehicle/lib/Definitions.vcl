@@ -240,8 +240,8 @@ record DifferentiableTensorLogic where
 
 VehicleLoss : DifferentiableTensorLogic
 VehicleLoss =
-  { trueElement                = -1000000
-  , falseElement               = 1000000
+  { trueElement                = -infinity
+  , falseElement               = infinity
   , pointwiseNegation          = \x -> -x
   , pointwiseConjunction       = \x y -> max x y
   , pointwiseDisjunction       = \x y -> min x y
@@ -258,7 +258,7 @@ VehicleLoss =
 DL2Loss : DifferentiableTensorLogic
 DL2Loss =
   { trueElement                = 0
-  , falseElement               = 1000000 -- TODO should be infinity
+  , falseElement               = infinity
   , pointwiseNegation          = \{dims} x -> (const 1 dims) / x
   , pointwiseConjunction       = \x y -> x + y
   , pointwiseDisjunction       = \x y -> x * y

@@ -13692,16 +13692,17 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                1
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -27419,16 +27420,17 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 2,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                2
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -41146,16 +41148,17 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 3,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                3
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -54873,16 +54876,17 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 4,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                4
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -68600,16 +68604,17 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 5,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                5
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -82327,16 +82332,17 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 6,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                6
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -96054,16 +96060,17 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 7,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                7
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -109781,16 +109788,17 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 8,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                8
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
@@ -123508,16 +123516,17 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 9,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     1
-                  ],
-                  "propertyID": 0
-                },
-                9
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",

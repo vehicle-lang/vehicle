@@ -11,15 +11,22 @@ synopsis: "Companion library for vehicle to Rocq compilation"
 description: """
 This library contains definitions used by the Vehicle to Rocq compiler,
 users should include this library when working with Vehicle-generated Rocq files.
+It also provides the vehicle_validate tactic, which invokes
+`vehicle validate --cache=<path>` at proof-checking time to discharge
+@property obligations against a pre-computed verification cache.
 """
 
-build: [ make "-j" "%{jobs}%" ]
-install: [ make "install" ]
+build: [
+  [ "dune" "build" "-p" name "-j" jobs ]
+]
+install: [
+  [ "dune" "install" "-p" name ]
+]
 depends: [
-  ("coq" {>= "8.20" & < "8.21~"}
-  | "rocq-core" {>= "9.0" | = "dev"})
-  "coq-mathcomp-ssreflect" { >= "2.5.0" }
-  "coq-mathcomp-algebra" { >= "2.5.0" }
+  "dune" {>= "3.13"}
+  "rocq-core" {>= "9.0"}
+  "coq-mathcomp-ssreflect" { >= "2.6.0" }
+  "coq-mathcomp-algebra" { >= "2.6.0" }
   "coq-mathcomp-reals" { >= "1.14.0" }
 ]
 

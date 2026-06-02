@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-TESTS_DATA = Path(__file__).parent / "data"
+from ..config import PYTHON_TEST_SPECS_PATH
 
 
 @pytest.mark.parametrize(
     "vehicle_file",
-    TESTS_DATA.glob("*.vcl"),
+    PYTHON_TEST_SPECS_PATH.glob("*.vcl"),
 )  # type: ignore[untyped-decorator]
 def test_pygments(vehicle_file: Path) -> None:
     UPDATE_GOLDENS = os.environ.get("UPDATE_GOLDENS")

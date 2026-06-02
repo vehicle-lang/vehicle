@@ -26,13 +26,13 @@ module Vehicle.Verify.Specification
 where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set (Set)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Constants.Rational
-import Vehicle.Compile.Prelude (Name, Pretty (..))
+import Vehicle.Compile.Prelude (Name, Pretty (..), jsonOptions)
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Context.Name.Core
@@ -212,7 +212,8 @@ data MultiProperty property
     MultiProperty [MultiProperty property]
   deriving (Show, Functor, Generic)
 
-instance (ToJSON property) => ToJSON (MultiProperty property)
+instance (ToJSON property) => ToJSON (MultiProperty property) where
+  toJSON = genericToJSON jsonOptions
 
 instance (FromJSON property) => FromJSON (MultiProperty property)
 
@@ -233,7 +234,7 @@ instance (ToJSON property) => ToJSON (Specification property)
 
 instance (FromJSON property) => FromJSON (Specification property)
 
-specificationPropertyNames :: Specification a -> PropertyNames
+specificationPropertyNames :: Specification a -> [PropertyName]
 specificationPropertyNames (Specification properties) = fmap fst properties
 
 --------------------------------------------------------------------------------

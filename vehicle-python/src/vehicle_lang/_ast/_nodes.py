@@ -43,18 +43,50 @@ class AST(metaclass=ABCMeta):
 class Provenance(AST):
     lineno: int
     col_offset: int
-    end_lineno: Optional[int] = None
-    end_col_offset: Optional[int] = None
+    end_lineno: int
+    end_col_offset: int
+
+    def __str__(self) -> str:
+        if self.lineno == self.end_lineno:
+            return f"Line {self.lineno}:{self.col_offset}-{self.end_col_offset}"
+        return f"Lines {self.lineno}:{self.col_offset}-{self.end_lineno}:{self.end_col_offset}"
 
 
-MISSING: Provenance = Provenance(0, 0)
+MISSING: Provenance = Provenance(0, 0, 0, 0)
+
+
+################################################################################
+# Extended rationals
+################################################################################
+
+
+@dataclass(frozen=True, init=False)
+class ExtendedFraction(AST):
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class ExtendedFraction")
+
+
+@dataclass(frozen=True)
+class Finite(ExtendedFraction):
+    value: Fraction
+
+
+@dataclass(frozen=True)
+class PosInfinity(ExtendedFraction):
+    pass
+
+
+@dataclass(frozen=True)
+class NegInfinity(ExtendedFraction):
+    pass
+
 
 ################################################################################
 # Values
 ################################################################################
 
 
-DType = TypingTypeVar("DType", bool, float, int, Fraction)
+DType = TypingTypeVar("DType", bool, float, int, ExtendedFraction)
 
 
 ################################################################################
@@ -65,7 +97,7 @@ DType = TypingTypeVar("DType", bool, float, int, Fraction)
 @dataclass(frozen=True)
 class Tensor(AST):
     shape: Sequence[int]
-    value: Sequence[Fraction] | Fraction
+    value: Sequence[ExtendedFraction] | ExtendedFraction
 
     def __init__(self) -> None:
         raise TypeError("Cannot instantiate abstract class Tensor")
@@ -74,13 +106,13 @@ class Tensor(AST):
 @dataclass(frozen=True)
 class DenseTensor(Tensor):
     shape: Sequence[int]
-    value: Sequence[Fraction]
+    value: Sequence[ExtendedFraction]
 
 
 @dataclass(frozen=True)
 class ConstantTensor(Tensor):
     shape: Sequence[int]
-    value: Fraction
+    value: ExtendedFraction
 
 
 ################################################################################
@@ -176,7 +208,7 @@ class Var(Expression):
 
 @dataclass(frozen=True)
 class RatTensor(Expression):
-    """RatTensor (Tensor Rat) from JSON"""
+    """RatTensor (Tensor ExtendedFraction) from JSON"""
 
     contents: Tensor
 
@@ -324,7 +356,7 @@ class DimensionIndex(Expression):
 class ConstTensor(Expression):
     """ConstTensor shape value - for JSON parsing"""
 
-    c: Fraction
+    c: ExtendedFraction
     ds: Sequence[int]
 
 

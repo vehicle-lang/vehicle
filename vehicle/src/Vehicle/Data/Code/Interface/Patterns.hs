@@ -3,6 +3,7 @@ module Vehicle.Data.Code.Interface.Patterns where
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Interface.Operations
+import Vehicle.Data.Real (ExtendedRational)
 import Vehicle.Data.Tensor
 
 --------------------------------------------------------------------------------
@@ -66,15 +67,15 @@ pattern INatLiteral n <- (getExpr accessNatLiteral -> Just n)
   where
     INatLiteral n = mkExpr accessNatLiteral n
 
-pattern INatTensor :: (HasNatExpr expr builtin) => Tensor Int -> expr builtin
+pattern INatTensor :: (HasNatExpr expr builtin) => NatTensor -> expr builtin
 pattern INatTensor n <- (getExpr accessNatTensorLiteral -> Just n)
   where
     INatTensor n = mkExpr accessNatTensorLiteral n
 
-pattern IRatLiteral :: (HasRatExpr expr builtin) => Rational -> expr builtin
+pattern IRatLiteral :: (HasRatExpr expr builtin) => ExtendedRational -> expr builtin
 pattern IRatLiteral n = IRatTensor (ZeroDimTensor n)
 
-pattern IRatTensor :: (HasRatExpr expr builtin) => Tensor Rational -> expr builtin
+pattern IRatTensor :: (HasRatExpr expr builtin) => ExtendedRatTensor -> expr builtin
 pattern IRatTensor n <- (getExpr accessRatTensorLiteral -> Just n)
   where
     IRatTensor n = mkExpr accessRatTensorLiteral n

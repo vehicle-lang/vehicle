@@ -32,6 +32,7 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
     TensorShape,
@@ -640,7 +641,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     NatLiteral n -> return $ compileNatLiteral n
     NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
     BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
-    RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
+    RatTensorLiteral t -> return $ compileTensorLiteral compileRealLiteral t
     VectorLiteral -> compileVecLiteral moduleDefs args
   StandardBuiltinFunction f -> case f of
     And -> annotateBinOp moduleDefs [] 40 "&&" args
@@ -799,15 +800,16 @@ compileBoolLiteral = \case
   True -> "true"
   False -> "false"
 
-compileRatLiteral :: Rational -> Code
-compileRatLiteral r = parens $ annotate ([], minPrecedence) rat
-  where
-    num = pretty $ numerator r
-    denom = pretty $ denominator r
-    rat =
-      if denominator r == 1
-        then "Real.(" <> num <> ".0)"
-        else "Real.(" <> num <> ".0 /. " <> denom <> ".0)"
+compileRealLiteral :: ExtendedRational -> Code
+compileRealLiteral = \case
+  Finite r -> do
+    let num = pretty $ numerator r
+    let denom = pretty $ denominator r
+    let rat
+          | denominator r == 1 = "Real.(" <> num <> ".0)"
+          | otherwise = "Real.(" <> num <> ".0 /. " <> denom <> ".0)"
+    parens $ annotate ([], minPrecedence) rat
+  _ -> developerError "Compiling infinite values to Imandra not supported"
 
 compileLam :: (MonadImandraCompile m) => [ModuleDef] -> Binder DecidabilityBuiltin -> Expr DecidabilityBuiltin -> m Code
 compileLam moduleDefs binder expr = do

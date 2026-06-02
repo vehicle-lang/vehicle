@@ -117,6 +117,15 @@ The available operations over reals are:
      - :code:`max x y`
      - :code:`Real → Real → Real`
      - |backendall_full|
+   * - Infinity
+     - :code:`infinity`
+     - :code:`Real`
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
 
 
 .. note::

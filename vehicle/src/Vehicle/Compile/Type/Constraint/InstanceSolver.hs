@@ -232,10 +232,10 @@ checkCandidate constraint goal depth candidate = do
 
     case result of
       Left err -> do
-        let vehicleError = formatCompileError err
+        let vehicleUserError = formatCompileError err
         logDebug MaxDetail $ line <> "Rejecting" <+> candidateDoc <+> "as a possibility"
-        logDebug MaxDetail $ indent 2 (pretty vehicleError) <> line
-        return $ Left (candidate, problem vehicleError)
+        logDebug MaxDetail $ indent 2 (pretty vehicleUserError) <> line
+        return $ Left (candidate, problem vehicleUserError)
       Right (instantiatedSolution, state) -> do
         logDebug MaxDetail $ "Keeping" <+> candidateDoc <+> "as a possibility" <> line
         return $ Right $ SuccessfulInstanceCandidate candidate state instantiatedSolution

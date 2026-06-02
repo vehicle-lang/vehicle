@@ -13,6 +13,7 @@ import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Builtin.Standard.Core qualified as S
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value (Value)
+import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor)
 import Vehicle.Prelude (Name, Pretty (..), developerError)
 
@@ -51,7 +52,7 @@ data LossBuiltinConstructor
   | IndexLiteral Int
   | NatLiteral Int
   | NatTensorLiteral (Tensor Int)
-  | RatTensorLiteral (Tensor Rational)
+  | RatTensorLiteral (Tensor ExtendedRational)
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty LossBuiltinConstructor where

@@ -32,6 +32,7 @@ import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor, TensorShape, foldMapTensor)
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Name
@@ -555,7 +556,7 @@ compileBuiltinConstructor c args = case c of
   VectorLiteral -> compileVecLiteral args
   NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
   BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
-  RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
+  RatTensorLiteral t -> return $ compileTensorLiteral compileRealLiteral t
 
 compileBuiltinFunction ::
   (MonadAgdaCompile m) =>
@@ -667,13 +668,15 @@ compileIntLiteral i
   | i >= 0 = annotate ([DataInteger], 8) (intQualifier <> ".+" <+> pretty i)
   | otherwise = annotate ([DataInteger], 6) (intQualifier <> ".-" <+> compileIntLiteral (-i))
 
-compileRatLiteral :: Rational -> Code
-compileRatLiteral r
-  | denominator r == 1 = pretty $ numerator r
-  | otherwise = annotate ([DataRat], 7) (num <+> "/" <+> denom)
-  where
-    num = compileIntLiteral (fromInteger $ numerator r)
-    denom = compileNatLiteral (fromInteger $ denominator r)
+compileRealLiteral :: ExtendedRational -> Code
+compileRealLiteral = \case
+  Finite r
+    | denominator r == 1 -> pretty $ numerator r
+    | otherwise -> do
+        let num = compileIntLiteral (fromInteger $ numerator r)
+        let denom = compileNatLiteral (fromInteger $ denominator r)
+        annotate ([DataRat], 7) (num <+> "/" <+> denom)
+  _ -> developerError "Compiling infinite values to Agda not supported"
 
 -- | Compiling vector literals. No literals in Agda so have to go via cons.
 toVec :: [Code] -> Code

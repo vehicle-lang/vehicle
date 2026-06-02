@@ -12,6 +12,7 @@ import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 
 ---------------------------------------------------------------------------------
@@ -129,7 +130,7 @@ evalFromNatToIndex args = return $ case args of
 
 evalFromNatToRat :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimple FromNatToSimpleArgs expr Builtin m
 evalFromNatToRat args = return $ case args of
-  FromNatToSimpleArgs (INatLiteral n) _ -> IRatLiteral $ fromIntegral n
+  FromNatToSimpleArgs (INatLiteral n) _ -> IRatLiteral $ Finite $ fromIntegral n
   _ -> mkExpr accessFromNatToRat args
 
 evalFromRatToRat :: (MonadNormBuiltin m) => EvalSimple Op1Args expr Builtin m

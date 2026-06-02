@@ -9,6 +9,7 @@ comment "{-" "-}";
 position token Boolean  ({"True"} | {"False"});
 position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
+position token Infinity {"infinity"};
 
 position token TokAnnotation ({"@"}
   ( {"network"}
@@ -193,9 +194,10 @@ separator RecordFieldAssign ",";
 -- * Literals
 
 UnitLiteral.  Lit ::= "()";
+BoolLiteral.  Lit ::= Boolean;
 NatLiteral.   Lit ::= Natural;
 RatLiteral.   Lit ::= Rational;
-BoolLiteral.  Lit ::= Boolean;
+InfLiteral.   Lit ::= Infinity;
 
 -- * Expressions
 

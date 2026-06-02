@@ -12,6 +12,7 @@ import Prettyprinter (Pretty (..))
 import Vehicle.Data.Builtin.Core.BasicOperations as X
 import Vehicle.Data.Builtin.Core.Derived as X
 import Vehicle.Data.Builtin.Core.TypeClass as X
+import Vehicle.Data.Real
 import Vehicle.Data.Tensor
 
 --------------------------------------------------------------------------------
@@ -61,7 +62,7 @@ data BuiltinConstructor
   | VectorLiteral
   | BoolTensorLiteral (Tensor Bool)
   | NatTensorLiteral (Tensor Int)
-  | RatTensorLiteral (Tensor Rational)
+  | RatTensorLiteral (Tensor ExtendedRational)
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinConstructor

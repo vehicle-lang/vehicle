@@ -16,6 +16,9 @@ import Vehicle.Prelude
 -------------------------------------------------------------------------------
 -- Constants
 
+-- At the moment we only support rational coefficients.
+type Coefficient = Rational
+
 type ScaleConstant constant = Coefficient -> constant -> constant
 
 type AddConstants constant = Coefficient -> Coefficient -> constant -> constant -> constant

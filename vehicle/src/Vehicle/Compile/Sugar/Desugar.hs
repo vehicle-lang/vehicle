@@ -27,6 +27,7 @@ import Vehicle.Data.AST.Expr.Desugared qualified as V
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard qualified as V
 import Vehicle.Data.Builtin.Standard.Scoping ()
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Prelude
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Token
@@ -604,7 +605,10 @@ elabLiteral = \case
   B.RatLiteral t -> do
     p <- mkProvenance t
     let r = readRat (tkSymbol t)
-    return $ elabDecimalLiteral p r
+    return $ elabDecimalLiteral p (Finite r)
+  B.InfLiteral tk -> do
+    p <- mkProvenance tk
+    return $ elabDecimalLiteral p PosInfinity
 
 readNatLiteral :: B.Natural -> Int
 readNatLiteral t = readNat (tkSymbol t)
