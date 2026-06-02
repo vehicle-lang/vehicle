@@ -57,6 +57,7 @@ CoqMakefile
 CoqMakefile.conf
 .Makefile.d
 Makefile.conf
+vehicle-rocq/utils/Makefile
 
 # dune
 _build/
