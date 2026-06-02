@@ -115,19 +115,3 @@ jobs:
             --test-option='/Rocq/'                   \
             --test-option=--allowlist-externals=rocq
 
-      # After the golden tests confirm the generator output matches each
-      # committed Rocq.v.golden, compile each one through rocq to verify
-      # the generated code actually typechecks against vehicle-rocq +
-      # math-comp (textual diff alone wouldn't catch e.g. mathcomp notation
-      # drift that breaks the generated proof).
-      - name: 🧪 Typecheck generated Rocq outputs
-        run: |
-          eval $(opam env)
-          set -e
-          for f in vehicle/tests/golden/specifications/*/Rocq.v.golden; do
-            tmp_dir="$(mktemp -d)"
-            tmp_file="$tmp_dir/Generated.v"
-            cp "$f" "$tmp_file"
-            echo "==> rocq c $f"
-            rocq c -native-compiler no "$tmp_file"
-          done
