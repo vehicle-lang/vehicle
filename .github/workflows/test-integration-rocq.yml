@@ -1,13 +1,17 @@
 name: Test Rocq
 
 on:
-  workflow_call:
-  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    tags:
+      - "v*"
   pull_request:
-    paths:
-      - 'vehicle-rocq/**'
-      - 'vehicle/src/Vehicle/Backend/ITP/Rocq*'
-      - '.github/workflows/test-integration-rocq.yml'
+    types:
+      - opened
+      - synchronize
+      - reopened
+  merge_group:
 
 defaults:
   run:
@@ -20,58 +24,94 @@ jobs:
         os:
           - name: "Linux"
             type: "ubuntu-latest"
-            plat: "manylinux_2_17_x86_64.manylinux2014_x86_64"
           - name: "macOS"
             type: "macos-latest"
-            plat: "macosx_10_9_x86_64"
         haskell:
           - ghc:
-              version: "9.4.8"
+              version: "9.6.5"
             cabal:
-              version: "3.14.2.1"
-              project-file: "cabal.project.ghc-9.4.8"
+              version: "3.14.2.0"
+              project-file: "cabal.project"
               extra-args: ""
+              extra-args-test-golden: ""
         ocaml:
-          - version: "5"
+          - version: "5.4.1"
         rocq:
           - version: "9.1.1"
 
-    name: rocq / ${{ matrix.os.name }} - Ocaml ${{ matrix.ocaml.version }} - Rocq ${{ matrix.rocq.version }}
+    name: Rocq / ${{ matrix.os.name }} - Rocq ${{ matrix.rocq.version }}
     runs-on: ${{ matrix.os.type }}
 
     steps:
-      - uses: actions/checkout@v6
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
 
-      - name: Setup Haskell
-        uses: ./.github/actions/setup-haskell
+      - name: 🛠️ Install Haskell
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: ${{ matrix.haskell.ghc.version }}
           cabal-version: ${{ matrix.haskell.cabal.version }}
-          cabal-project-file: ${{ matrix.haskell.cabal.project-file }}
-          cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
 
-      - name: Setup OCaml
+      - name: 🛠️ Configure
+        run: |
+          cabal configure --project-file=${{ matrix.haskell.cabal.project-file }}
+          cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
+
+      - name: 💾 Restore Cabal dependencies
+        uses: actions/cache/restore@v5
+        if: ${{ !env.ACT }}
+        id: cache-haskell
+        env:
+          key: ${{ matrix.os.name }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ env.key }}-
+
+      - name: 🛠️ Install Cabal dependencies
+        if: ${{ env.ACT || steps.cache-haskell.outputs.cache-hit != 'true' }}
+        run: cabal build all --only-dependencies
+
+      - name: 💾 Save Cabal dependencies
+        uses: actions/cache/save@v5
+        if: ${{ !env.ACT && steps.cache-haskell.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
+
+      - name: 🛠️ Install OCaml
         uses: ocaml/setup-ocaml@v3.6.1
         with:
           ocaml-compiler: ${{ matrix.ocaml.version }}
 
-      - name: Add Rocq opam repository
+      - name: 🛠️ Add Rocq opam repository
         run: opam repo add rocq-released https://rocq-prover.org/opam/released
 
-      - name: Install Rocq
-        run: opam install -y rocq-prover.${{ matrix.rocq.version }}
+      - name: 🛠️ Install Rocq
+        run: opam install -y rocq-core.${{ matrix.rocq.version }}
 
       # TODO: The vehicle-rocq companion library currently depends on the tensor
       # module that lives on the open math-comp PR #1535. Until that lands in
       # a tagged math-comp release (>= 2.6.0), pin math-comp to the tensor
       # branch so the dependency constraints in vehicle-rocq.opam resolve.
-      - name: Pin math-comp tensor branch
+      - name: 🛠️ Pin math-comp tensor branch
         run: opam pin add -y -k git https://github.com/hoheinzollern/math-comp.git#tensor
 
-      - name: Install vehicle-rocq
+      # The released analysis and finmap don't compile against the
+      # tensor-branch math-comp (e.g. rocq-mathcomp-finmap.2.2.2 has a proof
+      # that breaks under our notation level shifts). Pin both to their
+      # master branches, matching the local dev setup.
+      - name: 🛠️ Pin math-comp/finmap master
+        run: opam pin add -y -k git https://github.com/math-comp/finmap.git#master
+
+      - name: 🛠️ Pin math-comp/analysis master
+        run: opam pin add -y -k git https://github.com/math-comp/analysis.git#master
+
+      - name: 🛠️ Install vehicle-rocq
         run: opam install -y ./vehicle-rocq
 
-      - name: Run Vehicle golden tests for Rocq backend
+      - name: 🧪 Test Vehicle-Rocq interaction
         run: |
           eval $(opam env)
           cabal test                                 \
@@ -79,9 +119,16 @@ jobs:
             --test-show-details=always               \
             --test-option=--color=always             \
             --test-option=--num-threads=1            \
+            --test-option=-p                         \
+            --test-option='/Rocq/'                   \
             --test-option=--allowlist-externals=rocq
 
-      - name: Typecheck generated Rocq outputs
+      # After the golden tests confirm the generator output matches each
+      # committed Rocq.v.golden, compile each one through rocq to verify
+      # the generated code actually typechecks against vehicle-rocq +
+      # math-comp (textual diff alone wouldn't catch e.g. mathcomp notation
+      # drift that breaks the generated proof).
+      - name: 🧪 Typecheck generated Rocq outputs
         run: |
           eval $(opam env)
           set -e
