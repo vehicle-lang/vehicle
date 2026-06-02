@@ -802,7 +802,7 @@ compileComparison domain op = do
 compileStack :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileStack args = do
   vecExpr <- toVec args
-  return $ annotate ([MathcompImport Algebra], functionApplicationPrecedence) $ "nstack_tuple" <+> vecExpr
+  return $ annotate ([MathcompImport Algebra], functionApplicationPrecedence) $ "nstack_tuple (x := "<> pretty (length args) <> "%:posnat)" <+> vecExpr
 
 compileVecLiteral :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of
