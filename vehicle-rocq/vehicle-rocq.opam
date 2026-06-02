@@ -35,4 +35,7 @@ depends: [
   "rocq-mathcomp-reals" { >= "1.14.0" }
 ]
 
-authors: [ "Joshua Smart" ]
+authors: [
+  "Joshua Smart"
+  "Alessandro Bruni"
+]
