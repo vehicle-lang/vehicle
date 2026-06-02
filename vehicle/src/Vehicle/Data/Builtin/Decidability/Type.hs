@@ -243,6 +243,8 @@ convertToDecidabilityBuiltins p b args = return $
         Min {} -> sameFunction f
         Max {} -> sameFunction f
         Pow {} -> sameFunction f
+        Exp {} -> sameFunction f
+        Log {} -> sameFunction f
         ReduceAddRatTensor -> sameFunction f
         ReduceMulRatTensor -> sameFunction f
         ReduceMinRatTensor -> sameFunction f

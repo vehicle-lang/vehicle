@@ -111,6 +111,14 @@ class TensorFlowBuiltins(
         return tf.pow(x, tf.fill(dims=x.shape, value=y, dtype=self.dtype_rat))
 
     @override
+    def LogRatTensor(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.math.log(x)
+
+    @override
+    def ExpRatTensor(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.math.exp(x)
+
+    @override
     def ReduceAddRatTensor(
         self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]
     ) -> tf.Tensor:

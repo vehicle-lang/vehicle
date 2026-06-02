@@ -601,6 +601,8 @@ compileBuiltinFunction f args = case f of
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
   Iterate -> unsupportedError
   Pow {} -> unsupportedError
+  Log {} -> unsupportedError
+  Exp {} -> unsupportedError
   where
     unsupportedError :: a
     unsupportedError =

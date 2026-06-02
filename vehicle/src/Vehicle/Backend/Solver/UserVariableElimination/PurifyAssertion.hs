@@ -66,6 +66,8 @@ purifyRatTensorExpr actions@UnblockingActions {..} incrDims expr = do
     VMulRatTensor args -> purifyTensorOp2 (recPurify incrDims) VMulRatTensor args
     VDivRatTensor args -> purifyTensorOp2 (recPurify incrDims) VDivRatTensor args
     VPowRatTensor args -> purifyTensorOp2 (recPurify incrDims) VPowRatTensor args
+    VLogRatTensor args -> purifyTensorOp1 (recPurify incrDims) VLogRatTensor args
+    VExpRatTensor args -> purifyTensorOp1 (recPurify incrDims) VExpRatTensor args
     -- Recursively purify
     VRatConstTensor args -> purifyConstTensor args
     VRatStackTensor args -> purifyStackTensor (recPurify (incrDims - 1)) args

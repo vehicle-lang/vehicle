@@ -110,6 +110,14 @@ class PyTorchBuiltins(
         return torch.pow(torch.as_tensor(x), torch.as_tensor(y))
 
     @override
+    def LogRatTensor(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.log(torch.as_tensor(x))
+
+    @override
+    def ExpRatTensor(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.exp(torch.as_tensor(x))
+
+    @override
     def ReduceAddRatTensor(
         self, e: float, xs: torch.Tensor | Sequence[torch.Tensor]
     ) -> torch.Tensor:

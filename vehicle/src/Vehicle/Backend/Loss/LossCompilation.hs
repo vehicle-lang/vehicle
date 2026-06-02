@@ -280,6 +280,8 @@ convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VDatasetOrParameter name -> convertFreeVar name []
   VRatTensorLiteral t -> return $ mkExpr accessRatTensorLiteral t
   VNegRatTensor args -> mkExpr accessNegRatTensor <$> convertTensorOp1 convertRatTensor args
+  VLogRatTensor args -> mkExpr accessLogRatTensor <$> convertTensorOp1 convertRatTensor args
+  VExpRatTensor args -> mkExpr accessExpRatTensor <$> convertTensorOp1 convertRatTensor args
   VAddRatTensor args -> mkExpr accessAddRatTensor <$> convertTensorOp2 convertRatTensor args
   VSubRatTensor args -> mkExpr accessSubRatTensor <$> convertTensorOp2 convertRatTensor args
   VMulRatTensor args -> mkExpr accessMulRatTensor <$> convertTensorOp2 convertRatTensor args

@@ -433,6 +433,12 @@ evalFoldList ctx evalApp eval (FoldListArgs a b f e xs) = evalList xs
 evalNegRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin) => EvalSimple TensorOp1Args Value builtin m
 evalNegRatTensor = evalTensorOp1 accessNegRatTensorBuiltin accessRatTensorLiteral (\x -> -x)
 
+evalLogRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin) => EvalSimple TensorOp1Args Value builtin m
+evalLogRatTensor x = return $ mkExpr accessLogRatTensor x
+
+evalExpRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin) => EvalSimple TensorOp1Args Value builtin m
+evalExpRatTensor x = return $ mkExpr accessExpRatTensor x
+
 evalAddRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin) => EvalSimple TensorOp2Args Value builtin m
 evalAddRatTensor = evalTensorOp2 accessAddRatTensorBuiltin accessRatTensorLiteral (+) (Just 0) (Just 0) Nothing Nothing
 

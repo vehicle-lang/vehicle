@@ -185,6 +185,28 @@ The following operations over tensors are currently supported:
        | |backendrocq_easy|
        | |backendimandra_easy|
        | |backendisabelle_easy|
+   * - | Pointwise
+       | natural log
+     - :code:`log t`
+     - | :code:`Tensor A ds → Tensor A ds`
+       | (if ``A`` supports ``log``)
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - | Pointwise
+       | exponential
+     - :code:`exp t`
+     - | :code:`Tensor A ds → Tensor A ds`
+       | (if ``A`` supports ``exp``)
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
    * - | Reduce
        | add
      - ``reduceAdd e t``

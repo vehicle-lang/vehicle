@@ -68,6 +68,8 @@ position token TokSub       {"-"};
 position token TokPow       {"^"};
 position token TokMin       {"min"};
 position token TokMax       {"max"};
+position token TokLog       {"log"};
+position token TokExp       {"exp"};
 
 position token TokAddNat    {"addNat"};
 position token TokMulNat    {"mulNat"};
@@ -270,6 +272,8 @@ At.         Expr13 ::= Expr13 TokAt Expr14;
 -- Hard-coded builtins remove
 Min.                          Expr16 ::= TokMin;
 Max.                          Expr16 ::= TokMax;
+Log.                          Expr16 ::= TokLog;
+Exp.                          Expr16 ::= TokExp;
 AddNat.                       Expr16 ::= TokAddNat;
 MulNat.                       Expr16 ::= TokMulNat;
 AddRealTensor.                Expr16 ::= TokAddRealTensor;

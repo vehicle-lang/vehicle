@@ -237,6 +237,8 @@ instance BuiltinHasRatLiterals Builtin where
       }
 
   accessNegRatTensorBuiltin = functionAccessor $ Neg NegRatTensor
+  accessLogRatTensorBuiltin = functionAccessor $ Log LogRatTensor
+  accessExpRatTensorBuiltin = functionAccessor $ Exp ExpRatTensor
   accessAddRatTensorBuiltin = functionAccessor $ Add AddRatTensor
   accessMulRatTensorBuiltin = functionAccessor $ Mul MulRatTensor
   accessSubRatTensorBuiltin = functionAccessor $ Sub SubRatTensor

@@ -413,6 +413,8 @@ elabExpr expr = case expr of
   B.Pow e1 tk e2 -> builtinFunction (V.Pow V.PowRatTensor) tk [e1, e2]
   B.Min tk -> builtinFunction (V.Min V.MinRatTensor) tk []
   B.Max tk -> builtinFunction (V.Max V.MaxRatTensor) tk []
+  B.Log tk -> builtinFunction (V.Log V.LogRatTensor) tk []
+  B.Exp tk -> builtinFunction (V.Exp V.ExpRatTensor) tk []
   B.Neg tk e -> builtinTypeClassOp V.NegTC tk [e]
   B.AddNat tk -> builtinFunction (V.Add V.AddNat) tk []
   B.MulNat tk -> builtinFunction (V.Mul V.MulNat) tk []

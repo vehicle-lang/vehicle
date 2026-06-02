@@ -89,6 +89,8 @@ class (BuiltinHasTensors builtin) => BuiltinHasRatLiterals builtin where
   accessRatTensorLitBuiltin :: Accessor builtin ExtendedRatTensor
 
   accessNegRatTensorBuiltin :: Accessor builtin ()
+  accessLogRatTensorBuiltin :: Accessor builtin ()
+  accessExpRatTensorBuiltin :: Accessor builtin ()
   accessAddRatTensorBuiltin :: Accessor builtin ()
   accessMulRatTensorBuiltin :: Accessor builtin ()
   accessSubRatTensorBuiltin :: Accessor builtin ()

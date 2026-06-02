@@ -100,6 +100,24 @@ The available operations over reals are:
        | |backendrocq_easy|
        | |backendimandra_easy|
        | |backendisabelle_easy|
+   * - Natural log
+     - :code:`log x`
+     - :code:`Real → Real`
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - Exponential
+     - :code:`exp x`
+     - :code:`Real → Real`
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
    * - Compare
      - | ``x < y``
        | ``x > y``

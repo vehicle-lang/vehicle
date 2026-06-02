@@ -118,6 +118,8 @@ unblockRatTensorValue actions@UnblockingActions {..} expr = showEntry expr $ do
     -- Recursively purify
     VIfRatTensor args -> unblockIf unblock args
     VNegRatTensor args -> unblockTensorOp1 unblock evalNegRatTensor args
+    VLogRatTensor args -> unblockTensorOp1 unblock evalLogRatTensor args
+    VExpRatTensor args -> unblockTensorOp1 unblock evalExpRatTensor args
     VAddRatTensor args -> unblockTensorOp2 unblock evalAddRatTensor args
     VSubRatTensor args -> unblockTensorOp2 unblock evalSubRatTensor args
     VMulRatTensor args -> unblockTensorOp2 unblock evalMulRatTensor args

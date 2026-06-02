@@ -560,11 +560,13 @@ compileBuiltin b args = case b of
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 0) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
     StackTensor -> compileStack args
-    Iterate -> unsupportedError
-    Pow {} -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyRecord _ -> unsupportedTensorLikeQuantifier
+    Iterate -> unsupportedError
+    Pow {} -> unsupportedError
+    Log {} -> unsupportedError
+    Exp {} -> unsupportedError
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return $ annotateConstant [] "Prop"
     PropTrue -> return $ annotateConstant [] "True"

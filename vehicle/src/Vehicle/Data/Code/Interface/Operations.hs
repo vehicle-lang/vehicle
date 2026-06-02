@@ -258,6 +258,12 @@ accessRatTensorLiteral = accessNoArgs accessRatTensorLitBuiltin
 accessNegRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
 accessNegRatTensor = accessArgs accessNegRatTensorBuiltin
 
+accessLogRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
+accessLogRatTensor = accessArgs accessLogRatTensorBuiltin
+
+accessExpRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
+accessExpRatTensor = accessArgs accessExpRatTensorBuiltin
+
 accessAddRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
 accessAddRatTensor = accessArgs accessAddRatTensorBuiltin
 
