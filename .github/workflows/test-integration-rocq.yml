@@ -89,7 +89,7 @@ jobs:
         run: opam repo add rocq-released https://rocq-prover.org/opam/released
 
       - name: 🛠️ Install Rocq
-        run: opam install -y rocq-prover.${{ matrix.rocq.version }}
+        run: opam install -y rocq-core.${{ matrix.rocq.version }}
 
       # TODO: The vehicle-rocq companion library currently depends on the tensor
       # module that lives on the open math-comp PR #1535. Until that lands in
