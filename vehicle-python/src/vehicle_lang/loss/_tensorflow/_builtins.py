@@ -94,7 +94,7 @@ class TensorFlowBuiltins(
 
     @override
     def PowRatTensor(self, x: tf.Tensor, y: float) -> tf.Tensor:
-        return tf.pow(x, _tf_constant(value=y, shape=x.shape, dtype=self.dtype_rat))
+        return tf.pow(x, tf.fill(dims=x.shape, value=y, dtype=self.dtype_rat))
 
     @override
     def ReduceAddRatTensor(
