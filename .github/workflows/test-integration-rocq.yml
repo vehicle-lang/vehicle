@@ -2,6 +2,12 @@ name: Test Rocq
 
 on:
   workflow_call:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'vehicle-rocq/**'
+      - 'vehicle/src/Vehicle/Backend/ITP/Rocq*'
+      - '.github/workflows/test-integration-rocq.yml'
 
 defaults:
   run:
@@ -28,7 +34,7 @@ jobs:
         ocaml:
           - version: "5"
         rocq:
-          - version: "9.0.0"
+          - version: "9.1.1"
 
     name: rocq / ${{ matrix.os.name }} - Ocaml ${{ matrix.ocaml.version }} - Rocq ${{ matrix.rocq.version }}
     runs-on: ${{ matrix.os.type }}
@@ -44,20 +50,28 @@ jobs:
           cabal-project-file: ${{ matrix.haskell.cabal.project-file }}
           cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
 
-      - name: Setup Ocaml
-        uses: ocaml/setup-ocaml@v3.4.6
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3.6.1
         with:
           ocaml-compiler: ${{ matrix.ocaml.version }}
 
+      - name: Add Rocq opam repository
+        run: opam repo add rocq-released https://rocq-prover.org/opam/released
+
       - name: Install Rocq
-        run: opam install rocq-prover.${{ matrix.rocq.version }}
+        run: opam install -y rocq-prover.${{ matrix.rocq.version }}
 
-      - name: Install libraries
-        run: |
-          opam repo add coq-released https://coq.inria.fr/opam/released
-          opam install ./vehicle-rocq
+      # TODO: The vehicle-rocq companion library currently depends on the tensor
+      # module that lives on the open math-comp PR #1535. Until that lands in
+      # a tagged math-comp release (>= 2.6.0), pin math-comp to the tensor
+      # branch so the dependency constraints in vehicle-rocq.opam resolve.
+      - name: Pin math-comp tensor branch
+        run: opam pin add -y -k git https://github.com/hoheinzollern/math-comp.git#tensor
 
-      - name: Test Vehicle-Rocq interaction
+      - name: Install vehicle-rocq
+        run: opam install -y ./vehicle-rocq
+
+      - name: Run Vehicle golden tests for Rocq backend
         run: |
           eval $(opam env)
           cabal test                                 \
@@ -66,3 +80,15 @@ jobs:
             --test-option=--color=always             \
             --test-option=--num-threads=1            \
             --test-option=--allowlist-externals=rocq
+
+      - name: Typecheck generated Rocq outputs
+        run: |
+          eval $(opam env)
+          set -e
+          for f in vehicle/tests/golden/specifications/*/Rocq.v.golden; do
+            tmp_dir="$(mktemp -d)"
+            tmp_file="$tmp_dir/Generated.v"
+            cp "$f" "$tmp_file"
+            echo "==> rocq c $f"
+            rocq c -native-compiler no "$tmp_file"
+          done

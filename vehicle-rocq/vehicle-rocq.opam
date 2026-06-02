@@ -20,6 +20,7 @@ It also provides the vehicle_validate tactic, which invokes
 """
 
 build: [
+  [ "sh" "-c" "cd utils && coq_makefile -f _CoqProject -o Makefile" ]
   [ make "-C" "utils" "-j" jobs]
   [ "dune" "build" "-p" name "-j" jobs ]
 ]
@@ -35,4 +36,7 @@ depends: [
   "rocq-mathcomp-reals" { >= "1.14.0" }
 ]
 
-authors: [ "Joshua Smart" ]
+authors: [
+  "Joshua Smart"
+  "Alessandro Bruni"
+]
