@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use forM_" #-}
 module Vehicle.Verify.Specification.Execute
   ( VerificationSettings (..),
     verifySpecification,
@@ -8,13 +11,14 @@ import Control.Monad (forM, forM_, unless)
 import Control.Monad.Except (MonadError (..), runExceptT, throwError)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.Bifunctor (Bifunctor (..))
+import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.IDX (encodeIDXFile)
 import Data.IDX.Internal
-import Data.List.NonEmpty (NonEmpty (..), (<|))
+import Data.List.NonEmpty (NonEmpty)
 import Data.Set qualified as Set (difference, fromList, null)
 import Data.Vector qualified as BoxedVector
 import Data.Vector.Unboxed qualified as Vector (fromList)
+import GHC.Base (NonEmpty (..))
 import System.Directory (copyFile, createDirectoryIfMissing)
 import System.Exit (ExitCode (..))
 import System.FilePath (takeFileName, (</>))
@@ -22,6 +26,7 @@ import System.Process (readProcessWithExitCode)
 import System.Random
 import Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Builtin.Core (Quantifier (..))
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Tensor as Tensor (HasShape (..), toVector)
@@ -31,6 +36,7 @@ import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Execute.Reporting
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier
+import Vehicle.Verify.Verifier.Core (SolverResult (..))
 
 --------------------------------------------------------------------------------
 -- Verification
@@ -76,32 +82,36 @@ verifyMultiproperty ::
   m ()
 verifyMultiproperty = \case
   MultiProperty properties -> forM_ properties verifyMultiproperty
-  SingleProperty address -> verifyProperty address
+  SingleProperty address -> verifyPropertyAt address
 
-verifyProperty ::
+verifyPropertyAt ::
   (MonadVerify m) =>
   PropertyAddress ->
   m ()
-verifyProperty address = do
+verifyPropertyAt address = do
   -- Read the verification plan for the property
   settings <- ask
   let propertyPlanFile = propertyPlanFileName (specificationCache settings) address
-  PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
-
-  -- Determine number of queries and initialise progress bar
-  result <- reportProperty address (propertySize queryMetaData) $ case queryMetaData of
-    Trivial status ->
-      return $ Trivial status
-    NonTrivial structure -> logCompilerSection MinDetail ("Verifying property" <+> quotePretty address) $ do
-      -- Verify all queries in reader with full context
-      NonTrivial <$> verifyPropertyBooleanStructure structure
-
+  PropertyVerificationPlan property <- readPropertyVerificationPlan propertyPlanFile
+  result <-
+    reportProperty address (propertySize property) $ do
+      logCompilerSection MinDetail ("Verifying property" <+> quotePretty address) $ do
+        runWriterT $ do
+          verifyProperty property
   outputPropertyResult address result
 
 type MonadVerifyProperty m =
   ( MonadVerify m,
-    MonadError (QueryMetaData, VerifierError) m
+    MonadWriter [UnknownQuery] m
   )
+
+verifyProperty ::
+  (MonadVerifyProperty m) =>
+  Property ->
+  m PropertyResult
+verifyProperty = \case
+  Trivial b -> return $ PropertyResult b
+  NonTrivial e -> verifyPropertyBooleanStructure e
 
 -- | Lazily tries to verify the property, avoiding evaluating parts
 -- of the expression that are not needed.
@@ -109,63 +119,83 @@ verifyPropertyBooleanStructure ::
   forall m.
   (MonadVerifyProperty m) =>
   BooleanExpr QuerySet ->
-  m (BooleanExpr QuerySetResult)
-verifyPropertyBooleanStructure expr = fst <$> go expr
+  m PropertyResult
+verifyPropertyBooleanStructure = go
   where
     go ::
       BooleanExpr QuerySet ->
-      m (BooleanExpr QuerySetResult, Either VerifierError Bool)
+      m PropertyResult
     go = \case
-      Atom qs -> do
-        (result, boolResult) <- verifyQuerySet qs
-        return (Atom result, boolResult)
-      Disjunct (DisjunctAll xs) -> do
-        (result, boolResult) <- goDisjunct xs
-        return (disjunctExprs $ DisjunctAll result, boolResult)
-      Conjunct (ConjunctAll xs) -> do
-        (result, boolResult) <- goConjunct xs
-        return (conjunctExprs $ ConjunctAll result, boolResult)
+      Atom qs -> goAtom qs
+      Disjunct (DisjunctAll xs) -> goDisjunct xs
+      Conjunct (ConjunctAll xs) -> goConjunct xs
 
-    goConjunct :: NonEmpty (BooleanExpr QuerySet) -> m (NonEmpty (BooleanExpr QuerySetResult), Either VerifierError Bool)
-    goConjunct (x :| []) = first (:| []) <$> go x
+    goAtom :: QuerySet -> m PropertyResult
+    goAtom querySet = do
+      querySetResult <- verifyQuerySet querySet
+      return $ case querySetResult of
+        SATQuery polarity _ _ -> PropertyResult $ polarity == Exists
+        NoSATQueries polarity -> PropertyResult $ polarity == Forall
+        UnknownIfSATQuery -> PropertyUnknown
+
+    goConjunct :: NonEmpty (BooleanExpr QuerySet) -> m PropertyResult
+    goConjunct (x :| []) = go x
     goConjunct (x :| y : ys) = do
-      (result, boolResult) <- go x
-      case boolResult of
-        Right True -> first (result <|) <$> goConjunct (y :| ys)
-        errorOrFalse -> return (result :| [], errorOrFalse)
+      result <- go x
+      case result of
+        PropertyResult False -> return $ PropertyResult False
+        PropertyResult True -> goConjunct (y :| ys)
+        PropertyUnknown -> do
+          recResult <- goConjunct (y :| ys)
+          case recResult of
+            PropertyResult False -> return $ PropertyResult False
+            _ -> return PropertyUnknown
 
-    goDisjunct :: NonEmpty (BooleanExpr QuerySet) -> m (NonEmpty (BooleanExpr QuerySetResult), Either VerifierError Bool)
-    goDisjunct (x :| []) = first (:| []) <$> go x
+    goDisjunct :: NonEmpty (BooleanExpr QuerySet) -> m PropertyResult
+    goDisjunct (x :| []) = go x
     goDisjunct (x :| y : ys) = do
-      (result, boolResult) <- go x
-      case boolResult of
-        Right False -> first (result <|) <$> goDisjunct (y :| ys)
-        errorOrTrue -> return (result :| [], errorOrTrue)
+      result <- go x
+      case result of
+        PropertyResult True -> return $ PropertyResult True
+        PropertyResult False -> goDisjunct (y :| ys)
+        PropertyUnknown -> do
+          recResult <- goDisjunct (y :| ys)
+          case recResult of
+            PropertyResult True -> return $ PropertyResult True
+            _ -> return PropertyUnknown
 
 verifyQuerySet ::
   (MonadVerifyProperty m) =>
   QuerySet ->
-  m (QuerySetResult, Either VerifierError Bool)
-verifyQuerySet (QuerySet negated disjuncts) = do
-  result <- verifyDisjunctAll disjuncts
-  return (_ negated result)
+  m QuerySetResult
+verifyQuerySet (QuerySet polarity disjuncts) = do
+  verifyDisjunctAll polarity disjuncts
 
 verifyDisjunctAll ::
   forall m.
   (MonadVerifyProperty m) =>
+  QuerySetPolarity ->
   DisjunctAll QueryMetaData ->
-  m QueryResult
-verifyDisjunctAll (DisjunctAll ys) = go ys
+  m QuerySetResult
+verifyDisjunctAll polarity ys = go $ disjunctsToList ys
   where
     go ::
-      NonEmpty QueryMetaData ->
-      m QueryResult
-    go (x :| []) = verifyQuery x
-    go (x :| y : xs) = do
-      r <- verifyQuery x
-      if isVerified r
-        then return r
-        else go (y :| xs)
+      [QueryMetaData] ->
+      m QuerySetResult
+    go [] = return $ NoSATQueries polarity
+    go (x : xs) = do
+      (queryResult, reconstructWitness) <- verifyQuery x
+      case queryResult of
+        QueryUnknown {} -> do
+          furtherResult <- go xs
+          case furtherResult of
+            SATQuery {} -> return furtherResult
+            _ -> return UnknownIfSATQuery
+        QueryUnSAT -> go xs
+        QuerySAT maybeQueryWitness -> do
+          maybeUserWitness <- traverse reconstructWitness maybeQueryWitness
+          writeWitnessToFile _ _ _
+          return $ SATQuery polarity (queryAddress x) maybeUserWitness
 
 --------------------------------------------------------------------------------
 -- Verification of queries
@@ -180,38 +210,54 @@ type MonadVerifyQuery m =
 verifyQuery ::
   (MonadVerifyProperty m) =>
   QueryMetaData ->
-  m QueryResult
-verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork variables reconstruction) = logCompilerSection MidDetail ("Verifying query" <+> quotePretty queryAddress) $ do
-  verifierSettings <- ask
-  let queryFile = calculateQueryFileName (specificationCache verifierSettings) queryAddress
+  -- This should return a QueryResult when we get our story about
+  -- compilation traces sorted out.
+  m (QueryResult, QueryVariablesAssignment -> m UserVariablesAssignment)
+verifyQuery metaData@(QueryMetaData queryAddress metaNetwork variables reconstruction) =
+  logCompilerSection MidDetail ("Verifying query" <+> quotePretty queryAddress) $ do
+    verifierSettings <- ask
+    let queryFile = calculateQueryFileName (specificationCache verifierSettings) queryAddress
 
-  errorOrResult <- runExceptT $
-    reportQuery queryAddress $ do
-      result <- invokeVerifier verifierSettings metaNetwork queryFile
-      case result of
-        QueryUnSAT -> do
-          logDebug MidDetail $ "Query is UnSAT" <> line
-          return QueryUnSAT
-        QuerySAT maybeWitness -> case maybeWitness of
-          Nothing -> do
-            logDebug MidDetail $ "Query is SAT (no witness)" <> line
-            return $ QuerySAT Nothing
-          Just witness -> do
-            logDebug MidDetail $ "Query is SAT (witness provided)" <> line
-            checkWitness (getQueryVariables variables) witness
-            return $ QuerySAT $ Just witness
-        QueryErrored err -> _
+    errorOrResult <- runExceptT $
+      reportQuery queryAddress $ do
+        result <- invokeVerifier verifierSettings metaNetwork queryFile
+        case result of
+          TimedOut -> handleUnknownQuery metaData SolverTimedOut
+          ReturnedUnknown -> handleUnknownQuery metaData SolverReportedUnknown
+          ReturnedUnSAT -> return QueryUnSAT
+          ReturnedSAT maybeWitness -> do
+            case maybeWitness of
+              Just witness -> checkWitness (getQueryVariables variables) witness
+              Nothing -> return ()
+            return $ QuerySAT maybeWitness
 
-  case errorOrResult of
-    Left err -> return $ QueryErrored err
-    Right result -> traverse (reconstructUserVars variables reconstruction) result
+    finalResult <- case errorOrResult of
+      Left err -> handleUnknownQuery metaData $ SolverErrored err
+      Right result -> return result
+
+    let reconstructWitness = reconstructUserVars variables reconstruction
+    return (finalResult, reconstructWitness)
+
+handleUnknownQuery :: (MonadVerifyProperty m) => QueryMetaData -> UnknownReason -> m QueryResult
+handleUnknownQuery metaData reason = do
+  tell [UnknownQuery metaData reason]
+  return QueryUnknown
+
+{-
+    case result of
+  NoSATQueries {} -> return ()
+  SATQuery _ address maybeWitness -> case maybeWitness of
+    Nothing -> return ()
+    Just witness -> writeWitnessToFile specificationCache address witness
+  ErroredQuery address err -> do
+-}
 
 invokeVerifier ::
   (MonadVerifyQuery m) =>
   VerificationSettings ->
   MetaNetwork ->
   QueryFile ->
-  m QueryResult
+  m SolverResult
 invokeVerifier VerificationSettings {..} metaNetworkEntries queryFile = do
   -- Prepare the command
   let args = prepareArgs verifier metaNetworkEntries queryFile <> verifierExtraArgs
@@ -246,15 +292,26 @@ checkWitness queryVariables witness = do
 --------------------------------------------------------------------------------
 -- Errors
 
-createReproducer ::
+handleQueryError ::
   (MonadVerify m) =>
-  Verifier ->
-  VerifierExecutable ->
-  FilePath ->
   MetaNetwork ->
   QueryAddress ->
-  m (Doc a)
-createReproducer verifier verifierExecutable verificationCache metaNetwork queryAddress = do
+  VerifierError ->
+  m ()
+handleQueryError metaNetwork queryAddress err = do
+  VerificationSettings {..} <- ask
+  reproducerMessage <- createReproducer metaNetwork queryAddress
+  let verificationErrorMessage = printVerifierError verifier queryAddress err
+  let finalMessage = "\nError: " <> verificationErrorMessage <> reproducerMessage
+  writeStderrLn (layoutAsText finalMessage)
+
+createReproducer ::
+  (MonadVerify m) =>
+  MetaNetwork ->
+  QueryAddress ->
+  m (Doc ())
+createReproducer metaNetwork queryAddress = do
+  VerificationSettings {..} <- ask
   -- Create the reproducer directory
   vehiclePath <- getVehiclePath
   randomNumber <- liftIO (randomIO :: IO Int)
@@ -269,7 +326,7 @@ createReproducer verifier verifierExecutable verificationCache metaNetwork query
         return resultName
 
   -- Copy the query file over
-  let queryFile = calculateQueryFileName verificationCache queryAddress
+  let queryFile = calculateQueryFileName specificationCache queryAddress
   copiedQueryFile <- liftIO $ copyOverFile queryFile
 
   -- Copy the network files over
@@ -303,30 +360,7 @@ outputPropertyResult ::
   m ()
 outputPropertyResult address result = do
   VerificationSettings {..} <- ask
-
-  -- Write the result to the cache
-  writePropertyResult specificationCache address (isVerified result)
-
-  -- Output any additional information
-  _
-
-{-
-case result of
-  PropertyCompleted status -> case status of
-    NonTrivial (_, SAT (Just assignment)) -> writeWitnessToFile specificationCache address assignment
-    _ -> return ()
-  PropertyErrored (QueryMetaData {..}, err) -> do
-    let VerificationErrorAction {..} = convertVerificationError verifier queryAddress err
-
-    reproducerMessage <-
-      if reproducerIsUseful
-        then createReproducer verifier verifierExecutable specificationCache metaNetwork queryAddress
-        else return ""
-
-    unless (isTimeoutError err) $ do
-      let finalMessage = "\nError: " <> verificationErrorMessage <> reproducerMessage
-      writeStderrLn (layoutAsText finalMessage)
--}
+  writePropertyResult specificationCache address result
 
 writeWitnessToFile :: (MonadVerify m) => FilePath -> PropertyAddress -> UserVariablesAssignment -> m ()
 writeWitnessToFile verificationCache address (UserVariablesAssignment assignments) = do

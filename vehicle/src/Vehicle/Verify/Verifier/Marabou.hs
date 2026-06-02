@@ -40,12 +40,12 @@ parseMarabouOutput output = do
       logDebug MinDetail $ pretty output
       throwError $ VerifierOutputMalformed "Cannot find 'sat', 'unsat' or 'timeout'"
     Just i
-      | outputLines !! i == "Timeout" -> throwError VerifierTimedOut
-      | outputLines !! i == "unsat" -> return QueryUnSAT
+      | outputLines !! i == "Timeout" -> return TimedOut
+      | outputLines !! i == "unsat" -> return ReturnedUnSAT
       | otherwise -> do
           let assignmentOutput = drop (i + 1) outputLines
           ioVarAssignment <- parseSATAssignment (filter (/= "") assignmentOutput)
-          return $ QuerySAT $ Just ioVarAssignment
+          return $ ReturnedSAT $ Just ioVarAssignment
 
 parseSATAssignment ::
   (MonadError VerifierError m) =>

@@ -1,10 +1,9 @@
 module Vehicle.Verify.Verifier
   ( VerifierID (..),
     Verifier (..),
-    VerificationErrorAction (..),
     verifiers,
     marabouVerifier,
-    convertVerificationError,
+    printVerifierError,
     VerifierExecutable,
   )
 where

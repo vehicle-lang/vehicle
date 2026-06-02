@@ -9,6 +9,7 @@ module Vehicle.Verify.Specification.Execute.Reporting
     runTextProgressReporterT,
     runJSONProgressReporterT,
     VerificationSettings (..),
+    UnknownQuery (..),
   )
 where
 
@@ -31,6 +32,7 @@ import System.IO (stdout)
 import System.ProgressBar
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
+import Vehicle.Verify.Specification (QueryMetaData)
 import Vehicle.Verify.Verifier.Core as Core
 
 --------------------------------------------------------------------------------
@@ -47,9 +49,14 @@ data VerificationSettings = VerificationSettings
     noSatPrint :: Bool
   }
 
+data UnknownQuery = UnknownQuery
+  { unknownQueryAddress :: QueryMetaData,
+    unknownQueryReason :: UnknownReason
+  }
+
 class (Monad m, MonadReader VerificationSettings m) => MonadProgressReporter m where
   reportMultiProperty :: PropertyName -> m () -> m ()
-  reportProperty :: PropertyAddress -> Int -> m PropertyResult -> m PropertyResult
+  reportProperty :: PropertyAddress -> Int -> m (PropertyResult, [UnknownQuery]) -> m PropertyResult
   reportQuery :: QueryAddress -> m QueryResult -> m QueryResult
 
 -- If error reporting is doing funny things, I have my doubts about this implementation...
@@ -65,6 +72,7 @@ data MultiPropertySummary = MultiPropertySummary
   { numberVerified :: Int,
     numberFalsified :: Int,
     numberTimedOut :: Int,
+    numberUnknown :: Int,
     numberErrored :: Int
   }
   deriving (Generic)
@@ -75,6 +83,7 @@ instance Semigroup MultiPropertySummary where
       { numberVerified = numberVerified s1 + numberVerified s2,
         numberFalsified = numberFalsified s1 + numberFalsified s2,
         numberTimedOut = numberTimedOut s1 + numberTimedOut s2,
+        numberUnknown = numberUnknown s1 + numberUnknown s2,
         numberErrored = numberErrored s1 + numberErrored s2
       }
 
@@ -83,6 +92,7 @@ instance Monoid MultiPropertySummary where
     MultiPropertySummary
       { numberVerified = 0,
         numberFalsified = 0,
+        numberUnknown = 0,
         numberTimedOut = 0,
         numberErrored = 0
       }
@@ -90,11 +100,12 @@ instance Monoid MultiPropertySummary where
 instance ToJSON MultiPropertySummary
 
 makeMultiPropertyStatus :: PropertyResult -> MultiPropertySummary
-makeMultiPropertyStatus result = case calculatePropertyVerified result of
-  Left VerifierTimedOut -> mempty {numberTimedOut = 1}
-  Left _ -> mempty {numberErrored = 1}
-  Right True -> mempty {numberVerified = 1}
-  Right False -> mempty {numberFalsified = 1}
+makeMultiPropertyStatus result = case calculateSimplePropertyResult result of
+  -- PropertyUnknown SolverErrored{} -> mempty {numberErrored = 1}
+  -- PropertyUnknown SolverTimedOut -> mempty {numberTimedOut = 1}
+  -- PropertyUnknown SolverReportedUnknown -> mempty {numberUnknown = 1}
+  PropertyResult True -> mempty {numberVerified = 1}
+  PropertyResult False -> mempty {numberFalsified = 1}
 
 --------------------------------------------------------------------------------
 -- Query event

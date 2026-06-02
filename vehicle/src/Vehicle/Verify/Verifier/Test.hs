@@ -37,7 +37,7 @@ parseTestVerifierOutput output = do
     [] -> throwError $ VerifierOutputMalformed "No output lines"
     l : ls
       | l == "unsat" -> return QueryUnSAT
-      | l == "timeout" -> throwError VerifierTimedOut
+      | l == "timeout" -> return $ QueryUnknown SolverTimedOut
       | otherwise -> QuerySAT . Just <$> parseSATAssignment ls
 
 parseSATAssignment ::

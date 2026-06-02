@@ -12,8 +12,6 @@ import System.FilePath ((<.>), (</>))
 import Vehicle.Compile.Resource
 import Vehicle.Data.Assertion (InequalityRelation (..), Relation (..))
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Code.BooleanExpr (BooleanExpr (..))
-import Vehicle.Data.MaybeTrivial (MaybeTrivial)
 import Vehicle.Data.Tensor (RatTensor, TensorIndices, TensorShape, showTensorIndices)
 import Vehicle.Prelude
 import Vehicle.Verify.QueryFormat.Core (QueryVariable)
@@ -57,18 +55,12 @@ data VerifierError
   | VerifierError String
   | VerifierOutputMalformed String
   | VerifierIncompleteWitness (Set QueryVariable)
-  | VerifierTimedOut
   deriving (Show, Generic)
 
 instance ToJSON VerifierError where
   toJSON = genericToJSON jsonOptions
 
 instance FromJSON VerifierError
-
-isTimeoutError :: VerifierError -> Bool
-isTimeoutError = \case
-  VerifierTimedOut -> True
-  _ -> False
 
 --------------------------------------------------------------------------------
 -- Queries
@@ -86,28 +78,32 @@ type QuerySetPolarity = Quantifier
 --------------------------------------------------------------------------------
 -- Query result
 
+data UnknownReason
+  = SolverTimedOut
+  | SolverErrored VerifierError
+  | SolverReportedUnknown
+  deriving (Show, Generic)
+
+instance ToJSON UnknownReason where
+  toJSON = genericToJSON jsonOptions
+
 data QueryResult
   = QuerySAT (Maybe QueryVariablesAssignment)
   | QueryUnSAT
-  | QueryErrored VerifierError
+  | QueryUnknown
   deriving (Show, Generic)
 
 instance ToJSON QueryResult where
   toJSON = genericToJSON jsonOptions
 
-instance FromJSON QueryResult
-
+{-
 instance Pretty QueryResult where
   pretty = \case
     QuerySAT w -> "SAT:" <+> pretty w
     QueryUnSAT -> "UNSAT"
     QueryErrored {} -> "ERRORED"
-
-isQuerySAT :: QueryResult -> Either VerifierError Bool
-isQuerySAT = \case
-  QuerySAT {} -> Right True
-  QueryUnSAT {} -> Right False
-  QueryErrored err -> Left err
+    QueryUnknown {} -> "UNKNOWN"
+-}
 
 --------------------------------------------------------------------------------
 -- Query address
@@ -215,27 +211,20 @@ instance Pretty UserVariablesAssignment where
 -- Query result
 
 data QuerySetResult
-  = -- | One of the queries in this set produced an error
-    Errored QueryAddress VerifierError
-  | -- | The set of queries was evaluated and returned the following result.
-    Returned QuerySetPolarity (Maybe UserVariablesAssignment)
+  = -- | At least one query was found to be SAT.
+    SATQuery QuerySetPolarity QueryAddress (Maybe UserVariablesAssignment)
+  | -- | No query in the set was found to be SAT.
+    NoSATQueries QuerySetPolarity
+  | -- | No query in the set returend SAT and at least one returned UNKNOWN
+    UnknownIfSATQuery
   deriving (Generic)
 
 instance ToJSON QuerySetResult where
   toJSON = genericToJSON jsonOptions
 
-isQuerySetVerified :: QuerySetResult -> Either VerifierError Bool
-isQuerySetVerified = \case
-  Errored _ err -> Left err
-  Returned polarity ass -> _
-
-type PropertyResult = MaybeTrivial (BooleanExpr QuerySetResult)
-
-calculatePropertyVerified :: PropertyResult -> Either VerifierError Bool
-calculatePropertyVerified = \case
-  Conjunct xs -> _
-  Disjunct xs -> _
-  Atom x -> isQuerySetVerified x
+data PropertyResult
+  = PropertyResult Bool
+  | PropertyUnknown
 
 --------------------------------------------------------------------------------
 -- Other

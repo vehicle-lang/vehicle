@@ -173,11 +173,11 @@ writePropertyResult ::
   (MonadIO m) =>
   FilePath ->
   PropertyAddress ->
-  Bool ->
+  PropertyResult ->
   m ()
 writePropertyResult verificationCache address result = do
   let resultFile = propertyResultFileName verificationCache address
-  liftIO $ writeFile resultFile (show result)
+  liftIO $ writeFile resultFile result
 
 readPropertyResult ::
   (MonadIO m) =>

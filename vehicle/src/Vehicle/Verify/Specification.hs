@@ -227,7 +227,7 @@ instance FromJSON SpecificationCacheIndex
 -- | The object that provides the required information to perform the
 -- verification of a single property within a specification.
 newtype PropertyVerificationPlan = PropertyVerificationPlan
-  { queryMetaData :: Property
+  { propertyContents :: Property
   }
   deriving (Generic)
 

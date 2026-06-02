@@ -34,12 +34,18 @@ type VerifierExecutable = FilePath
 -- | The type of methods that prepare the command line arguments for the verifier
 type PrepareVerifierArgs = MetaNetwork -> QueryFile -> [String]
 
+data SolverResult
+  = ReturnedSAT (Maybe QueryVariablesAssignment)
+  | ReturnedUnSAT
+  | TimedOut
+  | ReturnedUnknown
+
 -- | The type of methods that parse the output of the verifier.
 type ParseVerifierOutput =
   forall m.
   (MonadError VerifierError m, MonadLogger m) =>
   String ->
-  m QueryResult
+  m SolverResult
 
 -- | A complete verifier implementation
 data Verifier = Verifier
@@ -60,79 +66,49 @@ data Verifier = Verifier
 --------------------------------------------------------------------------------
 -- Error messages
 
-data VerificationErrorAction = VerificationErrorAction
-  { reproducerIsUseful :: Bool,
-    verificationErrorMessage :: Doc ()
-  }
-
-convertVerificationError :: Verifier -> QueryAddress -> VerifierError -> VerificationErrorAction
-convertVerificationError Verifier {..} (QueryAddress propertyAddress queryID) = \case
-  VerifierError errorMessage ->
-    VerificationErrorAction
-      { reproducerIsUseful = True,
-        verificationErrorMessage = do
-          "while verifying query"
-            <+> pretty queryID
-            <+> "of property"
-            <+> quotePretty propertyAddress
-            <+> "the"
-            <+> verifierDoc
-            <+> "threw the error:"
-            <> line
-            <> line
-            <> indent 2 (pretty errorMessage)
-      }
+printVerifierError :: Verifier -> QueryAddress -> VerifierError -> Doc ()
+printVerifierError Verifier {..} (QueryAddress propertyAddress queryID) = \case
+  VerifierError errorMessage -> do
+    "while verifying query"
+      <+> pretty queryID
+      <+> "of property"
+      <+> quotePretty propertyAddress
+      <+> "the"
+      <+> verifierDoc
+      <+> "threw the error:"
+      <> line
+      <> line
+      <> indent 2 (pretty errorMessage)
   VerifierTerminatedByOS signal ->
     exitFailureReason signal
   VerifierOutputMalformed message ->
-    VerificationErrorAction
-      { reproducerIsUseful = True,
-        verificationErrorMessage = "Unexpected output from the" <+> verifierDoc <> "." <+> pretty message
-      }
-  VerifierTimedOut ->
-    VerificationErrorAction
-      { reproducerIsUseful = False,
-        verificationErrorMessage = "Verification timed out"
-      }
+    "Unexpected output from the" <+> verifierDoc <> "." <+> pretty message
   VerifierIncompleteWitness missingVariables ->
-    VerificationErrorAction
-      { reproducerIsUseful = True,
-        verificationErrorMessage =
-          "The witness provided from the"
-            <+> verifierDoc
-            <+> "was incomplete."
-            <+> "In particular, values for the following variables were not provided:"
-            <> line
-            <> indent 2 (prettySet pretty missingVariables)
-      }
+    "The witness provided from the"
+      <+> verifierDoc
+      <+> "was incomplete."
+      <+> "In particular, values for the following variables were not provided:"
+      <> line
+      <> indent 2 (prettySet pretty missingVariables)
   where
     verifierDoc = pretty verifierID <+> "verifier"
 
-    exitFailureReason :: Int -> VerificationErrorAction
+    exitFailureReason :: Int -> Doc ()
 # ifdef mingw32_HOST_OS
-    exitFailureReason exitValue = VerificationErrorAction
-        { reproducerIsUseful = True
-        , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
-            "Vehicle is unable to interpret this error code on Windows but the most common reasons" <+>
+    exitFailureReason exitValue =
+        "Vehicle is unable to interpret this error code on Windows but the most common reasons" <+>
             "are the" <+> verifierDoc <+> "either ran out of memory or performed an illegal instruction."
-        }
 # else
     exitFailureReason exitValue
-      | toEnum exitValue == illegalInstruction = VerificationErrorAction
-        { reproducerIsUseful = True
-        , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
+      | toEnum exitValue == illegalInstruction =
+          basicExitFailureMessage verifierID exitValue <+>
             "This is an `Illegal Instruction` error and indicates a bug in the" <+> verifierDoc <+> "itself"
-        }
-      | toEnum exitValue == killProcess = VerificationErrorAction
-        { reproducerIsUseful = True
-        , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
+      | toEnum exitValue == killProcess =
+          basicExitFailureMessage verifierID exitValue <+>
             "This is often (but not always) a result of the" <+> verifierDoc <+> "running out of memory."
-        }
-      | otherwise = VerificationErrorAction
-        { reproducerIsUseful = True
-        , verificationErrorMessage = basicExitFailureMessage verifierID exitValue <+>
+      | otherwise =
+          basicExitFailureMessage verifierID exitValue <+>
             "Please consult the manual on Unix signals to work out what this means."
-        }
 # endif
 
 basicExitFailureMessage :: VerifierID -> Int -> Doc a
