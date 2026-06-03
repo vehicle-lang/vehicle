@@ -230,7 +230,6 @@ data CompileError
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value Builtin)
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
   | UnableToLiftQuantifiersInProperty DeclProvenance
-  | UnableToUpdateBoundVars
   | NoQuantifierDomainFound DeclProvenance (VBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
   | UnorderableDifferentiableLogic DeclProvenance (Value Builtin)
   | -- ITP backend errors

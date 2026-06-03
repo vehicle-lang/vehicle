@@ -918,12 +918,6 @@ formatCompileError = \case
             <> ".",
         fix = Nothing
       }
-  UnableToUpdateBoundVars ->
-    VehicleError
-      { provenance = Nothing,
-        problem = "Unable to update bound variable levels.",
-        fix = Nothing
-      }
   UnusedMonomorphisableDeclaration p ident ->
     VehicleUserError
       { provenance = Just p,
