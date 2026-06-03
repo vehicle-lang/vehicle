@@ -17,4 +17,4 @@ Parameter R : realType.
 
 Parameter pk : 'sT[R] -> 'nT[R]_[1].
 
-Axiom example : forall x, (pk x) ^^ 0 <= const_t (5 : R).
+Axiom example : forall x, pk x ^^ 0 <= const_t (5 : R).

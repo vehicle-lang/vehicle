@@ -18,8 +18,8 @@ Parameter R : realType.
 
 Parameter f : 'nT[R]_[1] -> 'nT[R]_[1].
 
-Axiom prop1 : forall x, const_t (0 : R) < x /\ x < const_t (1 : R) -> if (x > const_t (1 / 2 : R)) then ((f (nstack_tuple [tuple x])) ^^ 0 > const_t (0 : R)) else ((f (nstack_tuple [tuple x])) ^^ 0 <= const_t (0 : R)).
+Axiom prop1 : forall x, const_t (0 : R) < x /\ x < const_t (1 : R) -> if (x > const_t (1 / 2 : R)) then (f (nstack_tuple (x := 1%:posnat) [tuple x]) ^^ 0 > const_t (0 : R)) else (f (nstack_tuple (x := 1%:posnat) [tuple x]) ^^ 0 <= const_t (0 : R)).
 
-Axiom prop2 : exists x, (const_t (0 : R) < x /\ x < const_t (1 : R)) /\ (f (nstack_tuple [tuple if (x > const_t (1 / 2 : R)) then x else const_t (1 / 5 : R)])) ^^ 0 >= const_t (0 : R).
+Axiom prop2 : exists x, (const_t (0 : R) < x /\ x < const_t (1 : R)) /\ f (nstack_tuple (x := 1%:posnat) [tuple if (x > const_t (1 / 2 : R)) then x else const_t (1 / 5 : R)]) ^^ 0 >= const_t (0 : R).
 
-Axiom prop3 : exists x, (const_t (0 : R) < x /\ x < const_t (1 : R)) /\ if ((f (nstack_tuple [tuple x])) ^^ 0 > const_t (0 : R)) then (x >= const_t (1 / 2 : R)) else (x < const_t (1 / 2 : R)).
+Axiom prop3 : exists x, (const_t (0 : R) < x /\ x < const_t (1 : R)) /\ if (f (nstack_tuple (x := 1%:posnat) [tuple x]) ^^ 0 > const_t (0 : R)) then (x >= const_t (1 / 2 : R)) else (x < const_t (1 / 2 : R)).

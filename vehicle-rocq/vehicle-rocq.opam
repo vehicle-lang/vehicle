@@ -1,6 +1,9 @@
 opam-version: "2.0"
 version: "0.1.0"
-maintainer: "Joshua Smart <josh@thesmarts.co.uk>"
+maintainer: [
+  "Alessandro Bruni <brun@itu.dk>"
+  "Alistair Sirman <A.Sirman@soton.ac.uk>"
+]
 
 homepage: "https://github.com/vehicle-lang/vehicle"
 bug-reports: "https://github.com/vehicle-lang/vehicle/issues"
@@ -17,17 +20,23 @@ It also provides the vehicle_validate tactic, which invokes
 """
 
 build: [
+  [ "sh" "-c" "cd utils && coq_makefile -f _CoqProject -o Makefile" ]
+  [ make "-C" "utils" "-j" jobs]
   [ "dune" "build" "-p" name "-j" jobs ]
 ]
 install: [
+  [make "-C" "utils" "install"]
   [ "dune" "install" "-p" name ]
 ]
 depends: [
   "dune" {>= "3.13"}
   "rocq-core" {>= "9.0"}
-  "coq-mathcomp-ssreflect" { >= "2.6.0" }
-  "coq-mathcomp-algebra" { >= "2.6.0" }
-  "coq-mathcomp-reals" { >= "1.14.0" }
+  "rocq-mathcomp-ssreflect" { >= "2.6.0" }
+  "rocq-mathcomp-algebra" { >= "2.6.0" }
+  "rocq-mathcomp-reals" { >= "1.14.0" }
 ]
 
-authors: [ "Joshua Smart" ]
+authors: [
+  "Joshua Smart"
+  "Alessandro Bruni"
+]
