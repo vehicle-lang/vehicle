@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## v0.25.1
+
+### Rocq backend
+
+* Pinned to latest version of MathComp.
+
 ## v0.25
 
 ### General
