@@ -242,7 +242,7 @@ convertToDecidabilityBuiltins p b args = return $
         Div {} -> sameFunction f
         Min {} -> sameFunction f
         Max {} -> sameFunction f
-        PowRat -> sameFunction f
+        Pow {} -> sameFunction f
         ReduceAddRatTensor -> sameFunction f
         ReduceMulRatTensor -> sameFunction f
         ReduceMinRatTensor -> sameFunction f

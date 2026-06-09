@@ -561,7 +561,7 @@ compileBuiltin b args = case b of
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
     StackTensor -> compileStack args
     Iterate -> unsupportedError
-    PowRat -> unsupportedError
+    Pow {} -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyRecord _ -> unsupportedTensorLikeQuantifier

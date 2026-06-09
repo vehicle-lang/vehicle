@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Language
+
+* Added the power operator `^ : Tensor Real ds -> Real -> Tensor Real ds`. Note that this operator is currently only supported on the loss backend.
+
 ## v0.25.1
 
 ### Rocq backend
@@ -8,7 +14,7 @@
 
 ## v0.25
 
-### General
+### Language
 
 * Improved language documentation to show per-backend support.
 

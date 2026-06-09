@@ -680,7 +680,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args
     StackTensor -> compileStack moduleDefs args
     Iterate -> unsupportedError
-    PowRat -> unsupportedError
+    Pow {} -> unsupportedError
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
   DecidabilityBuiltinFunction f -> case f of

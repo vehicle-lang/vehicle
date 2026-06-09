@@ -202,6 +202,20 @@ instance Pretty DivDomain where
   pretty = \case
     DivRatTensor -> "RatTensor"
 
+data PowDomain
+  = PowRatTensor
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData PowDomain
+
+instance Hashable PowDomain
+
+instance Serialize PowDomain
+
+instance Pretty PowDomain where
+  pretty = \case
+    PowRatTensor -> "RatTensor"
+
 data MinDomain
   = MinRatTensor
   deriving (Eq, Ord, Show, Generic)

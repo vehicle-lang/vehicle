@@ -68,7 +68,7 @@ typeOfBuiltinFunction p = \case
   Div {} -> typeOfOp2 (divLinearity p)
   Min {} -> typeOfOp2 maxLinearity
   Max {} -> typeOfOp2 maxLinearity
-  PowRat {} -> typeOfOp2 (powLinearity p)
+  Pow {} -> typeOfOp2 (powLinearity p)
   ReduceAddRatTensor -> typeOfOp2 maxLinearity
   ReduceMulRatTensor ->
     forAllLinearityTriples $ \l1 l2 l3 ->

@@ -68,7 +68,7 @@ instance NormalisableBuiltin Builtin where
       Div DivRatTensor -> Simple evalDivRatTensor
       Min MinRatTensor -> Simple evalMinRatTensor
       Max MaxRatTensor -> Simple evalMaxRatTensor
-      PowRat -> Simple evalPowRat
+      Pow PowRatTensor -> Simple evalPowRatTensor
       ReduceAddRatTensor -> Simple evalReduceAddRatTensor
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
       ReduceMinRatTensor -> Simple evalReduceMinRatTensor

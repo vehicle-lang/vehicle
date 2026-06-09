@@ -600,7 +600,7 @@ compileBuiltinFunction f args = case f of
   ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
   Iterate -> unsupportedError
-  PowRat -> unsupportedError
+  Pow {} -> unsupportedError
   where
     unsupportedError :: a
     unsupportedError =

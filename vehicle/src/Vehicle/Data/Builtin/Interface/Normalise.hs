@@ -6,6 +6,7 @@ module Vehicle.Data.Builtin.Interface.Normalise where
 import Control.Applicative ((<|>))
 import Control.Monad (foldM, zipWithM)
 import Data.Maybe (fromMaybe, isJust)
+import Data.Ratio (denominator, numerator)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
@@ -15,6 +16,7 @@ import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor (Tensor, TensorShape, at, extendTensor, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 
@@ -449,11 +451,11 @@ evalMinRatTensor = evalTensorOp2 accessMinRatTensorBuiltin accessRatTensorLitera
 evalMaxRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin) => EvalSimple TensorOp2Args Value builtin m
 evalMaxRatTensor = evalTensorOp2 accessMaxRatTensorBuiltin accessRatTensorLiteral max Nothing Nothing Nothing Nothing
 
-evalPowRat ::
-  (MonadNormBuiltin m, HasRatExpr Value builtin, BuiltinHasNatLiterals builtin) =>
-  EvalSimple TensorOp2Args Value builtin m
-evalPowRat = \case
-  TensorOp2Args _ (IRatTensor xs) (INatLiteral n) -> return $ IRatTensor (mapTensor (^^ n) xs)
+evalPowRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin) => EvalSimple TensorOp2Args Value builtin m
+evalPowRatTensor = \case
+  TensorOp2Args _ (IRatTensor xs) (IRatLiteral (Finite n))
+    -- We can only evaluate this if the exponent is an integer
+    | denominator n == 1 -> return $ IRatTensor (mapTensor (^^ numerator n) xs)
   args -> return $ mkExpr accessPowRatTensor args
 
 evalReduceAddRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m

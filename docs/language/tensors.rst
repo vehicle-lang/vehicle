@@ -174,6 +174,17 @@ The following operations over tensors are currently supported:
        | ``Tensor A ds``
        | (if ``A`` supports ``/``)
      - |backendall_full|
+   * - | Pointwise
+       | power
+     - :code:`t ^ x`
+     - | :code:`Tensor A ds → A → Tensor A ds`
+       | (if ``A`` supports ``^``)
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
    * - | Reduce
        | add
      - ``reduceAdd e t``

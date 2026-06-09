@@ -393,6 +393,7 @@ data RatTensorValue
   | VDivRatTensor (TensorOp2Args (Value Builtin))
   | VMinRatTensor (TensorOp2Args (Value Builtin))
   | VMaxRatTensor (TensorOp2Args (Value Builtin))
+  | VPowRatTensor (TensorOp2Args (Value Builtin))
   | VReduceAddRatTensor (TensorReductionArgs (Value Builtin))
   | VReduceMulRatTensor (TensorReductionArgs (Value Builtin))
   | VReduceMinRatTensor (TensorReductionArgs (Value Builtin))
@@ -421,6 +422,7 @@ toRatTensorValue expr = case expr of
   (getExpr accessDivRatTensor -> Just args) -> VDivRatTensor args
   (getExpr accessMinRatTensor -> Just args) -> VMinRatTensor args
   (getExpr accessMaxRatTensor -> Just args) -> VMaxRatTensor args
+  (getExpr accessPowRatTensor -> Just args) -> VPowRatTensor args
   (getExpr accessReduceAddRat -> Just args) -> VReduceAddRatTensor args
   (getExpr accessReduceMulRat -> Just args) -> VReduceMulRatTensor args
   (getExpr accessReduceMinRat -> Just args) -> VReduceMinRatTensor args
@@ -446,6 +448,7 @@ fromRatTensorValue = \case
   VDivRatTensor args -> mkExpr accessDivRatTensor args
   VMinRatTensor args -> mkExpr accessMinRatTensor args
   VMaxRatTensor args -> mkExpr accessMaxRatTensor args
+  VPowRatTensor args -> mkExpr accessPowRatTensor args
   VReduceAddRatTensor args -> mkExpr accessReduceAddRat args
   VReduceMulRatTensor args -> mkExpr accessReduceMulRat args
   VReduceMinRatTensor args -> mkExpr accessReduceMinRat args
