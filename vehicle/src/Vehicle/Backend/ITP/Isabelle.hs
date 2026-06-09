@@ -780,10 +780,12 @@ compileBuiltin isOutType localeAssms b args = case b of
     If -> annotateNotation localeAssms [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
-    Iterate -> unsupportedError
-    Pow {} -> unsupportedError
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
+    Iterate -> unsupportedError
+    Pow {} -> unsupportedError
+    Log {} -> unsupportedError
+    Exp {} -> unsupportedError
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return "bool"
     PropTrue -> return "True"

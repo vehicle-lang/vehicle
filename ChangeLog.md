@@ -4,7 +4,13 @@
 
 ### Language
 
-* Added the power operator `^ : Tensor Real ds -> Real -> Tensor Real ds`. Note that this operator is currently only supported on the loss backend.
+* Added the operators:
+  ```
+  ^ : Tensor Real ds -> Real -> Tensor Real ds
+  log : Tensor Real ds -> Tensor Real ds
+  exp : Tensor Real ds -> Tensor Real ds
+  ```
+  Note that these operators are currently only supported by the loss backend.
 
 ## v0.25.1
 

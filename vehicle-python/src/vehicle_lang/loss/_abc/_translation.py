@@ -64,6 +64,10 @@ class ABCTranslation(
                 return self.translate_MaxRatTensor(expression)
             case vcl_ast.PowRatTensor():
                 return self.translate_PowRatTensor(expression)
+            case vcl_ast.LogRatTensor():
+                return self.translate_LogRatTensor(expression)
+            case vcl_ast.ExpRatTensor():
+                return self.translate_ExpRatTensor(expression)
             case vcl_ast.NegRatTensor():
                 return self.translate_NegRatTensor(expression)
             case vcl_ast.ReduceAddRatTensor():
@@ -143,6 +147,16 @@ class ABCTranslation(
     @abstractmethod
     def translate_PowRatTensor(
         self, expression: vcl_ast.PowRatTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_LogRatTensor(
+        self, expression: vcl_ast.LogRatTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_ExpRatTensor(
+        self, expression: vcl_ast.ExpRatTensor
     ) -> vcl_var.Expression: ...
 
     @abstractmethod

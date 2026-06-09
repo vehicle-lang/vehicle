@@ -79,6 +79,8 @@ data JExpr
   | -- Rational tensors
     RatTensor ExtendedRatTensor
   | NegRatTensor JExpr
+  | LogRatTensor JExpr
+  | ExpRatTensor JExpr
   | AddRatTensor JExpr JExpr
   | SubRatTensor JExpr JExpr
   | MulRatTensor JExpr JExpr
@@ -263,6 +265,8 @@ convertBuiltin b spine = case b of
     L.Min L.MinRatTensor -> convertTensorOp2 convertValue b MinRatTensor spine
     L.Max L.MaxRatTensor -> convertTensorOp2 convertValue b MaxRatTensor spine
     L.Pow L.PowRatTensor -> convertTensorOp2 convertValue b PowRatTensor spine
+    L.Log L.LogRatTensor -> convertTensorOp1 convertValue b LogRatTensor spine
+    L.Exp L.ExpRatTensor -> convertTensorOp1 convertValue b ExpRatTensor spine
     L.ReduceAddRatTensor -> convertTensorReduction convertValue b ReduceAddRatTensor spine
     L.ReduceMulRatTensor -> convertTensorReduction convertValue b ReduceMulRatTensor spine
     L.ReduceMinRatTensor -> convertTensorReduction convertValue b ReduceMinRatTensor spine
@@ -431,6 +435,8 @@ fromJExpr = \case
     return $ normAppList (S.BoundVar mempty ix) (fmap explicit spine')
   RatTensor t -> toConstructor (L.RatTensorLiteral t) []
   NegRatTensor e -> toFunction (L.Neg L.NegRatTensor) [e]
+  LogRatTensor e -> toFunction (L.Log L.LogRatTensor) [e]
+  ExpRatTensor e -> toFunction (L.Exp L.ExpRatTensor) [e]
   AddRatTensor e1 e2 -> toFunction (L.Add L.AddRatTensor) [e1, e2]
   SubRatTensor e1 e2 -> toFunction (L.Sub L.SubRatTensor) [e1, e2]
   MulRatTensor e1 e2 -> toFunction (L.Mul L.MulRatTensor) [e1, e2]

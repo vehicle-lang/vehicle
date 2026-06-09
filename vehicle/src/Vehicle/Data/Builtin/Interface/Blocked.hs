@@ -66,6 +66,8 @@ functionBlockingStatus b spine = case b of
   Min MinRatTensor -> fixedStatus [1, 2] spine
   Max MaxRatTensor -> fixedStatus [1, 2] spine
   Pow PowRatTensor -> fixedStatus [1, 2] spine
+  Log LogRatTensor -> DoesNotReduce
+  Exp ExpRatTensor -> DoesNotReduce
   CompareIndex _op -> fixedStatus [2, 3] spine
   CompareNat _op -> fixedStatus [0, 1] spine
   CompareRatTensorPointwise _op -> fixedStatus [1, 2] spine

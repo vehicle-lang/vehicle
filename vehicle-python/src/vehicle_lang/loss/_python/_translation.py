@@ -257,6 +257,22 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_LogRatTensor(self, expression: vcl.LogRatTensor) -> py.expr:
+        """Translate LogRatTensor to builtin call."""
+        return py_app(
+            py_builtin("LogRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ExpRatTensor(self, expression: vcl.ExpRatTensor) -> py.expr:
+        """Translate ExpRatTensor to builtin call."""
+        return py_app(
+            py_builtin("ExpRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
     def translate_NegRatTensor(self, expression: vcl.NegRatTensor) -> py.expr:
         """Translate NegRatTensor to builtin call."""
         return py_app(

@@ -277,6 +277,20 @@ class PowRatTensor(Expression):
 
 
 @dataclass(frozen=True)
+class LogRatTensor(Expression):
+    """Pointwise natural log: LogRatTensor x"""
+
+    x: Expression
+
+
+@dataclass(frozen=True)
+class ExpRatTensor(Expression):
+    """Pointwise exponential: ExpRatTensor x"""
+
+    x: Expression
+
+
+@dataclass(frozen=True)
 class ReduceAddRatTensor(Expression):
     """Reduce addition: ReduceAddRatTensor expr dims"""
 

@@ -202,6 +202,10 @@ tokMin = mkToken B.TokMin "min"
 
 tokMax = mkToken B.TokMax "max"
 
+tokLog = mkToken B.TokLog "log"
+
+tokExp = mkToken B.TokExp "exp"
+
 tokAddNat = mkToken B.TokAddNat "addNat"
 
 tokMulNat = mkToken B.TokAddNat "mulNat"

@@ -69,6 +69,8 @@ typeOfBuiltinFunction p = \case
   Min {} -> typeOfOp2 maxLinearity
   Max {} -> typeOfOp2 maxLinearity
   Pow {} -> typeOfOp2 (powLinearity p)
+  Exp {} -> typeOfOp1
+  Log {} -> typeOfOp1
   ReduceAddRatTensor -> typeOfOp2 maxLinearity
   ReduceMulRatTensor ->
     forAllLinearityTriples $ \l1 l2 l3 ->

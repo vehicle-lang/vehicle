@@ -97,6 +97,8 @@ compileLinearExpr dims expr =
     -- Potentially unblockable --
     -----------------------------
     VPowRatTensor {} -> tryUnblock
+    VLogRatTensor {} -> tryUnblock
+    VExpRatTensor {} -> tryUnblock
     VMinRatTensor {} -> tryUnblock
     VMaxRatTensor {} -> tryUnblock
     VReduceAddRatTensor {} -> tryUnblock

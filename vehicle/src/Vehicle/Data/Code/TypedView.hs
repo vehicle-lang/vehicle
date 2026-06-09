@@ -387,6 +387,8 @@ toRecordValue expr = case expr of
 data RatTensorValue
   = VRatTensorLiteral ExtendedRatTensor
   | VNegRatTensor (TensorOp1Args (Value Builtin))
+  | VLogRatTensor (TensorOp1Args (Value Builtin))
+  | VExpRatTensor (TensorOp1Args (Value Builtin))
   | VAddRatTensor (TensorOp2Args (Value Builtin))
   | VSubRatTensor (TensorOp2Args (Value Builtin))
   | VMulRatTensor (TensorOp2Args (Value Builtin))
@@ -416,6 +418,8 @@ toRatTensorValue expr = case expr of
   VFreeVar n [] -> VDatasetOrParameter n
   (getExpr accessRatTensorLiteral -> Just t) -> VRatTensorLiteral t
   (getExpr accessNegRatTensor -> Just args) -> VNegRatTensor args
+  (getExpr accessLogRatTensor -> Just args) -> VLogRatTensor args
+  (getExpr accessExpRatTensor -> Just args) -> VExpRatTensor args
   (getExpr accessAddRatTensor -> Just args) -> VAddRatTensor args
   (getExpr accessSubRatTensor -> Just args) -> VSubRatTensor args
   (getExpr accessMulRatTensor -> Just args) -> VMulRatTensor args
@@ -442,6 +446,8 @@ fromRatTensorValue = \case
   VRatRecordAcc typ value fieldName spine -> VRecordAcc typ value fieldName spine
   VRatTensorLiteral t -> mkExpr accessRatTensorLiteral t
   VNegRatTensor args -> mkExpr accessNegRatTensor args
+  VLogRatTensor args -> mkExpr accessLogRatTensor args
+  VExpRatTensor args -> mkExpr accessExpRatTensor args
   VAddRatTensor args -> mkExpr accessAddRatTensor args
   VSubRatTensor args -> mkExpr accessSubRatTensor args
   VMulRatTensor args -> mkExpr accessMulRatTensor args
