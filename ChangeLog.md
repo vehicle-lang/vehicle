@@ -10,7 +10,7 @@
   log : Tensor Real ds -> Tensor Real ds
   exp : Tensor Real ds -> Tensor Real ds
   ```
-  Note that these operators is are currently only supported by the loss backend.
+  Note that these operators are currently only supported by the loss backend.
 
 ## v0.25.1
 
