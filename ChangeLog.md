@@ -12,6 +12,17 @@
   ```
   Note that these operators are currently only supported by the loss backend.
 
+### Verification
+
+* Verification cache now uses absolute paths. This means that the verification cache can no longer be moved, however it does mean that
+the ITP backend code can be invoked from any location.
+
+### Agda backend
+
+* Upgraded to v2.3 of the Agda Standard Library.
+
+* Fixed a few minor bugs in the translation of Agda.
+
 ## v0.25.1
 
 ### Rocq backend
