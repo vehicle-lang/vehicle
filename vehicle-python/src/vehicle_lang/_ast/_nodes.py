@@ -282,6 +282,7 @@ class LogRatTensor(Expression):
 
     x: Expression
 
+
 @dataclass(frozen=True)
 class ExpRatTensor(Expression):
     """Pointwise exponential: ExpRatTensor x"""
