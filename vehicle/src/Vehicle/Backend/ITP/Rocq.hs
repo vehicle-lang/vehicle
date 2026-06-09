@@ -556,7 +556,7 @@ compileBuiltin b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
-    AtTensor -> compileNotationAndArgs [MathcompImport Algebra, Open TensorScope] LeftAssociative (Just (-2)) "$0 ^^ $1" (Just "nindex") args
+    AtTensor -> compileNotationAndArgs [MathcompImport Algebra, Open TensorScope] LeftAssociative (Just 30) "$0 ^^ $1" (Just "nindex") args
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 0) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
     StackTensor -> compileStack args
@@ -630,8 +630,13 @@ compileDerivedFunction fn args = case fn of
     Exists -> compileApplication [VehicleImport VehicleUtils] "existsIndex" args
     Forall -> compileApplication [VehicleImport VehicleUtils] "forallIndex" args
   QuantifyInList {} -> unsupported
-  TypeAnn ->
-    compileNotationAndArgs [] NotAssociative (Just 99) "$1 : $0" Nothing args
+  TypeAnn -> case args of
+    [typeArg, valueArg]
+      | isIndexTypeExpr (argExpr typeArg),
+        Just n <- indexLiteralValue (argExpr valueArg) ->
+          return $ compileNatLiteral n
+    _ ->
+      compileNotationAndArgs [] NotAssociative (Just 99) "$1 : $0" Nothing args
   CompareRatTensorReduced op ->
     compileApplication
       [VehicleImport VehicleUtils]
@@ -646,6 +651,16 @@ compileDerivedFunction fn args = case fn of
       args
   where
     unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
+    isIndexTypeExpr :: Expr DecidabilityBuiltin -> Bool
+    isIndexTypeExpr = \case
+      Builtin _ (StandardBuiltinType IndexType) -> True
+      App (Builtin _ (StandardBuiltinType IndexType)) _ -> True
+      _ -> False
+    indexLiteralValue :: Expr DecidabilityBuiltin -> Maybe Int
+    indexLiteralValue = \case
+      Builtin _ (StandardBuiltinConstructor (IndexLiteral n)) -> Just n
+      App (Builtin _ (StandardBuiltinConstructor (IndexLiteral n))) _ -> Just n
+      _ -> Nothing
 
 compileTypeLevelQuantifier ::
   (MonadRocqCompile m) =>
@@ -791,8 +806,8 @@ compileComparison domain op = do
         (CRatTensor, Ne) -> [MathcompImport Algebra]
         (CRatTensor, _) -> [MathcompImport Algebra]
   let (opDoc', dependencies') =
-        if domain == CIndex
-          then ("$0 " <> opDoc <> " $1 :> nat", dependencies ++ [MathcompImport Boot])
+        if domain == CIndex || domain == CNat
+          then ("($0 " <> opDoc <> " $1)%N", dependencies ++ [MathcompImport Boot])
           else ("$0 " <> opDoc <> " $1", dependencies)
   compileNotationAndArgs (dependencies' <> typeDeps) NotAssociative (Just 70) opDoc' Nothing
   where
@@ -802,7 +817,7 @@ compileComparison domain op = do
 compileStack :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileStack args = do
   vecExpr <- toVec args
-  return $ annotate ([MathcompImport Algebra], functionApplicationPrecedence) $ "nstack_tuple" <+> vecExpr
+  return $ annotate ([MathcompImport Algebra], functionApplicationPrecedence) $ "nstack_tuple (x := " <> pretty (length args) <> "%:posnat)" <+> vecExpr
 
 compileVecLiteral :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of

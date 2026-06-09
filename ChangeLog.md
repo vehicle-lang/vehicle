@@ -6,6 +6,12 @@
 
 * Added the power operator `^ : Tensor Real ds -> Real -> Tensor Real ds`. Note that this operator is currently only supported on the loss backend.
 
+## v0.25.1
+
+### Rocq backend
+
+* Pinned to latest version of MathComp.
+
 ## v0.25
 
 ### Language
