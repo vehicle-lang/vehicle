@@ -91,6 +91,8 @@ compile toVar shape = go
           Just (ConstantTensor _ c2) -> return $ scaleExpr (1 / c2) e1'
           Just _ -> unreduced
           _ -> throwError NonLinearity
+      VPowRatTensor {} -> do
+        throwError NonLinearity
       ---------------------
       -- Unreduced cases --
       ---------------------

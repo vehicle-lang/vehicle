@@ -122,6 +122,7 @@ unblockRatTensorValue actions@UnblockingActions {..} expr = showEntry expr $ do
     VSubRatTensor args -> unblockTensorOp2 unblock evalSubRatTensor args
     VMulRatTensor args -> unblockTensorOp2 unblock evalMulRatTensor args
     VDivRatTensor args -> unblockTensorOp2 unblock evalDivRatTensor args
+    VPowRatTensor args -> unblockTensorOp2 unblock evalPowRatTensor args
     VReduceAddRatTensor args -> unblockReduceTensor unblock evalReduceAddRatTensor args
     VReduceMulRatTensor args -> unblockReduceTensor unblock evalReduceMulRatTensor args
     VReduceMinRatTensor args -> unblockReduceTensor unblock evalReduceMinRatTensor args
