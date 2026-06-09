@@ -1,0 +1,51 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "mnist-robustness.vcl",
+      "fileHash": 8388231412804977438
+    },
+    "parameterSummaries": {
+      "epsilon": "0.005"
+    },
+    "networkSummaries": [
+      {
+        "name": "classifier",
+        "filePath": "mnist-classifier.onnx",
+        "fileHash": 4647527297199700567
+      }
+    ],
+    "datasetSummaries": [
+      {
+        "name": "trainingImages",
+        "filePath": "shrunkMNIST/t1-images.idx",
+        "fileHash": 3947357580477958213
+      },
+      {
+        "name": "trainingLabels",
+        "filePath": "shrunkMNIST/t1-labels.idx",
+        "fileHash": -4182915934280072437
+      }
+    ]
+  },
+  "properties": [
+    [
+      "robust",
+      {
+        "tag": "MultiProperty",
+        "contents": [
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                0
+              ],
+              "propertyID": 0
+            }
+          }
+        ]
+      }
+    ]
+  ]
+}

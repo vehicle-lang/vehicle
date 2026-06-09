@@ -1,0 +1,171 @@
+{
+  "resourcesIntegrityInfo": {
+    "specificationSummary": {
+      "name": "specification",
+      "filePath": "mnist-robustness.vcl",
+      "fileHash": 8388231412804977438
+    },
+    "parameterSummaries": {
+      "epsilon": "0.005"
+    },
+    "networkSummaries": [
+      {
+        "name": "classifier",
+        "filePath": "mnist-classifier.onnx",
+        "fileHash": 4647527297199700567
+      }
+    ],
+    "datasetSummaries": [
+      {
+        "name": "trainingImages",
+        "filePath": "shrunkMNIST/t13-images.idx",
+        "fileHash": -1313571283059776889
+      },
+      {
+        "name": "trainingLabels",
+        "filePath": "shrunkMNIST/t13-labels.idx",
+        "fileHash": -6080762080996721939
+      }
+    ]
+  },
+  "properties": [
+    [
+      "robust",
+      {
+        "tag": "MultiProperty",
+        "contents": [
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                0
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                1
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                2
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                3
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                4
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                5
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                6
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                7
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                8
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                9
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                10
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                11
+              ],
+              "propertyID": 0
+            }
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": {
+              "propertyName": "robust",
+              "propertyIndices": [
+                12
+              ],
+              "propertyID": 0
+            }
+          }
+        ]
+      }
+    ]
+  ]
+}
