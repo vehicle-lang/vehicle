@@ -285,7 +285,7 @@ class LogRatTensor(Expression):
 
 @dataclass(frozen=True)
 class ExpRatTensor(Expression):
-    """Pointwise exponential: ExpRatTensor left"""
+    """Pointwise exponential: ExpRatTensor x"""
 
     x: Expression
 
