@@ -278,10 +278,9 @@ class PowRatTensor(Expression):
 
 @dataclass(frozen=True)
 class LogRatTensor(Expression):
-    """Pointwise natural log: LogRatTensor left"""
+    """Pointwise natural log: LogRatTensor x"""
 
     x: Expression
-
 
 @dataclass(frozen=True)
 class ExpRatTensor(Expression):
