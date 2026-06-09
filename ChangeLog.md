@@ -4,7 +4,7 @@
 
 ### Language
 
-* Added the operator:
+* Added the operators:
   ```
   ^ : Tensor Real ds -> Real -> Tensor Real ds
   log : Tensor Real ds -> Tensor Real ds
