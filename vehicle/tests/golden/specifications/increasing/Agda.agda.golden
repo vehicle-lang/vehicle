@@ -8,7 +8,7 @@
 
 open import Vehicle
 open import Vehicle.Utils
-open import Vehicle.Data.Tensor
+open import Vehicle.Data.Tensor as 𝕋
 open import Data.Product
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List.Base
@@ -17,4 +17,4 @@ module Agda where
 
 postulate f : Tensor ℚ [] → Tensor ℚ []
 
-postulate increasing : ∀ x → 0 < x × x < 1 → x ≤ f x
+postulate increasing : ∀ x → (natScalar 0) < x × x < (natScalar 1) → x ≤ f x

@@ -5,15 +5,16 @@ open import Level using (Level; 0ℓ)
 open import Data.Bool using (Bool; true; false; _∧_; _∨_)
 open import Data.Empty.Polymorphic using (⊥)
 open import Data.Nat.Base using (ℕ; zero; suc)
-open import Data.List.Base using (List; []; _∷_; tabulate; concat; foldr)
+open import Data.List.Base using (List; []; _∷_)
+open import Data.Integer using (+_)
+open import Data.Nat.ListAction using (product)
 open import Data.Vec.Functional using (Vector)
 open import Function.Base using (id; _$_)
 import Data.Vec.Functional as Vec
-import Data.Vec.Functional.Relation.Binary.Pointwise as Vec
-import Data.Vec.Functional.Relation.Binary.Pointwise.Properties as Vec
-open import Data.Fin using (Fin)
-import Data.Rational as ℚ
-open import Data.Rational using (ℚ)
+import Data.Vec.Functional.Relation.Binary.Pointwise as VecPointwise
+import Data.Vec.Functional.Relation.Binary.Pointwise.Properties as VecPointwise
+open import Data.Fin.Base using (Fin; zero; suc; combine)
+open import Data.Rational as ℚ using (ℚ)
 open import Function.Base using (flip)
 open import Vehicle.Utils
 open import Relation.Binary
@@ -33,74 +34,76 @@ private
     ds : Dimensions
     R : Rel A ℓ
 
-Tensor : Set a → Dimensions → Set a
-Tensor A []       = A
-Tensor A (d ∷ ds) = Vector (Tensor A ds) d
+data Tensor (A : Set a) (dims : Dimensions) : Set a where
+  tensor : Vector A (product dims) → Tensor A dims
+
+-- Tensor : Set a → Dimensions → Set a
+-- Tensor A []       = A
+-- Tensor A (d ∷ ds) = Vector (Tensor A ds) d
+unTensor : Tensor A ds → Vector A (product ds)
+unTensor (tensor xs) = xs
+
+scalar : A → Tensor A []
+scalar x = tensor (Vec.replicate 1 x)
+
+unScalar : Tensor A [] → A
+unScalar (tensor xs) = xs zero
 
 Pointwise : (A → B → Set p) → Tensor A ds → Tensor B ds → Set p
-Pointwise {ds = []}      P xs ys = P xs ys
-Pointwise {ds = d ∷ ds} P xs ys = Vec.Pointwise (Pointwise P) xs ys
+Pointwise P (tensor xs) (tensor ys) = VecPointwise.Pointwise P xs ys
 
-refl : Reflexive R → ∀ ds → Reflexive (Pointwise {ds = ds} R)
-refl R-refl []     = R-refl
-refl {R = R} R-refl (d ∷ ds) = Vec.refl {R = Pointwise {ds = ds} R} (refl R-refl ds)
+refl : Reflexive R → ∀ {ds} → Reflexive (Pointwise {ds = ds} R)
+refl {R = R} R-refl {x = tensor _} = VecPointwise.refl {R = R} R-refl
 
-sym : Symmetric R → ∀ ds → Symmetric (Pointwise {ds = ds} R)
-sym R-sym []     = R-sym
-sym {R = R} R-sym (d ∷ ds) = Vec.sym {R = Pointwise {ds = ds} R} (sym R-sym ds)
+sym : Symmetric R → ∀ {ds} → Symmetric (Pointwise {ds = ds} R)
+sym {R = R} R-sym {x = tensor _} {y = tensor _} = VecPointwise.sym {R = R} R-sym
 
-trans : Transitive R → ∀ ds → Transitive (Pointwise {ds = ds} R)
-trans R-trans [] = R-trans
-trans {R = R} R-trans (d ∷ ds) = Vec.trans {R = Pointwise {ds = ds} R} (trans R-trans ds)
+trans : Transitive R → ∀ {ds} → Transitive (Pointwise {ds = ds} R)
+trans {R = R} R-trans {i = tensor _} {j = tensor _} {k = tensor _} = VecPointwise.trans {R = R} R-trans
 
-decidable : Decidable R → ∀ ds → Decidable (Pointwise {ds = ds} R)
-decidable R? []        = R?
-decidable R? (d ∷ ds) = Vec.decidable (decidable R? ds)
+decidable : Decidable R → ∀ {ds} → Decidable (Pointwise {ds = ds} R)
+decidable R? (tensor x) (tensor y) = VecPointwise.decidable R? x y
 
 isEquivalence : IsEquivalence R → ∀ {ds} → IsEquivalence (Pointwise {ds = ds} R)
 isEquivalence {R = R} isEq {ds} = record
-  { refl = refl E.refl ds
-  ; sym = sym E.sym ds
-  ; trans = trans E.trans ds
+  { refl = refl E.refl
+  ; sym = sym E.sym
+  ; trans = trans E.trans
   }
   where module E = IsEquivalence isEq
 
 isDecEquivalence : IsDecEquivalence R → ∀ {ds} → IsDecEquivalence (Pointwise {ds = ds} R)
 isDecEquivalence {R = R} isDecEq {ds} = record
   { isEquivalence = isEquivalence E.isEquivalence
-  ; _≟_ = decidable E._≟_ ds
+  ; _≟_ = decidable E._≟_
   }
   where module E = IsDecEquivalence isDecEq
 
 stack : Vector (Tensor A ds) d → Tensor A (d ∷ ds)
-stack = id
+stack xs = tensor (Vec.concat (Vec.map unTensor xs))
 
 foreach : (Fin d → Tensor A ds) → Tensor A (d ∷ ds)
-foreach f = f
+foreach = stack
 
 const : A → (ds : Dimensions) → Tensor A ds
-const v [] = v
-const v (d ∷ ds) = λ i → const v ds
+const v ds = tensor (Vec.replicate (product ds) v)
 
 map : (A → B) → Tensor A ds → Tensor B ds
-map {ds = []}      f xs = f xs
-map {ds = d ∷ ds} f xs = λ i → map f (xs i)
+map f (tensor xs) = tensor (Vec.map f xs)
 
 zipWith : (A → B → C) → Tensor A ds → Tensor B ds → Tensor C ds
-zipWith {ds = []}      f xs ys = f xs ys
-zipWith {ds = d ∷ ds} f xs ys = λ i → zipWith f (xs i) (ys i)
+zipWith f (tensor xs) (tensor ys) = tensor (Vec.zipWith f xs ys)
 
 toList : Tensor A ds → List A
-toList {ds = []} x = x ∷ []
-toList {ds = d ∷ ds} xs = concat (tabulate λ i → toList (xs i))
+toList (tensor xs) = Vec.toList xs
 
 reduce : (A → B → B) → B → Tensor A ds → Tensor B []
-reduce f e xs = foldr f e (toList xs)
+reduce f e (tensor xs) = scalar (Vec.foldr f e xs)
 
 infix 6 _!_
 
 _!_ : Tensor A (d ∷ ds) → Fin d → Tensor A ds
-_!_ = _$_
+tensor xs ! i = tensor (λ j → xs (combine i j))
 
 --------------------------------------------------------------------------------
 -- Rational specialisations
@@ -108,6 +111,9 @@ _!_ = _$_
 infix  8 -_
 infixl 7 _*_ _⊓_
 infixl 6 _-_ _+_ _⊔_
+
+natScalar : ℕ → Tensor ℚ []
+natScalar n = scalar (+ n ℚ./ 1)
 
 _+_ : Tensor ℚ ds → Tensor ℚ ds → Tensor ℚ ds
 _+_ = zipWith ℚ._+_
@@ -117,6 +123,9 @@ _-_ = zipWith ℚ._-_
 
 _*_ : Tensor ℚ ds → Tensor ℚ ds → Tensor ℚ ds
 _*_ = zipWith ℚ._*_
+
+_÷_ : (p q : Tensor ℚ []) → .⦃ _ : ℚ.NonZero (unScalar q) ⦄ → Tensor ℚ []
+_÷_ p q = scalar (unScalar p ℚ.÷ unScalar q)
 
 -_ : Tensor ℚ ds → Tensor ℚ ds
 -_ = map (ℚ.-_)
@@ -134,6 +143,8 @@ reduceOr : Tensor Bool ds → Tensor Bool []
 reduceOr = reduce _∨_ false
 
 -- Type operations
+
+infix 4 _≋_ _≤_ _<_ _≥_ _>_
 
 _≋_ : Tensor ℚ ds → Tensor ℚ ds → Set 0ℓ
 xs ≋ ys = Pointwise {A = ℚ} _≡_ xs ys
@@ -177,16 +188,3 @@ xs ≥ᵇ ys = reduceAnd (xs ≥ᵇ∙ ys)
 
 _>ᵇ_ : Tensor ℚ ds → Tensor ℚ ds → Tensor Bool []
 xs >ᵇ ys = reduceAnd (xs >ᵇ∙ ys)
-
---------------------------------------------------------------------------------
--- Instances
-
-instance
-  subTensor : {{_ : HasSub A}} → HasSub (Tensor A ds)
-  subTensor {{sub}} = hasSub (zipWith (_⊖_ {{sub}}))
-
-  addTensor : ∀ {{_ : HasAdd A}} → HasAdd (Tensor A ds)
-  addTensor {{add}} = hasAdd (zipWith (_⊕_ {{add}}))
-
-  decEqTensor : ∀ {_≈_ : Rel A ℓ} {{_ : IsDecEquivalence _≈_}} → IsDecEquivalence (Pointwise {ds = ds} _≈_)
-  decEqTensor {{isEq}} = isDecEquivalence isEq

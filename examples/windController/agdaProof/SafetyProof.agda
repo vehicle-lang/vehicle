@@ -11,7 +11,7 @@ open import Data.Nat using (z≤n; s≤s)
 open import Data.Integer using (+≤+; +<+; +_)
 open import Data.Rational
 open import Data.Rational.Properties
-open import Data.Vec using (_∷_)
+open import Data.Vec using (_∷_; [])
 import Data.Vec.Functional as Vector
 open import Data.Product using (_×_; _,_; uncurry)
 open import Data.Sum
@@ -19,7 +19,7 @@ open import Level using (0ℓ)
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary using (yes; no)
 
-open import Vehicle.Data.Tensor
+open import Vehicle.Data.Tensor using (Tensor; tensor; unScalar)
 open import RationalUtils
 import WindControllerSpec as Vehicle
 
@@ -29,7 +29,10 @@ open ≤-Reasoning
 -- Setup
 
 toTensor : ℚ → ℚ → Tensor ℚ (2 ∷ [])
-toTensor x y = Vector.fromList (x ∷ y ∷ [])
+toTensor x y = tensor (Vector.fromList (x ∷ y ∷ []))
+
+fromTensor : Tensor ℚ (1 ∷ []) → ℚ
+fromTensor (tensor xs) = xs 0F
 
 roadWidth : ℚ
 roadWidth = + 3 / 1
@@ -82,7 +85,7 @@ initialState = record
   }
 
 controller : ℚ → ℚ → ℚ
-controller x y = Vehicle.controller (Vehicle.normalise (toTensor x y)) 0F
+controller x y = fromTensor (Vehicle.controller (Vehicle.normalise (toTensor x y)))
 
 nextState : Observation → State → State
 nextState o s = record
@@ -158,11 +161,14 @@ controller-lem : ∀ x y →
                  ∣ x ∣ ≤ roadWidth + maxSensorError →
                  ∣ y ∣ ≤ roadWidth + maxSensorError →
                  ∣ controller x y + 2ℚ * x - y ∣ < roadWidth - maxWindShift - 3ℚ * maxSensorError
-controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ =
-  uncurry -p<q<p⇒∣q∣<p (Vehicle.safe (toTensor x y) (λ
-    { 0F → ∣p∣≤q⇒-q≤p≤q x ∣x∣≤rw+εₘₐₓ
-    ; 1F → ∣p∣≤q⇒-q≤p≤q y ∣y∣≤rw+εₘₐₓ
-    }))
+controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ = do
+  let (rw≤x , x≤rw) = ∣p∣≤q⇒-q≤p≤q x ∣x∣≤rw+εₘₐₓ
+  let (rw≤y , y≤rw) = ∣p∣≤q⇒-q≤p≤q y ∣y∣≤rw+εₘₐₓ
+  let (wse<e , o<wse) = Vehicle.safe (toTensor x y) (λ
+       { 0F → (λ {0F → rw≤x}) , λ {0F → x≤rw}
+       ; 1F → (λ {0F → rw≤y}) , λ {0F → y≤rw}
+       })
+  (wse<e , o<wse)
 
 valid⇒nextState-accurateSensor : ∀ o → ValidObservation o → ∀ s →
                                  AccurateSensorReading (nextState o s)

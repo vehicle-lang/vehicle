@@ -13,6 +13,7 @@ import Data.Map (Map, assocs)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import System.Directory (makeAbsolute)
 import Vehicle.Prelude (Name)
 import Vehicle.Prelude.IO (MonadStdIO, fatalError)
 import Vehicle.Prelude.Prettyprinter
@@ -152,10 +153,11 @@ generateResourceIntegrityInfo (name, filePath) = do
           <> line
           <> indent 2 (pretty (show err))
     Right fileHash -> do
+      absFilePath <- liftIO $ makeAbsolute filePath
       return $
         ResourceIntegrityInfo
           { name = name,
-            filePath = filePath,
+            filePath = absFilePath,
             fileHash = fileHash
           }
 

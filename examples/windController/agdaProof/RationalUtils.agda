@@ -14,14 +14,12 @@ open import Function.Base using (_∘_; _∘′_)
 open import Level using (0ℓ)
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; dec⇒maybe)
 open import Relation.Nullary.Negation using (contradiction)
 
-open import Vehicle.Data.Tensor
-
-open import Data.Maybe.Base using (just; nothing; decToMaybe)
+open import Data.Maybe.Base using (just; nothing)
 open import Tactic.RingSolver.Core.AlmostCommutativeRing
-open import Tactic.RingSolver.NonReflective (fromCommutativeRing +-*-commutativeRing (λ x → decToMaybe (0ℚ ℚ.≟ x)))
+open import Tactic.RingSolver.NonReflective (fromCommutativeRing +-*-commutativeRing (λ x → dec⇒maybe (0ℚ ℚ.≟ x)))
 
 open ≤-Reasoning
 
