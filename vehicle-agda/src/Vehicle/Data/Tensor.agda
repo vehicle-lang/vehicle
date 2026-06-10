@@ -52,6 +52,9 @@ unScalar (tensor xs) = xs zero
 Pointwise : (A → B → Set p) → Tensor A ds → Tensor B ds → Set p
 Pointwise P (tensor xs) (tensor ys) = VecPointwise.Pointwise P xs ys
 
+unscalarPointwise : ∀ {R : A → B → Set p} {xs ys} → Pointwise R xs ys → R (unScalar xs) (unScalar ys)
+unscalarPointwise {xs = tensor _} {ys = tensor _} Rxsys = Rxsys zero
+
 refl : Reflexive R → ∀ {ds} → Reflexive (Pointwise {ds = ds} R)
 refl {R = R} R-refl {x = tensor _} = VecPointwise.refl {R = R} R-refl
 

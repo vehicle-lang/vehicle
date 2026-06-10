@@ -19,20 +19,17 @@ open import Level using (0ℓ)
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary using (yes; no)
 
-open import Vehicle.Data.Tensor using (Tensor; tensor; unScalar)
+open import Vehicle.Data.Tensor using (Tensor; tensor; unScalar; scalar; unscalarPointwise)
 open import RationalUtils
 import WindControllerSpec as Vehicle
+
+open Vehicle.Output
+open Vehicle.Input
 
 open ≤-Reasoning
 
 ------------------------------------------------------------------------
 -- Setup
-
-toTensor : ℚ → ℚ → Tensor ℚ (2 ∷ [])
-toTensor x y = tensor (Vector.fromList (x ∷ y ∷ []))
-
-fromTensor : Tensor ℚ (1 ∷ []) → ℚ
-fromTensor (tensor xs) = xs 0F
 
 roadWidth : ℚ
 roadWidth = + 3 / 1
@@ -85,7 +82,10 @@ initialState = record
   }
 
 controller : ℚ → ℚ → ℚ
-controller x y = fromTensor (Vehicle.controller (Vehicle.normalise (toTensor x y)))
+controller x y = unScalar (Vehicle.Output.deltaVelocity (Vehicle.controller (record
+  { currentSensor = scalar x
+  ; previousSensor = scalar y
+  })))
 
 nextState : Observation → State → State
 nextState o s = record
@@ -161,14 +161,14 @@ controller-lem : ∀ x y →
                  ∣ x ∣ ≤ roadWidth + maxSensorError →
                  ∣ y ∣ ≤ roadWidth + maxSensorError →
                  ∣ controller x y + 2ℚ * x - y ∣ < roadWidth - maxWindShift - 3ℚ * maxSensorError
-controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ = do
-  let (rw≤x , x≤rw) = ∣p∣≤q⇒-q≤p≤q x ∣x∣≤rw+εₘₐₓ
-  let (rw≤y , y≤rw) = ∣p∣≤q⇒-q≤p≤q y ∣y∣≤rw+εₘₐₓ
-  let (wse<e , o<wse) = Vehicle.safe (toTensor x y) (λ
-       { 0F → (λ {0F → rw≤x}) , λ {0F → x≤rw}
-       ; 1F → (λ {0F → rw≤y}) , λ {0F → y≤rw}
-       })
-  (wse<e , o<wse)
+controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ with
+    ∣p∣≤q⇒-q≤p≤q x ∣x∣≤rw+εₘₐₓ
+  | ∣p∣≤q⇒-q≤p≤q y ∣y∣≤rw+εₘₐₓ
+... | (rw≤x , x≤rw) | (rw≤y , y≤rw) with
+      deltaVelocity (Vehicle.controller (record { currentSensor = scalar x ; previousSensor = scalar y}))
+    |   Vehicle.safe (record { currentSensor = scalar x ; previousSensor = scalar y}) (((λ i → rw≤x) , (λ i → x≤rw)) , (λ i → rw≤y) , (λ i → y≤rw))
+...   | tensor _  | (wse<e , e<wse)= do
+  -p<q<p⇒∣q∣<p (unscalarPointwise {R = _<_} wse<e) (unscalarPointwise {R = _<_} e<wse)
 
 valid⇒nextState-accurateSensor : ∀ o → ValidObservation o → ∀ s →
                                  AccurateSensorReading (nextState o s)
