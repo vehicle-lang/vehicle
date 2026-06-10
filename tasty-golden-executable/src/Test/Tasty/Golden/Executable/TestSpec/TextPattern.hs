@@ -1,6 +1,7 @@
 module Test.Tasty.Golden.Executable.TestSpec.TextPattern
   ( TextPattern,
     strikeOut,
+    strikeOutAll,
   )
 where
 
@@ -46,6 +47,9 @@ strikeOut TextPattern {..} = strikeOutTop pattern
         (beforeMatch, matchAndAfterMatch) = Text.splitAt matchOffset txt
         (_matchText, rest) = Text.splitAt matchLength matchAndAfterMatch
         newAcc = "[REDACTED]" : beforeMatch : acc
+
+strikeOutAll :: [TextPattern] -> Text -> Text
+strikeOutAll patterns line = foldr strikeOut line patterns
 
 instance Eq TextPattern where
   (==) :: TextPattern -> TextPattern -> Bool
