@@ -8,7 +8,7 @@
 
 open import Vehicle
 open import Vehicle.Utils
-open import Vehicle.Data.Tensor
+open import Vehicle.Data.Tensor as 𝕋
 open import Data.Product
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List.Base
@@ -17,4 +17,4 @@ module Agda where
 
 postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ []
 
-postulate spec : ∀ x → 0 < x × x < 1 → f (stack x 0) ≥ 0
+postulate spec : ∀ x → (natScalar 0) < x × x < (natScalar 1) → f (stack x (natScalar 0)) ≥ (natScalar 0)

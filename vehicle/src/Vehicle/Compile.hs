@@ -113,7 +113,7 @@ compileToQueryFormat ::
 compileToQueryFormat QueryOptions {..} typedProg = do
   logCompilerPass Solver $ do
     let verifier = queryFormats queryFormatID
-    resources <- mkExternalResources specification networkLocations datasetLocations parameterValues
+    let resources = Resources specification networkLocations datasetLocations parameterValues
     compileToQueries verifier typedProg resources outputFolder
 
 compileToITP ::

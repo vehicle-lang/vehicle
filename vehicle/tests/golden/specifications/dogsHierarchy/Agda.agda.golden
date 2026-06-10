@@ -8,13 +8,11 @@
 
 open import Vehicle
 open import Vehicle.Utils
-open import Vehicle.Data.Tensor
+open import Vehicle.Data.Tensor as 𝕋
 open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.Vec.Functional.Relation.Unary.All as Fin
-open import Data.Vec.Functional.Relation.Unary.Any as Fin
 open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
 open import Relation.Nullary
@@ -54,16 +52,16 @@ Score = Tensor ℚ []
 postulate score : Image → Tensor ℚ (6 ∷ [])
 
 ValidPixel : Tensor ℚ [] → Set
-ValidPixel p = 0 ≤ p × p ≤ 1
+ValidPixel p = (natScalar 0) ≤ p × p ≤ (natScalar 1)
 
 ValidImage : Image → Set
-ValidImage x = Fin.All (λ i → Fin.All (λ j → ValidPixel ((x ! i) ! j)))
+ValidImage x = ∀ i → ∀ j → ValidPixel ((x ! i) ! j)
 
 IsFirstChoice : Image → Dog → Set
-IsFirstChoice x dog1 = let scores = score x in Fin.All (λ d → d ≉ dog1 → (scores ! dog1) > (scores ! d))
+IsFirstChoice x dog1 = let scores = score x in ∀ d → d ≉ dog1 → (scores ! dog1) > (scores ! d)
 
 IsSecondChoice : Image → Dog → Set
-IsSecondChoice x dog2 = let scores = score x in Fin.Any (λ dog1 → IsFirstChoice x dog1 × Fin.All (λ d → d ≉ dog1 × d ≉ dog2 → (scores ! dog2) > (scores ! d)))
+IsSecondChoice x dog2 = let scores = score x in ∃ λ dog1 → IsFirstChoice x dog1 × ∀ d → d ≉ dog1 × d ≉ dog2 → (scores ! dog2) > (scores ! d)
 
 NoConfusionWith : Image → List Dog → List Dog → Set
 NoConfusionWith x dogs1 dogs2 = List.All (λ dog1 → List.All (λ dog2 → ¬ (IsFirstChoice x dog1 × IsSecondChoice x dog2)) dogs2) dogs1

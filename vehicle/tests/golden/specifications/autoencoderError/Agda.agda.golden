@@ -8,7 +8,7 @@
 
 open import Vehicle
 open import Vehicle.Utils
-open import Vehicle.Data.Tensor
+open import Vehicle.Data.Tensor as 𝕋
 open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
@@ -21,6 +21,6 @@ postulate encode : Tensor ℚ (5 ∷ []) → Tensor ℚ (2 ∷ [])
 postulate decode : Tensor ℚ (2 ∷ []) → Tensor ℚ (5 ∷ [])
 
 epsilon : Tensor ℚ (5 ∷ [])
-epsilon = foreach (λ i → ℤ.+ 1 / 10)
+epsilon = foreach (λ i → scalar (ℤ.+ 1 ℚ./ 10))
 
-postulate identity : ∀ x → x 𝕋.⊖ epsilon ≤ decode (encode x) × decode (encode x) ≤ x 𝕋.⊕ epsilon
+postulate identity : ∀ x → x 𝕋.- epsilon ≤ decode (encode x) × decode (encode x) ≤ x 𝕋.+ epsilon

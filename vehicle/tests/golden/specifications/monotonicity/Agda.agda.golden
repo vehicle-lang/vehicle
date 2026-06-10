@@ -8,7 +8,7 @@
 
 open import Vehicle
 open import Vehicle.Utils
-open import Vehicle.Data.Tensor
+open import Vehicle.Data.Tensor as 𝕋
 open import Data.Product
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List.Base
@@ -17,4 +17,4 @@ module Agda where
 
 postulate f : Tensor ℚ [] → Tensor ℚ []
 
-postulate monotonic : ∀ x1 → ∀ x2 → (0 < x1 × x1 < 1) × ((0 < x2 × x2 < 1) × x1 ≤ x2) → f x1 ≤ f x2
+postulate monotonic : ∀ x1 → ∀ x2 → ((natScalar 0) < x1 × x1 < (natScalar 1)) × (((natScalar 0) < x2 × x2 < (natScalar 1)) × x1 ≤ x2) → f x1 ≤ f x2
