@@ -339,11 +339,11 @@ compileDecl :: (MonadAgdaCompile m) => AgdaOptions -> Decl DecidabilityBuiltin -
 compileDecl opts = \case
   DefAbstract _ n _ t ->
     Just <$> compilePostulate n t
-  DefFunction p n funSort t e -> case funSort of
+  DefFunction _ n funSort t e -> case funSort of
     TypeDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
     FunctionDecl binderCount Nothing -> Just <$> compileFunctionDecl n binderCount t e
     FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty opts n e
-    FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Agda"
+    FunctionDecl binderCount (Just AnnInstance {}) -> Just <$> compileFunctionDecl n binderCount t e
     ProjectionDecl _ -> return Nothing
   DefRecord p n _sort telescope fields ->
     Just <$> compileRecordDecl p n telescope fields
@@ -362,15 +362,21 @@ compileRecordDecl p ident telescope fields = do
       else throwError $ UnimplementedFeature p "Compiling parameterised records to Agda"
   fs' <- traverseRecordFields compileExpr fields
 
+  let recordName = compileIdentifier ident
   return $
     "record"
-      <+> compileIdentifier ident
+      <+> recordName
       <+> ":"
       <+> t'
       <+> "where"
       <> line
       <> indent 2 "field"
+      <> line
       <> indent 4 (vsep $ fmap (\(f, t) -> pretty f <+> ":" <+> t) fs')
+      <> line
+      <> line
+      <> "open"
+      <+> recordName
 
 compileFunctionDecl ::
   (MonadAgdaCompile m) =>
@@ -416,10 +422,13 @@ compileExpr expr = do
       return $
         "record"
           <> line
-          <> indent 2 "{"
-          <> concatWith (\x y -> x <> line <> ";" <+> y) fs'
-          <> line
-          <> "}"
+          <> indent
+            2
+            ( "{"
+                <+> concatWith (\x y -> x <> line <> ";" <+> y) fs'
+                <> line
+                <> "}"
+            )
     RecordProj _p _t r field ->
       annotateApp [] Nothing (pretty field) [explicit r]
   logExit result
@@ -592,7 +601,7 @@ compileBuiltinFunction p f args = case f of
   ReduceMulRatTensor -> annotateApp [DataTensor] Nothing "reduceMul" args
   ConstTensor -> annotateApp [DataTensor] Nothing "constTensor" args
   QuantifyRatTensor q -> compileQuantifierFunction q args
-  QuantifyRecord _ -> unsupportedTensorLikeQuantifier
+  QuantifyRecord q -> compileQuantifierFunction q args
   AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args

@@ -39,18 +39,6 @@ allInstances =
       )
     ]
       -------------
-      -- Network --
-      -------------
-      <> [ ( forAllDims $ \ds1 ->
-               forAllDims $ \ds2 ->
-                 decTypeClass ValidNetworkType [tRatTensor ds1 ~> tRatTensor ds2],
-             lamDims $ \_ds1 ->
-               lamDims $ \_ds2 ->
-                 tUnit,
-             Nothing
-           )
-         ]
-      -------------
       -- Tensors --
       -------------
       <> [ ( isTensorType,
