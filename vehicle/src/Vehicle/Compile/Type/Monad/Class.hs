@@ -373,7 +373,7 @@ getRecordDefinition ::
 getRecordDefinition proxy ident = do
   decl <- getDecl proxy ident
   case decl of
-    DefRecord _ _ _ telescope fields ->
+    DefRecord _ _ _ telescope fields _ ->
       return (telescope, fields)
     _ ->
       developerError $
@@ -389,7 +389,7 @@ getDeclType proxy ident = do
   return $ case decl of
     DefAbstract _ _ _ t -> t
     DefFunction _ _ _ t _ -> t
-    DefRecord p _ _ telescope _ -> foldr (Pi p) (Universe p 0) telescope
+    DefRecord p _ _ telescope _ _ -> foldr (Pi p) (Universe p 0) telescope
 
 addTypedDeclToContext ::
   (MonadTypeChecker builtin m) =>

@@ -362,7 +362,7 @@ compileDecl _opts moduleDefs = \case
     FunctionDecl _ (Just AnnProperty) -> developerError "Properties should have been filtered out"
     FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Imandra"
     ProjectionDecl {} -> developerError "ProjectionDecl should have been filtered out"
-  DefRecord p n _ telescope fields -> compileRecordDecl moduleDefs p n telescope fields
+  DefRecord p n _ telescope fields _supports -> compileRecordDecl moduleDefs p n telescope fields
 
 filterRelevantDecls :: Decl DecidabilityBuiltin -> Bool
 filterRelevantDecls = \case

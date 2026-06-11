@@ -272,6 +272,14 @@ formatCompileError = \case
               "Please consult the documentation for a description"
                 <+> "of Vehicle syntax"
         }
+    UnknownSupportsOperation p name ->
+      VehicleUserError
+        { provenance = Just p,
+          problem = "unknown record operation" <+> quotePretty name,
+          fix = Just $ do
+            let supportedOperations = fmap pretty (enumerate @DerivableRecordOperation)
+            "Please use one of the supported operations:" <> line <> prettyMultiLineList supportedOperations
+        }
   -------------
   -- Scoping --
   -------------

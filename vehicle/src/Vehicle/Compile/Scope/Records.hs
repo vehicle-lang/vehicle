@@ -1,41 +1,124 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Data.Builtin.Standard.Scoping where
+module Vehicle.Compile.Scope.Records where
 
 import Control.Monad (unless)
 import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty (NonEmpty (..), toList)
-import Data.Text (Text)
+import Data.Set qualified as Set
 import Data.Text qualified as Text
+import Data.Traversable (forM)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Scope.Core
-import Vehicle.Compile.Sugar.Core
-import Vehicle.Data.AST.Expr.Desugared qualified as D (Expr (..), normAppList)
-import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface (getDims)
 import Vehicle.Data.Code.TypedView (TypeValue (VRatTensorType), toTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (TensorShape, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Libraries.StandardLibrary
+import Prelude hiding (pi)
 
-instance ScopableBuiltin Builtin where
-  generateAuxiliaryRecordDefinitions p ident sort telescope fields
-    | isAnnotatedAsTensor sort = createTensorRecordConversionFunctions p ident telescope fields
-    | not (isStandardLibIdent ident) = return [createRecordHasValidIOTypeInstance p ident telescope fields]
-    | otherwise = return []
+--------------------------------------------------------------------------------
+-- Expr generalisation
 
-instance DesugarableBuiltin Builtin where
-  elabUnitLiteral p = D.Builtin p $ BuiltinConstructor UnitLiteral
-  elabBoolLiteral p = D.Builtin p . BuiltinConstructor . BoolTensorLiteral . ZeroDimTensor
-  elabNatLiteral p n = do
-    let fromNat = D.Builtin p (TypeClassOp FromNatTC)
-    D.normAppList fromNat $ fmap explicit [D.Builtin p $ BuiltinConstructor $ NatLiteral n]
-  elabDecimalLiteral p r = do
-    let fromRat = D.Builtin p (TypeClassOp FromRatTC)
-    D.normAppList fromRat $ fmap explicit [D.Builtin p $ BuiltinConstructor $ RatTensorLiteral $ ZeroDimTensor r]
+generateBuiltinAuxiliaryRecordDefinitions ::
+  (MonadCompile m) =>
+  Provenance ->
+  Identifier ->
+  Maybe DefRecordSort ->
+  Telescope Builtin ->
+  RecordFields Builtin ->
+  [DerivableRecordOperation] ->
+  m [Decl Builtin]
+generateBuiltinAuxiliaryRecordDefinitions p ident sort telescope fields derivedOps = do
+  -- Create the projection functions for the record
+  let visibility = if isAnnotatedAsTypeClass sort then Instance True else Explicit
+  recordProjectionFunctions <- traverse (createRecordProjectionFn p ident telescope visibility) fields
+
+  -- All records can be used as inputs and outputs to networks
+  -- so generate the marker instances that allow them to pass type-checking.
+  let validNetworkIOInstances
+        | isStandardLibIdent ident = []
+        | otherwise = [createRecordHasValidIOTypeInstance p ident telescope fields]
+
+  -- Generate the conversion  tensor conversion functions
+  tensorConversionFunctionsAndInstances <-
+    if isAnnotatedAsTensor sort
+      then createTensorRecordConversionFunctions p ident telescope fields
+      else
+        return []
+
+  -- Generate the instances for the supports
+  derivedInstances <- generateDerivedInstances p ident telescope fields derivedOps
+
+  return $
+    recordProjectionFunctions
+      <> validNetworkIOInstances
+      <> tensorConversionFunctionsAndInstances
+      <> derivedInstances
+
+--------------------------------------------------------------------------------
+-- Record projections
+--------------------------------------------------------------------------------
+
+-- | Given a record declaration of the form
+--
+--    def record X t1 .. tn where
+--        { ...
+--        , f : t
+--        , ...
+--        }
+--
+-- creates a projection function:
+--
+--    f : forall {t1} ... {tn} -> [ X t1 ... tn ] -> t / [t1 ... tn]
+--    f {p1} ... {pn} [r] = r.f
+--
+-- where `[ ... ]` represents the provided visibility.
+createRecordProjectionFn ::
+  (MonadLogger m) =>
+  Provenance ->
+  Identifier ->
+  Telescope Builtin ->
+  Visibility ->
+  RecordField Builtin ->
+  m (Decl Builtin)
+createRecordProjectionFn p ident telescope visibility (field, fieldType) = do
+  -- Change any explicit binders to implicit and create parameters
+  let parameterArgs = createArgsForTelescope p telescope
+  let parameterisedRecordType = normAppList (FreeVar p ident) parameterArgs
+  let fnRecordBinder namingForm =
+        Binder
+          { binderDisplayForm = BinderDisplayForm namingForm True,
+            binderVisibility = visibility,
+            binderRelevance = Relevant,
+            binderValue = parameterisedRecordType
+          }
+
+  -- Create the type
+  let implicitTelescope = createImplicitTelescope telescope
+  let liftedFieldType = liftDBIndices 1 fieldType
+  let fnBaseType = Pi p (fnRecordBinder OnlyType) liftedFieldType
+  let fnType = foldr (Pi p) fnBaseType implicitTelescope
+
+  -- Create the body
+  let liftedRecordType = liftDBIndices 1 parameterisedRecordType
+  let recordProjExpr = RecordProj p liftedRecordType (BoundVar p (Ix 0)) field
+  let fnBaseBody = Lam p (fnRecordBinder (NameAndType "r" p)) recordProjExpr
+  let fnBody = foldr (Lam p) fnBaseBody implicitTelescope
+
+  -- Create the identifier
+  let fnIdent = fieldAccessIdentifier ident field
+  let fnSort = ProjectionDecl (length telescope + 1)
+
+  -- Create the declaration
+  return $ DefFunction p fnIdent fnSort fnType fnBody
+
+--------------------------------------------------------------------------------
+-- ValidNetworkIOType instance generation
+--------------------------------------------------------------------------------
 
 createRecordHasValidIOTypeInstance ::
   Provenance ->
@@ -48,9 +131,9 @@ createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
   --
   --   @instance
   --   recordRHasValidNetworkIOType :
-  --     {{t1}} ->
+  --     {t1} ->
   --     ...
-  --     {{tn}} ->
+  --     {tn} ->
   --     {{HasValidNetworkFieldType f1}} ->
   --     ...
   --     {{HasValidNetworkFieldType fn}} ->
@@ -64,7 +147,7 @@ createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  let mkConstraint (_, fieldType) k = flip mkInstanceBinder Nothing $ normAppList target [argument]
+  let mkConstraint (_, fieldType) k = flip mkInstanceBinder (Just (p, "_")) $ normAppList target [argument]
         where
           target = FreeVar p validNetworkFieldTypeIdent
           argument = explicit (liftDBIndices (Lv k) fieldType)
@@ -90,6 +173,10 @@ createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
 
   DefFunction p instanceIdent functionSort functionType functionBody
 
+--------------------------------------------------------------------------------
+-- @tensor annotations
+--------------------------------------------------------------------------------
+
 createTensorRecordConversionFunctions ::
   (MonadCompile m) =>
   Provenance ->
@@ -109,6 +196,8 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   -- We can't actually know the element and the field types at scope checking
   -- time because the user may be using type synonyms for the tensors, e.g.
   --
+  --    type Image = Tensor Real [28, 28]
+  --
   --    @tensor
   --    record Input where
   --      { red   : Image
@@ -123,56 +212,24 @@ createTensorRecordConversionFunctions p ident telescope fields = do
 
   let recordToTensorDecl = createRecordToTensor p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
-  let validNetworkInstance = createValidNetworkIOInstance p ident
   let validNetworkFieldInstance = createValidNetworkFieldInstance p ident
-  let validQuantifierInstance = createTensorLikeHasQuantifierInstance p ident
-  let validHasAddInstance = createTensorLikeArithmeticInstance p ident hasAddIdent "HasAdd" "addTC"
-  let validHasSubInstance = createTensorLikeArithmeticInstance p ident hasSubIdent "HasSub" "subTC"
-  let validHasMulInstance = createTensorLikeArithmeticInstance p ident hasMulIdent "HasMul" "mulTC"
-  let validHasDivInstance = createTensorLikeArithmeticInstance p ident hasDivIdent "HasDiv" "divTC"
-  let validHasComparisonInstance = createTensorLikeComparisonInstance p ident
   let validDatasetTypeInstance = createValidDatasetTypeInstance p ident
   let validDatasetListElementTypeInstance = createValidDatasetListElementTypeInstance p ident
+  let quantInstance = createTensorLikeHasQuantifierInstance p ident
+  let comparisonInstance = createTensorLikeComparisonInstance p ident
 
-  return
-    [ recordToTensorDecl,
-      tensorToRecordDecl,
-      validNetworkInstance,
-      validNetworkFieldInstance,
-      validQuantifierInstance,
-      validHasAddInstance,
-      validHasSubInstance,
-      validHasDivInstance,
-      validHasMulInstance,
-      validHasComparisonInstance,
-      validDatasetTypeInstance,
-      validDatasetListElementTypeInstance
-    ]
+  let instances =
+        [ recordToTensorDecl,
+          tensorToRecordDecl,
+          validNetworkFieldInstance,
+          validDatasetTypeInstance,
+          validDatasetListElementTypeInstance,
+          comparisonInstance,
+          quantInstance
+        ]
 
-createRecordToTensor ::
-  Provenance ->
-  Identifier ->
-  DSLExpr Builtin ->
-  DSLExpr Builtin ->
-  NonEmpty (GenericRecordField (Type Builtin)) ->
-  Decl Builtin
-createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
-  -- Create the name
-  let functionName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
-  let functionIdent = Identifier (modulePath recordIdent) functionName
-
-  -- Create the type
-  let firstDimension = dim (length fields)
-  let allDimensions = dimCons firstDimension fieldDimensions
-  let recordType = freeVar recordIdent
-  let functionType = fromDSL mempty $ recordType ~> tTensor fieldElementType allDimensions
-
-  -- Create the body
-  let functionBody = fromDSL mempty $ explLam "x" recordType $ \r -> do
-        let tensorElements = fmap (\(fieldName, _) -> recordProj (freeVar recordIdent) r fieldName) fields
-        stackTensor fieldElementType firstDimension fieldDimensions tensorElements
-
-  DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
+  -- All @tensor annotations should also derive the following operations
+  return instances
 
 createTensorToRecord ::
   Provenance ->
@@ -201,19 +258,6 @@ createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
         record recordType (zip fieldNames fieldContents)
 
   DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
-
-createValidNetworkIOInstance ::
-  Provenance ->
-  Identifier ->
-  Decl Builtin
-createValidNetworkIOInstance p recordIdent = do
-  let recordType = fromDSL mempty $ freeVar validNetworkIOTypeIdent @@ [freeVar recordIdent]
-  let functionBody = Record p recordType []
-
-  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidNetworkIOType"
-  let functionIdent = Identifier (modulePath recordIdent) functionName
-
-  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
 createValidNetworkFieldInstance ::
   Provenance ->
@@ -254,6 +298,31 @@ createValidDatasetListElementTypeInstance p recordIdent = do
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
+createRecordToTensor ::
+  Provenance ->
+  Identifier ->
+  DSLExpr Builtin ->
+  DSLExpr Builtin ->
+  NonEmpty (GenericRecordField (Type Builtin)) ->
+  Decl Builtin
+createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
+  -- Create the name
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  -- Create the type
+  let firstDimension = dim (length fields)
+  let allDimensions = dimCons firstDimension fieldDimensions
+  let recordType = freeVar recordIdent
+  let functionType = fromDSL mempty $ recordType ~> tTensor fieldElementType allDimensions
+
+  -- Create the body
+  let functionBody = fromDSL mempty $ explLam "x" recordType $ \r -> do
+        let tensorElements = fmap (\(fieldName, _) -> recordProj (freeVar recordIdent) r fieldName) fields
+        stackTensor fieldElementType firstDimension fieldDimensions tensorElements
+
+  DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
+
 createTensorLikeHasQuantifierInstance ::
   Provenance ->
   Identifier ->
@@ -276,31 +345,6 @@ createTensorLikeHasQuantifierInstance p recordIdent = do
           ]
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
-
-createTensorLikeArithmeticInstance ::
-  Provenance ->
-  Identifier ->
-  Identifier -> -- standard library identifier for the typeclass, e.g. hasAddIdent
-  Text -> -- name of typeclass in text, e.g HasAdd
-  Text -> -- name of the field for the operation in text e.g. addTC
-  Decl Builtin
-createTensorLikeArithmeticInstance p recordIdent typeclassIdent typeclassName fieldName = do
-  let recordType = freeVar recordIdent
-  let fromTensor = toDSL $ constructFromTensorFreeVar recordIdent p
-  let toTensor = toDSL $ constructToTensorFreeVar recordIdent p
-
-  let typeclass = fromDSL mempty $ freeVar typeclassIdent @@ [recordType, recordType, recordType]
-  let instanceName = Text.pack "_" <> nameOf recordIdent <> typeclassName
-  let instanceIdent = Identifier (modulePath recordIdent) instanceName
-  let fieldIdent = freeVar $ standardLibIdent fieldName
-
-  let field = fromDSL mempty $ explLam "r1" recordType $ \r1 ->
-        explLam "r2" recordType $ \r2 -> do
-          let innerAddTC = fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
-          fromTensor @@ [innerAddTC]
-
-  let body = Record p typeclass [(FieldName p fieldName, field)]
-  DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) typeclass body
 
 createTensorLikeComparisonInstance ::
   Provenance ->
@@ -334,6 +378,82 @@ createComparisonField recordType toTensor fieldIdent = do
   fromDSL mempty $ explLam "r1" recordType $ \r1 ->
     explLam "r2" recordType $ \r2 -> fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
 
+--------------------------------------------------------------------------------
+-- Derivable operations
+--------------------------------------------------------------------------------
+
+generateDerivedInstances ::
+  (MonadLogger m) =>
+  Provenance ->
+  Identifier ->
+  Telescope Builtin ->
+  RecordFields Builtin ->
+  [DerivableRecordOperation] ->
+  m [Decl Builtin]
+generateDerivedInstances p ident telescope fields ops = do
+  let uniqueOps = Set.toList $ Set.fromList ops
+  derivedDecls <- forM uniqueOps $ \case
+    Addition ->
+      return
+        [ deriveArithmeticOp2 hasAddIdent addTCProj p ident telescope fields,
+          deriveArithmeticOp2 hasSubIdent subTCProj p ident telescope fields
+        ]
+    Multiplication ->
+      return
+        [ deriveArithmeticOp2 hasMulIdent mulTCProj p ident telescope fields,
+          deriveArithmeticOp2 hasDivIdent divTCProj p ident telescope fields
+        ]
+
+  return $ concat derivedDecls
+
+deriveArithmeticOp2 ::
+  Identifier -> -- standard library identifier for the typeclass, e.g. hasAddIdent
+  Identifier -> -- name of the field for the operation in text e.g. addTC
+  Provenance ->
+  Identifier ->
+  Telescope Builtin ->
+  RecordFields Builtin ->
+  Decl Builtin
+deriveArithmeticOp2 typeclassIdent typeclassOp p recordIdent telescope fields = do
+  -- Create the name of the instance
+  let instanceName = Text.pack "_" <> nameOf recordIdent <> nameOf typeclassIdent
+  let instanceIdent = Identifier (modulePath recordIdent) instanceName
+
+  -- Helper function to make the record type.
+  -- TODO: generalise `@@` etc. to take lists instead of non-empty lists.
+  let mkRecordType = \case
+        [] -> freeVar recordIdent
+        (a : as) -> freeVar recordIdent @@ (a :| as)
+  let mkInstanceType args = do
+        let recordType = mkRecordType args
+        freeVar typeclassIdent @@ [recordType, recordType, recordType]
+
+  -- Create the applied type of the record
+  let implicitTelescope = createImplicitTelescope telescope
+  let instanceType = fromDSL p $
+        forallTelescope implicitTelescope $ \args -> do
+          mkInstanceType args
+
+  -- Create the body of the type
+  let instanceBody = fromDSL p $
+        forallTelescope implicitTelescope $ \args -> do
+          let recordType = mkRecordType args
+          let operation =
+                explLam "x" recordType $ \x ->
+                  explLam "y" recordType $ \y -> do
+                    let mkField (fieldName, _fieldType) =
+                          ( fieldName,
+                            freeVar typeclassOp
+                              @@ [ recordProj recordType x fieldName,
+                                   recordProj recordType y fieldName
+                                 ]
+                          )
+                    record recordType $ fmap mkField fields
+
+          record (mkInstanceType args) [(FieldName p (nameOf typeclassOp), operation)]
+
+  DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) instanceType instanceBody
+
 -- -----------------------------------------------------------------------------------------------
 -- Record/Tensorisable util functions
 -- Not sure if these should go here or if they are at the right level of abstraction
@@ -365,3 +485,20 @@ constructToTensorFreeVar ::
 constructToTensorFreeVar ident p = do
   let name = Text.pack "_" <> identifierName ident <> "ToTensor"
   FreeVar p (Identifier (modulePath ident) name)
+
+createImplicitTelescope :: Telescope Builtin -> Telescope Builtin
+createImplicitTelescope = fmap (flip setBinderVisibility $ Implicit True)
+
+createArgsForTelescope :: Provenance -> Telescope Builtin -> [Arg Builtin]
+createArgsForTelescope p telescope = do
+  let mkArg (binder, ix) = argFromBinder binder (BoundVar p ix)
+  let binderIndices = reverse $ fmap Ix [0 .. (length telescope - 1)]
+  fmap mkArg (zip telescope binderIndices)
+
+forallTelescope :: Telescope Builtin -> ([DSLExpr Builtin] -> DSLExpr Builtin) -> DSLExpr Builtin
+forallTelescope telescope continuation = go [] telescope
+  where
+    go :: [DSLExpr Builtin] -> Telescope Builtin -> DSLExpr Builtin
+    go args = \case
+      [] -> continuation (reverse args)
+      b : bs -> pi (nameOf b) (visibilityOf b) (relevanceOf b) hole $ \a -> go (a : args) bs

@@ -246,12 +246,6 @@ tokReduceMin = mkToken B.TokReduceMin "reduceMin"
 
 tokReduceMax = mkToken B.TokReduceMax "reduceMax"
 
-tokHasEq = mkToken B.TokHasEq "HasEq"
-
-tokHasNotEq = mkToken B.TokHasNotEq "HasNotEq"
-
-tokHasLeq = mkToken B.TokHasLeq "HasLeq"
-
 tokHasMap = mkToken B.TokHasMap "HasMap"
 
 tokHasFold = mkToken B.TokHasFold "HasFold"

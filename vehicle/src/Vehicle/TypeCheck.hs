@@ -35,7 +35,6 @@ import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Instances (standardBuiltinInstances)
-import Vehicle.Data.Builtin.Standard.Scoping ()
 import Vehicle.Data.Builtin.Standard.Type ()
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeEnvs, typedModule)
 import Vehicle.Data.Code.Value (FreeEnv)

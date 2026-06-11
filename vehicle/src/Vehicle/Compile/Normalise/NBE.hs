@@ -131,9 +131,9 @@ evalDecl ::
 evalDecl d = case d of
   DefAbstract {} -> traverse evalInEmptyEnv d
   DefFunction {} -> traverse evalInEmptyEnv d
-  DefRecord p ident sort telescope fields -> do
+  DefRecord p ident sort telescope fields supportedOps -> do
     (telescope', fields') <- evalRecordDef (telescope, fields)
-    return $ DefRecord p ident sort telescope' fields'
+    return $ DefRecord p ident sort telescope' fields' supportedOps
 
 evalInEmptyEnv ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>

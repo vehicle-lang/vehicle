@@ -345,7 +345,7 @@ compileDecl opts = \case
     FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty opts n e
     FunctionDecl binderCount (Just AnnInstance {}) -> Just <$> compileFunctionDecl n binderCount t e
     ProjectionDecl _ -> return Nothing
-  DefRecord p n _sort telescope fields ->
+  DefRecord p n _sort telescope fields _supports ->
     Just <$> compileRecordDecl p n telescope fields
 
 compileRecordDecl ::
