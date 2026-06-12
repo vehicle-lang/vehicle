@@ -93,9 +93,11 @@ type NatComparisonAccessor expr op = Accessor expr (op, Op2Args expr)
 
 type IndexComparisonAccessor expr op = Accessor expr (op, IndexComparisonArgs expr)
 
-type RatTensorPointwiseComparisonAccessor expr op = Accessor expr (op, TensorOp2Args expr)
+type RatTensorComparisonAccessor expr op = Accessor expr (op, TensorComparisonArgs expr)
 
-type RatTensorReducedComparisonAccessor expr op = Accessor expr (op, TensorReduceComparisonArgs expr)
+-- type RatTensorPointwiseComparisonAccessor expr op = Accessor expr (op, TensorOp2Args expr)
+
+-- type RatTensorReducedComparisonAccessor expr op = Accessor expr (op, TensorReduceComparisonArgs expr)
 
 type Op1Accessor expr = Accessor expr (Op1Args expr)
 
@@ -155,11 +157,14 @@ accessCompareIndex = accessOpAndArgs accessCompareIndexBuiltin
 accessCompareNat :: (HasBoolExpr expr builtin) => NatComparisonAccessor (expr builtin) ComparisonOp
 accessCompareNat = accessOpAndArgs accessCompareNatBuiltin
 
-accessCompareRatTensorPointwise :: (HasBoolExpr expr builtin) => RatTensorPointwiseComparisonAccessor (expr builtin) ComparisonOp
-accessCompareRatTensorPointwise = accessOpAndArgs accessCompareRatTensorPointwiseBuiltin
+accessCompareRatTensor :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensor = accessOpAndArgs accessCompareRatTensorBuiltin
 
-accessCompareRatTensorReduced :: (HasBoolExpr expr builtin) => RatTensorReducedComparisonAccessor (expr builtin) ComparisonOp
-accessCompareRatTensorReduced = accessOpAndArgs accessCompareRatTensorReducedBuiltin
+-- accessCompareRatTensorPointwise :: (HasBoolExpr expr builtin) => RatTensorPointwiseComparisonAccessor (expr builtin) ComparisonOp
+-- accessCompareRatTensorPointwise = accessOpAndArgs accessCompareRatTensorPointwiseBuiltin
+
+-- accessCompareRatTensorReduced :: (HasBoolExpr expr builtin) => RatTensorReducedComparisonAccessor (expr builtin) ComparisonOp
+-- accessCompareRatTensorReduced = accessOpAndArgs accessCompareRatTensorReducedBuiltin
 
 accessQuantifyRatTensor ::
   (HasBoolExpr expr builtin, HasLambdaConstructor expr body) =>

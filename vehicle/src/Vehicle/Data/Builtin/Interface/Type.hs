@@ -11,6 +11,8 @@ import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Prelude (Provenance, Relevance (..))
 import Prelude hiding (iterate)
+import Vehicle.Data.DSL (forAll)
+import Vehicle.Data.Code.DSL (forAllDim, tRatTensor)
 
 class (NormalisableBuiltin builtin, Ord builtin) => TypableBuiltin builtin where
   -- | Construct a type for the builtin
@@ -82,9 +84,15 @@ typeOfBuiltinFunction = \case
         tIndex n1 ~> tIndex n2 ~> tBoolTensor dimNil
   CompareNat {} ->
     tNat ~> tNat ~> tBoolTensor dimNil
-  CompareRatTensorPointwise {} ->
+  CompareRatTensor {} ->
     forAllDims $ \dims ->
-      tRatTensor dims ~> tRatTensor dims ~> tBoolTensor dims
+      tDims ~> tDims ~> tRatTensor ~> tRatTensor ~> tBoolTensor dims1
+      -- tDims ~> tDims ~> tRatTensor xdims ~> tRatTensor ydims ~> tBoolTensor dims1
+      -- where dims1 -> dims2, xdims == ydims == dims1++dims2
+
+  -- CompareRatTensorPointwise {} ->
+    -- forAllDims $ \dims ->
+      -- tRatTensor dims ~> tRatTensor dims ~> tBoolTensor dims
   -- Container functions
   FoldList -> typeOfFold tListRaw
   MapList -> typeOfMap tListRaw

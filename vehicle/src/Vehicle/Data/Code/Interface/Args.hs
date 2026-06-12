@@ -161,6 +161,31 @@ instance IsArgs IndexComparisonArgs where
       }
 
 -- | Arguments for binary tensor operations (e.g. +, -)
+-- | better desc?: Arguments for tensor comparison operations and reduction
+
+data TensorComparisonArgs expr = TensorComparisonArgs
+  { tensorReduceToDims :: expr, -- explicitly given, shape of tensor at the end
+    tensorReduceDims   :: expr, -- explicitly given in prototype, but could be implicitly worked out from first argument, dimensions reduction is performed on.
+    tensorOp1Arg1 :: expr, -- explicit, tensor
+    tensorOp2Arg2 :: expr -- explicit, tensor
+    -- does naming them same as binary tensor operations cause any issues?
+  }
+
+instance IsArgs TensorComparisonArgs where
+  accessSpine = 
+    Access
+      {
+        getExpr = \case
+            (fmap argExpr -> [dims1, dims2, x, y]) -> Just $ TensorComparisonArgs dims1 dims2 x y
+            _ -> Nothing,
+          mkExpr = \(TensorComparisonArgs dims1 dims2 x y) -> [explicit dims1, implicit dims2, explicit x, explicit y]
+      }
+
+-- traverseTensorOp2Args :: (Applicative f) => (t -> f t) -> TensorOp2Args t -> f (TensorOp2Args t)
+-- traverseTensorOp2Args f (TensorOp2Args ds xs ys) = TensorOp2Args ds <$> f xs <*> f ys
+-- for ref ^^^^^
+
+-- -- | Arguments for binary tensor operations (e.g. +, -)
 data TensorReduceComparisonArgs expr = TensorReduceComparisonArgs
   { tensorReduceOp2Dim :: expr,
     tensorReduceOp2Dims :: expr,
