@@ -19,6 +19,7 @@ import Vehicle.Data.AST.Arg
 import Vehicle.Data.AST.Decl (LHSBinderCount)
 import Vehicle.Data.AST.Expr.Desugared qualified as V
 import Vehicle.Data.Builtin.Standard.Core qualified as V
+import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.Error
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Syntax.External.Abs qualified as B
@@ -312,9 +313,15 @@ delabConstructor fun args = case fun of
   V.NatLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.IndexLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.VectorLiteral -> delabVecLiteral args
-  V.NatTensorLiteral t -> cheatDelabPretty t []
-  V.RatTensorLiteral t -> cheatDelabPretty t []
-  V.BoolTensorLiteral t -> cheatDelabPretty t []
+  V.NatTensorLiteral t -> return $ delabTensor t
+  V.RatTensorLiteral t -> return $ delabTensor t
+  V.BoolTensorLiteral t -> return $ delabTensor t
+
+delabTensor :: (Pretty a) => Tensor a -> B.Expr
+delabTensor t = cheatDelab $ layoutAsText $ case t of
+  ConstantTensor [] value -> pretty value
+  ConstantTensor shape value -> parens ("const" <+> pretty value <+> pretty shape)
+  denseTensor -> pretty denseTensor
 
 delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClassOp op args = case op of

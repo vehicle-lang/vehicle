@@ -4,8 +4,8 @@ module Vehicle.Backend.Loss.LossCompilation
     convertRatTensor,
     convertDims,
     convertBoundVar,
-    convertVecLiteralArgs,
-    convertVecForeachArgs,
+    convertVecLiteral,
+    convertVecForeach,
     convertBoolTensorLiteral,
     convertNatComparison,
     convertIndexComparison,
@@ -40,7 +40,8 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
-import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf)
+import Vehicle.Data.Real (ExtendedRational (..))
+import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level (findSliceIndices)
@@ -62,7 +63,7 @@ convertType typ = logConversion typ $ case toTypeValue typ of
   VIndexType n -> IIndexType <$> convertDim n
   VNatType -> return INatType
   VListType tElem -> IListType <$> convertType tElem
-  VVectorType {} -> unsupportedOperation "VectorType"
+  VVectorType tElem d -> IVectorType <$> convertType tElem <*> convertDim d
   VBoolTensorType ds -> ITensorType <$> convertBoolType <*> convertDims ds
   VRatTensorType ds -> ITensorType IRatType <$> convertDims ds
   VRecordType {} -> developerError "Records in loss functions are not supported yet"
@@ -220,7 +221,16 @@ convertNatComparison :: (MonadLogic m) => (ComparisonOp, Op2Args (Value Builtin)
 convertNatComparison _args = unsupportedOperation "NatComparison"
 
 convertIndexComparison :: (MonadLogic m) => (ComparisonOp, IndexComparisonArgs (Value Builtin)) -> m (Value LossBuiltin)
-convertIndexComparison _args = unsupportedOperation "IndexComparison"
+convertIndexComparison (op, IndexComparisonArgs _d1 _d2 x y) = do
+  -- This is horrendously unsound, and ill-typed but works for now.
+  -- Really, we should compiling these to masking operations.
+  -- However, that requires that we switch to normalisation by need...
+  convertRatTensorPointwiseComparison (op, TensorOp2Args IDimNil (convertToRat x) (convertToRat y))
+  where
+    convertToRat :: Value Builtin -> Value Builtin
+    convertToRat v = case toIndexValue v of
+      VIndexLiteral value _ -> IRatTensor $ ZeroDimTensor (Finite $ toRational value)
+      _ -> v
 
 convertRatTensorPointwiseComparison :: (MonadLogic m) => (ComparisonOp, TensorOp2Args (Value Builtin)) -> m (Value LossBuiltin)
 convertRatTensorPointwiseComparison (op, args) = do
@@ -264,7 +274,9 @@ convertIndex ::
 convertIndex value = logConversion value $ case toIndexValue value of
   VIndexLiteral i dim -> IIndexLiteral i <$> convertDim dim
   VIndexBoundVar v spine -> convertBoundVar v spine
+  VIndexParameter ident -> return $ VFreeVar ident []
   VIndexIf args -> convertIf args
+  VIndexAtVector args -> convertAtVector convertIndex args
 
 --------------------------------------------------------------------------------
 -- Rat
@@ -295,44 +307,48 @@ convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VIfRatTensor args -> convertIf args
   VRatConstTensor args -> convertConstTensor convertRatTensor args
   VRatStackTensor args -> convertStackTensor convertRatTensor args
-  VRatAt args -> convertAtTensor convertRatTensor args
+  VRatAtTensor args -> convertAtTensor convertRatTensor args
+  VRatAtVector args -> convertAtVector (convertVector convertRatTensor) args
   VRatForeach args -> convertForeachTensor convertRatTensor args
   VRatRecordAcc {} -> developerError "Record accesses in loss functions are not supported yet"
 
 --------------------------------------------------------------------------------
 -- Vector
 
--- Vector operations are converted to tensor operations.
-
-convertVecLiteralArgs ::
+convertVector ::
   (MonadLogic m) =>
   (Value Builtin -> m (Value LossBuiltin)) ->
-  (VType Builtin, VDims Builtin) ->
-  VecLitArgs (Value Builtin) ->
+  Value Builtin ->
   m (Value LossBuiltin)
-convertVecLiteralArgs convertValue (elemType, dims) (VecLitArgs _typ dim xs) = do
-  convertStackTensor convertValue $
-    StackTensorArgs
-      { stackType = elemType,
-        stackFirstDim = dim,
-        stackRemainingDims = dims,
-        stackElements = xs
-      }
+convertVector convertElem value = do
+  case toVectorValue value of
+    VVectorBoundVar lv spine -> convertBoundVar lv spine
+    VVectorDataset ident -> return $ VFreeVar ident []
+    VVectorLiteral args -> convertVecLiteral convertElem args
+    VVectorIf args -> convertIf args
+    VVectorForeach args -> convertVecForeach convertElem args
 
-convertVecForeachArgs ::
+convertVecLiteral ::
   (MonadLogic m) =>
   (Value Builtin -> m (Value LossBuiltin)) ->
-  (VType Builtin, VDims Builtin) ->
+  VectorLitArgs (Value Builtin) ->
+  m (Value LossBuiltin)
+convertVecLiteral convert (VectorLitArgs typ dim xs) = do
+  typ' <- convertType typ
+  dim' <- convertDim dim
+  xs' <- traverse convert xs
+  return $ mkExpr accessVecLit $ VectorLitArgs typ' dim' xs'
+
+convertVecForeach ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
   ForeachVectorArgs (Value Builtin) ->
   m (Value LossBuiltin)
-convertVecForeachArgs convertValue (elemType, dims) (ForeachVectorArgs _typ dim xs) =
-  convertForeachTensor convertValue $
-    ForeachTensorArgs
-      { foreachTensorType = elemType,
-        foreachTensorFirstDim = dim,
-        foreachTensorRemainingDims = dims,
-        foreachTensorFn = xs
-      }
+convertVecForeach convert (ForeachVectorArgs typ dim xs) = do
+  typ' <- convertType typ
+  dim' <- convertDim dim
+  xs' <- convertFunction convert xs
+  return $ mkExpr accessForeachVector $ ForeachVectorArgs typ' dim' xs'
 
 --------------------------------------------------------------------------------
 -- Tensor
@@ -408,6 +424,18 @@ convertForeachTensor convertValue (ForeachTensorArgs t dim dims fn) = do
   dims' <- convertDims dims
   fn' <- convertFunction convertValue fn
   return $ mkExpr accessForeachTensor $ ForeachTensorArgs t' dim' dims' fn'
+
+convertAtVector ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  AtVectorArgs (Value Builtin) ->
+  m (Value LossBuiltin)
+convertAtVector convertVec (AtVectorArgs typ dim xs i) = do
+  type' <- convertType typ
+  dim' <- convertDim dim
+  xs' <- convertVec xs
+  i' <- convertIndex i
+  return $ mkExpr accessAtVector $ AtVectorArgs type' dim' xs' i'
 
 --------------------------------------------------------------------------------
 -- Utils

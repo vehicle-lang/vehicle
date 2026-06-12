@@ -100,7 +100,8 @@ compile toVar shape = go
       -- The expression is being blocked
       VRatConstTensor {} -> unreduced
       VRatStackTensor {} -> unreduced
-      VRatAt {} -> unreduced
+      VRatAtTensor {} -> unreduced
+      VRatAtVector {} -> unreduced
       VRatTensorNetworkApp {} -> unreduced
       VDatasetOrParameter {} -> unreduced
       VRatRecordAcc {} -> unreduced

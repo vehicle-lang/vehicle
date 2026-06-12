@@ -140,6 +140,13 @@ class RatType(BuiltinType):
 
 
 @dataclass(frozen=True)
+class VectorType(BuiltinType):
+    """Vector type: VectorType base_type"""
+
+    base_type: BuiltinType
+
+
+@dataclass(frozen=True)
 class TensorType(BuiltinType):
     """Tensor type: TensorType base_type"""
 
@@ -328,13 +335,6 @@ class DimensionNil(Expression):
 
 
 @dataclass(frozen=True)
-class DimensionLookup(Expression):
-
-    xs: Expression
-    i: Expression
-
-
-@dataclass(frozen=True)
 class DimensionCons(Expression):
     e1: Expression
     e2: Expression
@@ -356,6 +356,43 @@ class ConstTensor(Expression):
 class StackTensor(Expression):
 
     xs: Sequence[Expression]
+
+
+@dataclass(frozen=True)
+class AtTensor(Expression):
+    """At tensor: AtTensor tensor index"""
+
+    xs: Expression
+    i: Expression
+
+
+@dataclass(frozen=True)
+class ForeachTensor(Expression):
+    """Foreach tensor: ForeachTensor size function"""
+
+    size: Expression
+    function: Expression
+
+
+@dataclass(frozen=True)
+class VectorLiteral(Expression):
+    elements: Sequence[Expression]
+
+
+@dataclass(frozen=True)
+class AtVector(Expression):
+    """At vector: AtVector vector index"""
+
+    xs: Expression
+    i: Expression
+
+
+@dataclass(frozen=True)
+class ForeachVector(Expression):
+    """Foreach vector: ForeachVector size function"""
+
+    size: Expression
+    function: Expression
 
 
 ################################################################################

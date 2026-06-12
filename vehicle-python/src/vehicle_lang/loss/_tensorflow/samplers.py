@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Sequence
 
 from jaxtyping import Float
 
@@ -138,4 +138,30 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
             result = search_lambda(tf.convert_to_tensor(current_point))
             results.append(tf.convert_to_tensor(result))
 
+        return tf.stack(results)
+
+
+class ConstantTensorFlowSampler(TensorFlowSampler):
+    """
+    A simple sampler that always returns a constant value, regardless of the input.
+    Used primarily for testing purposes.
+    """
+
+    def __init__(self, constant_value: tf.Tensor, num_samples: int = 10):
+        self.constant_value = constant_value
+        self.num_samples = num_samples
+
+    def get_loss(
+        self,
+        dims: Sequence[int],
+        lower_bound: tf.Tensor,
+        upper_bound: tf.Tensor,
+        search_lambda: Callable[[tf.Tensor], tf.Tensor],
+        minimise: bool,
+    ) -> Any:
+        """Sample at a few test points in the bounded range."""
+        results = []
+        for _ in range(self.num_samples):
+            result = search_lambda(self.constant_value)
+            results.append(tf.convert_to_tensor(result))
         return tf.stack(results)

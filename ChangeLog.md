@@ -24,6 +24,14 @@
   ```
   Note that these operators are currently only supported by the loss backend.
 
+### Loss
+
+* Fixed a bug where specs with multiple quantified values would sometimes have the variables switched around in the generated code.
+
+* Fixed a bug where negations where occasionally being translated with the wrong dimensions.
+
+* Added better support for `Vector` operations, e.g. the `mnist-robustness` specification.
+
 ### Verification
 
 * Verification cache now uses absolute paths. This means that the verification cache can no longer be moved, however it does mean that

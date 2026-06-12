@@ -35,14 +35,15 @@ findAndCompileLogic ::
   DifferentiableLogicID ->
   Prog Builtin ->
   m DifferentiableLogicImplementation
-findAndCompileLogic logicID prog = do
-  MonadLossState {..} <-
-    runMonadLossT $ traverseNormalisedDecls_ (convertLogicDecl logicID) prog
-  case maybeImplementation of
-    Just definition -> return definition
-    Nothing -> do
-      let names = fmap nameOf foundLogics
-      missingLogicError names logicID
+findAndCompileLogic logicID prog =
+  logCompilerSection2 MidDetail ("search for logic" <+> quotePretty logicID) $ do
+    MonadLossState {..} <-
+      runMonadLossT $ traverseNormalisedDecls_ (convertLogicDecl logicID) prog
+    case maybeImplementation of
+      Just definition -> return definition
+      Nothing -> do
+        let names = fmap nameOf foundLogics
+        missingLogicError names logicID
 
 --------------------------------------------------------------------------------
 -- Monad
