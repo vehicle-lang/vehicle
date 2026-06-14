@@ -15,9 +15,8 @@ tf = pytest.importorskip(
 
 from typing import Any, cast
 
-from typing_extensions import TypeAlias
-
 import vehicle_lang.loss.tensorflow as vcl_tf
+from typing_extensions import TypeAlias
 from vehicle_lang import DifferentiableLogic
 from vehicle_lang.loss._tensorflow.samplers import ConstantTensorFlowSampler
 
