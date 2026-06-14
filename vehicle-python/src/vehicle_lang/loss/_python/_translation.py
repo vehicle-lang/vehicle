@@ -287,7 +287,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceAddRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceAddRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),  # Note: using current field names
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -298,7 +297,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceMulRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceMulRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -309,7 +307,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceMinRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceMinRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -320,7 +317,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceMaxRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceMaxRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -328,12 +324,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
         """Translate SearchRatTensor to builtin call.
 
-        The reduction_op is a curried function (λe. λxs. reduce e xs) where:
-        - e is the identity element (a 0-dimensional tensor)
+        The reduction_op is a curried function (λxs. reduce xs) where:
         - xs is the sequence of samples to reduce
-
-        Since the Python Reduce* functions don't actually use the identity parameter,
-        we pass a dummy 0-dimensional tensor with value 0.
         """
         # Call sampler once to get samples
         sampler_call = py_app(
@@ -350,27 +342,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
-        # Create a dummy identity element (0-dimensional tensor with value 0)
-        # The Python Reduce* implementations don't actually use this parameter
-        identity = py_app(
-            py_builtin("ConstTensor", provenance=vcl.MISSING),
-            py.Constant(value=0, **asdict(vcl.MISSING)),
-            py_app(
-                py_builtin("DimensionNil", provenance=vcl.MISSING),
-                provenance=vcl.MISSING,
-            ),
-            provenance=vcl.MISSING,
-        )
-
-        # Apply as: reduction_op(identity)(samples)
-        partial_reduction = py_app(
-            self.translate_expression(expression.reduction_op),
-            identity,
-            provenance=vcl.MISSING,
-        )
-
+        # Apply as: reduction_op(samples)
         return py_app(
-            partial_reduction,
+            self.translate_expression(expression.reduction_op),
             sampler_call,
             provenance=vcl.MISSING,
         )

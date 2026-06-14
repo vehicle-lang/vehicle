@@ -40,7 +40,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
-import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level (findSliceIndices)
@@ -233,9 +233,8 @@ convertRatTensorReducedComparison (op, TensorReduceComparisonArgs dim dims xs ys
   -- Can remove this hack once we get unified comparisons up and working.
   let fullDims = ICons INatType dim dims
   lPointwise <- convertRatTensorPointwiseComparison (op, TensorOp2Args fullDims xs ys)
-  lTrue <- convertBoolTensorLiteral $ ZeroDimTensor True
   lFullDims <- convertDims fullDims
-  convertReduceAnd $ TensorReductionArgs lFullDims lTrue lPointwise
+  convertReduceAnd $ TensorReductionArgs lFullDims lPointwise
 
 convertIf ::
   (MonadLogic m) =>
@@ -359,8 +358,8 @@ convertTensorReduction ::
   (Value Builtin -> m (Value LossBuiltin)) ->
   TensorReductionArgs (Value Builtin) ->
   m (TensorReductionArgs (Value LossBuiltin))
-convertTensorReduction go (TensorReductionArgs dims e xs) =
-  TensorReductionArgs <$> convertDims dims <*> go e <*> go xs
+convertTensorReduction go (TensorReductionArgs dims xs) =
+  TensorReductionArgs <$> convertDims dims <*> go xs
 
 convertAtTensor ::
   (MonadLogic m) =>

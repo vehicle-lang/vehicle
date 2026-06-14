@@ -237,11 +237,11 @@ unblockReduceTensor ::
   TypeUnblockingFunction (Value Builtin) m ->
   (TensorReductionArgs (Value Builtin) -> m a) ->
   OperationUnblockingFunction TensorReductionArgs a m
-unblockReduceTensor unblock evalFn (TensorReductionArgs ds e xs) = do
+unblockReduceTensor unblock evalFn (TensorReductionArgs ds xs) = do
   xs' <- unblock xs
   forIfTreeM xs' $ \xs'' ->
     IfLeaf <$> do
-      evalFn $ TensorReductionArgs ds e xs''
+      evalFn $ TensorReductionArgs ds xs''
 
 unblockAtTensor ::
   (MonadUnblock m) =>

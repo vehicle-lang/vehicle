@@ -119,31 +119,19 @@ class TensorFlowBuiltins(
         return tf.math.exp(x)
 
     @override
-    def ReduceAddRatTensor(
-        self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]
-    ) -> tf.Tensor:
-        xs = tf.stack(xs)
-        return tf.add(tf.reduce_sum(xs), e)
+    def ReduceAddRatTensor(self, xs: tf.Tensor) -> tf.Tensor:
+        return tf.reduce_sum(xs)
 
     @override
-    def ReduceMulRatTensor(
-        self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
-    ) -> tf.Tensor:
-        x = tf.stack(x)
-        return tf.multiply(tf.reduce_prod(x), e)
+    def ReduceMulRatTensor(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.reduce_prod(x)
 
     @override
-    def ReduceMinRatTensor(
-        self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
-    ) -> tf.Tensor:
-        x = tf.stack([tf.constant(e, dtype=self.dtype_rat)] + list(x))
+    def ReduceMinRatTensor(self, x: tf.Tensor) -> tf.Tensor:
         return tf.reduce_min(x)
 
     @override
-    def ReduceMaxRatTensor(
-        self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
-    ) -> tf.Tensor:
-        x = tf.stack([tf.constant(e, dtype=self.dtype_rat)] + list(x))
+    def ReduceMaxRatTensor(self, x: tf.Tensor) -> tf.Tensor:
         return tf.reduce_max(x)
 
     @override

@@ -130,16 +130,14 @@ The following operations over tensors are currently supported:
      - |backendall_full|
    * - | Reduce
        | and
-     - ``reduceAnd e t``
-     - | ``Bool →``
-       | ``Tensor Bool ds →``
+     - ``reduceAnd t``
+     - | ``Tensor Bool ds →``
        | ``Bool``
      - |backendall_full|
    * - | Reduce
        | or
-     - ``reduceOr e t``
-     - | ``Bool →``
-       | ``Tensor Bool ds →``
+     - ``reduceOr t``
+     - | ``Tensor Bool ds →``
        | ``Bool``
      - |backendall_full|
    * - | Pointwise
@@ -209,26 +207,26 @@ The following operations over tensors are currently supported:
        | |backendisabelle_easy|
    * - | Reduce
        | add
-     - ``reduceAdd e t``
-     - | ``A → Tensor A ds → A``
+     - ``reduceAdd t``
+     - | ``Tensor A ds → A``
        | (if ``A`` supports ``+``)
      - |backendall_full|
    * - | Reduce
        | multiply
-     - ``reduceMul e t``
-     - | ``A → Tensor A ds → A``
+     - ``reduceMul t``
+     - | ``Tensor A ds → A``
        | (if ``A`` supports ``*``)
      - |backendall_full|
    * - | Reduce
        | min
-     - ``reduceMin e t``
-     - | ``A → Tensor A ds → A``
+     - ``reduceMin t``
+     - | ``Tensor A ds → A``
        | (if ``A`` supports ``min``)
      - |backendall_full|
    * - | Reduce
        | max
-     - ``reduceMax e t``
-     - | ``A → Tensor A ds → A``
+     - ``reduceMax t``
+     - | ``Tensor A ds → A``
        | (if ``A`` supports ``max``)
      - |backendall_full|
 
