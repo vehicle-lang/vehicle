@@ -169,6 +169,13 @@ class TypeVar(BuiltinType):
     spine: Sequence[BuiltinType]
 
 
+@dataclass(frozen=True)
+class RecordType(BuiltinType):
+    """Record type: RecordType schema"""
+
+    schema: Name
+
+
 ################################################################################
 # Expressions
 ################################################################################
@@ -382,6 +389,41 @@ class StackTensor(Expression):
 
 
 ################################################################################
+# Tensor records
+################################################################################
+
+
+@dataclass(frozen=True)
+class Record(Expression):
+    """Record construction: Record schema fields"""
+
+    schema: Name
+    fields: Sequence[tuple[Name, Expression]]
+
+
+@dataclass(frozen=True)
+class RecordAcc(Expression):
+    """Record field projection: RecordAcc record field"""
+
+    record: Expression
+    field: Name
+
+
+@dataclass(frozen=True)
+class SearchRecord(Expression):
+    """Search record: SearchRecord name schema reductionOp dims lowerBound upperBound searchLambda minimise"""
+
+    name: str
+    schema: Name
+    reduction_op: Expression
+    dims: Expression
+    lower_bound: Expression
+    upper_bound: Expression
+    search_lambda: Expression
+    minimise: bool
+
+
+################################################################################
 # Declarations
 ################################################################################
 
@@ -401,6 +443,51 @@ class DefFunction(Declaration):
     name: Name
     type: BuiltinType
     body: Expression
+
+    @override
+    def get_name(self) -> Name:
+        return self.name
+
+
+################################################################################
+# Tensor record schemas
+################################################################################
+
+
+@dataclass(frozen=True, init=False)
+class FieldType(AST, metaclass=ABCMeta):
+    """Record field type descriptor"""
+
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class FieldType")
+
+
+@dataclass(frozen=True)
+class JFieldScalarReal(FieldType):
+    """Scalar Real field type: JFieldScalarReal"""
+
+
+@dataclass(frozen=True)
+class JFieldTensorReal(FieldType):
+    """Tensor Real field type: JFieldTensorReal shape - shape entries are Aeson-encoded Either Int Name"""
+
+    shape: Sequence[JsonValue]
+
+
+@dataclass(frozen=True)
+class JFieldRecordRef(FieldType):
+    """Nested record field type: JFieldRecordRef schema"""
+
+    schema: Name
+
+
+@dataclass(frozen=True)
+class DefRecordSchema(Declaration):
+    """Tensor record schema definition: DefRecordSchema provenance name fields"""
+
+    provenance: Provenance = field(repr=False)
+    name: Name
+    fields: Sequence[tuple[Name, FieldType]]
 
     @override
     def get_name(self) -> Name:
