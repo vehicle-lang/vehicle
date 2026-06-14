@@ -118,30 +118,19 @@ class PyTorchBuiltins(
         return torch.exp(torch.as_tensor(x))
 
     @override
-    def ReduceAddRatTensor(
-        self, xs: torch.Tensor | Sequence[torch.Tensor]
-    ) -> torch.Tensor:
-        xs = torch.stack(list(xs))
+    def ReduceAddRatTensor(self, xs: torch.Tensor) -> torch.Tensor:
         return torch.sum(xs)
 
     @override
-    def ReduceMulRatTensor(
-        self, x: torch.Tensor | Sequence[torch.Tensor]
-    ) -> torch.Tensor:
-        x = torch.stack(list(x))
+    def ReduceMulRatTensor(self, x: torch.Tensor) -> torch.Tensor:
         return torch.prod(x)
 
     @override
-    def ReduceMinRatTensor(
-        self, x: torch.Tensor | Sequence[torch.Tensor]
-    ) -> torch.Tensor:
+    def ReduceMinRatTensor(self, x: torch.Tensor) -> torch.Tensor:
         return torch.min(x)
 
     @override
-    def ReduceMaxRatTensor(
-        self, x: torch.Tensor | Sequence[torch.Tensor]
-    ) -> torch.Tensor:
-        x = torch.stack(list(x))
+    def ReduceMaxRatTensor(self, x: torch.Tensor) -> torch.Tensor:
         return torch.max(x)
 
     @override

@@ -6,7 +6,7 @@
 
 * BREAKING: with the introduction of `infinity` to the language in `v0.25` all reduction operations have
   sensible zero-dimensional values. Therefore the following operations no longer take the identity element
-  as an argument, and instead have been replaced with the following defaults:
+  as an argument, i.e.:
   ```
   reduceAdd e xs -> reduceAdd xs   (if 0D returns 0)
   reduceMul e xs -> reduceMul xs   (if 0D returns 1)

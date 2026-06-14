@@ -327,7 +327,7 @@ convertTensorReduction ::
   m a
 convertTensorReduction convert b fn spine = case getExpr accessSpine spine of
   Just (TensorReductionArgs _ xs) -> fn <$> convert xs
-  Nothing -> arityError b 2 spine
+  Nothing -> arityError b 1 spine
 
 convertAtTensor ::
   (MonadJSON m) =>
