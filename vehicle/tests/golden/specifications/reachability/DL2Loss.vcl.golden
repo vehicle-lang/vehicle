@@ -1,3 +1,3 @@
 @property;
 reachable : (Tensor Real -> Tensor Real) -> Tensor Real;
-reachable = \ f -> search[x] (\ e -> \ xs -> reduceMul e xs) [2] [ 0.0, 0.0 ] [ 1.0, 1.0 ] (\ x -> - (max 0.0 (f x) + max 0.0 (0.0 - f x)))
+reachable = \ f -> search[x] (\ xs -> reduceMul xs) [2] [ 0.0, 0.0 ] [ 1.0, 1.0 ] (\ x -> - (max 0.0 (f x) + max 0.0 (0.0 - f x)))

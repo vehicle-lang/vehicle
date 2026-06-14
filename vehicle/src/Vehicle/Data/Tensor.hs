@@ -158,10 +158,10 @@ zipWithTensor f xs ys = case (xs, ys) of
   (ConstantTensor shape u, DenseTensor _ vs) -> fromVector shape $ fmap (f u) vs
   (DenseTensor shape us, DenseTensor _ vs) -> fromVector shape $ Vector.zipWith f us vs
 
-foldTensor :: (a -> a -> a) -> Tensor a -> Tensor a -> Tensor a
-foldTensor f e t = case toList t of
+foldTensor :: (a -> a -> a) -> a -> Tensor a -> Tensor a
+foldTensor f e t = ZeroDimTensor $ case toList t of
   [] -> e
-  (x : xs) -> ZeroDimTensor $ foldr f x xs
+  (x : xs) -> foldr f x xs
 
 at :: (HasCallStack, Eq a) => Tensor a -> Int -> Tensor a
 at xs i = case shapeOf xs of

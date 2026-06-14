@@ -27,32 +27,32 @@ existsInList f xs = fold (\x y -> x or y) False (map f xs)
 -- (i.e. pointwise comparison).
 
 eqRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-eqRatTensorReduced xs ys = reduceAnd True (xs ==. ys)
+eqRatTensorReduced xs ys = reduceAnd (xs ==. ys)
 
 neRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
 neRatTensorReduced xs ys = not (eqRatTensorReduced xs ys)
 
 leRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-leRatTensorReduced xs ys = reduceAnd True (xs <=. ys)
+leRatTensorReduced xs ys = reduceAnd (xs <=. ys)
 
 ltRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-ltRatTensorReduced xs ys = reduceAnd True (xs <. ys)
+ltRatTensorReduced xs ys = reduceAnd (xs <. ys)
 
 geRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-geRatTensorReduced xs ys = reduceAnd True (xs >=. ys)
+geRatTensorReduced xs ys = reduceAnd (xs >=. ys)
 
 gtRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
+gtRatTensorReduced xs ys = reduceAnd (xs >. ys)
 
 --------------------------------------------------------------------------------
 -- Index
 --------------------------------------------------------------------------------
 
 existsIndex : forallT {n} . (Index n -> Bool) -> Bool
-existsIndex f = reduceOr False (foreach i . f i)
+existsIndex f = reduceOr (foreach i . f i)
 
 forallIndex : forallT {n} . (Index n -> Bool) -> Bool
-forallIndex f = reduceAnd True (foreach i . f i)
+forallIndex f = reduceAnd (foreach i . f i)
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -234,8 +234,8 @@ record DifferentiableTensorLogic where
   , pointwiseGreaterEqualThan : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseEqual            : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseNotEqual         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
-  , reduceConjunction         : Real -> Tensor Real dims -> Real
-  , reduceDisjunction         : Real -> Tensor Real dims -> Real
+  , reduceConjunction         : Tensor Real dims -> Real
+  , reduceDisjunction         : Tensor Real dims -> Real
   }
 
 VehicleLoss : DifferentiableTensorLogic
@@ -251,8 +251,8 @@ VehicleLoss =
   , pointwiseGreaterEqualThan  = \x y -> y - x
   , pointwiseEqual             = \x y -> min (x - y) (y - x)
   , pointwiseNotEqual          = \x y -> max (x - y) (y - x)
-  , reduceConjunction          = \e xs -> reduceMax e xs
-  , reduceDisjunction          = \e xs -> reduceMin e xs
+  , reduceConjunction          = \xs -> reduceMax xs
+  , reduceDisjunction          = \xs -> reduceMin xs
   }
 
 DL2Loss : DifferentiableTensorLogic
@@ -268,6 +268,6 @@ DL2Loss =
   , pointwiseGreaterEqualThan  = \{dims} x y -> max (const 0 dims) (y - x)
   , pointwiseEqual             = \{dims} x y -> - (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
   , pointwiseNotEqual          = \{dims} x y -> (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
-  , reduceConjunction          = \e xs -> reduceAdd e xs
-  , reduceDisjunction          = \e xs -> reduceMul e xs
+  , reduceConjunction          = \xs -> reduceAdd xs
+  , reduceDisjunction          = \xs -> reduceMul xs
   }

@@ -123,7 +123,6 @@ traverseTensorOp2Args f (TensorOp2Args ds xs ys) = TensorOp2Args ds <$> f xs <*>
 -- | Arguments for tensor reduction operations (e.g. reduceAnd, reduceAdd)
 data TensorReductionArgs expr = TensorReductionArgs
   { tensorReductionDims :: expr,
-    tensorReductionUnit :: expr,
     tensorReductionTensor :: expr
   }
 
@@ -131,14 +130,14 @@ instance IsArgs TensorReductionArgs where
   accessSpine =
     Access
       { getExpr = \case
-          (fmap argExpr -> [ds, e, xs]) -> Just $ TensorReductionArgs ds e xs
+          (fmap argExpr -> [ds, xs]) -> Just $ TensorReductionArgs ds xs
           _ -> Nothing,
-        mkExpr = \(TensorReductionArgs ds e xs) -> [implicitIrrelevant ds, explicit e, explicit xs]
+        mkExpr = \(TensorReductionArgs ds xs) -> [implicitIrrelevant ds, explicit xs]
       }
 
 traverseReductionArgs :: (Applicative f) => (t -> f t) -> TensorReductionArgs t -> f (TensorReductionArgs t)
-traverseReductionArgs f (TensorReductionArgs ds e xs) =
-  TensorReductionArgs ds <$> f e <*> f xs
+traverseReductionArgs f (TensorReductionArgs ds xs) =
+  TensorReductionArgs ds <$> f xs
 
 --------------------------------------------------------------------------------
 -- IndexComparisonArgs

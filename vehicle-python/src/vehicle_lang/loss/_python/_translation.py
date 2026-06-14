@@ -287,7 +287,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceAddRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceAddRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),  # Note: using current field names
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -298,7 +297,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceMulRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceMulRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -309,7 +307,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceMinRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceMinRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -320,7 +317,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceMaxRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceMaxRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -350,27 +346,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
-        # Create a dummy identity element (0-dimensional tensor with value 0)
-        # The Python Reduce* implementations don't actually use this parameter
-        identity = py_app(
-            py_builtin("ConstTensor", provenance=vcl.MISSING),
-            py.Constant(value=0, **asdict(vcl.MISSING)),
-            py_app(
-                py_builtin("DimensionNil", provenance=vcl.MISSING),
-                provenance=vcl.MISSING,
-            ),
-            provenance=vcl.MISSING,
-        )
-
-        # Apply as: reduction_op(identity)(samples)
-        partial_reduction = py_app(
-            self.translate_expression(expression.reduction_op),
-            identity,
-            provenance=vcl.MISSING,
-        )
-
+        # Apply as: reduction_op(samples)
         return py_app(
-            partial_reduction,
+            self.translate_expression(expression.reduction_op),
             sampler_call,
             provenance=vcl.MISSING,
         )

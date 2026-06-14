@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 import pytest
+
 import vehicle_lang as vcl
 
 tf = pytest.importorskip(
@@ -9,6 +10,8 @@ tf = pytest.importorskip(
     reason="TensorFlow extra is required for loss execution tests",
 )
 from vehicle_lang.loss import tensorflow as loss_tf
+
+from ..config import PYTHON_TEST_SPECS_PATH
 
 
 def network_validate_output(output: dict[str, Any]) -> None:
@@ -156,7 +159,7 @@ def test_loss_function_exec(
     validate_output: dict[str, Any] | Callable[[dict[str, Any]], None],
 ) -> None:
     print(f"Exec {specification_filename}")
-    specification_path = Path(__file__).parent / "data" / specification_filename
+    specification_path = PYTHON_TEST_SPECS_PATH / specification_filename
     actual_declarations = loss_tf.load_specification(
         specification_path,
         logic=vcl.DifferentiableLogic.DL2,

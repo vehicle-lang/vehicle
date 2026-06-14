@@ -88,10 +88,10 @@ data JExpr
   | MinRatTensor JExpr JExpr
   | MaxRatTensor JExpr JExpr
   | PowRatTensor JExpr JExpr
-  | ReduceAddRatTensor JExpr JExpr
-  | ReduceMulRatTensor JExpr JExpr
-  | ReduceMinRatTensor JExpr JExpr
-  | ReduceMaxRatTensor JExpr JExpr
+  | ReduceAddRatTensor JExpr
+  | ReduceMulRatTensor JExpr
+  | ReduceMinRatTensor JExpr
+  | ReduceMaxRatTensor JExpr
   | SearchRatTensor Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Dims, ReductionOp, LowerBound, UpperBound, SearchLambda, Minimise)
   -- Dimensions
   | Dimension Int
@@ -322,11 +322,11 @@ convertTensorReduction ::
   (MonadJSON m) =>
   (Value LossBuiltin -> m a) ->
   LossBuiltin ->
-  (a -> a -> a) ->
+  (a -> a) ->
   Spine LossBuiltin ->
   m a
 convertTensorReduction convert b fn spine = case getExpr accessSpine spine of
-  Just (TensorReductionArgs _ e xs) -> fn <$> convert e <*> convert xs
+  Just (TensorReductionArgs _ xs) -> fn <$> convert xs
   Nothing -> arityError b 2 spine
 
 convertAtTensor ::
@@ -444,10 +444,10 @@ fromJExpr = \case
   MinRatTensor e1 e2 -> toFunction (L.Min L.MinRatTensor) [e1, e2]
   MaxRatTensor e1 e2 -> toFunction (L.Max L.MaxRatTensor) [e1, e2]
   PowRatTensor e1 e2 -> toFunction (L.Pow L.PowRatTensor) [e1, e2]
-  ReduceAddRatTensor e xs -> toFunction L.ReduceAddRatTensor [e, xs]
-  ReduceMulRatTensor e xs -> toFunction L.ReduceMulRatTensor [e, xs]
-  ReduceMinRatTensor e xs -> toFunction L.ReduceMinRatTensor [e, xs]
-  ReduceMaxRatTensor e xs -> toFunction L.ReduceMaxRatTensor [e, xs]
+  ReduceAddRatTensor xs -> toFunction L.ReduceAddRatTensor [xs]
+  ReduceMulRatTensor xs -> toFunction L.ReduceMulRatTensor [xs]
+  ReduceMinRatTensor xs -> toFunction L.ReduceMinRatTensor [xs]
+  ReduceMaxRatTensor xs -> toFunction L.ReduceMaxRatTensor [xs]
   SearchRatTensor name dims e1 e2 e3 e4 minimise -> toFunction (L.SearchRatTensor name minimise) [dims, e1, e2, e3, e4]
   Dimension d -> toConstructor (L.NatLiteral d) []
   DimensionNil -> toConstructor L.Nil []

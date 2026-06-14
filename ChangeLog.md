@@ -4,6 +4,18 @@
 
 ### Language
 
+* BREAKING: with the introduction of `infinity` to the language in `v0.25` all reduction operations have
+  sensible zero-dimensional values. Therefore the following operations no longer take the identity element
+  as an argument, and instead have been replaced with the following defaults:
+  ```
+  reduceAdd e xs -> reduceAdd xs   (if 0D returns 0)
+  reduceMul e xs -> reduceMul xs   (if 0D returns 1)
+  reduceMin e xs -> reduceMin xs   (if 0D returns infinity)
+  reduceMax e xs -> reduceMax xs   (if 0D returns -infinity)
+  reduceAnd e xs -> reduceAnd xs   (if 0D returns True)
+  reduceOr  e xs -> reduceOr  xs   (if 0D returns False)
+  ```
+
 * Added the operators:
   ```
   ^ : Tensor Real ds -> Real -> Tensor Real ds
