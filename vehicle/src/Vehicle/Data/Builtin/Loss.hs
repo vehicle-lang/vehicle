@@ -29,6 +29,7 @@ data LossBuiltinType
   | RatType
   | ListType
   | TensorType
+  | RecordType
   deriving (Eq, Ord, Show)
 
 instance Pretty LossBuiltinType where
@@ -39,6 +40,7 @@ instance Pretty LossBuiltinType where
     RatType -> "RatElement"
     ListType -> "List"
     TensorType -> "Tensor"
+    RecordType -> "Record"
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -94,6 +96,7 @@ data LossBuiltinFunction
   | StackTensor
   | ConstTensor
   | SearchRatTensor Name LogicDirection
+  | SearchRecord Name LogicDirection
   | MapList
   | FoldList
   deriving (Eq, Ord, Show, Generic)
@@ -120,6 +123,7 @@ instance Pretty LossBuiltinFunction where
     StackTensor {} -> "stack"
     ConstTensor -> "const"
     SearchRatTensor name _minimise -> "search[" <> pretty name <> "]"
+    SearchRecord name _minimise -> "searchRecord[" <> pretty name <> "]"
     MapList -> "mapList"
     FoldList -> "foldList"
 
@@ -320,6 +324,7 @@ instance NormalisableBuiltin LossBuiltin where
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
       SearchRatTensor {} -> None
+      SearchRecord {} -> None
     _ -> None
 
   blockingStatus = developerError "Blocking arguments not yet implemented for LossBuiltin"
@@ -340,6 +345,7 @@ instance ConvertableBuiltin LossBuiltinType Builtin where
       RatType -> S.RatType
       ListType -> S.ListType
       TensorType -> S.TensorType
+      RecordType -> developerError "RecordType has no surface-conversion target; it only exists as a JSON-side schema marker"
 
 instance ConvertableBuiltin LossBuiltinConstructor Builtin where
   convertBuiltin p =
@@ -374,6 +380,7 @@ instance ConvertableBuiltin LossBuiltinFunction Builtin where
     MapList -> convertBuiltin p S.MapList
     FoldList -> convertBuiltin p S.FoldList
     SearchRatTensor {} -> cheatConvertBuiltin p $ pretty b
+    SearchRecord {} -> cheatConvertBuiltin p $ pretty b
 
 instance ConvertableBuiltin LossBuiltin Builtin where
   convertBuiltin p b = case b of

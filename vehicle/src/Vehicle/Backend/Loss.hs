@@ -6,10 +6,11 @@ where
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.Core
-import Vehicle.Backend.Loss.Domain (compileQuantifier)
+import Vehicle.Backend.Loss.Domain (compileQuantifier, compileQuantifierWith, compileSearch)
 import Vehicle.Backend.Loss.LogicCompilation (findAndCompileLogic)
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Loss.LossCompilation qualified as Loss ()
+import Vehicle.Backend.Loss.RecordCompilation qualified as RecordCompilation
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (evalDecl)
@@ -18,6 +19,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
+import Vehicle.Data.Code.Interface.Args (QuantifyRecordArgs (quantifyRecordType))
 import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
@@ -68,7 +70,9 @@ convertDecl logicID logic decl = do
         DefFunction p ident ann typ expr
           | isPropertyDecl decl -> Just <$> convertPropertyDecl p ident ann typ expr
           | otherwise -> return Nothing
-        DefRecord {} -> return Nothing
+        DefRecord p ident anns telescope fields
+          | isAnnotatedAsTensor anns -> Just <$> convertTensorRecordDecl p ident anns telescope fields
+          | otherwise -> return Nothing
 
 convertResourceDecl ::
   (MonadLogic m) =>
@@ -82,6 +86,19 @@ convertResourceDecl p ident sort typ = do
   -- TODO what about boolean parameters?
   typ' <- convertDeclType typ
   return $ DefAbstract p ident sort typ'
+
+convertTensorRecordDecl ::
+  (MonadLogic m) =>
+  Provenance ->
+  Identifier ->
+  Maybe DefRecordSort ->
+  GenericTelescope (VType Builtin) ->
+  GenericRecordFields (VType Builtin) ->
+  m (Decl LossBuiltin)
+convertTensorRecordDecl p ident anns telescope fields = do
+  telescope' <- traverse (traverse convertDeclType) telescope
+  fields' <- traverse (traverse convertDeclType) fields
+  return $ DefRecord p ident anns telescope' fields'
 
 convertPropertyDecl ::
   (MonadLogic m) =>
@@ -130,7 +147,13 @@ convertTensorProperty value = case toBoolTensorValue value of
   VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args
   VBoolTensorCompareRatReduced args -> convertRatTensorReducedComparison args
   VBoolTensorQuantifyRat args -> compileQuantifier args
-  VBoolTensorQuantifyRecord {} -> developerError "Quantifying records not yet supported in loss backend"
+  VBoolTensorQuantifyRecord (q, recordArgs) -> do
+    flattenedArgs <- RecordCompilation.wrapQuantifyRecordForLoss recordArgs
+    schemaIdent <- case toTypeValue (quantifyRecordType recordArgs) of
+      VFreeTypeVar v _ -> return v
+      _ -> developerError "Record quantifier's binder is not a free type-var reference"
+    let recordEmitter = RecordCompilation.compileRecordSearch schemaIdent compileSearch
+    compileQuantifierWith recordEmitter (q, flattenedArgs)
   VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertTensorProperty args
   VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertTensorProperty args
   VBoolTensorIf args -> convertIf args

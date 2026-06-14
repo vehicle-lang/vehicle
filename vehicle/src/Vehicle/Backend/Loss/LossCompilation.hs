@@ -29,6 +29,7 @@ module Vehicle.Backend.Loss.LossCompilation
 where
 
 import Vehicle.Backend.Loss.Core hiding (currentPass)
+import Vehicle.Backend.Loss.RecordCompilation qualified as RecordCompilation
 import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
@@ -55,17 +56,18 @@ convertType ::
 convertType typ = logConversion typ $ case toTypeValue typ of
   VPiType binder closure -> convertPiType binder closure
   VUnitType {} -> unexpectedOperation "unit type"
-  VFreeTypeVar {} -> unexpectedOperation "free var type"
+  -- @tensor record reference, e.g. `Pair` in `controller : Pair -> Pair`.
+  VFreeTypeVar ident _spine -> RecordCompilation.convertRecordType ident
   VBoolType -> convertBoolType
   VBoundTypeVar lv spine -> convertBoundVar lv spine
   VRatType -> return IRatType
   VIndexType n -> IIndexType <$> convertDim n
   VNatType -> return INatType
   VListType tElem -> IListType <$> convertType tElem
-  VVectorType {} -> unsupportedOperation "VectorType"
+  VVectorType tElem _dims -> convertType tElem
   VBoolTensorType ds -> ITensorType <$> convertBoolType <*> convertDims ds
   VRatTensorType ds -> ITensorType IRatType <$> convertDims ds
-  VRecordType {} -> developerError "Records in loss functions are not supported yet"
+  VRecordType _recordType _fields -> developerError "unexpected concrete record literal in type position"
   VNatTensorType ds -> ITensorType INatType <$> convertDims ds
   VIndexTensorType n ds -> (ITensorType . IIndexType <$> convertDim n) <*> convertDims ds
 
@@ -162,7 +164,10 @@ convertFreeVar name = \case
   spine -> case getExpr accessSpine spine of
     Nothing -> unexpectedExprError currentPass "non-network args"
     Just (NetworkAppArgs arg) -> do
-      args' <- NetworkAppArgs <$> convertRatTensor arg
+      convertedArg <- case arg of
+        VRecord typ fields -> RecordCompilation.convertRecord convertRatTensor typ fields
+        _ -> convertRatTensor arg
+      let args' = NetworkAppArgs convertedArg
       return $ VFreeVar name $ mkExpr accessSpine args'
 
 --------------------------------------------------------------------------------
@@ -183,7 +188,7 @@ convertBoolTensor value = logConversion value $ case toBoolTensorValue value of
   VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertBoolTensor args
   VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertBoolTensor args
   VBoolTensorQuantifyRat {} -> unexpectedOperation "quantifier"
-  VBoolTensorQuantifyRecord {} -> unexpectedOperation "quantifier"
+  VBoolTensorQuantifyRecord {} -> unexpectedOperation "record quantifier"
   VBoolTensorIf args -> convertIf args
   VBoolTensorAt args -> convertAtTensor convertBoolTensor args
   VBoolTensorForeach args -> convertForeachTensor convertBoolTensor args
@@ -298,7 +303,8 @@ convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VRatStackTensor args -> convertStackTensor convertRatTensor args
   VRatAt args -> convertAtTensor convertRatTensor args
   VRatForeach args -> convertForeachTensor convertRatTensor args
-  VRatRecordAcc {} -> developerError "Record accesses in loss functions are not supported yet"
+  VRatRecordAcc typ record fieldName spine ->
+    RecordCompilation.convertRecordAcc convertRatTensor typ record fieldName spine
 
 --------------------------------------------------------------------------------
 -- Vector

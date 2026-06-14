@@ -1,0 +1,10 @@
+@tensor;
+record Pair where {a : Real, b : Real} 
+
+@property;
+p : (Pair -> Pair) -> Tensor Real;
+p = \ f -> [ 1.0, 1.0 ] / search[_t0] (\ e -> \ xs -> reduceMul e xs) [2] [ 0.0, 0.0 ] [ 10.0, 10.0 ] (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))) - _t0 ! 0)) Pair
+
+@property;
+parallel : (Pair -> Pair) -> Tensor Real;
+parallel = \ f -> [ 1.0, 1.0 ] / search[_t0] (\ e -> \ xs -> reduceMul e xs) [2] [ 0.0, 0.0 ] [ 10.0, 10.0 ] (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))))) Pair + search[_t0] (\ e -> \ xs -> reduceMul e xs) [2] [ 0.0, 0.0 ] [ 10.0, 10.0 ] (\ _t0 -> max 0.0 (5.0 - b (f (Pair (_t0 ! 0) (_t0 ! 1))))) Pair

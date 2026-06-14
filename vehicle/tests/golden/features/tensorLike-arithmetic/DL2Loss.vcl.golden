@@ -1,0 +1,2 @@
+@tensor;
+record Test1 where {f1 : Real, f2 : Real} 
