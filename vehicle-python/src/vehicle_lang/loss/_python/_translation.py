@@ -30,9 +30,21 @@ class EraseType(Exception):
 _IGNORED_RETURN_KEYS = {
     "__vehicle__",
     "__vehicle_user_samplers__",
+    "__vehicle_record_get__",
     "__builtins__",
     "__annotations__",
 }
+
+
+def _vehicle_record_get(obj: Any, field: str) -> Any:
+    """Get a record field, raising TypeError if obj is not a record."""
+    try:
+        return getattr(obj, field)
+    except AttributeError:
+        raise TypeError(
+            f"expected a record value with field '{field}', "
+            f"got {type(obj).__name__} ({obj!r:.60})"
+        ) from None
 
 
 @dataclass(frozen=True)
@@ -53,6 +65,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         try:
             declaration_context["__vehicle__"] = self.builtins
             declaration_context["__vehicle_user_samplers__"] = samplers
+            declaration_context["__vehicle_record_get__"] = _vehicle_record_get
             before_exec = dict(declaration_context)
             py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
@@ -325,6 +338,104 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_DefRecordSchema(self, declaration: vcl.DefRecordSchema) -> py.stmt:
+        """Translate DefRecordSchema to a MaterialiseRecord builtin call."""
+        fields_tuple = py.Tuple(
+            elts=[
+                py.Tuple(
+                    elts=[
+                        py.Constant(value=fname, **asdict(vcl.MISSING)),
+                        _py_field_type_descriptor(ftype),
+                    ],
+                    ctx=py.Load(),
+                    **asdict(vcl.MISSING),
+                )
+                for fname, ftype in declaration.fields
+            ],
+            ctx=py.Load(),
+            **asdict(vcl.MISSING),
+        )
+        materialise = py_app(
+            py_builtin("MaterialiseRecord", provenance=declaration.provenance),
+            py.Constant(value=declaration.name, **asdict(declaration.provenance)),
+            fields_tuple,
+            provenance=declaration.provenance,
+        )
+        return py.Assign(
+            targets=[
+                py.Name(
+                    id=declaration.name,
+                    ctx=py.Store(),
+                    **asdict(declaration.provenance),
+                )
+            ],
+            value=materialise,
+            **asdict(declaration.provenance),
+        )
+
+    def translate_Record(self, expression: vcl.Record) -> py.expr:
+        """Translate Record to a class constructor call."""
+        return py.Call(
+            func=py_name(expression.schema, provenance=vcl.MISSING),
+            args=[],
+            keywords=[
+                py.keyword(
+                    arg=fname,
+                    value=self.translate_expression(fexpr),
+                    **asdict(vcl.MISSING),
+                )
+                for fname, fexpr in expression.fields
+            ],
+            **asdict(vcl.MISSING),
+        )
+
+    def translate_RecordAcc(self, expression: vcl.RecordAcc) -> py.expr:
+        """Translate RecordAcc to a __vehicle_record_get__ call."""
+        return py_app(
+            py_name("__vehicle_record_get__", provenance=vcl.MISSING),
+            self.translate_expression(expression.record),
+            py.Constant(value=expression.field, **asdict(vcl.MISSING)),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_SearchRecord(self, expression: vcl.SearchRecord) -> py.expr:
+        """Translate SearchRecord to a sampler call."""
+        sampler_call = py_app(
+            py_subscript(
+                py_qualified_name("__vehicle_user_samplers__", provenance=vcl.MISSING),
+                py.Constant(value=expression.name, **asdict(vcl.MISSING)),
+                provenance=vcl.MISSING,
+            ),
+            self.translate_expression(expression.dims),
+            self.translate_expression(expression.lower_bound),
+            self.translate_expression(expression.upper_bound),
+            self.translate_expression(expression.search_lambda),
+            py.Constant(value=expression.minimise, **asdict(vcl.MISSING)),
+            provenance=vcl.MISSING,
+        )
+
+        identity = py_app(
+            py_builtin("ConstTensor", provenance=vcl.MISSING),
+            py.Constant(value=0, **asdict(vcl.MISSING)),
+            py_app(
+                py_builtin("DimensionNil", provenance=vcl.MISSING),
+                provenance=vcl.MISSING,
+            ),
+            provenance=vcl.MISSING,
+        )
+
+        partial_reduction = py_app(
+            self.translate_expression(expression.reduction_op),
+            identity,
+            provenance=vcl.MISSING,
+        )
+
+        return py_app(
+            partial_reduction,
+            sampler_call,
+            provenance=vcl.MISSING,
+        )
+
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
         """Translate SearchRatTensor to builtin call.
 
@@ -430,6 +541,39 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             ),
             provenance=vcl.MISSING,
         )
+
+
+def _py_field_type_descriptor(ftype: vcl.FieldType) -> py.expr:
+    """Make a Python literal describing a FieldType for the materialiser."""
+
+    def _const(value: Any) -> py.Constant:
+        return py.Constant(value=value, **asdict(vcl.MISSING))
+
+    def _tuple(*elts: py.expr) -> py.Tuple:
+        return py.Tuple(elts=list(elts), ctx=py.Load(), **asdict(vcl.MISSING))
+
+    match ftype:
+        case vcl.JFieldScalarReal():
+            return _tuple(_const("scalar"))
+        case vcl.JFieldTensorReal(shape):
+            # Each dim arrives as Aeson's Either encoding: {"Left": int} or
+            # {"Right": name}; flatten to int|str for the materialiser.
+            shape_elts = [_const(_unwrap_either(dim)) for dim in shape]
+            return _tuple(_const("tensor"), _tuple(*shape_elts))
+        case vcl.JFieldRecordRef(schema):
+            return _tuple(_const("record"), _const(schema))
+        case _:
+            raise NotImplementedError(f"unknown FieldType: {type(ftype).__name__}")
+
+
+def _unwrap_either(dim: Any) -> Any:
+    """Flatten Aeson's Either encoding ({"Left": x} or {"Right": x}) to x."""
+    if isinstance(dim, dict):
+        if "Left" in dim:
+            return dim["Left"]
+        if "Right" in dim:
+            return dim["Right"]
+    return dim
 
 
 def py_name(name: vcl.Name, *, provenance: vcl.Provenance) -> py.Name:

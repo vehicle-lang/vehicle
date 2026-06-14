@@ -33,6 +33,8 @@ class ABCTranslation(
         match declaration:
             case vcl_ast.DefFunction():
                 return self.translate_DefFunction(declaration)
+            case vcl_ast.DefRecordSchema():
+                return self.translate_DefRecordSchema(declaration)
             case _:
                 raise NotImplementedError(type(declaration).__name__)
 
@@ -80,6 +82,12 @@ class ABCTranslation(
                 return self.translate_ReduceMaxRatTensor(expression)
             case vcl_ast.SearchRatTensor():
                 return self.translate_SearchRatTensor(expression)
+            case vcl_ast.Record():
+                return self.translate_Record(expression)
+            case vcl_ast.RecordAcc():
+                return self.translate_RecordAcc(expression)
+            case vcl_ast.SearchRecord():
+                return self.translate_SearchRecord(expression)
             case vcl_ast.Dimension():
                 return self.translate_Dimension(expression)
             case vcl_ast.DimensionLookup():
@@ -223,3 +231,21 @@ class ABCTranslation(
     def translate_StackTensor(
         self, expression: vcl_ast.StackTensor
     ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Record(self, expression: vcl_ast.Record) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_RecordAcc(
+        self, expression: vcl_ast.RecordAcc
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_SearchRecord(
+        self, expression: vcl_ast.SearchRecord
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_DefRecordSchema(
+        self, declaration: vcl_ast.DefRecordSchema
+    ) -> vcl_var.Declaration: ...
