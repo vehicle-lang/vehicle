@@ -5,10 +5,12 @@ module Vehicle.Data.Variable.Free.Context
     getRecordFields,
     getRecordFieldNames,
     getRecordProvenance,
-    getRecordFieldNamesNE
+    getRecordFieldNamesNE,
   )
 where
 
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -18,8 +20,6 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Free.Context.Class as X
 import Vehicle.Data.Variable.Free.Context.Core as X
 import Vehicle.Data.Variable.Free.Context.Instance as X
-import Data.List.NonEmpty (NonEmpty)
-import qualified Data.List.NonEmpty as NonEmpty
 
 addDeclToContext ::
   (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
@@ -79,7 +79,6 @@ getRecordFieldNamesNE ident = do
   case NonEmpty.nonEmpty fieldNames of
     Just fields -> pure fields
     Nothing -> developerError "Record contains no fields when fields are expected"
-
 
 getRecordProvenance ::
   (MonadFreeContext Builtin m) =>

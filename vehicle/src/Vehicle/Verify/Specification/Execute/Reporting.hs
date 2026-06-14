@@ -22,6 +22,7 @@ import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types
 import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy.Char8 qualified as ByteString (unpack)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (intercalate, pack)
 import Data.Text.Lazy qualified as LazyText
 import GHC.Generics (Generic)
@@ -34,7 +35,6 @@ import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Core as Core
-import Data.List.NonEmpty qualified as NonEmpty
 
 --------------------------------------------------------------------------------
 -- Interface

@@ -919,52 +919,43 @@ formatCompileError = \case
         fix = Just "this is on our road map to fix with VNNLib 2.0, but please open an issue on the Issue tracker with your use-case."
       }
   UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputValue, userVariables, unboundedInputs) :| _) ->
-    case toTypeValue inputValue of
-      (VRecordType typ fields) -> do
-        let varName = "x" :: Name
-            fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
-            typeIdent = case typ of
-              (VFreeVar i _) -> Just i
-              _ -> Nothing
-        VehicleUserError
-          { provenance = Just p,
-            problem =
-              "The property"
-                <+> quotePretty ident
-                <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
-                <+> lineIndent (pretty networkName)
-                <+> pretty varName
-                <> line
-                <> "In particular,"
-                  <+> missingBoundsRecord varName fieldNames unboundedInputs
-                  <+> "for"
-                  <+> maybe mempty (\t -> pretty $ nameOf t) typeIdent
-                  <+> squotes (pretty varName),
-            fix =
-              Just $
-                "add additional inequalities that restrict the value of" <+> case userVariables of
-                  [v] -> "the quantified variable" <+> quotePretty v
-                  _ -> "the following quantified variables:" <+> hsep (fmap pretty userVariables)
-          }
-      _ -> do
-        VehicleUserError
-          { provenance = Just p,
-            problem =
-              "The property"
-                <+> quotePretty ident
-                <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
-                <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModulePath networkName) [explicit inputValue]) ctx))
-                <> line
-                <> "In particular,"
-                  <+> missingBounds unboundedInputs
-                  <+> "for tensor"
-                  <+> squotes (prettyFriendly (WithContext inputValue ctx)),
-            fix =
-              Just $
-                "add additional inequalities that restrict the value of" <+> case userVariables of
-                  [v] -> "the quantified variable" <+> quotePretty v
-                  _ -> "the following quantified variables:" <+> hsep (fmap pretty userVariables)
-          }
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "The property"
+            <+> quotePretty ident
+            <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
+            <+> lineIndent (pretty networkName)
+            <+> unboundedVarInfo,
+        fix =
+          Just $
+            "add additional inequalities that restrict the value of" <+> case userVariables of
+              [v] -> "the quantified variable" <+> quotePretty v
+              _ -> "the following quantified variables:" <+> hsep (fmap pretty userVariables)
+      }
+    where
+      unboundedVarInfo =
+        case toTypeValue inputValue of
+          (VRecordType typ fields) -> do
+            let varName = "x" :: Name
+            let fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
+            let typeIdent = case typ of
+                  (VFreeVar i _) -> Just i
+                  _ -> Nothing
+            pretty varName
+              <> line
+              <> "In particular,"
+                <+> missingBoundsRecord varName fieldNames unboundedInputs
+                <+> "for"
+                <+> maybe mempty (\t -> pretty $ nameOf t) typeIdent
+                <+> squotes (pretty varName)
+          _ ->
+            lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModulePath networkName) [explicit inputValue]) ctx))
+              <> line
+              <> "In particular,"
+                <+> missingBounds unboundedInputs
+                <+> "for tensor"
+                <+> squotes (prettyFriendly (WithContext inputValue ctx))
   UnknownDifferentiableLogic name possibleNames ->
     VehicleUserError
       { provenance = Nothing,

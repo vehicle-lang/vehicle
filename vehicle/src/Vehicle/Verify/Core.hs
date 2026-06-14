@@ -5,6 +5,8 @@ module Vehicle.Verify.Core where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
 import Data.Bifunctor qualified
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
 import Prettyprinter (brackets)
@@ -14,8 +16,6 @@ import Vehicle.Data.Assertion (InequalityRelation (..), Relation (..))
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Tensor (RatTensor, TensorIndices, TensorShape, showTensorIndices)
 import Vehicle.Prelude
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NonEmpty
 
 --------------------------------------------------------------------------------
 -- Meta-network

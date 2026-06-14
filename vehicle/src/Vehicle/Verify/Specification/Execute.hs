@@ -13,6 +13,7 @@ import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.IDX (encodeIDXFile)
 import Data.IDX.Internal
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.Set qualified as Set (difference, fromList, null)
 import Data.Vector qualified as BoxedVector
@@ -35,7 +36,6 @@ import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier
 import Vehicle.Verify.Verifier.Core (QueryVariableAssignment (..))
-import qualified Data.List.NonEmpty as NonEmpty
 
 --------------------------------------------------------------------------------
 -- Verification

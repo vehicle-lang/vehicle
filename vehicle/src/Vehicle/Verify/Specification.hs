@@ -27,6 +27,7 @@ where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set (Set)
@@ -40,7 +41,6 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Resource (ResourcesIntegrityInfo)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
-import Data.List.NonEmpty (NonEmpty)
 
 --------------------------------------------------------------------------------
 -- User variable
