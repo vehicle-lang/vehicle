@@ -5,11 +5,11 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Optional, Sequence
 
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Annotated, Self, TypeAlias
 from typing_extensions import TypeVar as TypingTypeVar
 from typing_extensions import override
 
-from ._decode import JsonValue, decode
+from ._decode import EitherWireForm, JsonValue, decode
 
 Name: TypeAlias = str
 UniverseLevel: TypeAlias = int
@@ -411,7 +411,7 @@ class RecordAcc(Expression):
 
 @dataclass(frozen=True)
 class SearchRecord(Expression):
-    """Search record: SearchRecord name schema reductionOp dims lowerBound upperBound searchLambda minimise"""
+    """Search record: SearchRecord name schema reduction_op dims …"""
 
     name: str
     schema: Name
@@ -469,9 +469,9 @@ class JFieldScalarReal(FieldType):
 
 @dataclass(frozen=True)
 class JFieldTensorReal(FieldType):
-    """Tensor Real field type: JFieldTensorReal shape - shape entries are Aeson-encoded Either Int Name"""
+    """Tensor Real field type: JFieldTensorReal shape - each entry is a concrete int or a symbolic dim name"""
 
-    shape: Sequence[JsonValue]
+    shape: Sequence[Annotated[int | str, EitherWireForm]]
 
 
 @dataclass(frozen=True)
