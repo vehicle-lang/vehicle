@@ -109,11 +109,11 @@ data JExpr
   | ReduceMulRatTensor JExpr JExpr
   | ReduceMinRatTensor JExpr JExpr
   | ReduceMaxRatTensor JExpr JExpr
-  | SearchRatTensor Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Dims, ReductionOp, LowerBound, UpperBound, SearchLambda, Minimise)
+  | SearchRatTensor Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Name, ReductionOp, Dims, LowerBound, UpperBound, SearchLambda, Minimise)
   -- Tensor records
   | Record Name [(Name, JExpr)] -- (Schema, Fields)
   | RecordAcc JExpr Name -- (Record, FieldName)
-  | SearchRecord Name Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Name, Schema, Dims, ReductionOp, LowerBound, UpperBound, SearchLambda, Minimise)
+  | SearchRecord Name Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Name, Schema, ReductionOp, Dims, LowerBound, UpperBound, SearchLambda, Minimise)
   -- Dimensions
   | Dimension Int
   | DimensionNil

@@ -1,11 +1,8 @@
 -- | Record-handling cases for the loss backend, split out from
 -- 'Vehicle.Backend.Loss.LossCompilation'.
 module Vehicle.Backend.Loss.RecordCompilation
-  ( -- * Schema lookup
-    lookupRecordFieldList,
+  ( -- * Dispatcher inlining
     isDispatcherIdent,
-
-    -- * Dispatcher inlining
     inlineRecordDispatchers,
 
     -- * Compilation of record forms
@@ -47,17 +44,12 @@ lookupIdentValue ::
 lookupIdentValue = NBE.lookupIdentValue
 
 --------------------------------------------------------------------------------
--- Schema lookup
-
-lookupRecordFieldList ::
-  (MonadFreeContext Builtin m) =>
-  Identifier ->
-  m (GenericRecordFields (Value Builtin))
-lookupRecordFieldList = getRecordFields
-
---------------------------------------------------------------------------------
 -- Dispatcher inlining
 
+-- | Recognises scope-checker-synthesised @tensor-record helpers by their name.
+-- The producer ('createTensorRecordConversionFunctions' in
+-- "Vehicle.Data.Builtin.Standard.Scoping") builds bare 'Text' identifiers
+-- with no typed marker, so naming convention is the only signal available.
 isDispatcherIdent :: Identifier -> Bool
 isDispatcherIdent ident =
   let n = nameOf ident

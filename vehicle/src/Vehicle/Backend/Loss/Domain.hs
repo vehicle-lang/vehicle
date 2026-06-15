@@ -421,7 +421,6 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VBoolIf args -> compileBool =<< unfoldIf args
   VNot args -> compileBool =<< lowerNot args
   VQuantifyRatTensor args -> compileQuantifierInternal compileSearch args
-  -- TODO nested record quantifiers; only top-level ones are wired in Loss.hs.
   VQuantifyRecord _args -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
   -------------------
   -- Blocked cases --
