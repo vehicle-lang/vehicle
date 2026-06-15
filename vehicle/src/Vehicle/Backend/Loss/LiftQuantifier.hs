@@ -275,6 +275,12 @@ updateRatTensorBoundVar lv value = case toRatTensorValue value of
   VNegRatTensor (TensorOp1Args dims arg) -> do
     arg' <- updateRatTensorBoundVar lv arg
     return (fromRatTensorValue $ VNegRatTensor (TensorOp1Args dims arg'))
+  VLogRatTensor (TensorOp1Args dims arg) -> do
+    arg' <- updateRatTensorBoundVar lv arg
+    return (fromRatTensorValue $ VLogRatTensor (TensorOp1Args dims arg'))
+  VExpRatTensor (TensorOp1Args dims arg) -> do
+    arg' <- updateRatTensorBoundVar lv arg
+    return (fromRatTensorValue $ VExpRatTensor (TensorOp1Args dims arg'))
   VAddRatTensor (TensorOp2Args dims arg1 arg2) -> do
     arg1' <- updateRatTensorBoundVar lv arg1
     arg2' <- updateRatTensorBoundVar lv arg2
@@ -299,18 +305,22 @@ updateRatTensorBoundVar lv value = case toRatTensorValue value of
     arg1' <- updateRatTensorBoundVar lv arg1
     arg2' <- updateRatTensorBoundVar lv arg2
     return (fromRatTensorValue $ VMaxRatTensor (TensorOp2Args dims arg1' arg2'))
-  VReduceAddRatTensor (TensorReductionArgs dims unit tensor) -> do
+  VPowRatTensor (TensorOp2Args dims arg1 arg2) -> do
+    arg1' <- updateRatTensorBoundVar lv arg1
+    arg2' <- updateRatTensorBoundVar lv arg2
+    return (fromRatTensorValue $ VPowRatTensor (TensorOp2Args dims arg1' arg2'))
+  VReduceAddRatTensor (TensorReductionArgs dims tensor) -> do
     tensor' <- updateRatTensorBoundVar lv tensor
-    return (fromRatTensorValue $ VReduceAddRatTensor (TensorReductionArgs dims unit tensor'))
-  VReduceMulRatTensor (TensorReductionArgs dims unit tensor) -> do
+    return (fromRatTensorValue $ VReduceAddRatTensor (TensorReductionArgs dims tensor'))
+  VReduceMulRatTensor (TensorReductionArgs dims tensor) -> do
     tensor' <- updateRatTensorBoundVar lv tensor
-    return (fromRatTensorValue $ VReduceMulRatTensor (TensorReductionArgs dims unit tensor'))
-  VReduceMinRatTensor (TensorReductionArgs dims unit tensor) -> do
+    return (fromRatTensorValue $ VReduceMulRatTensor (TensorReductionArgs dims tensor'))
+  VReduceMinRatTensor (TensorReductionArgs dims tensor) -> do
     tensor' <- updateRatTensorBoundVar lv tensor
-    return (fromRatTensorValue $ VReduceMinRatTensor (TensorReductionArgs dims unit tensor'))
-  VReduceMaxRatTensor (TensorReductionArgs dims unit tensor) -> do
+    return (fromRatTensorValue $ VReduceMinRatTensor (TensorReductionArgs dims tensor'))
+  VReduceMaxRatTensor (TensorReductionArgs dims tensor) -> do
     tensor' <- updateRatTensorBoundVar lv tensor
-    return (fromRatTensorValue $ VReduceMaxRatTensor (TensorReductionArgs dims unit tensor'))
+    return (fromRatTensorValue $ VReduceMaxRatTensor (TensorReductionArgs dims tensor'))
   VIfRatTensor _ -> do
     declProv <- ask
     throwError $ UnableToLiftQuantifiersInProperty declProv
