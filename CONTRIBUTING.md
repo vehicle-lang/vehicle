@@ -163,7 +163,7 @@ We recommend that you install these hooks.
    Run the following command:
 
    ```sh
-   cabal install ormolu --ignore-project --overwrite-policy=always
+   cabal install ormolu-0.7.1.0 --ignore-project --overwrite-policy=always
    ```
 
 5. Navigate to your local copy of the Vehicle repository.
