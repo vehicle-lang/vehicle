@@ -91,4 +91,4 @@ missingLogicError names = \case
   CustomLogic name -> throwError $ UnknownDifferentiableLogic name names
 
 currentPass :: Doc a
-currentPass = "loss compilation"
+currentPass = "loss translation"
