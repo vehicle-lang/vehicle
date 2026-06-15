@@ -29,7 +29,7 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VecLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
+import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VectorLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -821,7 +821,7 @@ compileStack args = do
 
 compileVecLiteral :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec (fmap explicit ds)
+  Just (VectorLitArgs _t _d ds) -> toVec (fmap explicit ds)
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code

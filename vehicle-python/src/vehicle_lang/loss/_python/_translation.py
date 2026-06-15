@@ -353,15 +353,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate Dimension to constant."""
         return py.Constant(value=expression.value, **asdict(vcl.MISSING))
 
-    def translate_DimensionLookup(self, expression: vcl.DimensionLookup) -> py.expr:
-        """Translate DimensionLookup to builtin call."""
-        return py_app(
-            py_builtin("DimensionLookup", provenance=vcl.MISSING),
-            self.translate_expression(expression.xs),
-            self.translate_expression(expression.i),
-            provenance=vcl.MISSING,
-        )
-
     def translate_DimensionCons(self, expression: vcl.DimensionCons) -> py.expr:
         """Translate DimensionCons to builtin call."""
         return py_app(
@@ -402,6 +393,53 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 [self.translate_expression(x) for x in expression.xs],
                 provenance=vcl.MISSING,
             ),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_AtTensor(self, expression: vcl.AtTensor) -> py.expr:
+        """Translate AtTensor to builtin call."""
+        return py_app(
+            py_builtin("AtTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.xs),
+            self.translate_expression(expression.i),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ForeachTensor(self, expression: vcl.ForeachTensor) -> py.expr:
+        """Translate ForeachTensor to builtin call."""
+        return py_app(
+            py_builtin("ForeachTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.size),
+            self.translate_expression(expression.function),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_VectorLiteral(self, expression: vcl.VectorLiteral) -> py.expr:
+        """Translate VectorLiteral to builtin call."""
+        return py_app(
+            py_builtin("VectorLiteral", provenance=vcl.MISSING),
+            py_tuple(
+                [self.translate_expression(x) for x in expression.elements],
+                provenance=vcl.MISSING,
+            ),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_AtVector(self, expression: vcl.AtVector) -> py.expr:
+        """Translate AtVector to builtin call."""
+        return py_app(
+            py_builtin("AtVector", provenance=vcl.MISSING),
+            self.translate_expression(expression.xs),
+            self.translate_expression(expression.i),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ForeachVector(self, expression: vcl.ForeachVector) -> py.expr:
+        """Translate ForeachVector to builtin call."""
+        return py_app(
+            py_builtin("ForeachVector", provenance=vcl.MISSING),
+            self.translate_expression(expression.size),
+            self.translate_expression(expression.function),
             provenance=vcl.MISSING,
         )
 

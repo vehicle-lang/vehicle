@@ -33,7 +33,6 @@ def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
     output = loss_tf.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.DL2,
-        samplers={},
     )
 
     assert isinstance(output, dict)
@@ -52,7 +51,6 @@ def test_golden_spec_pytorch_compile(spec_path: Path) -> None:
     output = loss_pt.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.DL2,
-        samplers={},
     )
 
     assert isinstance(output, dict)

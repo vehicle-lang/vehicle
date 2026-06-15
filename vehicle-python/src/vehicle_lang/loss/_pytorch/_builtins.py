@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import TYPE_CHECKING, Any, Sequence, cast
+from typing import TYPE_CHECKING, Any, Callable, List, Sequence, Tuple, cast
 
 from typing_extensions import override
 
@@ -54,6 +54,7 @@ class PyTorchBuiltins(
         int,
         float,
         torch.Tensor,
+        List[Any],
     ]
 ):
     dtype_index: torch.dtype = torch.int32
@@ -134,25 +135,6 @@ class PyTorchBuiltins(
         return torch.max(x)
 
     @override
-    def DimensionLookup(
-        self, xs: torch.Tensor | tuple[torch.Tensor, ...] | list[torch.Tensor], i: int
-    ) -> torch.Tensor:
-        # Despite the name, this implements element indexing (At operator in Haskell)
-        # The JSON AST uses 'DimensionLookup' but semantics are element access
-
-        # Handle tuple/sequence case (from StackTensor or similar)
-        if isinstance(xs, (tuple, list)):
-            return xs[i]
-
-        if xs.ndim == 0:
-            raise VehicleInternalError(
-                "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
-            )
-
-        # Use direct indexing which works for all tensor ranks >= 1
-        return xs[i]
-
-    @override
     def DimensionCons(self, head: int, tail: Sequence[int]) -> tuple[int, ...]:
         return (head, *tail)
 
@@ -175,3 +157,40 @@ class PyTorchBuiltins(
     @override
     def StackTensor(self, tensors: Sequence[torch.Tensor]) -> torch.Tensor:
         return torch.stack(cast(tuple[torch.Tensor], tensors))
+
+    @override
+    def AtTensor(
+        self, xs: torch.Tensor | tuple[torch.Tensor, ...] | list[torch.Tensor], i: int
+    ) -> torch.Tensor:
+        if isinstance(xs, torch.Tensor) and xs.ndim == 0:
+            raise VehicleInternalError(
+                "Cannot index into a scalar tensor in AtTensor, make an issue in GitHub."
+            )
+
+        return xs[i]
+
+    @override
+    def ForeachTensor(
+        self, size: int, function: Callable[[int], torch.Tensor]
+    ) -> torch.Tensor:
+        # Apply the function to each index and stack the results
+        return torch.stack([function(i) for i in range(size)])
+
+    @override
+    def VectorLiteral(self, xs: Sequence[Any]) -> List[Any]:
+        return list(xs)
+
+    @override
+    def AtVector(self, xs: torch.Tensor | Tuple[Any, ...] | List[Any], i: int) -> Any:
+        if isinstance(xs, torch.Tensor) and xs.ndim == 0:
+            raise VehicleInternalError(
+                "Cannot index into a scalar tensor in AtVector, make an issue in GitHub."
+            )
+
+        # Use direct indexing which works for all tensor ranks >= 1
+        return xs[i]
+
+    @override
+    def ForeachVector(self, size: int, function: Callable[[int], Any]) -> List[Any]:
+        # Apply the function to each index and stack the results
+        return [function(i) for i in range(size)]

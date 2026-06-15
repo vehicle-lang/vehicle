@@ -127,14 +127,14 @@ evalTensorOp1 accessBuiltinOp accessLit op args =
     eval = \case
       TensorOp1Args _ds (getExpr accessLit -> Just t) ->
         Just $ return $ mkExpr accessLit $ mapTensor op t
-      TensorOp1Args (IDimCons d _) (getExpr accessConstTensor -> Just xs) ->
-        Just $ mkExpr accessConstTensor <$> traverseConstTensorValue (evalFull d) xs
-      TensorOp1Args (IDimCons d _) (getExpr accessStackTensor -> Just xs) ->
-        Just $ mkExpr accessStackTensor <$> traverseStackTensorElements (evalFull d) xs
+      TensorOp1Args (IDimCons _ ds) (getExpr accessConstTensor -> Just xs) ->
+        Just $ mkExpr accessConstTensor <$> traverseConstTensorValue (evalFull ds) xs
+      TensorOp1Args (IDimCons _ ds) (getExpr accessStackTensor -> Just xs) ->
+        Just $ mkExpr accessStackTensor <$> traverseStackTensorElements (evalFull ds) xs
       _ -> Nothing
 
     evalFull :: Value builtin -> Value builtin -> m (Value builtin)
-    evalFull d x = evalSimple (mkExpr accessBuiltinOp ()) eval (TensorOp1Args d x)
+    evalFull ds x = evalSimple (mkExpr accessBuiltinOp ()) eval (TensorOp1Args ds x)
 
 evalTensorOp2 ::
   forall builtin a m.
@@ -353,7 +353,7 @@ evalCompareIndex ::
   ComparisonOp ->
   EvalSimple IndexComparisonArgs Value builtin m
 evalCompareIndex op = \case
-  IndexCompArgs _ _ (IIndexLiteral x _) (IIndexLiteral y _) -> return $ IBoolLiteral (comparisonOp op x y)
+  IndexComparisonArgs _ _ (IIndexLiteral x _) (IIndexLiteral y _) -> return $ IBoolLiteral (comparisonOp op x y)
   args -> return $ mkExpr accessCompareIndex (op, args)
 
 -----------------------------------------------------------------------------

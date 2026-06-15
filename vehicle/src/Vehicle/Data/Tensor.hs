@@ -221,9 +221,11 @@ compareTensor :: (a -> b -> Bool) -> Tensor a -> Tensor b -> Bool
 compareTensor f t1 t2 = allTensor id $ zipWithTensor f t1 t2
 
 prettyTensor :: (a -> Doc b) -> Tensor a -> Doc b
-prettyTensor prettyElement = do
-  let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
-  foldMapTensor prettyElement prettyRow
+prettyTensor prettyElement = \case
+  ConstantTensor shape value -> "const" <+> prettyElement value <+> pretty shape
+  denseTensor -> do
+    let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
+    foldMapTensor prettyElement prettyRow denseTensor
 
 isTensorOfAll :: (Eq a) => Tensor a -> a -> Bool
 isTensorOfAll t x = case t of

@@ -1,3 +1,3 @@
 @property;
 boundedRobust : (Tensor Real -> Tensor Real) -> Tensor Real;
-boundedRobust = \ f -> [ 1.0 ] / search[x] (\ xs -> reduceMul xs) [1] [ -1.0 ] [ 1.0 ] (\ x -> search[x_hat] (\ xs -> reduceMul xs) [1] [ -1.0 ] [ 1.0 ] (\ x_hat -> reduceAdd (max [ 0.0 ] (f x_hat - f x - [ -1.0 ])) * reduceAdd (max [ 0.0 ] ([ 1.0 ] - (f x_hat - f x)))))
+boundedRobust = \ f -> 1.0 / search[x] (\ xs -> reduceMul xs) [1] (const -1.0 [1]) (const 1.0 [1]) (\ x -> search[x_hat] (\ xs -> reduceMul xs) [1] (const -1.0 [1]) (const 1.0 [1]) (\ x_hat -> reduceAdd (max (const 0.0 [1]) (f x - f x_hat - (const -1.0 [1]))) * reduceAdd (max (const 0.0 [1]) ((const 1.0 [1]) - (f x - f x_hat)))))
