@@ -151,6 +151,13 @@ isInferable = \case
   Inferable -> True
   NonInferable -> False
 
+isAnnotatedAsExternalResource :: DefAbstractSort -> Bool
+isAnnotatedAsExternalResource = \case
+  NetworkDef -> True
+  DatasetDef -> True
+  ParameterDef {} -> True
+  BuiltinDef {} -> False
+
 --------------------------------------------------------------------------------
 -- DefFunction
 

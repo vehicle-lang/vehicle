@@ -173,9 +173,11 @@ hoistInferableParameters ::
   (MonadCompile m, PrintableBuiltin builtin) =>
   Prog builtin ->
   m (Prog builtin)
-hoistInferableParameters (Main ds) = do
-  (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
-  return $ Main (inferableParameters <> otherDecls)
+hoistInferableParameters (Main ds) =
+  logCompilerSection2 MinDetail "hoisting inferable parameters" $ do
+    (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
+    logDebug MaxDetail $ "Hoisted parameters:" <> lineIndent (vsep $ fmap prettyFriendly inferableParameters)
+    return $ Main (inferableParameters <> otherDecls)
   where
     goDecls :: (MonadWriter [Decl builtin] m) => [Decl builtin] -> m [Decl builtin]
     goDecls [] = return []
