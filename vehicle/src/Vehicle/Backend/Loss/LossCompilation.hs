@@ -40,8 +40,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
-import Vehicle.Data.Real (ExtendedRational (..))
-import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level (findSliceIndices)
@@ -221,7 +220,9 @@ convertNatComparison :: (MonadLogic m) => (ComparisonOp, Op2Args (Value Builtin)
 convertNatComparison _args = unsupportedOperation "NatComparison"
 
 convertIndexComparison :: (MonadLogic m) => (ComparisonOp, IndexComparisonArgs (Value Builtin)) -> m (Value LossBuiltin)
-convertIndexComparison (op, IndexComparisonArgs _d1 _d2 x y) = do
+convertIndexComparison _args = unsupportedOperation "IndexComparison"
+
+{-
   -- This is horrendously unsound, and ill-typed but works for now.
   -- Really, we should compiling these to masking operations.
   -- However, that requires that we switch to normalisation by need...
@@ -231,7 +232,7 @@ convertIndexComparison (op, IndexComparisonArgs _d1 _d2 x y) = do
     convertToRat v = case toIndexValue v of
       VIndexLiteral value _ -> IRatTensor $ ZeroDimTensor (Finite $ toRational value)
       _ -> v
-
+-}
 convertRatTensorPointwiseComparison :: (MonadLogic m) => (ComparisonOp, TensorOp2Args (Value Builtin)) -> m (Value LossBuiltin)
 convertRatTensorPointwiseComparison (op, args) = do
   args' <- convertTensorOp2 convertRatTensor args

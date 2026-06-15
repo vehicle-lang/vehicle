@@ -28,7 +28,7 @@
 
 * Fixed a bug where specs with multiple quantified values would sometimes have the variables switched around in the generated code.
 
-* Fixed a bug where negations where occasionally being translated with the wrong dimensions.
+* Fixed a bug where negations were occasionally being translated with the wrong dimensions.
 
 * Added better support for `Vector` operations, e.g. the `mnist-robustness` specification.
 

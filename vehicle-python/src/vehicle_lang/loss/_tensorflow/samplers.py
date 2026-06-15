@@ -159,7 +159,7 @@ class ConstantTensorFlowSampler(TensorFlowSampler):
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
         minimise: bool,
     ) -> Any:
-        """Sample at a few test points in the bounded range."""
+        """Returns the original constant value."""
         results = []
         for _ in range(self.num_samples):
             result = search_lambda(self.constant_value)

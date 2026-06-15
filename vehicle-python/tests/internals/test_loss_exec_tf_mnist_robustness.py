@@ -15,8 +15,9 @@ tf = pytest.importorskip(
 
 from typing import Any, cast
 
-import vehicle_lang.loss.tensorflow as vcl_tf
 from typing_extensions import TypeAlias
+
+import vehicle_lang.loss.tensorflow as vcl_tf
 from vehicle_lang import DifferentiableLogic
 from vehicle_lang.loss._tensorflow.samplers import ConstantTensorFlowSampler
 
@@ -49,6 +50,7 @@ def one_hot(label: int) -> LabelDistribution:
 ##########
 
 
+@pytest.mark.skip(reason="Indices in spec not yet supported")  # type: ignore[untyped-decorator]
 def test_lossdl2_exec_tf_mnist_robustness() -> None:
     def classifier(image: Any) -> LabelDistribution:
         return one_hot(0)
