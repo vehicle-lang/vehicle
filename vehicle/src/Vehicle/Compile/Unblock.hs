@@ -63,8 +63,7 @@ data UnblockingActions m = UnblockingActions
 -- preserving the guarantee that the expression is normalised as much as
 -- possible.
 unblockBoolExpr ::
-  ( MonadUnblock m
-  ) =>
+  (MonadUnblock m) =>
   UnblockingActions m ->
   Value Builtin ->
   m (Value Builtin)
