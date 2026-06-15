@@ -170,8 +170,8 @@ instance Pretty BuiltinFunction where
     ForeachTensor -> "foreachTensor"
     ForeachVector -> "foreachVector"
     Iterate -> "iterate"
-    AtTensor -> "!t"
-    AtVector -> "!v"
+    AtTensor -> "atTensor"
+    AtVector -> "atVector"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
 

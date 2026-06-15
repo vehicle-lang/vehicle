@@ -3,6 +3,7 @@ module Vehicle.Backend.Loss
   )
 where
 
+import Control.Monad.Reader (ReaderT)
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.Core
@@ -18,10 +19,10 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
-import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
+import Vehicle.Data.Variable.Bound.Context.Tensor (TensorBoundContextT)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 
 convertToLossTensors ::
@@ -53,22 +54,25 @@ convertDecls logicID logic = \case
     return $ maybeToList maybeLossDecl ++ decls'
 
 convertDecl ::
+  forall m.
   (MonadCompile m, MonadFreeContext Builtin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   VDecl Builtin ->
   m (Maybe (Decl LossBuiltin))
-convertDecl logicID logic decl = do
-  logCompilerSection2 MinDetail ("declaration" <+> quotePretty (identifierOf decl)) $ do
-    runMonadLogicT logicID logic decl $ do
-      case decl of
-        DefAbstract p ident sort typ
-          | isExternalResourceDecl decl -> Just <$> convertResourceDecl p ident sort typ
-          | otherwise -> return Nothing
-        DefFunction p ident ann typ expr
-          | isPropertyDecl decl -> Just <$> convertPropertyDecl p ident ann typ expr
-          | otherwise -> return Nothing
-        DefRecord {} -> return Nothing
+convertDecl logicID logic decl = case decl of
+  DefAbstract p ident sort typ
+    | isAnnotatedAsExternalResource sort -> runConversion $ convertResourceDecl p ident sort typ
+    | otherwise -> return Nothing
+  DefFunction p ident ann typ expr
+    | isAnnotatedAsProperty ann -> runConversion $ convertPropertyDecl p ident ann typ expr
+    | otherwise -> return Nothing
+  DefRecord {} -> return Nothing
+  where
+    runConversion :: TensorBoundContextT (ReaderT LossCtx m) (Decl LossBuiltin) -> m (Maybe (Decl LossBuiltin))
+    runConversion action = do
+      logCompilerSection2 MidDetail ("translation of" <+> quotePretty (identifierOf decl)) $ do
+        Just <$> runMonadLogicT logicID logic decl action
 
 convertResourceDecl ::
   (MonadLogic m) =>
@@ -109,13 +113,12 @@ convertMultiProperty typ = case toTypeValue typ of
 
 convertVectorProperty :: (MonadLogic m) => VType Builtin -> Value Builtin -> m (Value LossBuiltin)
 convertVectorProperty typ value = do
-  let dims = getVectorDims typ
   case toVectorValue value of
     VVectorBoundVar lv spine -> convertBoundVar lv spine
     VVectorDataset ident -> return $ VFreeVar ident []
-    VVectorLiteral args -> convertVecLiteralArgs (convertMultiProperty typ) (IBoolType, dims) args
+    VVectorLiteral args -> convertVecLiteral (convertMultiProperty typ) args
     VVectorIf args -> convertIf args
-    VVectorForeach args -> convertVecForeachArgs (convertMultiProperty typ) (IBoolType, dims) args
+    VVectorForeach args -> convertVecForeach (convertMultiProperty typ) args
 
 convertTensorProperty :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
 convertTensorProperty value = case toBoolTensorValue value of
@@ -136,9 +139,3 @@ convertTensorProperty value = case toBoolTensorValue value of
   VBoolTensorIf args -> convertIf args
   VBoolTensorAt args -> convertAtTensor convertTensorProperty args
   VBoolTensorForeach args -> convertForeachTensor convertTensorProperty args
-
-getVectorDims :: VType Builtin -> VDims Builtin
-getVectorDims typ = case toTypeValue typ of
-  VBoolTensorType ds -> ds
-  VVectorType t d -> IDimCons d (getVectorDims t)
-  _ -> developerError "Impossible property type"

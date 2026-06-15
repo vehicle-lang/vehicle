@@ -1,6 +1,7 @@
 module Vehicle.Compile.Normalise.Quote where
 
 import Data.Map.Ordered qualified as OMap
+import GHC.Stack (HasCallStack)
 import Vehicle.Data.AST.Expr.Scoped (Expr (..), Substitution, normAppList, substituteDB)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
@@ -11,12 +12,12 @@ import Vehicle.Prelude
 -- | Converts from a normalised representation to an unnormalised representation.
 -- Do not call except for logging and debug purposes, very expensive with nested
 -- lambdas.
-unnormalise :: forall a b. (Quote a b) => Lv -> a -> b
+unnormalise :: forall a b. (HasCallStack, Quote a b) => Lv -> a -> b
 unnormalise = quote mempty
 
 unnormaliseInCtx ::
   forall expr m.
-  (MonadReadableNameContext m, Show expr) =>
+  (HasCallStack, MonadReadableNameContext m, Show expr) =>
   Value expr ->
   m (Expr expr)
 unnormaliseInCtx e = do
@@ -45,7 +46,7 @@ quoteCtx p level env i = Right (quote p level (lookupIxInEnv env i))
 -- Quoting expressions
 
 class Quote a b where
-  quote :: Provenance -> Lv -> a -> b
+  quote :: (HasCallStack) => Provenance -> Lv -> a -> b
 
 instance (ConvertableBuiltin builtin1 builtin2) => Quote (Value builtin1) (Expr builtin2) where
   quote p level = \case
@@ -82,5 +83,5 @@ instance (Quote expr1 expr2) => Quote (GenericBinder expr1) (GenericBinder expr2
 instance (Quote expr1 expr2) => Quote (GenericArg expr1) (GenericArg expr2) where
   quote p level = fmap (quote p level)
 
-quoteApp :: (Quote a (Expr builtin2)) => Lv -> Provenance -> Expr builtin2 -> [GenericArg a] -> Expr builtin2
+quoteApp :: (HasCallStack, Quote a (Expr builtin2)) => Lv -> Provenance -> Expr builtin2 -> [GenericArg a] -> Expr builtin2
 quoteApp l p fn spine = normAppList fn $ fmap (quote p l) spine

@@ -143,7 +143,7 @@ traverseReductionArgs f (TensorReductionArgs ds xs) =
 -- IndexComparisonArgs
 
 -- | Arguments for comparisons (==, <= etc.) over Index
-data IndexComparisonArgs expr = IndexCompArgs
+data IndexComparisonArgs expr = IndexComparisonArgs
   { indexCompSize1 :: expr,
     indexCompSize2 :: expr,
     indexCompArg1 :: expr,
@@ -154,10 +154,13 @@ instance IsArgs IndexComparisonArgs where
   accessSpine =
     Access
       { getExpr = \case
-          (fmap argExpr -> [n1, n2, x, y]) -> Just $ IndexCompArgs n1 n2 x y
+          (fmap argExpr -> [n1, n2, x, y]) -> Just $ IndexComparisonArgs n1 n2 x y
           _ -> Nothing,
-        mkExpr = \(IndexCompArgs n1 n2 x y) -> [implicitIrrelevant n1, implicitIrrelevant n2, explicit x, explicit y]
+        mkExpr = \(IndexComparisonArgs n1 n2 x y) -> [implicitIrrelevant n1, implicitIrrelevant n2, explicit x, explicit y]
       }
+
+--------------------------------------------------------------------------------
+-- ComparisonArgs
 
 -- | Arguments for binary tensor operations (e.g. +, -)
 data TensorReduceComparisonArgs expr = TensorReduceComparisonArgs
@@ -196,19 +199,24 @@ instance IsArgs IfArgs where
 traverseIfArgBranches :: (Applicative f) => (t -> f t) -> IfArgs t -> f (IfArgs t)
 traverseIfArgBranches f (IfArgs t c x y) = IfArgs t c <$> f x <*> f y
 
-data VecLitArgs expr = VecLitArgs
+--------------------------------------------------------------------------------
+-- Vector
+--------------------------------------------------------------------------------
+-- VectorLitArgs
+
+data VectorLitArgs expr = VectorLitArgs
   { vecLitType :: expr,
     vecLitDim :: expr,
     vecLitElements :: [expr]
   }
 
-instance IsArgs VecLitArgs where
+instance IsArgs VectorLitArgs where
   accessSpine =
     Access
       { getExpr = \case
-          (fmap argExpr -> t : d : xs) -> Just $ VecLitArgs t d xs
+          (fmap argExpr -> t : d : xs) -> Just $ VectorLitArgs t d xs
           _ -> Nothing,
-        mkExpr = \(VecLitArgs t d xs) -> implicit t : implicitIrrelevant d : fmap explicit xs
+        mkExpr = \(VectorLitArgs t d xs) -> implicit t : implicitIrrelevant d : fmap explicit xs
       }
 
 -- | Arguments for `!`
@@ -227,6 +235,10 @@ instance IsArgs AtVectorArgs where
           _ -> Nothing,
         mkExpr = \(AtVectorArgs t d xs i) -> [implicit t, implicitIrrelevant d, explicit xs, explicit i]
       }
+
+--------------------------------------------------------------------------------
+-- Tensor
+--------------------------------------------------------------------------------
 
 -- | Arguments for `!`
 data AtTensorArgs expr = AtTensorArgs

@@ -36,6 +36,8 @@ def load_loss_specification(
     if samplers is None:
         default_sampler = default_sampler_factory()
         samplers = defaultdict(lambda: default_sampler.get_loss)
+    else:
+        samplers = {k: s.get_loss for k, s in samplers.items()}
 
     program = load_ast(
         path,

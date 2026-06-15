@@ -116,12 +116,16 @@ data IndexValue
   = VIndexLiteral Int (Value Builtin)
   | VIndexBoundVar Lv (Spine Builtin)
   | VIndexIf (IfArgs (Value Builtin))
+  | VIndexAtVector (AtVectorArgs (Value Builtin))
+  | VIndexParameter Identifier
 
 toIndexValue :: (HasCallStack) => Value Builtin -> IndexValue
 toIndexValue e = case e of
   VBoundVar v spine -> VIndexBoundVar v spine
+  VFreeVar ident [] -> VIndexParameter ident
   (getExpr accessIndexLiteral -> Just (i, args)) -> VIndexLiteral i (indexLiteralDim args)
   (getExpr accessIf -> Just args) -> VIndexIf args
+  (getExpr accessAtVector -> Just args) -> VIndexAtVector args
   _ -> developerError $ "ill-typed index expression" <+> pretty (show e)
 
 -------------------------------------------------------------------------------
@@ -162,7 +166,7 @@ fromNatValue = \case
 data VectorValue
   = VVectorBoundVar Lv (Spine Builtin)
   | VVectorDataset Identifier
-  | VVectorLiteral (VecLitArgs (Value Builtin))
+  | VVectorLiteral (VectorLitArgs (Value Builtin))
   | VVectorIf (IfArgs (Value Builtin))
   | VVectorForeach (ForeachVectorArgs (Value Builtin))
 
@@ -405,10 +409,11 @@ data RatTensorValue
   | VRatTensorNetworkApp Identifier (NetworkAppArgs (Value Builtin))
   | VRatConstTensor (ConstTensorArgs (Value Builtin))
   | VRatStackTensor (StackTensorArgs (Value Builtin))
-  | VRatAt (AtTensorArgs (Value Builtin))
+  | VRatAtTensor (AtTensorArgs (Value Builtin))
   | VRatForeach (ForeachTensorArgs (Value Builtin))
   | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
   | VDatasetOrParameter Identifier
+  | VRatAtVector (AtVectorArgs (Value Builtin))
 
 toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue
 toRatTensorValue expr = case expr of
@@ -434,11 +439,15 @@ toRatTensorValue expr = case expr of
   (getExpr accessIf -> Just args) -> VIfRatTensor args
   (getExpr accessConstTensor -> Just args) -> VRatConstTensor args
   (getExpr accessStackTensor -> Just args) -> VRatStackTensor args
-  (getExpr accessAtTensor -> Just args) -> VRatAt args
+  (getExpr accessAtTensor -> Just args) -> VRatAtTensor args
   (getExpr accessForeachTensor -> Just args) -> VRatForeach args
+  (getExpr accessAtVector -> Just args) -> VRatAtVector args
   _ -> illTyped
   where
-    illTyped = developerError $ "ill-typed RatTensor expression:" <+> pretty (show expr)
+    illTyped =
+      developerError $
+        "ill-typed RatTensor expression:"
+          <+> lineIndent (prettyVerbose expr <> line <> pretty (show expr))
 
 fromRatTensorValue :: RatTensorValue -> Value Builtin
 fromRatTensorValue = \case
@@ -462,10 +471,11 @@ fromRatTensorValue = \case
   VIfRatTensor args -> mkExpr accessIf args
   VRatConstTensor args -> mkExpr accessConstTensor args
   VRatStackTensor args -> mkExpr accessStackTensor args
-  VRatAt args -> mkExpr accessAtTensor args
+  VRatAtTensor args -> mkExpr accessAtTensor args
   VRatForeach args -> mkExpr accessForeachTensor args
   VDatasetOrParameter ident -> VFreeVar ident []
   VRatTensorNetworkApp name args -> VFreeVar name (mkExpr accessSpine args)
+  VRatAtVector args -> mkExpr accessAtVector args
 
 -------------------------------------------------------------------------------
 -- Dim

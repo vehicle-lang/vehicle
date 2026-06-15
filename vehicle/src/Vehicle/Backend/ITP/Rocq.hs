@@ -29,7 +29,7 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VecLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
+import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VectorLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -176,7 +176,6 @@ data Scope
   = RingScope
   | OrderScope
   | FormScope
-  | TensorScope
   deriving (Eq, Ord)
 
 instance Pretty Scope where
@@ -184,7 +183,6 @@ instance Pretty Scope where
     RingScope -> "ring_scope"
     OrderScope -> "order_scope"
     FormScope -> "form_scope"
-    TensorScope -> "tensor_scope"
 
 importStatements :: Set Dependency -> Code
 importStatements deps = vsep $ map pretty (Set.toList deps)
@@ -556,7 +554,7 @@ compileBuiltin b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
-    AtTensor -> compileNotationAndArgs [MathcompImport Algebra, Open TensorScope] LeftAssociative (Just 30) "$0 ^^ $1" (Just "nindex") args
+    AtTensor -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] LeftAssociative (Just 30) "$0 ^^ $1" (Just "nindex") args
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 0) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
     StackTensor -> compileStack args
@@ -757,7 +755,7 @@ compileDimList = go []
     compileDimElem e = compileExpr e
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
-compileTensorLiteral compileElement t = annotate ([MathcompImport Algebra, Open TensorScope], Nothing) $ case (shapeOf t, toList t) of
+compileTensorLiteral compileElement t = annotate ([MathcompImport Algebra, Open RingScope], Nothing) $ case (shapeOf t, toList t) of
   ([], [x]) -> "const_t" <+> compileElement x
   _ -> foldMapTensor compileElement toTensor t
   where
@@ -823,7 +821,7 @@ compileStack args = do
 
 compileVecLiteral :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec (fmap explicit ds)
+  Just (VectorLitArgs _t _d ds) -> toVec (fmap explicit ds)
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code

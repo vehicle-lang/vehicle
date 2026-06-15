@@ -11,7 +11,6 @@ From mathcomp Require Import all_reals.
 From vehicle Require Import utils.
 Local Open Scope ring_scope.
 Local Open Scope order_scope.
-Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
