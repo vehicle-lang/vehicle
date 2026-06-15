@@ -80,14 +80,12 @@ def _emit_module(
     out.write("\n")
     out.write("from jaxtyping import Float\n")
     out.write("from torch import Tensor\n")
-    out.write("\n")
     for schema in schemas:
-        out.write("\n")
+        out.write("\n\n")
         out.write("@dataclass(frozen=True)\n")
         out.write(f"class {schema.name}:\n")
         for fname, ftype in schema.fields:
             out.write(f"    {fname}: {_field_annotation(ftype)}\n")
-        out.write("\n")
 
 
 def _field_annotation(ftype: vcl.FieldType) -> str:
