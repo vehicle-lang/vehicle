@@ -910,7 +910,7 @@ formatCompileError = \case
         fix = Nothing
       }
   UnableToLiftQuantifiersInProperty (ident, p) -> 
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Unable to lift quantifiers in property"
