@@ -4,6 +4,18 @@
 
 ### Language
 
+* BREAKING: with the introduction of `infinity` to the language in `v0.25` all reduction operations have
+  sensible zero-dimensional values. Therefore the following operations no longer take the identity element
+  as an argument, i.e.:
+  ```
+  reduceAdd e xs -> reduceAdd xs   (if 0D returns 0)
+  reduceMul e xs -> reduceMul xs   (if 0D returns 1)
+  reduceMin e xs -> reduceMin xs   (if 0D returns infinity)
+  reduceMax e xs -> reduceMax xs   (if 0D returns -infinity)
+  reduceAnd e xs -> reduceAnd xs   (if 0D returns True)
+  reduceOr  e xs -> reduceOr  xs   (if 0D returns False)
+  ```
+
 * Added the operators:
   ```
   ^ : Tensor Real ds -> Real -> Tensor Real ds
@@ -11,6 +23,14 @@
   exp : Tensor Real ds -> Tensor Real ds
   ```
   Note that these operators are currently only supported by the loss backend.
+
+### Loss
+
+* Fixed a bug where specs with multiple quantified values would sometimes have the variables switched around in the generated code.
+
+* Fixed a bug where negations were occasionally being translated with the wrong dimensions.
+
+* Added better support for `Vector` operations, e.g. the `mnist-robustness` specification.
 
 ### Verification
 

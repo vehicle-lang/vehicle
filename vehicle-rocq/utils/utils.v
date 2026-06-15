@@ -3,8 +3,9 @@ From mathcomp Require Import ssreflect ssrfun seq eqtype choice ssrnat ssralg.
 From mathcomp Require Import fintype ssrbool order matrix bigop tuple finfun.
 From mathcomp Require Import reals interval_inference numdomain tensor.
 Local Open Scope ring_scope.
-Local Open Scope tensor_scope.
 (* Vehicle standard library definitions *)
+Notation "t ^^ i" := (nindex t i) (at level 30, i at level 30, format "t ^^ i").
+Notation "t .[::]" := (tensor_nil t).
 
 (* Pointwise order on tensors: t <= u iff t_ij <= u_ij for all i, j.
    Sharing R's display so order_scope notations apply directly. *)

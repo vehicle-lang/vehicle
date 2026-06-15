@@ -31,7 +31,7 @@ import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
-import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor, TensorShape, foldMapTensor)
 import Vehicle.Data.Universe (UniverseLevel (..))
@@ -701,7 +701,7 @@ toVec = foldr (\v vs -> annotate ([], 5) (v <> "∷ᵥ" <> vs)) "[]ᵥ"
 
 compileVecLiteral :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
+  Just (VectorLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
   Nothing -> developerError "Malformed type-checked vector literal"
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code

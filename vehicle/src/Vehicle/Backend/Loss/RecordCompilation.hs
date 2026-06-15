@@ -177,10 +177,10 @@ compileRecordSearch ::
 compileRecordSearch schemaIdent baseEmitter varName dims lossBinder closure dom = do
   baseResult <- baseEmitter varName dims lossBinder closure dom
   case baseResult of
-    VBuiltin (LossBuiltinFunction (SearchRatTensor _ minimise)) spine ->
+    VBuiltin (LossBuiltinExtraFunction (SearchRatTensor _ minimise)) spine ->
       let schemaRef = VFreeVar schemaIdent [] :: Value LossBuiltin
        in return $
             VBuiltin
-              (LossBuiltinFunction (SearchRecord varName minimise))
+              (LossBuiltinExtraFunction (SearchRecord varName minimise))
               (explicit schemaRef : spine)
     _ -> developerError "compileRecordSearch: base emitter returned non-SearchRatTensor value"

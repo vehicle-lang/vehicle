@@ -158,10 +158,10 @@ zipWithTensor f xs ys = case (xs, ys) of
   (ConstantTensor shape u, DenseTensor _ vs) -> fromVector shape $ fmap (f u) vs
   (DenseTensor shape us, DenseTensor _ vs) -> fromVector shape $ Vector.zipWith f us vs
 
-foldTensor :: (a -> a -> a) -> Tensor a -> Tensor a -> Tensor a
-foldTensor f e t = case toList t of
+foldTensor :: (a -> a -> a) -> a -> Tensor a -> Tensor a
+foldTensor f e t = ZeroDimTensor $ case toList t of
   [] -> e
-  (x : xs) -> ZeroDimTensor $ foldr f x xs
+  (x : xs) -> foldr f x xs
 
 at :: (HasCallStack, Eq a) => Tensor a -> Int -> Tensor a
 at xs i = case shapeOf xs of
@@ -221,9 +221,11 @@ compareTensor :: (a -> b -> Bool) -> Tensor a -> Tensor b -> Bool
 compareTensor f t1 t2 = allTensor id $ zipWithTensor f t1 t2
 
 prettyTensor :: (a -> Doc b) -> Tensor a -> Doc b
-prettyTensor prettyElement = do
-  let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
-  foldMapTensor prettyElement prettyRow
+prettyTensor prettyElement = \case
+  ConstantTensor shape value -> "const" <+> prettyElement value <+> pretty shape
+  denseTensor -> do
+    let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
+    foldMapTensor prettyElement prettyRow denseTensor
 
 isTensorOfAll :: (Eq a) => Tensor a -> a -> Bool
 isTensorOfAll t x = case t of

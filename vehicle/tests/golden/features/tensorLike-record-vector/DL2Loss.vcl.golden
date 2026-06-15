@@ -3,4 +3,4 @@ record Track where {p : Real, q : Real}
 
 @property;
 safe : (Track -> Tensor Real) -> Tensor Real;
-safe = \ f -> [ [ 1.0, 1.0, 1.0 ], [ 1.0, 1.0, 1.0 ] ] / search[_t0] (\ e -> \ xs -> reduceMul e xs) [2, 3] [ [ 0.0, 0.0, 0.0 ], [ 0.0, 0.0, 0.0 ] ] [ [ 1.0, 1.0, 1.0 ], [ 1.0, 1.0, 1.0 ] ] (\ _t0 -> max 0.0 (f (Track (_t0 ! 0) (_t0 ! 1)) ! 0)) Track
+safe = \ f -> 1.0 / search[_t0] (\ xs -> reduceMul xs) [2, 3] (const 0.0 [2, 3]) (const 1.0 [2, 3]) (\ _t0 -> max 0.0 (f (Track (_t0 ! 0) (_t0 ! 1)) ! 0)) Track

@@ -173,10 +173,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
           then mkResourceVar name
           else return $ FreeVar p ident
 
-      let extraResourceNames = lookupInFreeCtx ident resourceUsageFreeCtx
-      extraResourceVarArgs <- traverse mkResourceVar extraResourceNames
-      let extraResourceArgs = fmap (Arg Explicit Relevant) extraResourceVarArgs
-      return $ normAppList newFun (extraResourceArgs <> args')
+      return $ normAppList newFun args'
 
 createBinders ::
   (MonadResource m builtin) =>

@@ -7,6 +7,7 @@ module Vehicle.Compile.Unblock
     unblockRecordValue,
     unblockIf,
     unblockAtTensor,
+    unblockAtVector,
     unblockForeachTensor,
     unblockReduceTensor,
     unblockMinRatTensor,
@@ -63,8 +64,7 @@ data UnblockingActions m = UnblockingActions
 -- preserving the guarantee that the expression is normalised as much as
 -- possible.
 unblockBoolExpr ::
-  ( MonadUnblock m
-  ) =>
+  (MonadUnblock m) =>
   UnblockingActions m ->
   Value Builtin ->
   m (Value Builtin)
@@ -134,7 +134,8 @@ unblockRatTensorValue actions@UnblockingActions {..} expr = showEntry expr $ do
     VRatTensorBoundVar v -> unblock =<< unblockRatTensorBoundVar v
     VRatTensorNetworkApp n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
     VDatasetOrParameter ident -> unblock =<< unblockDatasetOrParameter ident
-    VRatAt args -> unblockAtTensor unblock args
+    VRatAtTensor args -> unblockAtTensor unblock args
+    VRatAtVector args -> unblockAtVector unblock args
     VRatForeach args -> unblockForeachTensor args
     VRatRecordAcc typ value fieldName _ -> unblockRecordAcc (unblockRecordValue actions) typ value fieldName
   where
@@ -152,19 +153,13 @@ unblockRecordValue actions@UnblockingActions {..} expr = showEntry expr $ do
     unblockTensor = unblockRatTensorValue actions
     unblockRecord = unblockRecordValue actions
 
-{-
-unblockDimensionsValue :: TypeUnblockingFunction (Value Builtin) m
-unblockDimensionsValue expr = case toDimensionsValue expr of
-  VDimsNil {} -> return $ IfLeaf expr
-  VDimsCons {} -> return $ IfLeaf expr
-  VDimsIf {} -> return $ IfLeaf expr
-  VDimsBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
--}
 unblockIndexValue :: TypeUnblockingFunction (Value Builtin) m
 unblockIndexValue expr = showEntry expr $ case toIndexValue expr of
   VIndexLiteral {} -> return $ IfLeaf expr
   VIndexIf args -> unblockIf unblockIndexValue args
+  VIndexAtVector args -> unblockAtVector unblockVectorValue args
   VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
+  VIndexParameter {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
 unblockNatValue :: TypeUnblockingFunction (Value Builtin) m
 unblockNatValue expr = showEntry expr $ case toNatValue expr of
@@ -174,6 +169,14 @@ unblockNatValue expr = showEntry expr $ case toNatValue expr of
   VNatMul args -> unblockOp2 unblockNatValue evalMulNat args
   VNatBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
   VNatParameter {} -> unexpectedExprError currentPass (prettyVerbose expr)
+
+unblockVectorValue :: TypeUnblockingFunction (Value Builtin) m
+unblockVectorValue expr = showEntry expr $ case toVectorValue expr of
+  VVectorLiteral {} -> return $ IfLeaf expr
+  VVectorIf args -> unblockIf unblockVectorValue args
+  VVectorForeach args -> unblockForeachVector args
+  VVectorBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
+  VVectorDataset {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
 --------------------------------------------------------------------------------
 -- Unblocking individual operations
@@ -204,13 +207,13 @@ unblockIndexOp2 ::
   (MonadUnblock m) =>
   EvalSimple IndexComparisonArgs Value Builtin m ->
   OperationUnblockingFunction IndexComparisonArgs (Value Builtin) m
-unblockIndexOp2 evalFn (IndexCompArgs n1 n2 x y) = do
+unblockIndexOp2 evalFn (IndexComparisonArgs n1 n2 x y) = do
   x' <- unblockIndexValue x
   y' <- unblockIndexValue y
   forIfTreeM x' $ \x'' ->
     forIfTreeM y' $ \y'' ->
       IfLeaf <$> do
-        evalFn $ IndexCompArgs n1 n2 x'' y''
+        evalFn $ IndexComparisonArgs n1 n2 x'' y''
 
 unblockTensorOp1 ::
   (MonadUnblock m) =>
@@ -237,11 +240,11 @@ unblockReduceTensor ::
   TypeUnblockingFunction (Value Builtin) m ->
   (TensorReductionArgs (Value Builtin) -> m a) ->
   OperationUnblockingFunction TensorReductionArgs a m
-unblockReduceTensor unblock evalFn (TensorReductionArgs ds e xs) = do
+unblockReduceTensor unblock evalFn (TensorReductionArgs ds xs) = do
   xs' <- unblock xs
   forIfTreeM xs' $ \xs'' ->
     IfLeaf <$> do
-      evalFn $ TensorReductionArgs ds e xs''
+      evalFn $ TensorReductionArgs ds xs''
 
 unblockAtTensor ::
   (MonadUnblock m) =>
@@ -255,6 +258,18 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
       IfLeaf <$> do
         nameCtx <- getNameContext
         evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
+
+unblockAtVector ::
+  (MonadUnblock m) =>
+  TypeUnblockingFunction (Value Builtin) m ->
+  OperationUnblockingFunction AtVectorArgs (Value Builtin) m
+unblockAtVector unblock (AtVectorArgs tElem d xs i) = do
+  xs' <- unblock xs
+  i' <- unblockIndexValue i
+  forIfTreeM xs' $ \xs'' ->
+    forIfTreeM i' $ \i'' ->
+      IfLeaf <$> do
+        evalAtVector $ AtVectorArgs tElem d xs'' i''
 
 unblockRecordAcc ::
   (MonadUnblock m) =>
@@ -302,6 +317,16 @@ unblockMaxRatTensor ::
   OperationUnblockingFunction TensorOp2Args (Value Builtin) m
 unblockMaxRatTensor = unblockRatTensorExtrema Ge
 
+unblockForeachVector ::
+  (MonadUnblock m) =>
+  OperationUnblockingFunction ForeachVectorArgs (Value Builtin) m
+unblockForeachVector (ForeachVectorArgs tElem d fn) = do
+  d' <- unblockNatValue d
+  forIfTreeM d' $ \d'' ->
+    IfLeaf <$> do
+      nameCtx <- getNameContext
+      evalForeachVector nameCtx evalApp eval $ ForeachVectorArgs tElem d'' fn
+
 --------------------------------------------------------------------------------
 -- Unblocking operations
 
@@ -312,7 +337,6 @@ showEntry :: forall m. (MonadUnblock m) => Value Builtin -> m (IfTree (Value Bui
 showEntry input resultFn = do
   logDebugM MaxDetail $ do
     ctx <- getNameContext
-    -- let doc = prettyVerbose e
     let doc = prettyFriendly (WithContext input ctx)
     return $ "unblock-entry:" <+> doc
   incrCallDepth
@@ -321,7 +345,7 @@ showEntry input resultFn = do
   decrCallDepth
   logDebugM MaxDetail $ do
     ctx <- getNameContext
-    -- let doc = prettyVerbose e
+    -- let doc = prettyVerbose result
     let doc = prettyFriendly (WithContext result ctx)
     return $ "unblock-exit:" <+> doc
 

@@ -137,7 +137,7 @@ typeOfTensorReduceOp ::
   DSLExpr builtin ->
   DSLExpr builtin
 typeOfTensorReduceOp tElem =
-  forAllDims $ \dims -> tTensor tElem dimNil ~> tTensor tElem dims ~> tTensor tElem dimNil
+  forAllDims $ \dims -> tTensor tElem dims ~> tTensor tElem dimNil
 
 typeOfTensorRatReduceOp :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin
 typeOfTensorRatReduceOp = typeOfTensorReduceOp tRat

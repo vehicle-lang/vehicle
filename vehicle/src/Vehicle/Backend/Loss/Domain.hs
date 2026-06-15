@@ -105,12 +105,12 @@ compileForall ::
   SearchEmitter m ->
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (MaybeTrivial Partitions)
-compileForall emitter args@(QuantifyRatTensorArgs dims _ _) = do
+compileForall emitter args = do
   notArgs <- negateRatTensorQuantifierBody args
   maybePartitions <- compileExists emitter notArgs
   case maybePartitions of
     Trivial b -> return $ Trivial $ not b
-    NonTrivial partitions -> NonTrivial <$> notPartitions dims partitions
+    NonTrivial partitions -> NonTrivial <$> notPartitions IDimNil partitions
 
 compileExists ::
   (MonadLogic m) =>
@@ -243,7 +243,7 @@ compileSearch varName lossDims lossBinder closure (Domain lowerBound upperBound)
               searchPredicate = lossPredicate
             }
   minimise <- getLogicDirection
-  return $ VBuiltin (LossBuiltinFunction $ SearchRatTensor varName minimise) spine
+  return $ VBuiltin (LossBuiltinExtraFunction $ SearchRatTensor varName minimise) spine
 
 findTensorBounds ::
   forall m.
@@ -506,10 +506,13 @@ unblockBoolValue ::
   Value Builtin ->
   m (MaybeTrivial Partitions)
 unblockBoolValue value = do
+  callDepth <- getCallDepth
   blockedOrUnblockedExpr <- runExceptT $ unblockBoolExpr unblockingActions value
   case blockedOrUnblockedExpr of
     -- If we cannot unblock it return an unconstrained partition
-    Left _blockingExpr -> singletonUnconstrainedPartition value
+    Left _blockingExpr -> do
+      setCallDepth callDepth
+      singletonUnconstrainedPartition value
     Right unblockedExpr -> do
       -- If we can unblock it then try to continue compilation
       maybePartitions <- compileBool unblockedExpr

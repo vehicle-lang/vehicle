@@ -140,6 +140,13 @@ class RatType(BuiltinType):
 
 
 @dataclass(frozen=True)
+class VectorType(BuiltinType):
+    """Vector type: VectorType base_type"""
+
+    base_type: BuiltinType
+
+
+@dataclass(frozen=True)
 class TensorType(BuiltinType):
     """Tensor type: TensorType base_type"""
 
@@ -215,7 +222,6 @@ class Var(Expression):
 
 @dataclass(frozen=True)
 class RatTensor(Expression):
-    """RatTensor (Tensor ExtendedFraction) from JSON"""
 
     contents: Tensor
 
@@ -229,7 +235,6 @@ class NegRatTensor(Expression):
 
 @dataclass(frozen=True)
 class AddRatTensor(Expression):
-    """Binary addition: AddRatTensor left right - provides App interface for translation"""
 
     x: Expression
     y: Expression
@@ -237,7 +242,6 @@ class AddRatTensor(Expression):
 
 @dataclass(frozen=True)
 class SubRatTensor(Expression):
-    """Binary subtraction: SubRatTensor left right - behaves like App for translation"""
 
     x: Expression
     y: Expression
@@ -245,7 +249,6 @@ class SubRatTensor(Expression):
 
 @dataclass(frozen=True)
 class MulRatTensor(Expression):
-    """Binary multiplication: MulRatTensor left right"""
 
     x: Expression
     y: Expression
@@ -253,7 +256,6 @@ class MulRatTensor(Expression):
 
 @dataclass(frozen=True)
 class DivRatTensor(Expression):
-    """Binary division: DivRatTensor left right"""
 
     x: Expression
     y: Expression
@@ -261,7 +263,6 @@ class DivRatTensor(Expression):
 
 @dataclass(frozen=True)
 class MinRatTensor(Expression):
-    """Binary minimum: MinRatTensor left right"""
 
     x: Expression
     y: Expression
@@ -269,7 +270,6 @@ class MinRatTensor(Expression):
 
 @dataclass(frozen=True)
 class MaxRatTensor(Expression):
-    """Binary maximum: MaxRatTensor left right"""
 
     x: Expression
     y: Expression
@@ -277,7 +277,6 @@ class MaxRatTensor(Expression):
 
 @dataclass(frozen=True)
 class PowRatTensor(Expression):
-    """Binary power: PowRatTensor left right"""
 
     x: Expression
     y: Expression
@@ -285,53 +284,42 @@ class PowRatTensor(Expression):
 
 @dataclass(frozen=True)
 class LogRatTensor(Expression):
-    """Pointwise natural log: LogRatTensor x"""
 
     x: Expression
 
 
 @dataclass(frozen=True)
 class ExpRatTensor(Expression):
-    """Pointwise exponential: ExpRatTensor x"""
 
     x: Expression
 
 
 @dataclass(frozen=True)
 class ReduceAddRatTensor(Expression):
-    """Reduce addition: ReduceAddRatTensor expr dims"""
 
-    f: Expression
     x: Expression
 
 
 @dataclass(frozen=True)
 class ReduceMulRatTensor(Expression):
-    """Reduce multiplication: ReduceMulRatTensor expr dims"""
 
-    f: Expression
     x: Expression
 
 
 @dataclass(frozen=True)
 class ReduceMinRatTensor(Expression):
-    """Reduce minimum: ReduceMinRatTensor expr dims"""
 
-    f: Expression
     x: Expression
 
 
 @dataclass(frozen=True)
 class ReduceMaxRatTensor(Expression):
-    """Reduce maximum: ReduceMaxRatTensor expr dims"""
 
-    f: Expression
     x: Expression
 
 
 @dataclass(frozen=True)
 class SearchRatTensor(Expression):
-    """Search tensor: SearchRatTensor reductionOp lowerBound upperBound searchLambda"""
 
     name: str
     reduction_op: Expression
@@ -344,22 +332,13 @@ class SearchRatTensor(Expression):
 
 @dataclass(frozen=True)
 class Dimension(Expression):
-    """Dimension Int - for JSON parsing"""
 
     value: int
 
 
 @dataclass(frozen=True)
 class DimensionNil(Expression):
-    """DimensionNil - for JSON parsing"""
-
-
-@dataclass(frozen=True)
-class DimensionLookup(Expression):
-    """Dimension lookup: DimensionLookup tensor index"""
-
-    xs: Expression
-    i: Expression
+    pass
 
 
 @dataclass(frozen=True)
@@ -375,7 +354,6 @@ class DimensionIndex(Expression):
 
 @dataclass(frozen=True)
 class ConstTensor(Expression):
-    """ConstTensor shape value - for JSON parsing"""
 
     c: ExtendedFraction
     ds: Sequence[int]
@@ -383,9 +361,45 @@ class ConstTensor(Expression):
 
 @dataclass(frozen=True)
 class StackTensor(Expression):
-    """StackTensor : StackTensor tensor_list"""
 
     xs: Sequence[Expression]
+
+
+@dataclass(frozen=True)
+class AtTensor(Expression):
+    """At tensor: AtTensor tensor index"""
+
+    xs: Expression
+    i: Expression
+
+
+@dataclass(frozen=True)
+class ForeachTensor(Expression):
+    """Foreach tensor: ForeachTensor size function"""
+
+    size: Expression
+    function: Expression
+
+
+@dataclass(frozen=True)
+class VectorLiteral(Expression):
+    elements: Sequence[Expression]
+
+
+@dataclass(frozen=True)
+class AtVector(Expression):
+    """At vector: AtVector vector index"""
+
+    xs: Expression
+    i: Expression
+
+
+@dataclass(frozen=True)
+class ForeachVector(Expression):
+    """Foreach vector: ForeachVector size function"""
+
+    size: Expression
+    function: Expression
 
 
 ################################################################################

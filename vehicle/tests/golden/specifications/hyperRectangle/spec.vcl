@@ -35,10 +35,10 @@ n : Nat
 inputs : Tensor Real [n, inputSize]
 
 minList : Tensor Real [n] -> Real
-minList v = reduceMin 1 v
+minList v = reduceMin v
 
 maxList : Tensor Real [n] -> Real
-maxList v = reduceMax 0 v
+maxList v = reduceMax v
 
 inputTranspose : Tensor Real [inputSize, n]
 inputTranspose = foreach i . foreach j . inputs ! j ! i
