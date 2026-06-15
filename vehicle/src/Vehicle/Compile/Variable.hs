@@ -7,11 +7,12 @@ where
 import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBEForced (MonadNorm, forceThunk)
+import Vehicle.Compile.Normalise.TypedValueForced
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Value (VBinder, Value)
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Variable.Bound.Context.Name
 import Prelude hiding (Applicative (..))
 
@@ -19,19 +20,19 @@ import Prelude hiding (Applicative (..))
 -- Extraction
 
 type MonadCreateUserVar m =
-  (MonadCompile m)
+  (MonadCompile m, MonadNorm Builtin m)
 
 createUserVar ::
   (MonadCreateUserVar m) =>
   DeclProvenance ->
   NamedBoundCtx ->
-  VBinder Builtin ->
-  m (Name, Value Builtin)
+  UnforcedBinder Builtin ->
+  m (UnforcedDims Builtin)
 createUserVar propertyProvenance namedCtx binder = do
   let varName = getBinderName binder
   checkUserVariableNameIsUnique propertyProvenance namedCtx varName
   varDimensions <- checkUserVariableType binder
-  return (varName, varDimensions)
+  return varDimensions
 
 checkUserVariableNameIsUnique ::
   (MonadCompile m) =>
@@ -48,9 +49,10 @@ checkUserVariableNameIsUnique propertyProvenance namedCtx varName = do
 checkUserVariableType ::
   forall m.
   (MonadCreateUserVar m) =>
-  VBinder Builtin ->
-  m (Value Builtin)
-checkUserVariableType binder =
-  case toTypeValue (typeOf binder) of
-    VRatTensorType dims -> return dims
+  UnforcedBinder Builtin ->
+  m (Thunk Builtin)
+checkUserVariableType binder = do
+  forcedType <- forceThunk (typeOf binder)
+  case toTypeValue forcedType of
+    VTensorType _ dims -> return dims
     _ -> developerError $ "Unexpected quantifier type:" <+> prettyVerbose (typeOf binder)

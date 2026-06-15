@@ -4,7 +4,7 @@ module Vehicle.Compile.Scope.Generalise
 where
 
 import Control.Monad (foldM, void, when)
-import Control.Monad.Writer (MonadWriter (..), execWriterT)
+import Control.Monad.Writer.Strict (MonadWriter (..), execWriterT)
 import Data.Foldable (traverse_)
 import Data.Maybe (isNothing)
 import Data.Set (Set)

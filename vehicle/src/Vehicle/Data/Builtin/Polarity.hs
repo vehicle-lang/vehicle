@@ -7,9 +7,9 @@ import Data.Hashable (Hashable (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
+import Vehicle.Compile.Normalise.BuiltinForced (evalIterate)
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (DoesNotReduce), functionBlockingStatus)
-import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.DSL
@@ -208,13 +208,9 @@ instance PrintableBuiltin PolarityBuiltin where
 
 instance NormalisableBuiltin PolarityBuiltin where
   evalScheme b = case b of
-    PolarityFunction Iterate -> NonSimple evalIterate
+    PolarityFunction Iterate -> Eval evalIterate
     PolarityFunction _ -> None
     _ -> None
-
-  blockingStatus b spine = case b of
-    PolarityFunction f -> functionBlockingStatus f spine
-    _ -> DoesNotReduce
 
   isTypeClassOp _ = False
   isCast _ _ = Nothing

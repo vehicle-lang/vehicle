@@ -1,23 +1,161 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Compile.Type.Meta.Substitution
   ( MetaSubstitutable (..),
     RawMetaSubstitutable (..),
+    HasMetas,
+    metasIn,
     MetaSubstitution,
+    forceThunkWithMetas,
+    forceApplicationWithMetas,
   )
 where
 
+import Control.Monad.Reader (ReaderT (..))
+import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..), execWriter)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Map.Ordered qualified as OMap
 import Data.Traversable (for)
-import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Normalise.Core
+import Vehicle.Compile.Normalise.NBEForced
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta (findUltimateUnsolvedMeta)
+import Vehicle.Compile.Type.Meta (MetaSet, findUltimateUnsolvedMeta)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable (MetaVariableContext, findMetaInfo, metaCtx, metaSolution, metaType)
-import Vehicle.Data.Builtin.Interface.Normalise
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context
+
+-----------------------------------------------------------------------------
+-- Meta-variable forcing
+
+forceThunkWithMetas ::
+  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+  NamedBoundCtx ->
+  MetaVariableContext builtin ->
+  ThunkWithMetas builtin ->
+  m (ForcedValueWithMetas builtin, MetaSet)
+forceThunkWithMetas ctx metaCtx thunk = do
+  runForceT ctx metaCtx (forceThunk thunk)
+
+forceApplicationWithMetas ::
+  forall builtin m.
+  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+  NamedBoundCtx ->
+  MetaVariableContext builtin ->
+  ThunkWithMetas builtin ->
+  UnforcedSpineWithMetas builtin ->
+  m (ForcedValueWithMetas builtin)
+forceApplicationWithMetas ctx metaCtx fun spine = do
+  fst <$> runForceT ctx metaCtx (forceApplication fun spine)
+
+runForceT ::
+  (MonadFreeContext builtin m) =>
+  NamedBoundCtx ->
+  MetaVariableContext builtin ->
+  ReaderT (MetaID -> Maybe (GluedExprWithMetas builtin)) (WriterT MetaSet (NameBoundContextT m)) a ->
+  m (a, MetaSet)
+runForceT ctx metaCtx action =
+  runNameBoundContextT ctx $ runWriterT $ runReaderT action (\m -> metaSolution $ findMetaInfo metaCtx m)
+
+--------------------------------------------------------------------------------
+-- Objects which have meta variables in.
+
+metasIn :: (HasMetas a) => MetaSubstitution builtin -> a -> MetaSet
+metasIn s e = execWriter (findMetas s e)
+
+class HasMetas a where
+  findMetas :: (MonadWriter MetaSet m) => MetaSubstitution builtin -> a -> m ()
+
+processMeta :: (MonadWriter MetaSet m) => MetaSubstitution builtin -> MetaID -> m ()
+processMeta s m = case metaSolution $ findMetaInfo s m of
+  Nothing -> tell (MetaSet.singleton m)
+  Just sol -> findMetas s $ normalised sol
+
+instance HasMetas (Expr builtin) where
+  findMetas s expr = case expr of
+    Meta _ m -> processMeta s m
+    Universe {} -> return ()
+    Hole {} -> return ()
+    Builtin {} -> return ()
+    BoundVar {} -> return ()
+    FreeVar {} -> return ()
+    Pi _ binder result -> do findMetas s binder; findMetas s result
+    Let _ bound binder body -> do findMetas s bound; findMetas s binder; findMetas s body
+    Lam _ binder body -> do findMetas s binder; findMetas s body
+    App fun args -> do findMetas s fun; findMetas s args
+    Record _ _ fields -> findMetas s $ fmap snd fields
+    RecordProj _ recordType record _ -> do findMetas s recordType; findMetas s record
+
+instance HasMetas (ForcedValueWithMetas builtin) where
+  findMetas s expr = case expr of
+    VMeta m spine -> do
+      processMeta s m
+      findMetas s spine
+    VUniverse {} -> return ()
+    VBuiltin _ spine -> findMetas s spine
+    VFreeVar _ spine -> findMetas s spine
+    VBoundVar _ spine -> findMetas s spine
+    VPi binder closure -> do findMetas s binder; findMetas s closure
+    VLam binder closure -> do findMetas s binder; findMetas s closure
+    VRecord _ fields -> findMetas s (snd <$> OMap.assocs fields)
+    VRecordAcc recordType record _ spine -> do
+      findMetas s recordType
+      findMetas s record
+      findMetas s spine
+
+instance HasMetas (ThunkWithMetas builtin) where
+  findMetas s = \case
+    Forced value -> findMetas s value
+    Unforced env expr -> do
+      traverseEnv_ (findMetas s) env
+      findMetas s expr
+
+instance HasMetas (ClosureWithMetas builtin) where
+  findMetas s (Closure env expr) = do
+    traverseEnv_ (findMetas s) env
+    findMetas s expr
+
+instance (HasMetas expr) => HasMetas (GenericArg expr) where
+  findMetas s = mapM_ $ findMetas s
+
+instance (HasMetas expr) => HasMetas (GenericBinder expr) where
+  findMetas s = mapM_ $ findMetas s
+
+instance (HasMetas a) => HasMetas [a] where
+  findMetas s = mapM_ $ findMetas s
+
+instance (HasMetas a) => HasMetas (NonEmpty a) where
+  findMetas s = mapM_ $ findMetas s
+
+instance HasMetas (InstanceConstraint builtin) where
+  findMetas s (Resolve _ m _ _ goal) = do
+    processMeta s m
+    findMetas s goal
+
+instance HasMetas (InstanceGoal builtin) where
+  findMetas s (InstanceGoal _ _ spine) = findMetas s spine
+
+instance HasMetas (UnificationConstraint builtin) where
+  findMetas s (Unify _ e1 e2) = do findMetas s e1; findMetas s e2
+
+instance HasMetas (ArgInsertionProblem builtin) where
+  findMetas s ArgInsertionProblem {..} = do
+    findMetas s originalFun
+    findMetas s checkedArgs
+    findMetas s uncheckedArgs
+
+instance HasMetas (ApplicationConstraint builtin) where
+  findMetas s (InferArgs _ _ insertionProblem) = findMetas s insertionProblem
+
+instance HasMetas (Constraint builtin) where
+  findMetas s = \case
+    UnificationConstraint c -> findMetas s c
+    InstanceConstraint c -> findMetas s c
+    ApplicationConstraint c -> findMetas s c
 
 --------------------------------------------------------------------------------
 -- Substitution type
@@ -92,18 +230,20 @@ substMeta ctx s (p, m, mArgs) = do
       let liftedValue = liftDBIndices shiftLv (unnormalised value)
       substMetasAt ctx s $ substArgs liftedValue mArgs
 
-instance MetaSubstitutable m builtin (Value builtin) where
+instance MetaSubstitutable m builtin (ThunkWithMetas builtin) where
+  substMetasAt ctx s = \case
+    Forced value -> Forced <$> substMetasAt ctx s value
+    Unforced env expr -> Unforced <$> traverseEnv (substMetasAt ctx s) env <*> substMetasAt ctx s expr
+
+instance MetaSubstitutable m builtin (ForcedValueWithMetas builtin) where
   substMetasAt ctx s expr = case expr of
-    VMeta m args -> do
+    VMeta m spine -> do
       let metaInfo = findMetaInfo s m
       case metaSolution metaInfo of
-        -- TODO do we need to substitute through the args here?
-        Nothing -> VMeta m <$> substMetasAt ctx s args
+        Nothing -> VMeta m <$> substMetasAt ctx s spine
         Just value -> do
-          substValue <- substMetasAt ctx s $ normalised value
-          case args of
-            [] -> return substValue
-            (a : as) -> normaliseApp ctx substValue (a : as)
+          substValue <- forceApplicationWithMetas ctx s (normalised value) spine
+          substMetasAt ctx s substValue
     VUniverse {} -> return expr
     VFreeVar v spine -> VFreeVar v <$> traverse (substMetasAt ctx s) spine
     VBoundVar v spine -> VBoundVar v <$> traverse (substMetasAt ctx s) spine
@@ -115,17 +255,17 @@ instance MetaSubstitutable m builtin (Value builtin) where
       return $ VRecordAcc recordType' record' field spine'
     VBuiltin b spine -> do
       spine' <- traverse (substMetasAt ctx s) spine
-      evalBuiltin ctx b spine'
+      return $ VBuiltin b spine'
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.
     VLam binder body -> VLam <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s body
     VPi binder body -> VPi <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s body
 
-instance MetaSubstitutable m builtin (Closure builtin) where
+instance MetaSubstitutable m builtin (ClosureWithMetas builtin) where
   substMetasAt ctx s (Closure env body) = Closure <$> traverseEnv (substMetasAt ctx s) env <*> substMetasAt ctx s body
 
-instance MetaSubstitutable m builtin (GluedExpr builtin) where
+instance MetaSubstitutable m builtin (GluedExprWithMetas builtin) where
   substMetasAt ctx s (Glued a b) = Glued <$> substMetasAt ctx s a <*> substMetasAt ctx s b
 
 instance MetaSubstitutable m builtin (InstanceConstraint builtin) where

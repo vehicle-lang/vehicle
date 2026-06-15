@@ -1,7 +1,7 @@
 module Vehicle.Data.Variable.Free.Context
   ( module X,
     addDeclToContext,
-    traverseNormalisedDecls_,
+    traverseDeclsInCtx_,
     getRecordFields,
     getRecordProvenance,
     getRecordFieldNames,
@@ -11,31 +11,27 @@ where
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Interface.Normalise
+import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Free.Context.Class as X
 import Vehicle.Data.Variable.Free.Context.Core as X
 import Vehicle.Data.Variable.Free.Context.Instance as X
 
 addDeclToContext ::
-  (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+  (MonadLogger m, MonadFreeContext builtin m) =>
   Decl builtin ->
   m a ->
   m a
-addDeclToContext decl cont = do
-  declEntry <- evalDecl decl
-  addDeclEntryToContext declEntry cont
+addDeclToContext = addDeclEntryToContext
 
-traverseNormalisedDecls_ ::
+traverseDeclsInCtx_ ::
   forall m builtin.
-  (MonadLogger m, NormalisableBuiltin builtin) =>
-  (VDecl builtin -> FreeContextT builtin m ()) ->
+  (MonadLogger m, PrintableBuiltin builtin) =>
+  (Decl builtin -> FreeContextT builtin m ()) ->
   Prog builtin ->
   m ()
-traverseNormalisedDecls_ f (Main ds) =
+traverseDeclsInCtx_ f (Main ds) =
   runFreshFreeContextT (Proxy @builtin) $ do
     go ds
   where
@@ -43,15 +39,14 @@ traverseNormalisedDecls_ f (Main ds) =
     go = \case
       [] -> return ()
       decl : decls -> do
-        normDecl <- evalDecl decl
-        _ <- f normDecl
-        decls' <- addDeclEntryToContext normDecl $ go decls
+        _ <- f decl
+        decls' <- addDeclEntryToContext decl $ go decls
         return decls'
 
 getRecordFields ::
   (MonadFreeContext Builtin m) =>
   Identifier ->
-  m (GenericRecordFields (Value Builtin))
+  m (GenericRecordFields (Expr Builtin))
 getRecordFields ident = do
   decl <- getDeclEntry (Proxy @Builtin) ident
   case decl of

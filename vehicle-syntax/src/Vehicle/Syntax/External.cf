@@ -42,6 +42,7 @@ position token TokList      {"List"};
 position token TokVector    {"Vector"};
 position token TokTensor    {"Tensor"};
 position token TokNonCastingTensor   {"NonCastingTensor"};
+position token TokNonCastingReal   {"NonCastingReal"};
 position token TokForall    {"forall"};
 position token TokExists    {"exists"};
 position token TokForeach   {"foreach"};
@@ -334,6 +335,7 @@ HasMap.        Expr16 ::= TokHasMap;
 HasFold.       Expr16 ::= TokHasFold;
 IsTensorType.  Expr16 ::= TokIsTensorType;
 NonCastingTensor. Expr16 ::= TokNonCastingTensor;
+NonCastingReal. Expr16 ::= TokNonCastingReal;
 
 coercions Expr 16;
 separator Expr ",";

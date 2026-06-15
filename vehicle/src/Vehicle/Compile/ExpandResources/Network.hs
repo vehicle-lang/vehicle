@@ -1,5 +1,6 @@
 module Vehicle.Compile.ExpandResources.Network
   ( checkNetwork,
+    getTensorRecordShape,
   )
 where
 
@@ -8,16 +9,15 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
-import Vehicle.Compile.Normalise.NBE (normaliseClosureInCtx)
+import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.TypedValueForced
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Scope.Records (constructTensorisableDims)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.TypedView (DimensionsValue (..), TypeValue (..), toDimensionsValue, toTypeValue)
-import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
+import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext (addNameToContext), runFreshNameBoundContextT)
 import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields)
 import Vehicle.Verify.Core (NetworkContextInfo (..))
 
@@ -28,68 +28,75 @@ checkNetwork ::
   forall m.
   (MonadExpandResources m) =>
   DeclProvenance ->
-  GluedType Builtin ->
+  Type Builtin ->
   FilePath ->
   m NetworkContextInfo
 checkNetwork decl networkType filePath = do
-  typ <- getNetworkType decl networkType
+  typ <- runFreshNameBoundContextT $ getNetworkType decl networkType
   return $ NetworkContextInfo filePath typ
 
 -- | Decomposes the Pi types in a network type signature, checking that the
 --  binders are explicit and their types are equal.
 getNetworkType ::
   forall m.
-  (MonadExpandResources m) =>
+  (MonadExpandResources m, MonadNameContext m) =>
   DeclProvenance ->
-  GluedType Builtin ->
+  Type Builtin ->
   m NetworkType
-getNetworkType decl networkType = case normalised networkType of
-  VPi binder closure
-    | visibilityOf binder /= Explicit -> typingError
-    | otherwise -> do
-        inputDetails <- tensorType Input (typeOf binder)
-        resultType <- normaliseClosureInCtx mempty binder closure
-        outputDetails <- tensorType Output resultType
-        let networkDetails = NetworkType inputDetails outputDetails
-        return networkDetails
-  _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
+getNetworkType decl networkType = do
+  forcedType <- forceThunk $ Unforced emptyBoundEnv networkType
+  case forcedType of
+    VPi binder closure
+      | visibilityOf binder /= Explicit ->
+          resourceTypingError "network" forcedType
+      | otherwise -> do
+          inputDetails <- tensorType Input (typeOf binder)
+          let resultType = extendClosureWithBound closure binder 0
+          outputDetails <- addNameToContext binder $ tensorType Output resultType
+          let networkDetails = NetworkType inputDetails outputDetails
+          return networkDetails
+    _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
   where
-    tensorType :: InputOrOutput -> VType Builtin -> m NetworkIOType
-    tensorType io t = case toTypeValue t of
-      VRatTensorType dims -> do
-        shape <- tensorDimensions io dims
-        return $ UniModal (TensorIOType $ NetworkTensorType NetworkRatType shape)
-      VFreeTypeVar ident _spine -> do
-        fieldNames <- getRecordFieldNames ident
-        fields <- getRecordFields ident
-        let shape = constructTensorisableDims fields
-        return $ UniModal (RecordIOType $ NetworkRecordType NetworkRatType ident shape $ NonEmpty.toList fieldNames)
-      _ -> typingError
+    gluedType :: GluedType Builtin
+    gluedType =
+      -- This is a hack...
+      Glued networkType (Unforced emptyBoundEnv networkType)
 
-    tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
-    tensorDimensions io dims = case toDimensionsValue dims of
-      VDimsNil -> return []
-      VDimsCons d ds -> (:) <$> tensorDimension io d <*> tensorDimensions io ds
-      _ -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
+    tensorType :: InputOrOutput -> UnforcedType Builtin -> m NetworkIOType
+    tensorType io tElem = do
+      forcedType <- forceThunk tElem
+      case toTypeValue forcedType of
+        VTensorType _ dims -> do
+          shape <- tensorDimensions io dims
+          return $ UniModal (TensorIOType $ NetworkTensorType NetworkRatType shape)
+        VTypeFreeVar ident _spine -> do
+          fieldNames <- getRecordFieldNames ident
+          fields <- getRecordFields ident
+          shape <- getTensorRecordShape fields
+          return $ UniModal (RecordIOType $ NetworkRecordType NetworkRatType ident shape $ NonEmpty.toList fieldNames)
+        _ -> resourceTypingError ("network" <+> pretty io <+> "tensor") forcedType
 
-    tensorDimension :: InputOrOutput -> VType Builtin -> m Int
-    tensorDimension io dim = case dim of
-      INatLiteral n -> return n
-      VFreeVar varIdent _ -> do
-        implicitParameters <- getInferableParameterContext
-        case Map.lookup varIdent implicitParameters of
-          Just (_, _, Nothing) -> throwError $ NetworkTypeHasImplicitSizeTensor decl networkType varIdent io
-          Just (_, _, Just (_, _, d)) -> return d
-          Nothing -> do
-            explicitParameters <- getExplicitParameterContext
-            case Map.lookup varIdent explicitParameters of
-              Nothing -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
-              Just value -> tensorDimension io value
-      _ -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
+    tensorDimensions :: InputOrOutput -> UnforcedDims Builtin -> m TensorShape
+    tensorDimensions io dims = do
+      forcedDims <- forceThunk dims
+      case toDimensionsValue forcedDims of
+        VDimsNil -> return []
+        VDimsCons d ds -> (:) <$> tensorDimension io d <*> tensorDimensions io ds
+        _ -> throwError $ NetworkTypeHasVariableSizeTensor decl gluedType dims io
 
-    typingError :: m a
-    typingError =
-      compilerDeveloperError $
-        "Invalid network type"
-          <+> squotes (prettyVerbose $ normalised networkType)
-          <+> "should have been caught during type-checking"
+    tensorDimension :: InputOrOutput -> UnforcedDims Builtin -> m Int
+    tensorDimension io dim = do
+      forcedDim <- forceThunk dim
+      case forcedDim of
+        INatLiteral n -> return n
+        VFreeVar varIdent _ -> do
+          implicitParameters <- getInferableParameterContext
+          case Map.lookup varIdent implicitParameters of
+            Just (_, _, Nothing) -> throwError $ NetworkTypeHasImplicitSizeTensor decl gluedType varIdent io
+            Just (_, _, Just (_, _, d)) -> return d
+            Nothing -> do
+              explicitParameters <- getExplicitParameterContext
+              case Map.lookup varIdent explicitParameters of
+                Nothing -> throwError $ NetworkTypeHasVariableSizeTensor decl gluedType dim io
+                Just value -> tensorDimension io value
+        _ -> throwError $ NetworkTypeHasVariableSizeTensor decl gluedType dim io

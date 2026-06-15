@@ -13,6 +13,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Dependency (completelyUnusedDeclarations)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Bidirectional
@@ -26,11 +27,9 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM, runAuxiliarySolver)
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ModuleInterface
-import Vehicle.Data.Code.Value (FreeEnv)
 
 -------------------------------------------------------------------------------
 -- Interface
@@ -41,7 +40,7 @@ typeCheckModuleDecls ::
   InstanceDatabase builtin ->
   ImportedModuleContext builtin ->
   [Decl Builtin] ->
-  m ([Decl builtin], ModuleTypingInterface builtin, FreeEnv builtin)
+  m ([Decl builtin], ModuleTypingInterface builtin, FreeCtx builtin)
 typeCheckModuleDecls modulePath instances importedCtx decls = do
   logCompilerPass Typing $ do
     runTypeCheckerTInitially instances importedCtx $ do

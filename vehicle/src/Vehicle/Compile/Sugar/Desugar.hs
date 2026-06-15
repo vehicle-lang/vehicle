@@ -407,6 +407,7 @@ elabExpr expr = case expr of
   B.Vector tk -> builtinType V.VectorType tk []
   B.Tensor tk -> builtinTypeClassOp V.TensorTypeTC tk []
   B.NonCastingTensor tk -> builtinType V.TensorType tk []
+  B.NonCastingReal tk -> builtinType V.RatType tk []
   B.Nil tk -> constructor V.Nil tk []
   B.Cons e1 tk e2 -> constructor V.Cons tk [e1, e2]
   B.Not tk e -> builtinFunction V.Not tk [e]

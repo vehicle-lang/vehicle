@@ -14,20 +14,18 @@ import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint.UnificationSolver (solveUnificationConstraint)
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (createFreshConstraintCtx, getDeclType, getRecordDefinition)
 import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue (GenericThunk (..), boundContextToEnv)
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..))
@@ -227,17 +225,19 @@ inferExpr e = do
       originalType <- getDeclType (Proxy @builtin) ident
       return (FreeVar p ident, originalType)
     Let p boundExpr binder body -> do
+      -- Check the binder is correct
       checkedBinder <- checkBinder binder
+
+      -- Check that the expression being bound is correct.
+      let typeOfBoundExpr = typeOf checkedBinder
+      checkedBoundExpr <- checkExpr typeOfBoundExpr boundExpr
 
       -- Check the type of the body, with the bound variable added to the context.
       (checkedBody, typeOfBody) <-
         addBinderToContext checkedBinder $ inferExpr body
 
-      -- Check that the expression being bound is correct.
-      let typeOfBoundExpr = typeOf checkedBinder
-      checkedBoundExpr <- checkExpr typeOfBoundExpr boundExpr
       -- Substitute through the type of the bound expression to preserve well-typedness
-      let finalType = typeOfBoundExpr `substDBInto` typeOfBody
+      let finalType = checkedBoundExpr `substDBInto` typeOfBody
       return (Let p checkedBoundExpr checkedBinder checkedBody, finalType)
     Lam p binder body -> do
       checkedBinder <- checkBinder binder
@@ -277,11 +277,7 @@ checkRecordTypeAndCalculateRecordFieldTypes p uncheckedRecordType = do
           <> lineIndent (prettyVerbose checkedRecordType)
 
   (telescope, fields) <- getRecordDefinition (Proxy @builtin) recordIdent
-  ctx <- getNameContext
-  logDebug MaxDetail $ pretty ctx
-  logDebug MaxDetail $ prettyVerbose recordParameters
-  logDebug MaxDetail $ prettyVerbose fields
-  let substField fieldType = calculateRarameterisedRecordFieldType telescope fieldType recordParameters
+  let substField = calculateRarameterisedRecordFieldType telescope recordParameters
   let finalFields = mapRecordFields substField fields
 
   return (checkedRecordType, finalFields)
@@ -403,9 +399,8 @@ createFreshUnificationConstraint ::
   m ()
 createFreshUnificationConstraint p ctx origin expectedType actualType = do
   let env = boundContextToEnv ctx
-  let nameCtx = toNamedBoundCtx ctx
-  normExpectedType <- eval nameCtx env expectedType
-  normActualType <- eval nameCtx env actualType
+  let normExpectedType = Unforced env expectedType
+  let normActualType = Unforced env actualType
   context <- createFreshConstraintCtx p ctx
   let unification = Unify origin normExpectedType normActualType
   solveUnificationConstraint (WithContext unification context)
@@ -459,8 +454,8 @@ forceApplicationHeadType ::
   Type builtin ->
   m (Type builtin, MetaSet)
 forceApplicationHeadType ctx typ = do
-  normType <- eval (toNamedBoundCtx ctx) (boundContextToEnv ctx) typ
-  (forcedType, blockingMetas) <- forceHead (toNamedBoundCtx ctx) normType
+  let normType = Unforced (boundContextToEnv ctx) typ
+  (forcedType, blockingMetas) <- forceThunkWithMetas (toNamedBoundCtx ctx) normType
   return (quote (provenanceOf typ) (boundCtxLv ctx) forcedType, blockingMetas)
 
 checkArgsAgainstPiType ::
