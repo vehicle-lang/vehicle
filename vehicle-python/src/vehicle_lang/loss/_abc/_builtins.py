@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, make_dataclass
+from dataclasses import dataclass
 from typing import Any, Generic, Sequence
 
 from typing_extensions import TypeAlias, TypeVar, override
@@ -103,17 +103,6 @@ class ABCBuiltins(
     def DenseTensor(
         self, values: Sequence[vcl.Rat], shape: Sequence[vcl.Index]
     ) -> vcl.Tensor: ...
-
-    def MaterialiseRecord(
-        self,
-        name: str,
-        fields: Sequence[tuple[str, tuple[Any, ...]]],
-    ) -> type:
-        return make_dataclass(
-            name,
-            [(fname, Any) for fname, _descriptor in fields],
-            frozen=True,
-        )
 
 
 AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Iterable, Mapping, MutableMapping
 
 from ..typing import DeclarationName, DifferentiableLogic
@@ -24,6 +25,7 @@ def load_specification(
     samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,
+    types: ModuleType | None = None,
 ) -> dict[str, Any]:
     """Load a loss function compiled for PyTorch."""
 
@@ -35,4 +37,5 @@ def load_specification(
         declaration_context=declaration_context,
         translation_factory=PyTorchTranslation,
         default_sampler_factory=DefaultPyTorchSampler,
+        types=types,
     )
