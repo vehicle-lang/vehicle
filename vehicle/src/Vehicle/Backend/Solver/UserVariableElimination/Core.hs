@@ -17,7 +17,7 @@ import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkName)
+import Vehicle.Compile.Resource (NetworkIOShape, NetworkName)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound (BoundedValue, Domain)
 import Vehicle.Data.Builtin.Standard
@@ -81,7 +81,7 @@ emptyGlobalCtx =
 addUserVarToGlobalContext ::
   (MonadLogger m, MonadTensorBoundContext m) =>
   VBinder Builtin ->
-  TensorShape ->
+  NetworkIOShape TensorShape ->
   GlobalCtx ->
   m (UserTensorVariable, GlobalCtx)
 addUserVarToGlobalContext binder shape GlobalCtx {..} = do

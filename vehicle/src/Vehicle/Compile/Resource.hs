@@ -30,6 +30,31 @@ instance Pretty NetworkType where
   pretty (NetworkType input output) =
     pretty input <+> "->" <+> pretty output
 
+type NetworkIOType = NetworkIOShape NetworkIOBase
+
+data NetworkIOShape a
+  = -- Change to SingleInputOrOutput
+    -- Change to RecordOfInputsOrOutputs
+    Single a
+  | RecordOf [(Name, a)]
+  deriving (Eq, Ord, Show, Generic)
+
+instance (NFData a) => NFData (NetworkIOShape a)
+
+instance (ToJSON a) => ToJSON (NetworkIOShape a)
+
+instance (FromJSON a) => FromJSON (NetworkIOShape a)
+
+instance (Pretty a) => Pretty (NetworkIOShape a) where
+  pretty (Single e) = pretty e
+  pretty (RecordOf es) = pretty es
+
+instance Functor NetworkIOShape where
+  fmap f (Single a) = Single (f a)
+  fmap f (RecordOf as) = RecordOf (fmap applyRight as)
+    where
+      applyRight (a, b) = (a, f b)
+
 data NetworkTensorType = NetworkTensorType
   { baseType :: NetworkBaseType,
     dimensions :: TensorShape
@@ -56,18 +81,18 @@ instance ToJSON NetworkRecordType
 
 instance FromJSON NetworkRecordType
 
-data NetworkIOType
+data NetworkIOBase
   = TensorIOType NetworkTensorType
   | RecordIOType NetworkRecordType
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData NetworkIOType
+instance NFData NetworkIOBase
 
-instance ToJSON NetworkIOType
+instance ToJSON NetworkIOBase
 
-instance FromJSON NetworkIOType
+instance FromJSON NetworkIOBase
 
-instance Pretty NetworkIOType where
+instance Pretty NetworkIOBase where
   pretty = \case
     (TensorIOType (NetworkTensorType t dims)) -> "Tensor" <+> pretty t <+> pretty dims
     (RecordIOType (NetworkRecordType t ident dims fields)) ->
@@ -81,6 +106,10 @@ instance Pretty NetworkIOType where
           [] -> pretty t
           [_x] -> pretty t
           (_x : xs) -> "Tensor" <+> pretty t <+> pretty xs
+
+getIODims :: NetworkIOBase -> TensorShape
+getIODims (TensorIOType (NetworkTensorType _ dims)) = dims
+getIODims (RecordIOType (NetworkRecordType _ _ dims _)) = dims
 
 data NetworkBaseType
   = NetworkRatType

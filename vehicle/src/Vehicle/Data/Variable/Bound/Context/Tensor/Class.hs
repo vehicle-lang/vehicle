@@ -7,6 +7,7 @@ import Control.Monad.Writer
 import Data.Coerce (coerce)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Vehicle.Compile.Resource (NetworkIOShape)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
@@ -140,7 +141,7 @@ lookupVariableInNestedCtx lv = do
 class (MonadReadableTensorBoundContext m) => MonadTensorBoundContext m where
   addNonTensorBinderToContext :: VBinder Builtin -> m a -> m a
   addTensorBinderToContext :: VDims Builtin -> VBinder Builtin -> m a -> m a
-  addTensorBinderToContextPermenantly :: Provenance -> Name -> TensorShape -> m NestedSliceVariable
+  addTensorBinderToContextPermenantly :: Provenance -> Name -> NetworkIOShape TensorShape -> m NestedSliceVariable
 
 instance (Monoid w, MonadTensorBoundContext m) => MonadTensorBoundContext (WriterT w m) where
   addNonTensorBinderToContext = mapWriterT . addNonTensorBinderToContext
