@@ -1,3 +1,3 @@
 @property;
 safe : (Tensor Real -> Tensor Real) -> Tensor Real;
-safe = \ f -> [ 1.0, 1.0 ] / search[x] (\ e -> \ xs -> reduceMul e xs) [2] [ 0.0, 0.0 ] [ 1.0, 1.0 ] (\ x -> max 0.0 (f (x + [ 4.0, 4.0 ]) ! 0))
+safe = \ f -> 1.0 / search[x] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 1.0 [2]) (\ x -> max 0.0 (f (x + (const 4.0 [2])) ! 0))

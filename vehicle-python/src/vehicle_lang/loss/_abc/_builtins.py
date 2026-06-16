@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Generic, Sequence
+from typing import Any, Callable, Generic, List, Sequence
 
 from typing_extensions import TypeAlias, TypeVar, override
 
@@ -14,6 +14,7 @@ class ABCBuiltins(
         vcl.Index,
         vcl.Rat,
         vcl.Tensor,
+        vcl.Vector,
     ],
     metaclass=ABCMeta,
 ):
@@ -45,19 +46,25 @@ class ABCBuiltins(
     def MaxRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def ReduceAddRatTensor(self, e: vcl.Rat, xs: vcl.Tensor) -> vcl.Tensor: ...
+    def PowRatTensor(self, x: vcl.Tensor, y: vcl.Rat) -> vcl.Tensor: ...
 
     @abstractmethod
-    def ReduceMulRatTensor(self, e: vcl.Rat, x: vcl.Tensor) -> vcl.Tensor: ...
+    def LogRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def ReduceMinRatTensor(self, e: vcl.Rat, x: vcl.Tensor) -> vcl.Tensor: ...
+    def ExpRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def ReduceMaxRatTensor(self, e: vcl.Rat, x: vcl.Tensor) -> vcl.Tensor: ...
+    def ReduceAddRatTensor(self, xs: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Tensor: ...
+    def ReduceMulRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def ReduceMinRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def ReduceMaxRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
     def DimensionCons(
@@ -91,9 +98,28 @@ class ABCBuiltins(
     def ConstTensor(self, value: vcl.Rat, shape: Sequence[vcl.Index]) -> vcl.Tensor: ...
 
     @abstractmethod
+    def AtTensor(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def ForeachTensor(
+        self, size: int, function: Callable[[int], vcl.Tensor]
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def VectorLiteral(self, xs: Sequence[Any]) -> vcl.Vector: ...
+
+    @abstractmethod
+    def AtVector(self, xs: vcl.Vector, i: vcl.Index) -> Any: ...
+
+    @abstractmethod
+    def ForeachVector(
+        self, size: int, function: Callable[[int], Any]
+    ) -> vcl.Vector: ...
+
+    @abstractmethod
     def DenseTensor(
         self, values: Sequence[vcl.Rat], shape: Sequence[vcl.Index]
     ) -> vcl.Tensor: ...
 
 
-AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any]
+AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any, Any]

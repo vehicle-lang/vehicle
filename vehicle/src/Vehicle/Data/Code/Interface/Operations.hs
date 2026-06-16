@@ -258,6 +258,12 @@ accessRatTensorLiteral = accessNoArgs accessRatTensorLitBuiltin
 accessNegRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
 accessNegRatTensor = accessArgs accessNegRatTensorBuiltin
 
+accessLogRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
+accessLogRatTensor = accessArgs accessLogRatTensorBuiltin
+
+accessExpRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
+accessExpRatTensor = accessArgs accessExpRatTensorBuiltin
+
 accessAddRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
 accessAddRatTensor = accessArgs accessAddRatTensorBuiltin
 
@@ -336,7 +342,7 @@ type HasVectorExpr expr builtin =
 accessVectorType :: (HasVectorType expr builtin) => Accessor (expr builtin) (VectorTypeArgs (expr builtin))
 accessVectorType = accessArgs accessVectorTypeBuiltin
 
-accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (VecLitArgs (expr builtin))
+accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (VectorLitArgs (expr builtin))
 accessVecLit = accessArgs accessVecLitBuiltin
 
 accessAtVector :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (AtVectorArgs (expr builtin))

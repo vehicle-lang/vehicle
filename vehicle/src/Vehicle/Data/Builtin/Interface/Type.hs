@@ -66,7 +66,12 @@ typeOfBuiltinFunction = \case
     MinRatTensor -> typeOfTensorOp2 tRat
   Max dom -> case dom of
     MaxRatTensor -> typeOfTensorOp2 tRat
-  PowRat -> forAllDims $ \dims -> tRatTensor dims ~> tNat ~> tRatTensor dims
+  Pow dom -> case dom of
+    PowRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRat ~> tRatTensor dims
+  Log dom -> case dom of
+    LogRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dims
+  Exp dom -> case dom of
+    ExpRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dims
   ReduceAddRatTensor -> typeOfTensorRatReduceOp
   ReduceMulRatTensor -> typeOfTensorRatReduceOp
   ReduceMinRatTensor -> typeOfTensorRatReduceOp
@@ -132,7 +137,7 @@ typeOfTensorReduceOp ::
   DSLExpr builtin ->
   DSLExpr builtin
 typeOfTensorReduceOp tElem =
-  forAllDims $ \dims -> tTensor tElem dimNil ~> tTensor tElem dims ~> tTensor tElem dimNil
+  forAllDims $ \dims -> tTensor tElem dims ~> tTensor tElem dimNil
 
 typeOfTensorRatReduceOp :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin
 typeOfTensorRatReduceOp = typeOfTensorReduceOp tRat

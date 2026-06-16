@@ -29,7 +29,7 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VecLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
+import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VectorLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -176,7 +176,6 @@ data Scope
   = RingScope
   | OrderScope
   | FormScope
-  | TensorScope
   deriving (Eq, Ord)
 
 instance Pretty Scope where
@@ -184,7 +183,6 @@ instance Pretty Scope where
     RingScope -> "ring_scope"
     OrderScope -> "order_scope"
     FormScope -> "form_scope"
-    TensorScope -> "tensor_scope"
 
 importStatements :: Set Dependency -> Code
 importStatements deps = vsep $ map pretty (Set.toList deps)
@@ -556,15 +554,17 @@ compileBuiltin b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
-    AtTensor -> compileNotationAndArgs [MathcompImport Algebra, Open TensorScope] LeftAssociative (Just (-2)) "$0 ^^ $1" (Just "nindex") args
+    AtTensor -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] LeftAssociative (Just 30) "$0 ^^ $1" (Just "nindex") args
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 0) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
     StackTensor -> compileStack args
-    Iterate -> unsupportedError
-    PowRat -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyRecord _ -> unsupportedTensorLikeQuantifier
+    Iterate -> unsupportedError
+    Pow {} -> unsupportedError
+    Log {} -> unsupportedError
+    Exp {} -> unsupportedError
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return $ annotateConstant [] "Prop"
     PropTrue -> return $ annotateConstant [] "True"
@@ -630,8 +630,13 @@ compileDerivedFunction fn args = case fn of
     Exists -> compileApplication [VehicleImport VehicleUtils] "existsIndex" args
     Forall -> compileApplication [VehicleImport VehicleUtils] "forallIndex" args
   QuantifyInList {} -> unsupported
-  TypeAnn ->
-    compileNotationAndArgs [] NotAssociative (Just 99) "$1 : $0" Nothing args
+  TypeAnn -> case args of
+    [typeArg, valueArg]
+      | isIndexTypeExpr (argExpr typeArg),
+        Just n <- indexLiteralValue (argExpr valueArg) ->
+          return $ compileNatLiteral n
+    _ ->
+      compileNotationAndArgs [] NotAssociative (Just 99) "$1 : $0" Nothing args
   CompareRatTensorReduced op ->
     compileApplication
       [VehicleImport VehicleUtils]
@@ -646,6 +651,16 @@ compileDerivedFunction fn args = case fn of
       args
   where
     unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
+    isIndexTypeExpr :: Expr DecidabilityBuiltin -> Bool
+    isIndexTypeExpr = \case
+      Builtin _ (StandardBuiltinType IndexType) -> True
+      App (Builtin _ (StandardBuiltinType IndexType)) _ -> True
+      _ -> False
+    indexLiteralValue :: Expr DecidabilityBuiltin -> Maybe Int
+    indexLiteralValue = \case
+      Builtin _ (StandardBuiltinConstructor (IndexLiteral n)) -> Just n
+      App (Builtin _ (StandardBuiltinConstructor (IndexLiteral n))) _ -> Just n
+      _ -> Nothing
 
 compileTypeLevelQuantifier ::
   (MonadRocqCompile m) =>
@@ -740,7 +755,7 @@ compileDimList = go []
     compileDimElem e = compileExpr e
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
-compileTensorLiteral compileElement t = annotate ([MathcompImport Algebra, Open TensorScope], Nothing) $ case (shapeOf t, toList t) of
+compileTensorLiteral compileElement t = annotate ([MathcompImport Algebra, Open RingScope], Nothing) $ case (shapeOf t, toList t) of
   ([], [x]) -> "const_t" <+> compileElement x
   _ -> foldMapTensor compileElement toTensor t
   where
@@ -791,8 +806,8 @@ compileComparison domain op = do
         (CRatTensor, Ne) -> [MathcompImport Algebra]
         (CRatTensor, _) -> [MathcompImport Algebra]
   let (opDoc', dependencies') =
-        if domain == CIndex
-          then ("$0 " <> opDoc <> " $1 :> nat", dependencies ++ [MathcompImport Boot])
+        if domain == CIndex || domain == CNat
+          then ("($0 " <> opDoc <> " $1)%N", dependencies ++ [MathcompImport Boot])
           else ("$0 " <> opDoc <> " $1", dependencies)
   compileNotationAndArgs (dependencies' <> typeDeps) NotAssociative (Just 70) opDoc' Nothing
   where
@@ -802,11 +817,11 @@ compileComparison domain op = do
 compileStack :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileStack args = do
   vecExpr <- toVec args
-  return $ annotate ([MathcompImport Algebra], functionApplicationPrecedence) $ "nstack_tuple" <+> vecExpr
+  return $ annotate ([MathcompImport Algebra], functionApplicationPrecedence) $ "nstack_tuple (x := " <> pretty (length args) <> "%:posnat)" <+> vecExpr
 
 compileVecLiteral :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec (fmap explicit ds)
+  Just (VectorLitArgs _t _d ds) -> toVec (fmap explicit ds)
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code

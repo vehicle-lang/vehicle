@@ -317,7 +317,7 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
             evalCompareRatTensor op (TensorOp2Args ds xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       let stackExpr = fromBoolTensorValue $ VBoolStackTensor (StackTensorArgs tElem d d0Arg stackElements)
-      result <- unoptimisedEvalReduceAndTensor (TensorReductionArgs (mkDims [n]) (IBoolLiteral True) stackExpr)
+      result <- unoptimisedEvalReduceAndTensor (TensorReductionArgs (mkDims [n]) stackExpr)
       return result
     _ -> compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose dims)
 

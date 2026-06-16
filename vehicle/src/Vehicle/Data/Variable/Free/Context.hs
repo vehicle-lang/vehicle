@@ -44,7 +44,6 @@ traverseNormalisedDecls_ f (Main ds) =
     go = \case
       [] -> return ()
       decl : decls -> do
-        logDebug MaxDetail $ pretty $ nameOf decl
         normDecl <- evalDecl decl
         _ <- f normDecl
         decls' <- addDeclEntryToContext normDecl $ go decls

@@ -11,7 +11,7 @@ open import Data.Nat using (z≤n; s≤s)
 open import Data.Integer using (+≤+; +<+; +_)
 open import Data.Rational
 open import Data.Rational.Properties
-open import Data.Vec using (_∷_)
+open import Data.Vec using (_∷_; [])
 import Data.Vec.Functional as Vector
 open import Data.Product using (_×_; _,_; uncurry)
 open import Data.Sum
@@ -19,17 +19,17 @@ open import Level using (0ℓ)
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary using (yes; no)
 
-open import Vehicle.Data.Tensor
+open import Vehicle.Data.Tensor using (Tensor; tensor; unScalar; scalar; unscalarPointwise)
 open import RationalUtils
 import WindControllerSpec as Vehicle
+
+open Vehicle.Output
+open Vehicle.Input
 
 open ≤-Reasoning
 
 ------------------------------------------------------------------------
 -- Setup
-
-toTensor : ℚ → ℚ → Tensor ℚ (2 ∷ [])
-toTensor x y = Vector.fromList (x ∷ y ∷ [])
 
 roadWidth : ℚ
 roadWidth = + 3 / 1
@@ -82,7 +82,10 @@ initialState = record
   }
 
 controller : ℚ → ℚ → ℚ
-controller x y = Vehicle.controller (Vehicle.normalise (toTensor x y)) 0F
+controller x y = unScalar (Vehicle.Output.deltaVelocity (Vehicle.controller (record
+  { currentSensor = scalar x
+  ; previousSensor = scalar y
+  })))
 
 nextState : Observation → State → State
 nextState o s = record
@@ -158,11 +161,14 @@ controller-lem : ∀ x y →
                  ∣ x ∣ ≤ roadWidth + maxSensorError →
                  ∣ y ∣ ≤ roadWidth + maxSensorError →
                  ∣ controller x y + 2ℚ * x - y ∣ < roadWidth - maxWindShift - 3ℚ * maxSensorError
-controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ =
-  uncurry -p<q<p⇒∣q∣<p (Vehicle.safe (toTensor x y) (λ
-    { 0F → ∣p∣≤q⇒-q≤p≤q x ∣x∣≤rw+εₘₐₓ
-    ; 1F → ∣p∣≤q⇒-q≤p≤q y ∣y∣≤rw+εₘₐₓ
-    }))
+controller-lem x y ∣x∣≤rw+εₘₐₓ ∣y∣≤rw+εₘₐₓ with
+    ∣p∣≤q⇒-q≤p≤q x ∣x∣≤rw+εₘₐₓ
+  | ∣p∣≤q⇒-q≤p≤q y ∣y∣≤rw+εₘₐₓ
+... | (rw≤x , x≤rw) | (rw≤y , y≤rw) with
+      deltaVelocity (Vehicle.controller (record { currentSensor = scalar x ; previousSensor = scalar y}))
+    |   Vehicle.safe (record { currentSensor = scalar x ; previousSensor = scalar y}) (((λ i → rw≤x) , (λ i → x≤rw)) , (λ i → rw≤y) , (λ i → y≤rw))
+...   | tensor _  | (wse<e , e<wse)= do
+  -p<q<p⇒∣q∣<p (unscalarPointwise {R = _<_} wse<e) (unscalarPointwise {R = _<_} e<wse)
 
 valid⇒nextState-accurateSensor : ∀ o → ValidObservation o → ∀ s →
                                  AccurateSensorReading (nextState o s)

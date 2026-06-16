@@ -6,7 +6,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda -c Marabou.queries",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },
@@ -20,7 +20,7 @@
   {
     "name": "RocqVerify",
     "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v -c Marabou.queries && rocq compile -w none -vok Rocq.v",
-    "needs": ["spec.vcl"],
+    "needs": ["spec.vcl", "fake.onnx", "Marabou.queries/.vcl-cache-index", "Marabou.queries/andGateCorrect.vcl-result"],
     "external": ["rocq"],
     "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
   },

@@ -19,6 +19,7 @@ import Vehicle.Data.AST.Arg
 import Vehicle.Data.AST.Decl (LHSBinderCount)
 import Vehicle.Data.AST.Expr.Desugared qualified as V
 import Vehicle.Data.Builtin.Standard.Core qualified as V
+import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.Error
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Syntax.External.Abs qualified as B
@@ -241,13 +242,16 @@ delabBuiltinFunction fun args = case fun of
   V.Or -> delabInfixOp2 B.Or tokOr args
   V.Implies -> delabInfixOp2 B.Impl tokImpl args
   V.If -> delabIf args
-  V.Add _dom -> delabAdd args
-  V.Mul _dom -> delabMul args
+  V.Add _dom -> delabInfixOp2 B.Add tokAdd args
+  V.Mul _dom -> delabInfixOp2 B.Mul tokMul args
   V.Neg _dom -> delabTypeClassOp V.NegTC args
-  V.Sub _dom -> delabSub args
-  V.Div _dom -> delabDiv args
+  V.Sub _dom -> delabInfixOp2 B.Sub tokSub args
+  V.Div _dom -> delabInfixOp2 B.Div tokDiv args
   V.Min _dom -> delabApp (B.Min tokMin) args
   V.Max _dom -> delabApp (B.Max tokMax) args
+  V.Pow _dom -> delabInfixOp2 B.Pow tokPow args
+  V.Log _dom -> delabApp (B.Log tokLog) args
+  V.Exp _dom -> delabApp (B.Exp tokExp) args
   V.QuantifyRatTensor q -> delabQuantifier q args
   V.QuantifyRecord q -> delabQuantifier q args
   V.CompareRatTensorPointwise V.Eq -> delabInfixOp2 B.EqPoint tokEqPoint args
@@ -267,7 +271,6 @@ delabBuiltinFunction fun args = case fun of
   V.ReduceAndTensor -> delabApp (B.ReduceAnd tokReduceAnd) args
   V.ReduceOrTensor -> delabApp (B.ReduceOr tokReduceOr) args
   -- Builtins not yet in the surface syntax.
-  V.PowRat -> rawDelab
   V.ReduceAddRatTensor -> delabApp (B.ReduceAdd tokReduceAdd) args
   V.ReduceMulRatTensor -> delabApp (B.ReduceMul tokReduceMul) args
   V.ReduceMaxRatTensor -> delabApp (B.ReduceMax tokReduceMax) args
@@ -310,21 +313,15 @@ delabConstructor fun args = case fun of
   V.NatLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.IndexLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.VectorLiteral -> delabVecLiteral args
-  V.NatTensorLiteral t -> cheatDelabPretty t []
-  V.RatTensorLiteral t -> cheatDelabPretty t []
-  V.BoolTensorLiteral t -> cheatDelabPretty t []
+  V.NatTensorLiteral t -> return $ delabTensor t
+  V.RatTensorLiteral t -> return $ delabTensor t
+  V.BoolTensorLiteral t -> return $ delabTensor t
 
-delabAdd :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
-delabAdd = delabInfixOp2 B.Add tokAdd
-
-delabSub :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
-delabSub = delabInfixOp2 B.Sub tokSub
-
-delabMul :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
-delabMul = delabInfixOp2 B.Mul tokMul
-
-delabDiv :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
-delabDiv = delabInfixOp2 B.Div tokDiv
+delabTensor :: (Pretty a) => Tensor a -> B.Expr
+delabTensor t = cheatDelab $ layoutAsText $ case t of
+  ConstantTensor [] value -> pretty value
+  ConstantTensor shape value -> parens ("const" <+> pretty value <+> pretty shape)
+  denseTensor -> pretty denseTensor
 
 delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClassOp op args = case op of

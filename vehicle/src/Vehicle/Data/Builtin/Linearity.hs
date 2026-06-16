@@ -238,11 +238,18 @@ type LinearityDSLExpr = DSLExpr LinearityBuiltin
 forAllLinearities :: (LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
 forAllLinearities f = forAll "l" tLin $ \l -> f l
 
+forAllLinearityPairs :: (LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
+forAllLinearityPairs f =
+  forAll "l1" tLin $ \l1 ->
+    forAll "l2" tLin $ \l2 ->
+      f l1 l2
+
 forAllLinearityTriples :: (LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
 forAllLinearityTriples f =
   forAll "l1" tLin $ \l1 ->
     forAll "l2" tLin $ \l2 ->
-      forAll "l3" tLin $ \l3 -> f l1 l2 l3
+      forAll "l3" tLin $ \l3 ->
+        f l1 l2 l3
 
 constant :: LinearityDSLExpr
 constant = builtin (Linearity Constant)

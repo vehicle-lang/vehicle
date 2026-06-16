@@ -31,7 +31,7 @@ import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
-import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor, TensorShape, foldMapTensor)
 import Vehicle.Data.Universe (UniverseLevel (..))
@@ -155,7 +155,7 @@ instance Pretty Dependency where
   pretty = \case
     VehicleCore -> "Vehicle"
     VehicleUtils -> "Vehicle.Utils"
-    DataTensor -> "Vehicle.Data.Tensor"
+    DataTensor -> "Vehicle.Data.Tensor as" <+> tensorQualifier
     DataTensorInstances -> "Vehicle.Data.Tensor.Instances"
     DataTensorAll -> "Vehicle.Data.Tensor.Relation.Unary.All as" <+> tensorQualifier
     DataTensorAny -> "Vehicle.Data.Tensor.Relation.Unary.Any as" <+> tensorQualifier
@@ -339,11 +339,11 @@ compileDecl :: (MonadAgdaCompile m) => AgdaOptions -> Decl DecidabilityBuiltin -
 compileDecl opts = \case
   DefAbstract _ n _ t ->
     Just <$> compilePostulate n t
-  DefFunction p n funSort t e -> case funSort of
+  DefFunction _ n funSort t e -> case funSort of
     TypeDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
     FunctionDecl binderCount Nothing -> Just <$> compileFunctionDecl n binderCount t e
     FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty opts n e
-    FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Agda"
+    FunctionDecl binderCount (Just AnnInstance {}) -> Just <$> compileFunctionDecl n binderCount t e
     ProjectionDecl _ -> return Nothing
   DefRecord p n _sort telescope fields ->
     Just <$> compileRecordDecl p n telescope fields
@@ -362,15 +362,21 @@ compileRecordDecl p ident telescope fields = do
       else throwError $ UnimplementedFeature p "Compiling parameterised records to Agda"
   fs' <- traverseRecordFields compileExpr fields
 
+  let recordName = compileIdentifier ident
   return $
     "record"
-      <+> compileIdentifier ident
+      <+> recordName
       <+> ":"
       <+> t'
       <+> "where"
       <> line
       <> indent 2 "field"
+      <> line
       <> indent 4 (vsep $ fmap (\(f, t) -> pretty f <+> ":" <+> t) fs')
+      <> line
+      <> line
+      <> "open"
+      <+> recordName
 
 compileFunctionDecl ::
   (MonadAgdaCompile m) =>
@@ -409,17 +415,20 @@ compileExpr expr = do
       cBody <- addNameToContext binder $ compileExpr body
       return $ "let" <+> cBoundExpr <+> "in" <+> cBody
     Lam _ binder body -> compileLam binder body
-    Builtin _ b -> compileBuiltin b []
+    Builtin p b -> compileBuiltin p b []
     App fun args -> compileApp fun args
     Record _p _i fs -> do
       fs' <- traverse compileRecordField fs
       return $
         "record"
           <> line
-          <> indent 2 "{"
-          <> concatWith (\x y -> x <> line <> ";" <+> y) fs'
-          <> line
-          <> "}"
+          <> indent
+            2
+            ( "{"
+                <+> concatWith (\x y -> x <> line <> ";" <+> y) fs'
+                <> line
+                <> "}"
+            )
     RecordProj _p _t r field ->
       annotateApp [] Nothing (pretty field) [explicit r]
   logExit result
@@ -492,8 +501,8 @@ compileApp :: (MonadAgdaCompile m) => Expr DecidabilityBuiltin -> NonEmpty (Arg 
 compileApp fun args = do
   let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
   case fun of
-    Builtin _p b ->
-      compileBuiltin b userArgs
+    Builtin p b ->
+      compileBuiltin p b userArgs
     _ -> do
       cFun <- compileExpr fun
       annotateApp [] Nothing cFun userArgs
@@ -517,11 +526,11 @@ compileDerivedFunction fn args = case fn of
 --------------------------------------------------------------------------------
 -- Compilation of builtins
 
-compileBuiltin :: (MonadAgdaCompile m) => DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
-compileBuiltin b args = case b of
+compileBuiltin :: (MonadAgdaCompile m) => Provenance -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
+compileBuiltin p b args = case b of
   StandardBuiltinType t -> compileBuiltinType t args
   StandardBuiltinConstructor c -> compileBuiltinConstructor c args
-  StandardBuiltinFunction f -> compileBuiltinFunction f args
+  StandardBuiltinFunction f -> compileBuiltinFunction p f args
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
   DecidabilityBuiltinFunction f -> compileDecidabilityBuiltinFunction f args
   DecidabilityBuiltinTypeClass {} -> monoError b
@@ -559,19 +568,21 @@ compileBuiltinConstructor c args = case c of
   RatTensorLiteral t -> return $ compileTensorLiteral compileRealLiteral t
 
 compileBuiltinFunction ::
+  forall m.
   (MonadAgdaCompile m) =>
+  Provenance ->
   BuiltinFunction ->
   [Arg DecidabilityBuiltin] ->
   m Code
-compileBuiltinFunction f args = case f of
+compileBuiltinFunction p f args = case f of
   And -> annotateInfixApp [DataBool] 6 Nothing "_∧_" args
   Or -> annotateInfixApp [DataBool] 5 Nothing "_∨_" args
   Not -> annotateApp [DataBool] Nothing "not" args
   Implies -> annotateInfixApp [VehicleUtils] 4 Nothing "_⇒_" args
-  Add AddNat -> annotateInfixApp [DataNat] 6 (Just natQualifier) "_⊕_" args
+  Add AddNat -> annotateInfixApp [DataNat] 6 (Just natQualifier) "_+_" args
   Mul MulNat -> annotateInfixApp [DataNat] 7 (Just natQualifier) "_*_" args
-  Add AddRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊕_" args
-  Sub SubRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊖_" args
+  Add AddRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_+_" args
+  Sub SubRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_-_" args
   Mul MulRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_*_" args
   Div DivRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_÷_" args
   Neg NegRatTensor -> annotateInfixApp [DataTensor] 8 (Just tensorQualifier) "-_" args
@@ -589,32 +600,21 @@ compileBuiltinFunction f args = case f of
   ReduceMaxRatTensor -> annotateApp [DataTensor] Nothing "reduceMax" args
   ReduceMulRatTensor -> annotateApp [DataTensor] Nothing "reduceMul" args
   ConstTensor -> annotateApp [DataTensor] Nothing "constTensor" args
-  QuantifyRatTensor q -> case reverse args of
-    (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
-    _ -> unsupportedArgsError
-  QuantifyRecord _ -> unsupportedTensorLikeQuantifier
+  QuantifyRatTensor q -> compileQuantifierFunction q args
+  QuantifyRecord q -> compileQuantifierFunction q args
   AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
   ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args
   ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
-  Iterate -> unsupportedError
-  PowRat -> unsupportedError
+  Iterate -> unsupportedError "Iterate"
+  Pow {} -> unsupportedError "^"
+  Log {} -> unsupportedError "log"
+  Exp {} -> unsupportedError "exp"
   where
-    unsupportedError :: a
-    unsupportedError =
-      developerError $
-        "compilation of builtin" <+> quotePretty f <+> "to Agda unsupported"
-
-    unsupportedArgsError :: a
-    unsupportedArgsError = do
-      developerError $
-        "compilation of"
-          <+> quotePretty f
-          <+> "with args"
-          <+> prettyVerbose args
-          <+> "to Agda unsupported"
+    unsupportedError :: UnAnnDoc -> m a
+    unsupportedError = throwError . UnimplementedFeature p
 
 compileDecidabilityBuiltinFunction ::
   (MonadAgdaCompile m) =>
@@ -634,15 +634,31 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropCompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator False op) args
   PropCompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator False op) args
   PropCompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
-  PropQuantifyIndex q -> case q of
-    Forall -> annotateApp [DataFinAll] (Just finQualifier) "All" args
-    Exists -> annotateApp [DataFinAny] (Just finQualifier) "Any" args
+  PropQuantifyIndex q -> compileQuantifierFunction q args
   PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args
     Exists -> annotateApp [DataListAny] (Just listQualifier) "Any" args
   PropNaryProduct -> annotateApp [DataProductNary] Nothing "Product" args
   PropNaryProductAt -> annotateApp [DataProductNary] Nothing "projₙ" args
   PropNaryProductForeach -> annotateApp [VehicleUtils] Nothing "foreachNary" args
+
+compileQuantifierFunction ::
+  (MonadAgdaCompile m) =>
+  Quantifier ->
+  [Arg DecidabilityBuiltin] ->
+  m Code
+compileQuantifierFunction q args = case reverse args of
+  (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
+  _ -> unsupportedArgsError
+  where
+    unsupportedArgsError :: a
+    unsupportedArgsError = do
+      developerError $
+        "compilation of"
+          <+> quotePretty q
+          <+> "with args"
+          <+> prettyVerbose args
+          <+> "to Agda unsupported"
 
 compileTypeLevelQuantifier ::
   (MonadAgdaCompile m) =>
@@ -671,11 +687,12 @@ compileIntLiteral i
 compileRealLiteral :: ExtendedRational -> Code
 compileRealLiteral = \case
   Finite r
-    | denominator r == 1 -> pretty $ numerator r
+    | denominator r == 1 -> annotate (Set.singleton DataTensor, minPrecedence) ("natScalar" <+> pretty (numerator r))
     | otherwise -> do
         let num = compileIntLiteral (fromInteger $ numerator r)
         let denom = compileNatLiteral (fromInteger $ denominator r)
-        annotate ([DataRat], 7) (num <+> "/" <+> denom)
+        let rat = annotate ([DataRat], 7) (num <+> ratQualifier <> "./" <+> denom)
+        annotate (Set.singleton DataTensor, minPrecedence) ("scalar" <+> parens rat)
   _ -> developerError "Compiling infinite values to Agda not supported"
 
 -- | Compiling vector literals. No literals in Agda so have to go via cons.
@@ -684,7 +701,7 @@ toVec = foldr (\v vs -> annotate ([], 5) (v <> "∷ᵥ" <> vs)) "[]ᵥ"
 
 compileVecLiteral :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
+  Just (VectorLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
   Nothing -> developerError "Malformed type-checked vector literal"
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code

@@ -65,6 +65,9 @@ purifyRatTensorExpr actions@UnblockingActions {..} incrDims expr = do
     VSubRatTensor args -> purifyTensorOp2 (recPurify incrDims) VSubRatTensor args
     VMulRatTensor args -> purifyTensorOp2 (recPurify incrDims) VMulRatTensor args
     VDivRatTensor args -> purifyTensorOp2 (recPurify incrDims) VDivRatTensor args
+    VPowRatTensor args -> purifyTensorOp2 (recPurify incrDims) VPowRatTensor args
+    VLogRatTensor args -> purifyTensorOp1 (recPurify incrDims) VLogRatTensor args
+    VExpRatTensor args -> purifyTensorOp1 (recPurify incrDims) VExpRatTensor args
     -- Recursively purify
     VRatConstTensor args -> purifyConstTensor args
     VRatStackTensor args -> purifyStackTensor (recPurify (incrDims - 1)) args
@@ -75,13 +78,14 @@ purifyRatTensorExpr actions@UnblockingActions {..} incrDims expr = do
     VReduceMulRatTensor args -> unblockReduceTensor (recPurify (incrDims + 1)) evalReduceMulRatTensor args
     VReduceMinRatTensor args -> unblockReduceTensor (recPurify (incrDims + 1)) evalReduceMinRatTensor args
     VReduceMaxRatTensor args -> unblockReduceTensor (recPurify (incrDims + 1)) evalReduceMaxRatTensor args
-    VRatAt args -> unblockAtTensor (recPurify (incrDims + 1)) args
+    VRatAtTensor args -> unblockAtTensor (recPurify (incrDims + 1)) args
     VRatForeach args -> unblockForeachTensor args
     VRatTensorBoundVar v
       | incrDims == 0 -> return $ IfLeaf $ fromRatTensorValue $ VRatTensorBoundVar v
       | otherwise -> recPurify incrDims =<< unblockRatTensorBoundVar v
     VRatTensorNetworkApp n args -> unblockNetworkApp (recPurify incrDims) (unblockRecordValue actions) n args
     VRatRecordAcc typ value fieldName _ -> unblockRecordAcc (recPurify incrDims) typ value fieldName
+    VRatAtVector args -> unblockAtVector (recPurify (incrDims + 1)) args
     VDatasetOrParameter {} -> developerError "datasets and parameters should have been eliminated"
   where
     recPurify = purifyRatTensorExpr actions
