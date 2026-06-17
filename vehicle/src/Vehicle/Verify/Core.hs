@@ -4,6 +4,9 @@ module Vehicle.Verify.Core where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
+import Data.Bifunctor qualified
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
 import Prettyprinter (brackets)
@@ -185,13 +188,27 @@ flipQueryRel = \case
 
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
-  = UserVariableAssignment [(Name, RatTensor)]
+  = UserVariableAssignment [(Name, UserVariableValue)]
   deriving (Generic)
+
+instance Pretty UserVariableAssignment where
+  pretty (UserVariableAssignment assignments) =
+    vsep (fmap pretty assignments)
 
 instance ToJSON UserVariableAssignment
 
 instance FromJSON UserVariableAssignment
 
-instance Pretty UserVariableAssignment where
-  pretty (UserVariableAssignment assignment) =
-    vsep (fmap pretty assignment)
+data UserVariableValue
+  = TensorValue RatTensor
+  | RecordValue (NonEmpty (Name, RatTensor))
+  deriving (Show, Generic, Eq)
+
+instance ToJSON UserVariableValue
+
+instance FromJSON UserVariableValue
+
+instance Pretty UserVariableValue where
+  pretty t = case t of
+    TensorValue tens -> pretty tens
+    RecordValue fields -> prettyRecordValueEntries $ map (Data.Bifunctor.bimap pretty pretty) (NonEmpty.toList fields)

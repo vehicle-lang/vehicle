@@ -4,6 +4,7 @@ module Vehicle.Compile.ExpandResources.Network
 where
 
 import Control.Monad.Except (MonadError (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
@@ -62,7 +63,7 @@ getNetworkType decl networkType = case normalised networkType of
         fieldNames <- getRecordFieldNames ident
         fields <- getRecordFields ident
         let shape = constructTensorisableDims fields
-        return $ RecordIOType $ NetworkRecordType NetworkRatType ident shape fieldNames
+        return $ RecordIOType $ NetworkRecordType NetworkRatType ident shape $ NonEmpty.toList fieldNames
       _ -> typingError
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
