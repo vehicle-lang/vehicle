@@ -32,6 +32,7 @@ import System.IO (stdout)
 import System.ProgressBar
 import Vehicle.Compile.Prelude
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
+import Vehicle.Data.Tensor (prettyTensor)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Core as Core
@@ -280,8 +281,7 @@ prettyUserVariableAssignment (UserVariableAssignment assignment) = do
         (var, RecordValue fields) ->
           pretty var
             <> ":"
-            <> line
-            <> prettyRecordValueEntries (map (Data.Bifunctor.bimap pretty pretty) (NonEmpty.toList fields))
+            <> lineIndent (prettyRecordValueEntries (map (Data.Bifunctor.bimap pretty (prettyTensor pretty)) (NonEmpty.toList fields)))
 
 closeProgressBar :: (MonadStdIO m) => ProgressBar () -> m ()
 closeProgressBar _ = writeStdoutLn ""

@@ -1156,14 +1156,30 @@ missingOneSidedBounds isLowerBound missingIndices =
     _ -> " for indices" <+> vsep (fmap pretty missingIndices)
 
 missingBoundsRecord :: Name -> [Name] -> UnboundedIndices -> Doc a
-missingBoundsRecord varName fieldNames = mergeTheseWith (missingOneSidedBoundsRecord varName fieldNames True) (missingOneSidedBoundsRecord varName fieldNames False) (\u v -> u <+> "and" <+> v)
+missingBoundsRecord varName fieldNames =
+  mergeTheseWith
+    (missingOneSidedBoundsRecord varName fieldNames True)
+    (missingOneSidedBoundsRecord varName fieldNames False)
+    (\u v -> u <+> "and" <+> v)
 
 missingOneSidedBoundsRecord :: Name -> [Name] -> Bool -> NonEmpty TensorIndices -> Doc a
 missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
   "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <+> case missingFields of
-    [[]] -> ""
+    [] :| [] -> ""
     _ ->
       "for fields"
         <+> concatWith
           (surround ", ")
-          (fmap (\t -> pretty $ varName <> "." <> fieldNames !! head t) missingFields)
+          (fmap prettyRecordIndices missingFields)
+  where
+    prettyRecordIndices :: TensorIndices -> Doc a
+    prettyRecordIndices = \case
+      [] -> developerError "only time empty indices can occur is when whole record is bounded"
+      i : is ->
+        pretty varName
+          <> "."
+          <> pretty (fieldNames !! i)
+          <> ( case is of
+                 [] -> ""
+                 _ -> pretty is
+             )

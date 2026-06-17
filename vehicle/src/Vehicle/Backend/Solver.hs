@@ -13,29 +13,25 @@ import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Solver.QueryCompilation (compilePartitionsToQueries)
-import Vehicle.Backend.Solver.UserVariableElimination (eliminateExistless, eliminateExists)
+import Vehicle.Backend.Solver.UserVariableElimination (eliminateExistless, eliminateExists, eliminateExistsRecord)
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.Error
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
-import Vehicle.Compile.LowerNot (lowerNot, negateRatTensorQuantifierBody)
+import Vehicle.Compile.LowerNot (lowerNot, negateRatTensorQuantifierBody, negateRecordQuantifierBody)
 import Vehicle.Compile.Normalise.NBE
-import Vehicle.Compile.Normalise.Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructTensorisableDims)
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DSL
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..), andTrivial, orTrivial)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
@@ -202,19 +198,16 @@ compileQueries expr = do
     -- Base cases --
     ----------------
     VBoolLiteral b -> return $ Trivial b
-    VQuantifyRatTensor (Exists, args) -> compileQuantifiedQuerySet False args []
+    VQuantifyRatTensor (Exists, args) -> compileQuantifiedQuerySet False (Left args)
+    VQuantifyRecord (Exists, args) -> compileQuantifiedQuerySet False (Right args)
     VQuantifyRatTensor (Forall, args) -> do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       negatedArgs <- negateRatTensorQuantifierBody args
-      compileQuantifiedQuerySet True negatedArgs []
-    VQuantifyRecord (Exists, args) -> do
-      (wrappedBinderArgs, step) <- wrapQuantifyRecord args
-      compileQuantifiedQuerySet False wrappedBinderArgs [step]
+      compileQuantifiedQuerySet True (Left negatedArgs)
     VQuantifyRecord (Forall, args) -> do
       logDebug MaxDetail $ "negate" <+> pretty Forall
-      (wrappedBinderArgs, step) <- wrapQuantifyRecord args
-      negatedArgs <- negateRatTensorQuantifierBody wrappedBinderArgs
-      compileQuantifiedQuerySet True negatedArgs [step]
+      negatedArgs <- negateRecordQuantifierBody args
+      compileQuantifiedQuerySet True (Right negatedArgs)
     ---------------------
     -- Recursive cases --
     ---------------------
@@ -247,58 +240,15 @@ compileQueries expr = do
 compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Bool ->
-  QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
-  [CompilationStep] ->
+  Either (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin)) (QuantifyRecordArgs (Value Builtin) (Closure Builtin)) ->
   m (Property QueryMetaData)
-compileQuantifiedQuerySet isPropertyNegated args prevSteps =
+compileQuantifiedQuerySet isPropertyNegated args =
   logCompilerSection2 MaxDetail "compilation of query set" $ do
-    (maybePartitions, globalCtx) <- runStateT (eliminateExists args prevSteps) emptyGlobalCtx
+    let action = case args of
+          Left tensorArgs -> eliminateExists tensorArgs
+          Right recordArgs -> eliminateExistsRecord recordArgs
+    (maybePartitions, globalCtx) <- runStateT action emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
-
--- | Takes a record quantifier and wraps the binder & body in a tensor quantifier
---  e.g. given Pair has fields { a : Real, b : Real }
---  forall (r : Pair) . (body)
---  becomes
---  forall (_t0 : tensor Real [2]) . (body (_PairFromTensor _t0))
-wrapQuantifyRecord ::
-  ( MonadPropertyStructure m,
-    MonadSupply QueryID m,
-    MonadStdIO m,
-    MonadFreeContext Builtin m
-  ) =>
-  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
-  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin), CompilationStep)
-wrapQuantifyRecord QuantifyRecordArgs {..} = do
-  namedCtx <- getNameContext
-  recordTypeIdent <- case toTypeValue quantifyRecordType of
-    VFreeTypeVar v _spine -> pure v
-    _ -> developerError "Record binder is not of expected format."
-
-  -- Construct \r -> body from binder and body in record quantifier args
-  recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody
-  fields <- getRecordFields recordTypeIdent
-  let shape = constructTensorisableDims fields
-  let dims = mkDims shape
-
-  -- Build tensor binder with appropriate dims and type for record
-  let Closure boundEnv _body = quantifyRecordBody
-  tensorType <- eval namedCtx boundEnv $ fromDSL mempty $ tTensor tRat (toDSL dims)
-  normalisedDims <- eval namedCtx boundEnv dims
-  let tensorBinderName = getFreshTensorBinderName namedCtx
-  let tensorBinder = mkExplicitBinder tensorType (Just (mempty, tensorBinderName))
-
-  let tensorBoundVar = explicit $ BoundVar mempty 0
-  recordTypeProv <- getRecordProvenance recordTypeIdent
-  -- Construct _PairFromTensor _t0
-  let fromTensorExpr = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
-
-  -- Construct body (_PairFromTensor _t0)
-  let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
-  let ratTensorArgs = QuantifyRatTensorArgs normalisedDims tensorBinder (Closure boundEnv nestedBody)
-
-  fieldNames <- getRecordFieldNamesNE recordTypeIdent
-  let name = getBinderName quantifyRecordBinder
-  return (ratTensorArgs, ConvertQuantifiedTensorLike tensorBinderName name fieldNames)
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::

@@ -341,7 +341,7 @@ writeWitnessToFile verificationCache address (UserVariableAssignment assignments
       liftIO $ encodeIDXFile idxData file
 
     handleRecordAssignment var recordFields folder = do
-      let fieldValues = map snd (NonEmpty.toList recordFields)
-      let dims = shapeOf $ head fieldValues
-      let tensorValue = (var, TensorValue $ stack dims fieldValues)
+      let fieldValues = fmap snd recordFields
+      let dims = shapeOf $ NonEmpty.head fieldValues
+      let tensorValue = (var, TensorValue $ stack dims (NonEmpty.toList fieldValues))
       handleAssignment tensorValue folder

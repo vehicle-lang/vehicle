@@ -1,6 +1,7 @@
 module Vehicle.Compile.LowerNot
   ( lowerNot,
     negateRatTensorQuantifierBody,
+    negateRecordQuantifierBody,
   )
 where
 

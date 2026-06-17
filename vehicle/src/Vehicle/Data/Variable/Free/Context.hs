@@ -3,9 +3,8 @@ module Vehicle.Data.Variable.Free.Context
     addDeclToContext,
     traverseNormalisedDecls_,
     getRecordFields,
-    getRecordFieldNames,
     getRecordProvenance,
-    getRecordFieldNamesNE,
+    getRecordFieldNames,
   )
 where
 
@@ -62,19 +61,13 @@ getRecordFields ident = do
 getRecordFieldNames ::
   (MonadFreeContext Builtin m) =>
   Identifier ->
-  m [Name]
+  m (NonEmpty Name)
 getRecordFieldNames ident = do
   decl <- getDeclEntry (Proxy @Builtin) ident
-  case decl of
+  fieldNames <- case decl of
     DefRecord _p _ident _sort _telescope fields -> return $ map (\(field, _typ) -> nameOf field) fields
     _ -> developerError "Record declaration is not of expected format."
 
-getRecordFieldNamesNE ::
-  (MonadFreeContext Builtin m) =>
-  Identifier ->
-  m (NonEmpty Name)
-getRecordFieldNamesNE ident = do
-  fieldNames <- getRecordFieldNames ident
   case NonEmpty.nonEmpty fieldNames of
     Just fields -> pure fields
     Nothing -> developerError "Record contains no fields when fields are expected"

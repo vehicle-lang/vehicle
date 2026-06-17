@@ -56,6 +56,17 @@
                     ]
                   },
                   {
+                    "tag": "ConvertQuantifiedTensorLike",
+                    "contents": [
+                      "_t0",
+                      "x",
+                      [
+                        "a",
+                        "b"
+                      ]
+                    ]
+                  },
+                  {
                     "tag": "SolveEquality",
                     "contents": [
                       {
@@ -125,17 +136,6 @@
                         "nestedStartingVariable": 0
                       },
                       "OneDimension"
-                    ]
-                  },
-                  {
-                    "tag": "ConvertQuantifiedTensorLike",
-                    "contents": [
-                      "_t0",
-                      "x",
-                      [
-                        "a",
-                        "b"
-                      ]
                     ]
                   }
                 ]
