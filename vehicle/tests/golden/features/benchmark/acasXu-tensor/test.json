@@ -1,0 +1,7 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s acasXu-tensor.vcl",
+    "needs": ["acasXu-tensor.vcl"]
+  }
+]
