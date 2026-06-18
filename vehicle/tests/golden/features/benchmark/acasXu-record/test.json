@@ -1,0 +1,7 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s acasXu-record.vcl",
+    "needs": ["acasXu-record.vcl"]
+  }
+]
