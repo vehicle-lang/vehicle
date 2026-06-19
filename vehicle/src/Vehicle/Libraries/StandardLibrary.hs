@@ -20,6 +20,8 @@ module Vehicle.Libraries.StandardLibrary
     hasDivIdent,
     hasComparisonIdent,
     standardLibraryCompareRatTensorReduced,
+    validDatasetTypeIdent,
+    validDatasetListElementTypeIdent
   )
 where
 
@@ -77,6 +79,12 @@ validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
 
 validNetworkFieldTypeIdent :: Identifier
 validNetworkFieldTypeIdent = standardLibIdent "HasValidNetworkFieldType"
+
+validDatasetTypeIdent :: Identifier
+validDatasetTypeIdent = standardLibIdent "HasValidDatasetType"
+
+validDatasetListElementTypeIdent :: Identifier
+validDatasetListElementTypeIdent = standardLibIdent "HasValidDatasetListElementType"
 
 hasQuantifierIdent :: Identifier
 hasQuantifierIdent = standardLibIdent "HasQuantifier"
