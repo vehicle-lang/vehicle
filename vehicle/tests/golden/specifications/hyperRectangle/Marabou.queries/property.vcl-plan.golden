@@ -9,40 +9,6 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "classifier₂[output]!1",
-                  "classifier₂[output]!0",
-                  "classifier₂[output]",
-                  "classifier₂[input]!29",
-                  "classifier₂[input]!28",
-                  "classifier₂[input]!27",
-                  "classifier₂[input]!26",
-                  "classifier₂[input]!25",
-                  "classifier₂[input]!24",
-                  "classifier₂[input]!23",
-                  "classifier₂[input]!22",
-                  "classifier₂[input]!21",
-                  "classifier₂[input]!20",
-                  "classifier₂[input]!19",
-                  "classifier₂[input]!18",
-                  "classifier₂[input]!17",
-                  "classifier₂[input]!16",
-                  "classifier₂[input]!15",
-                  "classifier₂[input]!14",
-                  "classifier₂[input]!13",
-                  "classifier₂[input]!12",
-                  "classifier₂[input]!11",
-                  "classifier₂[input]!10",
-                  "classifier₂[input]!9",
-                  "classifier₂[input]!8",
-                  "classifier₂[input]!7",
-                  "classifier₂[input]!6",
-                  "classifier₂[input]!5",
-                  "classifier₂[input]!4",
-                  "classifier₂[input]!3",
-                  "classifier₂[input]!2",
-                  "classifier₂[input]!1",
-                  "classifier₂[input]!0",
-                  "classifier₂[input]",
                   "classifier₁[output]!1",
                   "classifier₁[output]!0",
                   "classifier₁[output]",
@@ -280,74 +246,6 @@
                     "contents": [
                       {
                         "nestedTensorShape": [
-                          2
-                        ],
-                        "nestedStartingVariable": 130
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              2
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            62,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": [
-                          30
-                        ],
-                        "nestedStartingVariable": 99
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              30
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            31,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": [
                           30
                         ],
                         "nestedStartingVariable": 0
@@ -379,30 +277,37 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "property",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          30
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            30
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "adv.onnx"

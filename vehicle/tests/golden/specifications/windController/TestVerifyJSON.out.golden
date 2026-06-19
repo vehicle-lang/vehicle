@@ -3,59 +3,57 @@
 }
 {
   "tag": "MultiPropertyStart",
-  "contents": {
-    "propertyName": "safe"
-  }
+  "contents": "safe"
 }
 {
   "tag": "PropertyStart",
   "contents": {
+    "tag": "PropertyAddress",
     "propertyName": "safe",
-    "propertyIndices": [],
-    "numberOfQueries": 2
+    "propertyIndices": []
   }
 }
 {
   "tag": "QueryStart",
   "contents": {
+    "tag": "QueryAddress",
     "queryID": 1,
-    "propertyName": "safe",
-    "propertyIndices": []
+    "property": {
+      "tag": "PropertyAddress",
+      "propertyName": "safe",
+      "propertyIndices": []
+    }
   }
 }
 {
   "tag": "QueryFinish",
   "contents": [
     {
+      "tag": "QueryAddress",
       "queryID": 1,
-      "propertyName": "safe",
-      "propertyIndices": []
+      "property": {
+        "tag": "PropertyAddress",
+        "propertyName": "safe",
+        "propertyIndices": []
+      }
     },
-    {
-      "satisfied": true
-    }
+    true
   ]
 }
 {
   "tag": "PropertyFinish",
   "contents": [
     {
+      "tag": "PropertyAddress",
       "propertyName": "safe",
-      "propertyIndices": [],
-      "numberOfQueries": 2
+      "propertyIndices": []
     },
-    {
-      "verified": false,
-      "erroredQueryID": null,
-      "errorMessage": null
-    }
+    false
   ]
 }
 {
   "tag": "MultiPropertyFinish",
-  "contents": {
-    "propertyName": "safe"
-  }
+  "contents": "safe"
 }
 {
   "tag": "VerificationFinish"

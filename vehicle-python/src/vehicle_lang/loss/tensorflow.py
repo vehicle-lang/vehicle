@@ -21,7 +21,7 @@ def load_specification(
     path: str | Path,
     *,
     logic: DifferentiableLogic = DifferentiableLogic.DL2,
-    samplers: Mapping[str, Any] | None = None,
+    samplers: Mapping[str, TensorFlowSampler] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,
 ) -> dict[str, Any]:

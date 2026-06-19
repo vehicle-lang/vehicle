@@ -27,6 +27,7 @@ import Vehicle.Data.AST.Expr.Desugared qualified as V
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard qualified as V
 import Vehicle.Data.Builtin.Standard.Scoping ()
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Prelude
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Token
@@ -409,8 +410,11 @@ elabExpr expr = case expr of
   B.Sub e1 tk e2 -> standardLibFunction "subTC" tk [e1, e2]
   B.Mul e1 tk e2 -> standardLibFunction "mulTC" tk [e1, e2]
   B.Div e1 tk e2 -> standardLibFunction "divTC" tk [e1, e2]
+  B.Pow e1 tk e2 -> builtinFunction (V.Pow V.PowRatTensor) tk [e1, e2]
   B.Min tk -> builtinFunction (V.Min V.MinRatTensor) tk []
   B.Max tk -> builtinFunction (V.Max V.MaxRatTensor) tk []
+  B.Log tk -> builtinFunction (V.Log V.LogRatTensor) tk []
+  B.Exp tk -> builtinFunction (V.Exp V.ExpRatTensor) tk []
   B.Neg tk e -> builtinTypeClassOp V.NegTC tk [e]
   B.AddNat tk -> builtinFunction (V.Add V.AddNat) tk []
   B.MulNat tk -> builtinFunction (V.Mul V.MulNat) tk []
@@ -422,8 +426,8 @@ elabExpr expr = case expr of
   B.QuantifyExistsIndex tk -> derivedFunction (V.QuantifyIndex V.Exists) tk []
   B.QuantifyForallRealTensor tk -> builtinFunction (V.QuantifyRatTensor V.Forall) tk []
   B.QuantifyExistsRealTensor tk -> builtinFunction (V.QuantifyRatTensor V.Exists) tk []
-  B.QuantifyForallTensorLike tk -> builtinFunction (V.QuantifyTensorLike V.Forall) tk []
-  B.QuantifyExistsTensorLike tk -> builtinFunction (V.QuantifyTensorLike V.Exists) tk []
+  B.QuantifyForallTensorLike tk -> builtinFunction (V.QuantifyRecord V.Forall) tk []
+  B.QuantifyExistsTensorLike tk -> builtinFunction (V.QuantifyRecord V.Exists) tk []
   B.CompareIndexEq tk -> builtinFunction (V.CompareIndex V.Eq) tk []
   B.CompareIndexNe tk -> builtinFunction (V.CompareIndex V.Ne) tk []
   B.CompareIndexLe tk -> builtinFunction (V.CompareIndex V.Le) tk []
@@ -603,7 +607,10 @@ elabLiteral = \case
   B.RatLiteral t -> do
     p <- mkProvenance t
     let r = readRat (tkSymbol t)
-    return $ elabDecimalLiteral p r
+    return $ elabDecimalLiteral p (Finite r)
+  B.InfLiteral tk -> do
+    p <- mkProvenance tk
+    return $ elabDecimalLiteral p PosInfinity
 
 readNatLiteral :: B.Natural -> Int
 readNatLiteral t = readNat (tkSymbol t)

@@ -44524,34 +44524,41 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     0
-                  ],
-                  "propertyID": 0
-                },
-                1
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          6
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          3,
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "baseline.onnx"
@@ -89078,34 +89085,41 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 2,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     0
-                  ],
-                  "propertyID": 0
-                },
-                2
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          6
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          3,
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "baseline.onnx"
@@ -133632,34 +133646,41 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 3,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     0
-                  ],
-                  "propertyID": 0
-                },
-                3
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          6
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          3,
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "baseline.onnx"
@@ -178186,34 +178207,41 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 4,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     0
-                  ],
-                  "propertyID": 0
-                },
-                4
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          6
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          3,
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "baseline.onnx"
@@ -222740,34 +222768,41 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 5,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     0
-                  ],
-                  "propertyID": 0
-                },
-                5
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          6
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          3,
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "baseline.onnx"
@@ -267294,34 +267329,41 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 6,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "robust",
                   "propertyIndices": [
                     0
-                  ],
-                  "propertyID": 0
-                },
-                6
-              ],
+                  ]
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          6
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          3,
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "baseline.onnx"

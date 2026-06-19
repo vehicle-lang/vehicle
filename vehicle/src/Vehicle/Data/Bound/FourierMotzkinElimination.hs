@@ -13,9 +13,9 @@ where
 
 import Data.Either (partitionEithers)
 import Data.List.NonEmpty (NonEmpty (..))
+import Vehicle.Compile.Constants.Rational (LinearExpression)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll (..), eliminateTrivialConjunctions)
@@ -24,7 +24,6 @@ import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Tensor
 import Vehicle.Data.Tensor.Traversal
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Variable.Bound.Level
 
 -- | Takes in bounds over a tensor and tries to compute a single lower and upper bound for the
 -- whole tensor. If it fails then it returns a list of the indices of the tensor which
@@ -78,9 +77,9 @@ flattenNestedSliceBounds getBound = go
                 return $ Right $ andBound bound childBound
 
 fourierMotzkinSliceBoundsElimination ::
-  (MonadCompile m, MonadReadableNameContext m, ConstantLike constant, PrettyFriendly (constant `In` NamedBoundCtx)) =>
-  SliceBounds (LinearExpr SliceVariable constant) ->
-  m (MaybeTrivial (ConjunctAll (Inequality (LinearExpr SliceVariable constant))))
+  (MonadCompile m, MonadReadableNameContext m) =>
+  SliceBounds LinearExpression ->
+  m (MaybeTrivial (ConjunctAll (Inequality LinearExpression)))
 fourierMotzkinSliceBoundsElimination (SliceBounds lower upper) = do
   let newMaybeTrivialInequalities = cartesianProduct combineInequalities lower upper
   let maybeTrivialFinalInequalities = case newMaybeTrivialInequalities of
@@ -90,13 +89,12 @@ fourierMotzkinSliceBoundsElimination (SliceBounds lower upper) = do
   return maybeTrivialFinalInequalities
 
 combineInequalities ::
-  (VariableLike variable, ConstantLike constant) =>
-  LowerBound (LinearExpr variable constant) ->
-  UpperBound (LinearExpr variable constant) ->
-  MaybeTrivial (Inequality (LinearExpr variable constant))
+  LowerBound LinearExpression ->
+  UpperBound LinearExpression ->
+  MaybeTrivial (Inequality LinearExpression)
 combineInequalities (LowerBound rel1 lowerBound) (UpperBound rel2 upperBound) = do
   let maybeNewExpr = addExprs 1 (-1) lowerBound upperBound
   let newRel = combineInequalityRelations rel1 rel2
   case maybeNewExpr of
-    Left constant -> Trivial $ evalTrivialRelation newRel constant
+    Left tensor -> Trivial $ isRelated newRel tensor (ConstantTensor (shapeOf tensor) 0)
     Right newExpr -> NonTrivial $ NormalisedRelation newRel newExpr

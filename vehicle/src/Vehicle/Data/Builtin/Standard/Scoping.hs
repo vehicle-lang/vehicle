@@ -14,13 +14,17 @@ import Vehicle.Compile.Sugar.Core
 import Vehicle.Data.AST.Expr.Desugared qualified as D (Expr (..), normAppList)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
+import Vehicle.Data.Code.Interface (getDims)
+import Vehicle.Data.Code.TypedView (TypeValue (VRatTensorType), toTypeValue)
+import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (TensorShape, pattern ZeroDimTensor)
 import Vehicle.Libraries.StandardLibrary
 
 instance ScopableBuiltin Builtin where
   generateAuxiliaryRecordDefinitions p ident sort telescope fields
     | isAnnotatedAsTensor sort = createTensorRecordConversionFunctions p ident telescope fields
+    | not (isStandardLibIdent ident) = return [createRecordHasValidIOTypeInstance p ident telescope fields]
     | otherwise = return []
 
 instance DesugarableBuiltin Builtin where
@@ -32,6 +36,59 @@ instance DesugarableBuiltin Builtin where
   elabDecimalLiteral p r = do
     let fromRat = D.Builtin p (TypeClassOp FromRatTC)
     D.normAppList fromRat $ fmap explicit [D.Builtin p $ BuiltinConstructor $ RatTensorLiteral $ ZeroDimTensor r]
+
+createRecordHasValidIOTypeInstance ::
+  Provenance ->
+  Identifier ->
+  Telescope Builtin ->
+  RecordFields Builtin ->
+  Decl Builtin
+createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
+  -- For each record R we want to create a function that looks like:
+  --
+  --   @instance
+  --   recordRHasValidNetworkIOType :
+  --     {{t1}} ->
+  --     ...
+  --     {{tn}} ->
+  --     {{HasValidNetworkFieldType f1}} ->
+  --     ...
+  --     {{HasValidNetworkFieldType fn}} ->
+  --     HasValidNetworkIOType (R t1 ... tn)
+  --   recordRHasValidNetworkIOType t1 ... tn = {}
+  --
+  -- ... where t1 through tn are the types in the telescope,
+  -- and f1 through fn are the types of R's fields.
+
+  -- Create the name
+  let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
+  let instanceIdent = Identifier (modulePath recordIdent) instanceName
+
+  let mkConstraint (_, fieldType) k = flip mkInstanceBinder Nothing $ normAppList target [argument]
+        where
+          target = FreeVar p validNetworkFieldTypeIdent
+          argument = explicit (liftDBIndices (Lv k) fieldType)
+
+  -- Construct both the telescope and the typeclass constraints
+  let implicitTelescope = fmap (flip setBinderVisibility $ Implicit True) telescope
+  let constraintBinders = zipWith mkConstraint fields [0 .. length fields]
+  let binderList = implicitTelescope ++ constraintBinders
+
+  -- Create the type arguments for the fully applied record type
+  let mkArg (binder, ix) = argFromBinder binder (BoundVar p ix)
+  let binderIndices = reverse $ fmap Ix [0 .. (length binderList - 1)]
+  let args = fmap mkArg (zip telescope binderIndices)
+
+  -- Create the applied record and result type
+  let parameterisedRecordType = normAppList (FreeVar p recordIdent) args
+  let resultType = fromDSL mempty $ freeVar validNetworkIOTypeIdent @@ [toDSL parameterisedRecordType]
+
+  -- Create the function
+  let functionType = foldr (Pi p) resultType binderList
+  let functionBody = foldr (Lam p) (Record p resultType []) binderList
+  let functionSort = FunctionDecl 1 (Just (AnnInstance Nothing))
+
+  DefFunction p instanceIdent functionSort functionType functionBody
 
 createTensorRecordConversionFunctions ::
   (MonadCompile m) =>
@@ -67,6 +124,7 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let recordToTensorDecl = createRecordToTensor p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
   let validNetworkInstance = createValidNetworkIOInstance p ident
+  let validNetworkFieldInstance = createValidNetworkFieldInstance p ident
   let validQuantifierInstance = createTensorLikeHasQuantifierInstance p ident
   let validHasAddInstance = createTensorLikeArithmeticInstance p ident hasAddIdent "HasAdd" "addTC"
   let validHasSubInstance = createTensorLikeArithmeticInstance p ident hasSubIdent "HasSub" "subTC"
@@ -80,6 +138,7 @@ createTensorRecordConversionFunctions p ident telescope fields = do
     [ recordToTensorDecl,
       tensorToRecordDecl,
       validNetworkInstance,
+      validNetworkFieldInstance,
       validQuantifierInstance,
       validHasAddInstance,
       validHasSubInstance,
@@ -156,6 +215,19 @@ createValidNetworkIOInstance p recordIdent = do
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
+createValidNetworkFieldInstance ::
+  Provenance ->
+  Identifier ->
+  Decl Builtin
+createValidNetworkFieldInstance p recordIdent = do
+  let recordType = fromDSL mempty $ freeVar validNetworkFieldTypeIdent @@ [freeVar recordIdent]
+  let functionBody = Record p recordType []
+
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidNetworkFieldType"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+
 createValidDatasetTypeInstance ::
   Provenance ->
   Identifier ->
@@ -199,8 +271,8 @@ createTensorLikeHasQuantifierInstance p recordIdent = do
         Record
           p
           recordType
-          [ (forAllTCFieldName, fromDSL mempty (builtinFunction (QuantifyTensorLike Forall))),
-            (existsTCFieldName, fromDSL mempty (builtinFunction (QuantifyTensorLike Exists)))
+          [ (forAllTCFieldName, fromDSL mempty (builtinFunction (QuantifyRecord Forall))),
+            (existsTCFieldName, fromDSL mempty (builtinFunction (QuantifyRecord Exists)))
           ]
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
@@ -214,12 +286,8 @@ createTensorLikeArithmeticInstance ::
   Decl Builtin
 createTensorLikeArithmeticInstance p recordIdent typeclassIdent typeclassName fieldName = do
   let recordType = freeVar recordIdent
-
-  let fromTensorName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
-  let fromTensorIdent = freeVar $ Identifier (modulePath recordIdent) fromTensorName
-
-  let toTensorName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
-  let toTensorIdent = freeVar $ Identifier (modulePath recordIdent) toTensorName
+  let fromTensor = toDSL $ constructFromTensorFreeVar recordIdent p
+  let toTensor = toDSL $ constructToTensorFreeVar recordIdent p
 
   let typeclass = fromDSL mempty $ freeVar typeclassIdent @@ [recordType, recordType, recordType]
   let instanceName = Text.pack "_" <> nameOf recordIdent <> typeclassName
@@ -228,8 +296,8 @@ createTensorLikeArithmeticInstance p recordIdent typeclassIdent typeclassName fi
 
   let field = fromDSL mempty $ explLam "r1" recordType $ \r1 ->
         explLam "r2" recordType $ \r2 -> do
-          let innerAddTC = fieldIdent @@ [toTensorIdent @@ [r1], toTensorIdent @@ [r2]]
-          fromTensorIdent @@ [innerAddTC]
+          let innerAddTC = fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
+          fromTensor @@ [innerAddTC]
 
   let body = Record p typeclass [(FieldName p fieldName, field)]
   DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) typeclass body
@@ -241,16 +309,16 @@ createTensorLikeComparisonInstance ::
 createTensorLikeComparisonInstance p recordIdent = do
   let recordType = freeVar recordIdent
 
-  let toTensorName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
-  let toTensorIdent = freeVar $ Identifier (modulePath recordIdent) toTensorName
+  let toTensor = toDSL $ constructToTensorFreeVar recordIdent p
 
   let typeclass = fromDSL mempty $ freeVar hasComparisonIdent @@ [recordType, recordType]
   let instanceName = Text.pack "_" <> nameOf recordIdent <> "HasComparison"
+
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
   let fieldText = ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"]
   let fieldIdents = map (freeVar . standardLibIdent) fieldText
-  let fieldValues = map (createComparisonField (freeVar recordIdent) toTensorIdent) fieldIdents
+  let fieldValues = map (createComparisonField (freeVar recordIdent) toTensor) fieldIdents
   let fieldNames = map (FieldName p) fieldText
   let fields = zip fieldNames fieldValues
 
@@ -265,3 +333,35 @@ createComparisonField ::
 createComparisonField recordType toTensor fieldIdent = do
   fromDSL mempty $ explLam "r1" recordType $ \r1 ->
     explLam "r2" recordType $ \r2 -> fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
+
+-- -----------------------------------------------------------------------------------------------
+-- Record/Tensorisable util functions
+-- Not sure if these should go here or if they are at the right level of abstraction
+
+constructTensorisableDims ::
+  GenericRecordFields (Value Builtin) ->
+  TensorShape
+constructTensorisableDims [] = []
+constructTensorisableDims fields@((_n, typ) : _fs) =
+  case toTypeValue typ of
+    (VRatTensorType dims) ->
+      case getDims dims of
+        Just d -> length fields : d
+        Nothing -> [length fields]
+    _ -> [length fields]
+
+constructFromTensorFreeVar ::
+  Identifier ->
+  Provenance ->
+  Expr Builtin
+constructFromTensorFreeVar ident p = do
+  let name = Text.pack "_" <> identifierName ident <> "FromTensor"
+  FreeVar p (Identifier (modulePath ident) name)
+
+constructToTensorFreeVar ::
+  Identifier ->
+  Provenance ->
+  Expr Builtin
+constructToTensorFreeVar ident p = do
+  let name = Text.pack "_" <> identifierName ident <> "ToTensor"
+  FreeVar p (Identifier (modulePath ident) name)

@@ -33,7 +33,8 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
+import Vehicle.Data.Real
 import Vehicle.Data.Tensor
   ( Tensor (..),
     TensorShape,
@@ -741,7 +742,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     NatLiteral n -> return $ compileNatLiteral n
     NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
     BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
-    RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
+    RatTensorLiteral t -> return $ compileTensorLiteral compileRealLiteral t
     VectorLiteral -> compileVecLiteral localeAssms args
   StandardBuiltinFunction f -> case f of
     And -> annotateNotation localeAssms [] 40 "($0 \\<and> $1)" (Just "andb") args
@@ -774,15 +775,17 @@ compileBuiltin isOutType localeAssms b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier localeAssms q [binder] body
       _ -> unsupportedArgsError
-    QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
+    QuantifyRecord _ -> unsupportedTensorLikeQuantifier
     AtTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorSubtensor, RequireImport VehicleUtils] 201 "(flex_subtensor $0 $1)" (Just "nindex") args
     If -> annotateNotation localeAssms [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
-    Iterate -> unsupportedError
-    PowRat -> unsupportedError
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
+    Iterate -> unsupportedError
+    Pow {} -> unsupportedError
+    Log {} -> unsupportedError
+    Exp {} -> unsupportedError
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return "bool"
     PropTrue -> return "True"
@@ -916,12 +919,14 @@ compileBoolLiteral = \case
   True -> "True"
   False -> "False"
 
-compileRatLiteral :: Rational -> Code
-compileRatLiteral r = parens $ annotate ([], minPrecedence) rat
-  where
-    num = pretty $ numerator r
-    denom = pretty $ denominator r
-    rat = parens $ (parens (num <+> ":: R") <+> if denominator r == 1 then mempty else "/" <+> denom)
+compileRealLiteral :: ExtendedRational -> Code
+compileRealLiteral = \case
+  Finite r -> do
+    let num = pretty $ numerator r
+    let denom = pretty $ denominator r
+    let rat = parens $ (parens (num <+> ":: R") <+> if denominator r == 1 then mempty else "/" <+> denom)
+    parens $ annotate ([], minPrecedence) rat
+  _ -> developerError "Compiling infinite values to Isabelle not supported"
 
 compileLam :: (MonadIsabelleCompile m) => [LocaleDef] -> Binder DecidabilityBuiltin -> Expr DecidabilityBuiltin -> m Code
 compileLam localeAssms binder expr = do
@@ -974,7 +979,7 @@ compileStack localeAssms args = do
 
 compileVecLiteral :: (MonadIsabelleCompile m) => [LocaleDef] -> [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral localeAssms xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse (compileExpr False localeAssms) ds
+  Just (VectorLitArgs _t _d ds) -> toVec <$> traverse (compileExpr False localeAssms) ds
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: [Code] -> Code

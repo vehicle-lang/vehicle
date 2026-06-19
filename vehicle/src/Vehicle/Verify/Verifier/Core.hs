@@ -73,7 +73,7 @@ data VerificationErrorAction = VerificationErrorAction
   }
 
 convertVerificationError :: Verifier -> QueryAddress -> VerifierError -> VerificationErrorAction
-convertVerificationError Verifier {..} (propertyAddress, queryID) = \case
+convertVerificationError Verifier {..} (QueryAddress propertyAddress queryID) = \case
   VerifierError errorMessage ->
     VerificationErrorAction
       { reproducerIsUseful = True,

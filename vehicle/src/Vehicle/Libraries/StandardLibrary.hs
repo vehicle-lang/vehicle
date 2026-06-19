@@ -9,14 +9,17 @@ module Vehicle.Libraries.StandardLibrary
     standardLibraryInstanceOps,
     isBuiltinModule,
     standardLibIdent,
+    isStandardLibIdent,
     validNetworkTypeIdent,
     validNetworkIOTypeIdent,
+    validNetworkFieldTypeIdent,
     hasQuantifierIdent,
     hasAddIdent,
     hasSubIdent,
     hasMulIdent,
     hasDivIdent,
     hasComparisonIdent,
+    standardLibraryCompareRatTensorReduced,
     validDatasetTypeIdent,
     validDatasetListElementTypeIdent
   )
@@ -29,12 +32,17 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text.Encoding (decodeUtf8)
 import Vehicle.Backend.Prelude
+import Vehicle.Data.Builtin.Core (ComparisonOp)
+import Vehicle.Data.Builtin.Core.BasicOperations (ComparisonOp (..))
 import Vehicle.Libraries
 import Vehicle.Libraries.Core (LibraryContent)
 import Vehicle.Prelude
 
 standardLibIdent :: Name -> Identifier
 standardLibIdent = Identifier standardLibraryDefinitionsModulePath
+
+isStandardLibIdent :: Identifier -> Bool
+isStandardLibIdent ident = modulePath ident == standardLibraryDefinitionsModulePath
 
 standardLibraryDefinitionsModulePath :: ModulePath
 standardLibraryDefinitionsModulePath = ModulePath ["Definitions"]
@@ -69,6 +77,9 @@ validNetworkTypeIdent = standardLibIdent "HasValidNetworkType"
 validNetworkIOTypeIdent :: Identifier
 validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
 
+validNetworkFieldTypeIdent :: Identifier
+validNetworkFieldTypeIdent = standardLibIdent "HasValidNetworkFieldType"
+
 validDatasetTypeIdent :: Identifier
 validDatasetTypeIdent = standardLibIdent "HasValidDatasetType"
 
@@ -100,6 +111,18 @@ isBuiltinModule = \case
 
 standardLibraryName :: LibraryName
 standardLibraryName = "std"
+
+standardLibraryCompareRatTensorReduced :: ComparisonOp -> Identifier
+standardLibraryCompareRatTensorReduced op = do
+  let prefix = case op of
+        Le -> "le"
+        Lt -> "lt"
+        Ge -> "ge"
+        Gt -> "gt"
+        Eq -> "eq"
+        Ne -> "ne"
+
+  standardLibIdent $ prefix <> "RatTensorReduced"
 
 standardLibraryContent :: LibraryContent
 standardLibraryContent =

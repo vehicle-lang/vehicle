@@ -2,10 +2,114 @@
 
 ## Next release
 
+### Language
+
+* BREAKING: with the introduction of `infinity` to the language in `v0.25` all reduction operations have
+  sensible zero-dimensional values. Therefore the following operations no longer take the identity element
+  as an argument, i.e.:
+  ```
+  reduceAdd e xs -> reduceAdd xs   (if 0D returns 0)
+  reduceMul e xs -> reduceMul xs   (if 0D returns 1)
+  reduceMin e xs -> reduceMin xs   (if 0D returns infinity)
+  reduceMax e xs -> reduceMax xs   (if 0D returns -infinity)
+  reduceAnd e xs -> reduceAnd xs   (if 0D returns True)
+  reduceOr  e xs -> reduceOr  xs   (if 0D returns False)
+  ```
+
+* Added new @tensor annotations that can be attached to record definitions. These allow tensors to be
+  written as named records thereby avoiding the need to declare and use indices to reference rows of the
+  tensor. See documentation for further details and see `examples/windController-newStyle` for a worked example.
+
+* Added the operators:
+  ```
+  ^ : Tensor Real ds -> Real -> Tensor Real ds
+  log : Tensor Real ds -> Tensor Real ds
+  exp : Tensor Real ds -> Tensor Real ds
+  ```
+  Note that these operators are currently only supported by the loss backend.
+
+### Loss
+
+* Fixed a bug where specs with multiple quantified values would sometimes have the variables switched around in the generated code.
+
+* Fixed a bug where negations were occasionally being translated with the wrong dimensions.
+
+* Added better support for `Vector` operations, e.g. the `mnist-robustness` specification.
+
+### Verification
+
+* Verification cache now uses absolute paths. This means that the verification cache can no longer be moved, however it does mean that
+the ITP backend code can be invoked from any location.
+
+### Agda backend
+
+* Upgraded to v2.3 of the Agda Standard Library.
+
+* Fixed a few minor bugs in the translation of Agda.
+
+## v0.25.1
+
+### Rocq backend
+
+* Pinned to latest version of MathComp.
+
+## v0.25
+
+### Language
+
+* Improved language documentation to show per-backend support.
+
+* Added undocumented operations to language documentation.
+
+* Added support for `infinity : Real` to language. Note only works for
+  loss function backend currently as it is primarily designed to be used in differentiable logics.
+
+### Rocq backend
+
+* Reworked the tensor representation to use the new `tensor` module from
+  mathcomp 2.6.0; generated specifications now use the `'nT[R]_[n1, .., nk]`
+  / `'sT[R]` shorthand notations.
+
+* Generated `@property` declarations now integrate with the verification
+  cache: when `--cache` is supplied, properties are emitted as
+  `Lemma p : <type>. Proof. vehicle_validate "...". Qed.` instead of
+  bare `Axiom`s. The new `vehicle_validate` tactic (provided by
+  `vehicle-rocq`) invokes `vehicle validate --cache=...` at proof-checking
+  time and closes the goal only if validation succeeds. Mirrors the
+  Agda `checkSpecification` macro.
+
+* Cache paths supplied via `--cache` are canonicalised to absolute paths
+  before being embedded in the generated `.v` so `rocq compile` works
+  from any working directory.
+
+* `vehicle-rocq` switched to a Dune-based build; the OCaml plugin lives
+  in `vehicle-rocq/plugin/`.
+
 ### Loss backend
 
+* Added the ability to declare custom Differentiable Logics internally in Vehicle (see documentation for details).
+
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
+
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
+
+* Fixed the differentiable logic `DL2Loss` to use `infinity` instead of `100000` for the translation of `false`.
+
+### Python bindings
+
+There has been a major refactoring of the Python bindings to improve usability. The following are all breaking changes.
+
+* All methods that call the Vehicle compiler now throw either a structured `VehicleUserError` or an unstructured `VehicleInternalError`.
+
+* Removed the unused `VehiclePropertyNotFound`, `VehicleBuiltinUnsupported`, and `VehiclePropertyNotCallable` error types.
+
+* The method `verify` from `vehicle_lang` now i) takes an extra argument `verifier_args`, ii) the `verifier` argument has changed from the `Verifier` class to a simple string, iii) the return type has been changed from a string to a list of structured `ProgressEvent` objects.
+
+* The method `list` from `vehicle_lang` has been renamed to `list_entities` and now returns structured Python objects instead of a JSON string.
+
+* The method `typecheck` from `vehicle_lang` now does not accept a `TypeSystem` parameter and now returns an `Optional[VehicleUserError]` instead of a JSON string.
+
+* A new method `vehicle_lang.typecheck_with_typesystem` has been added which accepts a secondary type system parameter `SecondaryTypeSystem` that supports the functionality removed from the `typecheck`.
 
 ## v0.24.1
 

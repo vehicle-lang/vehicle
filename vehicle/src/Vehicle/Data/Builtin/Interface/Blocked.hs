@@ -51,7 +51,7 @@ functionBlockingStatus ::
   BlockingStatus builtin
 functionBlockingStatus b spine = case b of
   QuantifyRatTensor {} -> DoesNotReduce
-  QuantifyTensorLike {} -> DoesNotReduce
+  QuantifyRecord {} -> DoesNotReduce
   Implies -> AlwaysReduces
   Not -> fixedStatus [1] spine
   And -> fixedStatus [1, 2] spine
@@ -65,7 +65,9 @@ functionBlockingStatus b spine = case b of
   Div DivRatTensor -> fixedStatus [1, 2] spine
   Min MinRatTensor -> fixedStatus [1, 2] spine
   Max MaxRatTensor -> fixedStatus [1, 2] spine
-  PowRat -> fixedStatus [0, 1] spine
+  Pow PowRatTensor -> fixedStatus [1, 2] spine
+  Log LogRatTensor -> DoesNotReduce
+  Exp ExpRatTensor -> DoesNotReduce
   CompareIndex _op -> fixedStatus [2, 3] spine
   CompareNat _op -> fixedStatus [0, 1] spine
   CompareRatTensorPointwise _op -> fixedStatus [1, 2] spine

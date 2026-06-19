@@ -1,17 +1,22 @@
 From mathcomp Require Import ssreflect all_boot all_algebra order reals lra.
-From vehicle Require Import tensor.
+From mathcomp Require Import interval_inference tensor.
+From vehicle Require Import utils.
 Import Num.Theory GRing.Theory Order.POrderTheory.
 
-Open Scope ring_scope.
+Local Open Scope ring_scope.
+Local Open Scope tensor_scope.
 
-Require Import WindControllerSpec.
+From windController Require Import WindControllerSpec.
+
+Import WindControllerSpec.
 
 Notation R := WindControllerSpec.R.
 
 (* ----------------------------------------------*)
 (* Setup *)
 
-Definition toTensor (x : R) (y : R) := ntensor_of_tuple [tuple x ; y].
+Definition toTensor (x : R) (y : R) : 'nT[R]_[2] :=
+  ntensor_of_tuple ([tuple x ; y] : (2%:posnat)%:num%R.-tuple R).
 
 Definition roadWidth : R := 3.
 Definition maxWindShift : R := 1.
@@ -101,28 +106,34 @@ apply/and3P; split.
 - by rewrite /sensorReadingNotOffRoad normr0 /roadWidth /maxSensorError; lra.
 Qed.
 
+Lemma five_fourths :
+  (roadWidth - maxWindShift - 3 * maxSensorError = 5/4)%R.
+Proof. by rewrite /roadWidth /maxWindShift /maxSensorError; lra. Qed.
+
+Lemma thirteen_fourths : ((13/4)%R = roadWidth + maxSensorError).
+Proof. by rewrite /roadWidth /maxSensorError; lra. Qed.
+
 Lemma controller_lem : forall x y,
   `|x| <= roadWidth + maxSensorError ->
   `|y| <= roadWidth + maxSensorError ->
   `|controller x y + 2 * x - y| < roadWidth - maxWindShift - 3 * maxSensorError.
 Proof.
 move=> x y Hx Hy.
-rewrite /controller.
-rewrite (_ : roadWidth - maxWindShift - 3 * maxSensorError = (5/4))%R;
-  last by rewrite /roadWidth /maxWindShift /maxSensorError; lra.
+rewrite /controller five_fourths.
 rewrite real_lter_norml//=.
-rewrite {2 4}(_ : x = (toTensor x y)^^=currentSensor);
-  last by rewrite ntensor_of_tupleE.
-rewrite {3 6}(_ : y = (toTensor x y)^^=previousSensor);
-  last by rewrite ntensor_of_tupleE.
+have toTensor_cs : (toTensor x y)^^=currentSensor = x.
+  by rewrite /toTensor ntensor_of_tupleE (tnth_nth x).
+have toTensor_ps : (toTensor x y)^^=previousSensor = y.
+  by rewrite /toTensor ntensor_of_tupleE (tnth_nth y).
+rewrite -{2 4}toTensor_cs.
+rewrite -{3 6}toTensor_ps.
 rewrite -(const_tK (5 / 4)) -(const_tK (_ + _)) -tensor_nilN.
 apply/andP.
 rewrite !tensor_nil_ltP !const_tD !const_tN [_ (2 * _)]const_tM !tensor_nilK.
 apply WindControllerSpec.safe.
-rewrite /safeInput (_ : 13/4 = roadWidth + maxSensorError);
-  last by rewrite /roadWidth /maxSensorError; lra.
+rewrite /safeInput thirteen_fourths.
 move=> i; rewrite -!tensor_nil_leP tensor_nilN const_tK; apply/andP.
-rewrite -real_lter_norml; last by apply num_real.
+rewrite -real_lter_norml //=.
 by move: i=> [[|[|//]] ?]; rewrite /toTensor ntensor_of_tupleE.
 Qed.
 
@@ -178,7 +189,7 @@ rewrite (_ :
     + controller x (sensor s) + windSpeed s + windShift o
   = (controller x (sensor s) + 2 * x - sensor s)
     + (sensor s - position s - sensorError o - sensorError o));
-  last by lra.
+  first by lra.
 apply: le_lt_trans; first by apply ler_normD.
 apply: (@le_lt_trans _ _ (
   `|controller x (sensor s) + 2 * x - sensor s|
@@ -192,7 +203,7 @@ apply: (@le_lt_trans _ _ (
   by rewrite -normrN opprD opprK addrC.
 rewrite -ltrBrDr
   (_ : maxSensorError + maxSensorError + maxSensorError = 3 * maxSensorError);
-    last by lra.
+    first by lra.
 apply controller_lem=>//.
 by rewrite Heqx /next_onRoad.
 Qed.

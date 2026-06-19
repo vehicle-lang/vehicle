@@ -4,6 +4,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DSL
+import Vehicle.Data.Real
 import Vehicle.Data.Tensor as T (Tensor, shapeOf, pattern ZeroDimTensor)
 import Vehicle.Prelude
 import Prelude hiding (pi)
@@ -79,7 +80,7 @@ natLit n = builtinConstructor (NatLiteral n)
 boolLit :: (BuiltinHasStandardData builtin) => Bool -> DSLExpr builtin
 boolLit b = builtinConstructor (BoolTensorLiteral (ZeroDimTensor b))
 
-ratLit :: (BuiltinHasStandardData builtin) => Rational -> DSLExpr builtin
+ratLit :: (BuiltinHasStandardData builtin) => ExtendedRational -> DSLExpr builtin
 ratLit r = builtinConstructor (RatTensorLiteral (ZeroDimTensor r))
 
 unitLit :: (BuiltinHasStandardData builtin) => DSLExpr builtin

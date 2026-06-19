@@ -284,28 +284,35 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "p",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "f",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -592,28 +599,35 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 2,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "p",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                2
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "f",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -900,28 +914,35 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 3,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "p",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                3
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "f",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -1208,28 +1229,35 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 4,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "p",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                4
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "f",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          2
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"

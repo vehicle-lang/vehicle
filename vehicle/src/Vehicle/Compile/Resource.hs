@@ -4,7 +4,8 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import GHC.Generics
-import Vehicle.Data.Builtin.Core (BuiltinType (..))
+import Prettyprinter
+import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Prelude
 
@@ -14,8 +15,8 @@ import Vehicle.Prelude
 type NetworkName = Name
 
 data NetworkType = NetworkType
-  { inputTensor :: NetworkTensorType,
-    outputTensor :: NetworkTensorType
+  { networkInputType :: NetworkIOType,
+    networkOutputType :: NetworkIOType
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -29,9 +30,6 @@ instance Pretty NetworkType where
   pretty (NetworkType input output) =
     pretty input <+> "->" <+> pretty output
 
-networkSize :: NetworkType -> Int
-networkSize network = tensorSize (inputTensor network) + tensorSize (outputTensor network)
-
 data NetworkTensorType = NetworkTensorType
   { baseType :: NetworkBaseType,
     dimensions :: TensorShape
@@ -44,14 +42,45 @@ instance ToJSON NetworkTensorType
 
 instance FromJSON NetworkTensorType
 
-tensorSize :: NetworkTensorType -> Int
-tensorSize tensor = product (dimensions tensor)
+data NetworkRecordType = NetworkRecordType
+  { baseRecordType :: NetworkBaseType,
+    recordTypeIdent :: Identifier,
+    recordDims :: TensorShape, -- The dimensions of the tensor equivalent of the record
+    recordFields :: [Name]
+  }
+  deriving (Eq, Ord, Show, Generic)
 
-instance Pretty NetworkTensorType where
-  pretty tensor =
-    "Tensor"
-      <+> pretty (baseType tensor)
-      <+> pretty (dimensions tensor)
+instance NFData NetworkRecordType
+
+instance ToJSON NetworkRecordType
+
+instance FromJSON NetworkRecordType
+
+data NetworkIOType
+  = TensorIOType NetworkTensorType
+  | RecordIOType NetworkRecordType
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData NetworkIOType
+
+instance ToJSON NetworkIOType
+
+instance FromJSON NetworkIOType
+
+instance Pretty NetworkIOType where
+  pretty = \case
+    (TensorIOType (NetworkTensorType t dims)) -> "Tensor" <+> pretty t <+> pretty dims
+    (RecordIOType (NetworkRecordType t ident dims fields)) ->
+      "Record"
+        <+> pretty ident
+        <+> ":"
+        <> line
+        <> prettyMapEntries ((,typ) <$> map pretty fields)
+      where
+        typ = case dims of
+          [] -> pretty t
+          [_x] -> pretty t
+          (_x : xs) -> "Tensor" <+> pretty t <+> pretty xs
 
 data NetworkBaseType
   = NetworkRatType

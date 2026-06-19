@@ -66,57 +66,170 @@ Operations
 The following operations over tensors are currently supported:
 
 .. list-table::
-   :widths: 15 10 30 15 30
+   :widths: 11 22 34 33
    :header-rows: 1
 
    * - Operation
-     - Symbol
+     - Syntax
      - Type
-     - Example
-     - Description
+     - Support
    * - Lookup
-     - ``!``
-     - ``Tensor A [d, ds] -> Index d -> Tensor A ds``
-     - ``t ! i``
-     - Extract the value at a given index of the tensor.
+     - ``e ! i``
+     - | ``Tensor A [d, ds] →``
+       | ``Index d →``
+       | ``Tensor A ds``
+     - |backendall_full|
    * - Foreach
-     - ``!``
-     - ``(Index d -> Tensor A ds) -> Tensor A [d, ds]``
-     - ``foreach i . 0``
-     - Constructs a new tensor by specifying each outermost row in terms of the row's index.
+     - ``foreach i . e``
+     - | ``(Index d → Tensor A ds) →``
+       | ``Tensor A [d, ds]``
+     - | |backendloss_part|
+       | |backendverification_full|
+       | |backendagda_full|
+       | |backendrocq_full|
+       | |backendimandra_full|
+       | |backendisabelle_full|
    * - Comparisons
-     - | ``<=``
-       | ``<``
-       | ``>=``
-       | ``>``
-       | ``==``
-       | ``!=``
-     - ``Tensor A ds -> Tensor A ds -> Bool``
-     - ``t1 <= t2``
-     - Check that all pairs of elements in the tensor satisfy the comparison.
-   * - Pointwise comparisons
-     - | ``.<=``
-       | ``.<``
-       | ``.>=``
-       | ``.>``
-       | ``.==``
-       | ``.!=``
-     - ``Tensor A ds -> Tensor A ds -> Tensor Bool ds``
-     - ``t1 .<= t2``
-     - Compare all the elements of the tensor pointwise.
-   * - Pointwise addition
-     - ``+``
-     - ``Tensor A ds -> Tensor A ds -> Tensor A ds``
+     - | ``x < y``
+       | ``x > y``
+       | ``x <= y``
+       | ``x >= y``
+       | ``x == y``
+       | ``x != y``
+     - | ``Tensor A ds →``
+       | ``Tensor A ds →``
+       | ``Bool``
+       | (if ``A`` supports comparisons)
+     - |backendall_full|
+   * - | Pointwise
+       | comparisons
+     - | ``x .< y``
+       | ``x .> y``
+       | ``x .<= y``
+       | ``x .>= y``
+       | ``x .== y``
+       | ``x .!= y``
+     - | ``Tensor A ds →``
+       | ``Tensor A ds →``
+       | ``Tensor Bool ds``
+       | (if ``A`` supports comparisons)
+     - |backendall_full|
+   * - | Pointwise
+       | and
+     - ``t1 and t2``
+     - | ``Tensor Bool ds →``
+       | ``Tensor Bool ds →``
+       | ``Tensor Bool ds``
+     - |backendall_full|
+   * - | Pointwise
+       | or
+     - ``t1 or t2``
+     - | ``Tensor Bool ds →``
+       | ``Tensor Bool ds →``
+       | ``Tensor Bool ds``
+     - |backendall_full|
+   * - | Reduce
+       | and
+     - ``reduceAnd t``
+     - | ``Tensor Bool ds →``
+       | ``Bool``
+     - |backendall_full|
+   * - | Reduce
+       | or
+     - ``reduceOr t``
+     - | ``Tensor Bool ds →``
+       | ``Bool``
+     - |backendall_full|
+   * - | Pointwise
+       | add
      - ``t1 + t2``
-     - Pointwise add the values in two tensors together. Only valid
-       if addition is defined for the type of elements ``A``.
-   * - Pointwise subtraction
-     - ``-``
-     - ``Tensor A ds -> Tensor A ds -> Tensor A ds``
+     - | ``Tensor A ds →``
+       | ``Tensor A ds →``
+       | ``Tensor A ds``
+       | (if ``A`` supports ``+``)
+     - |backendall_full|
+   * - | Pointwise
+       | subtract
      - ``t1 - t2``
-     - Pointwise subtract the values in the first tensor from the values
-       in the second. Only valid if subtraction is defined for the type of
-       elements ``A``.
+     - | ``Tensor A ds →``
+       | ``Tensor A ds →``
+       | ``Tensor A ds``
+       | (if ``A`` supports ``-``)
+     - |backendall_full|
+   * - | Pointwise
+       | multiply
+     - ``t1 * t2``
+     - | ``Tensor A ds →``
+       | ``Tensor A ds →``
+       | ``Tensor A ds``
+       | (if ``A`` supports ``*``)
+     - |backendall_full|
+   * - | Pointwise
+       | divide
+     - ``t1 / t2``
+     - | ``Tensor A ds →``
+       | ``Tensor A ds →``
+       | ``Tensor A ds``
+       | (if ``A`` supports ``/``)
+     - |backendall_full|
+   * - | Pointwise
+       | power
+     - :code:`t ^ x`
+     - | :code:`Tensor A ds → A → Tensor A ds`
+       | (if ``A`` supports ``^``)
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - | Pointwise
+       | natural log
+     - :code:`log t`
+     - | :code:`Tensor A ds → Tensor A ds`
+       | (if ``A`` supports ``log``)
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - | Pointwise
+       | exponential
+     - :code:`exp t`
+     - | :code:`Tensor A ds → Tensor A ds`
+       | (if ``A`` supports ``exp``)
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - | Reduce
+       | add
+     - ``reduceAdd t``
+     - | ``Tensor A ds → A``
+       | (if ``A`` supports ``+``)
+     - |backendall_full|
+   * - | Reduce
+       | multiply
+     - ``reduceMul t``
+     - | ``Tensor A ds → A``
+       | (if ``A`` supports ``*``)
+     - |backendall_full|
+   * - | Reduce
+       | min
+     - ``reduceMin t``
+     - | ``Tensor A ds → A``
+       | (if ``A`` supports ``min``)
+     - |backendall_full|
+   * - | Reduce
+       | max
+     - ``reduceMax t``
+     - | ``Tensor A ds → A``
+       | (if ``A`` supports ``max``)
+     - |backendall_full|
+
 
 
 Non-constant dimensions
@@ -126,7 +239,6 @@ As with vectors, although the dimensions of a tensor are usually a
 list of constants (e.g. ``[1, 2, 3]``), in practice they can be any
 valid expression of type ``List Nat``.
 For example:
-
   -  ``Tensor Real [2 + d]`` is the type of vectors of length ``2 + d``.
 
   -  ``Tensor Real (10 :: ds)`` is the type of tensors whose first dimension

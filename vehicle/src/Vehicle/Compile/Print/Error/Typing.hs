@@ -37,7 +37,7 @@ typingErrorDetails = \case
   FailedInstanceConstraint err -> failedInstanceConstraintError err
   RelevantUseOfIrrelevantVariable err -> relevantUseOfIrrelevantVariableError err
   FailedIndexConstraintTooBig ctx v n ->
-    VehicleError
+    VehicleUserError
       { provenance = Just $ provenanceOf ctx,
         problem =
           "the value"
@@ -49,7 +49,7 @@ typingErrorDetails = \case
         fix = Nothing
       }
   FailedIndexConstraintUnknown ctx v t ->
-    VehicleError
+    VehicleUserError
       { provenance = Just $ provenanceOf ctx,
         problem =
           "unable to determine if"
@@ -60,7 +60,7 @@ typingErrorDetails = \case
         fix = Nothing
       }
   UnsolvedConstraints cs ->
-    VehicleError
+    VehicleUserError
       { provenance = Just $ provenanceOf ctx,
         problem = constraintOriginMessage,
         fix = Just "try adding more type annotations"
@@ -93,7 +93,7 @@ typingErrorDetails = \case
             <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
         InstanceTypeRestrictionOrigin {} -> developerError "Unexpected type-restriction error"
   UnsolvedMetas _ ms ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem = "Unable to infer type of bound variable",
         fix = Just "add more type annotations"
@@ -101,7 +101,7 @@ typingErrorDetails = \case
     where
       (_, p) = NonEmpty.head ms
   InvalidInstanceHead (ident, p) expr ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Cannot add"
@@ -113,7 +113,7 @@ typingErrorDetails = \case
         fix = Just "add more type annotations"
       }
   NonTypeClassInstanceHead _ (ident, p) typeClassIdent ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Cannot add"
@@ -139,7 +139,7 @@ missingExplicitArgError ::
 missingExplicitArgError (MissingExplicitArgError ctx explicitBinder nonExplicitArg) = do
   let argTypeDoc = prettyFriendly $ WithContext (typeOf explicitBinder) ctx
   let argDoc = prettyFriendly $ WithContext (argExpr nonExplicitArg) ctx
-  VehicleError
+  VehicleUserError
     { provenance = Just $ provenanceOf nonExplicitArg,
       problem =
         "expected an"
@@ -162,7 +162,7 @@ functionTypeMismatchError ::
   FunctionTypeMismatchError builtin ->
   VehicleError
 functionTypeMismatchError (FunctionTypeMismatchError ctx fun nonPiType args) = do
-  VehicleError
+  VehicleUserError
     { provenance = Just $ provenanceOf fun,
       problem =
         "expected"
@@ -190,7 +190,7 @@ relevantUseOfIrrelevantVariableError ::
   RelevantUseOfIrrelevantVariableError builtin ->
   VehicleError
 relevantUseOfIrrelevantVariableError (RelevantUseOfIrrelevantVariableError _ p name) =
-  VehicleError
+  VehicleUserError
     { provenance = Just p,
       problem = "cannot use irrelevant variable" <+> quotePretty name <+> "in an relevant context",
       fix = Nothing
@@ -264,7 +264,7 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
             _ ->
               "check your types"
 
-      VehicleError
+      VehicleUserError
         { provenance = Just $ provenanceOf ctx,
           problem =
             originMessage
@@ -292,7 +292,7 @@ typeRestrictionError ::
   [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
   VehicleError
 typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _candidates = do
-  VehicleError
+  VehicleUserError
     { provenance = Just p,
       problem = problemDescription,
       fix =
@@ -338,7 +338,7 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
       Left (RestrictedParameter Inferable) -> [pretty NatType]
       Left (RestrictedParameter NonInferable) -> map pretty [BoolType, IndexType, NatType, RatType]
       Left RestrictedDataset -> ["List A    " <+> datasetElementTypes, "Vector A n" <+> datasetElementTypes]
-      Left RestrictedNetwork -> ["Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)"]
+      Left RestrictedNetwork -> ["S -> T, where S and T are either of the form Tensor Rat [a_1, ..., a_n] (and a_1 through a_n are compile-time constants), or a record whose fields are such tensors."]
       Right _ -> ["The element of a tensor (e.g. Real), or", "A tensor (e.g. Tensor Real [...])"]
 
     datasetElementTypes = "(where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)"
@@ -355,7 +355,7 @@ instanceArgOriginError ::
   [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
   VehicleError
 instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candidates =
-  VehicleError
+  VehicleUserError
     { provenance = Just $ provenanceOf ctx,
       problem =
         "unable to work out a valid type for the overloaded expression"

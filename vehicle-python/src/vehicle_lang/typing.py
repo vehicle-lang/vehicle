@@ -106,25 +106,6 @@ class ITP(Enum):
         return {ITP.Agda: "Agda", ITP.Rocq: "Rocq"}[self]
 
 
-class Verifier(Enum):
-    """
-    The neural network verifiers supported by Vehicle.
-    """
-
-    Marabou = 1
-    """
-    The `Marabou verifier`_.
-
-    .. _Marabou verifier: https://github.com/NeuralNetworkVerification/Marabou#readme
-    """
-
-    @property
-    def _vehicle_option_name(self) -> str:
-        return {
-            Verifier.Marabou: "Marabou",
-        }[self]
-
-
 class ExportTarget(Enum):
     """
     The target to export to. Only Agda is currently supported.

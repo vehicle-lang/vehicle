@@ -7,6 +7,7 @@ import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (coerce)
 import Data.Foldable (foldlM)
+import Data.List (delete)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -20,7 +21,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion (InequalityRelation (..))
 import Vehicle.Data.Bound
 import Vehicle.Data.Code.LinearExpr (LinearExpr, evaluateExpr)
-import Vehicle.Data.Tensor (RatTensor, at, mapTensor, shapeOf, stack, zipWithTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (RatTensor, at, mapTensor, shapeOf, stack, unstack, zipWithTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Verify.Core
@@ -37,16 +38,41 @@ reconstructUserVars ::
   VariableCompilationTrace ->
   QueryVariableAssignment ->
   m UserVariableAssignment
-reconstructUserVars variables (Reconstruction steps) networkVariableAssignment =
-  logCompilerPass WitnessReconstruction $ do
-    let queryVariableMap = getQueryVariableMap variables
-    let vehicleVariableCtx = getVehicleVariableCtx variables
-    let userVariables = getUserVariables variables
-    let assignment = createInitialAssignment queryVariableMap networkVariableAssignment
-    alteredAssignment <- foldlM (applyReconstructionStep vehicleVariableCtx) assignment steps
-    finalAssignment <- createFinalAssignment vehicleVariableCtx userVariables alteredAssignment
-    logDebug MidDetail $ "User variables:" <> lineIndent (pretty finalAssignment)
-    return finalAssignment
+reconstructUserVars variables (Reconstruction steps) networkVariableAssignment = do
+  let queryVariableMap = getQueryVariableMap variables
+  let vehicleVariableCtx = getVehicleVariableCtx variables
+  let userVariables = getUserVariables variables
+  let assignment = createInitialAssignment queryVariableMap networkVariableAssignment
+  alteredAssignment <- foldlM (applyReconstructionStep vehicleVariableCtx) assignment steps
+  finalAssignment <- createFinalAssignment vehicleVariableCtx userVariables alteredAssignment
+  recordSubstAssignment <- reconstructRecords finalAssignment steps
+  logDebug MidDetail $ "User variables:" <> lineIndent (pretty recordSubstAssignment)
+  return recordSubstAssignment
+
+reconstructRecords ::
+  (MonadLogger m) =>
+  UserVariableAssignment ->
+  [CompilationStep] ->
+  m UserVariableAssignment
+reconstructRecords existingAssignment steps = do
+  foldlM checkStep existingAssignment steps
+  where
+    checkStep (UserVariableAssignment assignments) step = do
+      case step of
+        ConvertQuantifiedTensorLike tensorName recordName fieldNames -> do
+          tensorValues <- case Map.lookup tensorName (Map.fromList assignments) of
+            Just (TensorValue v) -> pure v
+            _ -> developerError "No assignment found"
+          tensorIndices <- case NonEmpty.nonEmpty (unstack tensorValues) of
+            Just xs -> pure xs
+            _ -> developerError "Values must be present for tensor assignment"
+
+          let fields = NonEmpty.zip fieldNames tensorIndices
+          let assignment = (recordName, RecordValue fields)
+          let newMap = delete (tensorName, TensorValue tensorValues) assignments ++ [assignment]
+
+          return $ UserVariableAssignment newMap
+        _ -> return $ UserVariableAssignment assignments
 
 --------------------------------------------------------------------------------
 -- Mixed variable assignments
@@ -82,6 +108,13 @@ applyReconstructionStep ctx assignment step = do
         SolveEquality nestedVar eq -> reconstructTensorViaEquality nestedVar eq
         SolveInequalities var solution -> reconstructRationalViaFourierMotzkin var solution
         ReconstructTensorVariable var depth -> reconstructTensorFromConstituents ctx var depth
+        -- do nothing if we have convertTensorLike
+        -- TODO: this is not nice at all, maybe we need to store the compilationStep
+        -- differently or convert a different way?
+        ConvertQuantifiedTensorLike {} -> \varAssignment ->
+          case NonEmpty.nonEmpty (Map.toList varAssignment) of
+            Just a -> pure a
+            Nothing -> developerError "Variable assignment list should not be empty"
   newValues <- handleMissingError ctx (errorOrValueFn assignment)
 
   logDebugM MidDetail $ do
@@ -198,7 +231,9 @@ reconstructFourierMotzkinVariableValue solution assignment = do
           -- Only 99% sure about this. Can't find a good reference to the reconstruction phase of the
           -- algorithm. Closest to referencing this impossibility is:
           -- https://people.math.carleton.ca/~kcheung/math/notes/MATH5801/02/2_1_fourier_motzkin.html
-          developerError "Fourier-Motzkin reconstruction failed. This isn't supposed to be possible..."
+          developerError $
+            "Fourier-Motzkin reconstruction failed with range" <+> pretty value1 <+> pretty rel1 <+> "<var>" <+> pretty rel2 <+> pretty value2
+              <> ". This isn't supposed to be possible..."
 
 createFinalAssignment ::
   (MonadLogger m) =>
@@ -208,7 +243,7 @@ createFinalAssignment ::
   m UserVariableAssignment
 createFinalAssignment vehicleVariables userVariables assignment = do
   let userVariableValues = mapMaybe isUserVar $ Map.toList assignment
-  return $ UserVariableAssignment userVariableValues
+  return $ UserVariableAssignment (map (second TensorValue) userVariableValues)
   where
     isUserVar :: (SliceVariable, RatTensor) -> Maybe (Name, RatTensor)
     isUserVar (var, value) =
