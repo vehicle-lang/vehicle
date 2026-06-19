@@ -1,0 +1,5 @@
+{
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s dice-tensor.vcl",
+    "needs": ["dice-tensor.vcl"]
+}
