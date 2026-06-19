@@ -1,5 +1,19 @@
-{
-    "name": "TypeCheck",
-    "run": "vehicle typecheck -s windController-record.vcl",
-    "needs": ["windController-record.vcl"]
-}
+[
+    {
+        "name": "TypeCheck",
+        "run": "vehicle typecheck -s windController-record.vcl",
+        "needs": [
+            "windController-record.vcl"
+        ]
+    },
+    {
+        "name": "Agda",
+        "run": "vehicle compile itp -s windController-record.vcl -t Agda -o Agda.agda",
+        "needs": [
+            "windController-record.vcl"
+        ],
+        "produces": [
+            "Agda.agda"
+        ]
+    }
+]

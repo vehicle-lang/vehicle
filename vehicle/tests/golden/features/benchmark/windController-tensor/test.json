@@ -1,5 +1,19 @@
-{
-    "name": "TypeCheck",
-    "run": "vehicle typecheck -s windController-tensor.vcl",
-    "needs": ["windController-tensor.vcl"]
-}
+[
+    {
+        "name": "TypeCheck",
+        "run": "vehicle typecheck -s windController-tensor.vcl",
+        "needs": [
+            "windController-tensor.vcl"
+        ]
+    },
+    {
+        "name": "Agda",
+        "run": "vehicle compile itp -s windController-tensor.vcl -t Agda -o Agda.agda",
+        "needs": [
+            "windController-tensor.vcl"
+        ],
+        "produces": [
+            "Agda.agda"
+        ]
+    }
+]

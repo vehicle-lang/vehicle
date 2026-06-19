@@ -2,6 +2,18 @@
   {
     "name": "TypeCheck",
     "run": "vehicle typecheck -s acasXu-record.vcl",
-    "needs": ["acasXu-record.vcl"]
+    "needs": [
+      "acasXu-record.vcl"
+    ]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile itp -s acasXu-record.vcl -t Agda -o Agda.agda",
+    "needs": [
+      "acasXu-record.vcl"
+    ],
+    "produces": [
+      "Agda.agda"
+    ]
   }
 ]

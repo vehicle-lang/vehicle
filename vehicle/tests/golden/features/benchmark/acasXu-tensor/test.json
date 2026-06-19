@@ -2,6 +2,18 @@
   {
     "name": "TypeCheck",
     "run": "vehicle typecheck -s acasXu-tensor.vcl",
-    "needs": ["acasXu-tensor.vcl"]
+    "needs": [
+      "acasXu-tensor.vcl"
+    ]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile itp -s acasXu-tensor.vcl -t Agda -o Agda.agda",
+    "needs": [
+      "acasXu-tensor.vcl"
+    ],
+    "produces": [
+      "Agda.agda"
+    ]
   }
 ]

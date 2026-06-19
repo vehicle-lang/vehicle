@@ -1,5 +1,19 @@
-{
-    "name": "TypeCheck",
-    "run": "vehicle typecheck -s dice-record.vcl",
-    "needs": ["dice-record.vcl"]
-}
+[
+    {
+        "name": "TypeCheck",
+        "run": "vehicle typecheck -s dice-record.vcl",
+        "needs": [
+            "dice-record.vcl"
+        ]
+    },
+    {
+        "name": "Agda",
+        "run": "vehicle compile itp -s dice-record.vcl -t Agda -o Agda.agda",
+        "needs": [
+            "dice-record.vcl"
+        ],
+        "produces": [
+            "Agda.agda"
+        ]
+    }
+]
