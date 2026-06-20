@@ -9,12 +9,15 @@ from .list import list_entities
 from .session.error import VehicleSessionClosed, VehicleSessionUsed
 from .typecheck import SecondaryTypeSystem, typecheck, typecheck_with_typesystem
 from .typing import (
+    CustomDifferentiableLogic,
     DeclarationName,
     DifferentiableLogic,
+    DL2DifferentiableLogic,
     ExportTarget,
     LossBackend,
     QuantifiedVariableName,
     QueryFormat,
+    VehicleDifferentiableLogic,
 )
 from .validate import validate
 from .verify import (
@@ -79,6 +82,9 @@ __all__: List[str] = [
     "DeclarationName",
     "QuantifiedVariableName",
     "DifferentiableLogic",
+    "VehicleDifferentiableLogic",
+    "DL2DifferentiableLogic",
+    "CustomDifferentiableLogic",
     "LossBackend",
     "QueryFormat",
     "ExportTarget",

@@ -50,6 +50,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         samplers: Mapping[str, ABCSampler[Index, Tensor]],
     ) -> dict[str, Any]:
         py_ast = self.translate_program(program)
+        print(py.unparse(py_ast))
         try:
             declaration_context["__vehicle__"] = self.builtins
             declaration_context["__vehicle_user_samplers__"] = samplers
@@ -342,9 +343,21 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
-        # Apply as: reduction_op(samples)
-        return py_app(
+        # Apply as: reduction_op(len(samples))(samples).
+        # We cannot know the number of samples at compile time, so we pass both the samples and their length to the reduction_op.
+        # The number of samples is important as it may use them to construct constant tensors of the relevant dimension.
+        sized_reduction_op = py_app(
             self.translate_expression(expression.reduction_op),
+            py_app(
+                py_name("len", provenance=vcl.MISSING),
+                sampler_call,
+                provenance=vcl.MISSING,
+            ),
+            provenance=vcl.MISSING,
+        )
+
+        return py_app(
+            sized_reduction_op,
             sampler_call,
             provenance=vcl.MISSING,
         )
@@ -374,14 +387,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ConstTensor to builtin call."""
         return py_app(
             py_builtin("ConstTensor", provenance=vcl.MISSING),
-            py_scalar(expression.c, provenance=vcl.MISSING),
-            py_tuple(
-                [
-                    py.Constant(value=dim, **asdict(vcl.MISSING))
-                    for dim in expression.ds
-                ],
-                provenance=vcl.MISSING,
-            ),
+            self.translate_expression(expression.c),
+            self.translate_expression(expression.ds),
             provenance=vcl.MISSING,
         )
 

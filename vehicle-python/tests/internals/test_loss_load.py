@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+
 import vehicle_lang.loss as loss
 import vehicle_lang.typing as vcl_typing
 
@@ -22,4 +23,4 @@ def test_lossdl2_load(specification_path: Path) -> None:
         pytest.skip("Bounds-only quantifiers not yet supported in DL2 load")
     if specification_path == PYTHON_TEST_SPECS_PATH / "test_quantifier_any.vcl":
         pytest.skip("Bounds-only quantifiers not yet supported in DL2 load")
-    loss.load_ast(specification_path, target=vcl_typing.DifferentiableLogic.DL2)
+    loss.load_ast(specification_path, target=vcl_typing.DL2DifferentiableLogic())

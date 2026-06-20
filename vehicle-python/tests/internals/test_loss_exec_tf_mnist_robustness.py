@@ -4,6 +4,8 @@
 
 import pytest
 
+from vehicle_lang.typing import DL2DifferentiableLogic
+
 tf = pytest.importorskip(
     "tensorflow",
     reason="TensorFlow extra is required for this test",
@@ -15,9 +17,9 @@ tf = pytest.importorskip(
 
 from typing import Any, cast
 
-import vehicle_lang.loss.tensorflow as vcl_tf
 from typing_extensions import TypeAlias
-from vehicle_lang import DifferentiableLogic
+
+import vehicle_lang.loss.tensorflow as vcl_tf
 from vehicle_lang.loss._tensorflow.samplers import ConstantTensorFlowSampler
 
 from ..config import HASKELL_GOLDEN_TESTS_PATH
@@ -56,7 +58,7 @@ def test_lossdl2_exec_tf_mnist_robustness() -> None:
 
     robust_loss = vcl_tf.load_specification(
         path=MNIST_ROBUSTNESS,
-        logic=DifferentiableLogic.DL2,
+        logic=DL2DifferentiableLogic(),
         samplers={"perturbation": ConstantTensorFlowSampler(tf.zeros((28, 28)))},
     )["robust"]
 

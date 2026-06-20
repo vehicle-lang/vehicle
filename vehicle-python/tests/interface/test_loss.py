@@ -146,7 +146,7 @@ def test_loss_function_exec(
     specification_path = PYTHON_TEST_SPECS_PATH / specification_filename
     actual_declarations = loss_tf.load_specification(
         specification_path,
-        logic=vcl.DifferentiableLogic.DL2,
+        logic=vcl.DL2DifferentiableLogic(),
         samplers=samplers,
     )
     if isinstance(validate_output, dict):

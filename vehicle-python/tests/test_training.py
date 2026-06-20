@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
+
 import vehicle_lang as vcl
 
 
@@ -37,7 +38,7 @@ def test_constraint_only_training_tensorflow() -> None:
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
     declarations = loss_tf.load_specification(
         spec_path,
-        logic=vcl.DifferentiableLogic.Vehicle,
+        logic=vcl.VehicleDifferentiableLogic(),
     )
 
     constraint_loss_fn = declarations["output_bounded"]
@@ -114,7 +115,7 @@ def test_constraint_only_training_pytorch() -> None:
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
     declarations = loss_pt.load_specification(
         spec_path,
-        logic=vcl.DifferentiableLogic.Vehicle,
+        logic=vcl.VehicleDifferentiableLogic(),
     )
 
     constraint_loss_fn = declarations["output_bounded"]
@@ -184,7 +185,7 @@ def test_tensorflow_combined_loss() -> None:
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
     declarations = loss_tf.load_specification(
         spec_path,
-        logic=vcl.DifferentiableLogic.Vehicle,
+        logic=vcl.VehicleDifferentiableLogic(),
     )
 
     constraint_loss_fn = declarations["output_bounded"]
@@ -270,7 +271,7 @@ def test_pytorch_combined_loss() -> None:
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
     declarations = loss_pt.load_specification(
         spec_path,
-        logic=vcl.DifferentiableLogic.Vehicle,
+        logic=vcl.VehicleDifferentiableLogic(),
     )
 
     constraint_loss_fn = declarations["output_bounded"]
@@ -354,7 +355,7 @@ def test_pytorch_multi_step_training() -> None:
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
     declarations = loss_pt.load_specification(
         spec_path,
-        logic=vcl.DifferentiableLogic.Vehicle,
+        logic=vcl.VehicleDifferentiableLogic(),
     )
 
     constraint_loss_fn = declarations["output_bounded"]

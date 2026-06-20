@@ -15,7 +15,7 @@ Feed a ``.vcl`` file to the backend-specific ``load_specification`` helper. Each
 
    declarations = loss_pt.load_specification(
        "spec.vcl",
-       logic=vcl.DifferentiableLogic.Vehicle,  # optional, defaults to DL2
+       logic=vcl.VehicleDifferentiableLogic(),  # optional, defaults to DL2
    )
 
    constraint_loss_fn = declarations["output_bounded"]
@@ -62,7 +62,7 @@ TensorFlow works the same way—load the declarations through ``vehicle_lang.los
 
    declarations = loss_tf.load_specification(
        "spec.vcl",
-       logic=vcl.DifferentiableLogic.Vehicle,
+       logic=vcl.VehicleDifferentiableLogic(),
    )
    constraint_loss_fn = declarations["output_bounded"]
 
@@ -82,8 +82,8 @@ Logic selection
 ---------------
 
 By default, Vehicle compiles properties into loss functions using the ``Vehicle`` differentiable logic. You can select a different logic by passing the ``logic`` argument to ``load_specification``. Available options are:
-- ``vehicle_lang.DifferentiableLogic.Vehicle`` (default)
-- ``vehicle_lang.DifferentiableLogic.DL2``
+- ``vehicle_lang.VehicleDifferentiableLogic()`` (default)
+- ``vehicle_lang.DL2DifferentiableLogic()``
 
 
 Custom samplers and declaration context
