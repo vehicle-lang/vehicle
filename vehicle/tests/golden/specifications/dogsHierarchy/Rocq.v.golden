@@ -26,9 +26,9 @@ Definition chihuahua : 'I_6%N := 4.
 
 Definition pekinese : 'I_6%N := 5.
 
-Definition smallDogs : seq Dog := chihuahua :: (pekinese :: nil).
+Definition smallDogs : seq Dog := chihuahua :: pekinese :: nil.
 
-Definition bigDogs : seq Dog := greatDane :: (germanShepherd :: nil).
+Definition bigDogs : seq Dog := greatDane :: germanShepherd :: nil.
 
 Definition Image : Type := 'nT[R]_[4, 4].
 
