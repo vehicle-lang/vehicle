@@ -202,6 +202,60 @@ realTensorHasComparison = { leTC = compareRatTensorReducedLe
                           , neTC = compareRatTensorReducedNe
                           }
 
+-- Dataset tensor element types
+@typeclass
+record HasValidDatasetTensorElementType (t : Type) where {}
+
+@instance
+natHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Nat
+natHasValidDatasetTensorElementType = {}
+
+@instance(default=0)
+realHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Real
+realHasValidDatasetTensorElementType = {}
+
+-- Dataset list element types
+@typeclass
+record HasValidDatasetListElementType (t : Type) where {}
+
+@instance
+listHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (List t)
+listHasValidDatasetListElementType = {}
+
+@instance
+vectorHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (Vector t dim)
+vectorHasValidDatasetListElementType = {}
+
+@instance
+tensorHasValidDatasetListElementType : {{HasValidDatasetTensorElementType t}} -> {{ IsTensorType t dims }} -> HasValidDatasetListElementType (Tensor t dims)
+tensorHasValidDatasetListElementType = {}
+
+@instance
+indexHasValidDatasetListElementType : HasValidDatasetListElementType (Index n)
+indexHasValidDatasetListElementType = {}
+
+@instance
+natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
+natHasValidDatasetListElementType = {}
+
+-- Dataset types
+@typeclass
+record HasValidDatasetType (t : Type) where {}
+
+@instance
+listHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (List t)
+listHasValidDatasetType = {}
+
+@instance
+vectorHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (Vector t dim)
+vectorHasValidDatasetType = {}
+
+@instance
+tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} ->  {{ IsTensorType t dims }} -> HasValidDatasetType (Tensor t dims)
+tensorHasValidDatasetType = {}
+
+
+
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------

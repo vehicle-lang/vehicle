@@ -18,16 +18,16 @@ Parameter R : realType.
 Record DifferentiableLogic : Type :=
   { true : 'sT[R]
   ; false : 'sT[R]
-  ; conjunction : 'sT[R] -> ('sT[R] -> 'sT[R])
-  ; disjunction : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; conjunction : 'sT[R] -> 'sT[R] -> 'sT[R]
+  ; disjunction : 'sT[R] -> 'sT[R] -> 'sT[R]
   ; negation : 'sT[R] -> 'sT[R]
-  ; implication : 'sT[R] -> ('sT[R] -> 'sT[R])
-  ; lt : 'sT[R] -> ('sT[R] -> 'sT[R])
-  ; le : 'sT[R] -> ('sT[R] -> 'sT[R])
-  ; gt : 'sT[R] -> ('sT[R] -> 'sT[R])
-  ; ge : 'sT[R] -> ('sT[R] -> 'sT[R])
-  ; equals : 'sT[R] -> ('sT[R] -> 'sT[R])
-  ; notEquals : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; implication : 'sT[R] -> 'sT[R] -> 'sT[R]
+  ; lt : 'sT[R] -> 'sT[R] -> 'sT[R]
+  ; le : 'sT[R] -> 'sT[R] -> 'sT[R]
+  ; gt : 'sT[R] -> 'sT[R] -> 'sT[R]
+  ; ge : 'sT[R] -> 'sT[R] -> 'sT[R]
+  ; equals : 'sT[R] -> 'sT[R] -> 'sT[R]
+  ; notEquals : 'sT[R] -> 'sT[R] -> 'sT[R]
   }.
 
 Definition myLogic : DifferentiableLogic := {| true := - const_t (100000 : R)

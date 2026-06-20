@@ -15,7 +15,7 @@ Local Open Scope form_scope.
 
 Parameter R : realType.
 
-Definition precedence (x : 'sT[R]) (y : 'sT[R]) (z : 'sT[R]) : 'sT[R] := (x + const_t (2 : R) * y) - z / y.
+Definition precedence (x : 'sT[R]) (y : 'sT[R]) (z : 'sT[R]) : 'sT[R] := x + const_t (2 : R) * y - z / y.
 
 Definition natLitNatLitDiv : 'sT[R] := const_t (1 : R) / const_t (2 : R).
 
