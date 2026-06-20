@@ -1,16 +1,16 @@
 [
     {
         "name": "TypeCheck",
-        "run": "vehicle typecheck -s dice-tensor.vcl",
+        "run": "vehicle typecheck -s dice-tensor-alt.vcl",
         "needs": [
-            "dice-tensor.vcl"
+            "dice-tensor-alt.vcl"
         ]
     },
     {
         "name": "Agda",
-        "run": "vehicle compile itp -s dice-tensor.vcl -t Agda -o Agda.agda",
+        "run": "vehicle compile itp -s dice-tensor-alt.vcl -t Agda -o Agda.agda",
         "needs": [
-            "dice-tensor.vcl"
+            "dice-tensor-alt.vcl"
         ],
         "produces": [
             "Agda.agda"
