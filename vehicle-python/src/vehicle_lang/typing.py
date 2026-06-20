@@ -63,9 +63,6 @@ class CustomDifferentiableLogic(DifferentiableLogic):
     def _vehicle_option_name(self) -> str:
         return self._name
 
-    Vehicle = 1
-    DL2 = 2
-
 
 class LossBackend(Enum):
     """
