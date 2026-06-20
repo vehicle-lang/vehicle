@@ -25,6 +25,8 @@ begin
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  spec :  " (\<forall> x. ((ltTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) x)) \<and> ((ltTensorReduced x (flextensor_from_vec [] [ (((1 :: R) )) ]))) \<longrightarrow> (geqTensorReduced (f ((combine_subtensors [x,(flextensor_from_vec [] [ (((0 :: R) )) ])]))) (flextensor_from_vec [] [ (((0 :: R) )) ]))) "
 
     begin

@@ -202,6 +202,8 @@ begin
 
     fixes  acasXu  :: " InputVector \<Rightarrow> OutputVector "
 
+    
+
     assumes  property1 :  " (\<forall> x. (validInput acasXu x) \<and> (intruderDistantAndSlower acasXu x) \<longrightarrow> (leqTensorReduced (flex_subtensor ((normAcasXu acasXu x)) clearOfConflict) (scaleCOCOutput acasXu ((flextensor_from_vec [] [ (((1500 :: R) )) ]))))) "
     assumes  property2 :  " (\<forall> x. (validInput acasXu x) \<and> (intruderDistantAndSlower acasXu x) \<longrightarrow> \<not> (maximalScore acasXu clearOfConflict x)) "
     assumes  property3 :  " (\<forall> x. (validInput acasXu x) \<and> ((directlyAhead acasXu x) \<and> (movingTowards acasXu x)) \<longrightarrow> \<not> (minimalScore acasXu clearOfConflict x)) "

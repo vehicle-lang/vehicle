@@ -9,8 +9,9 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.State (runStateT)
 import Control.Monad.State.Class (MonadState, gets, modify)
+import Control.Monad.Writer (MonadWriter, execWriter, tell)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Foldable (fold)
+import Data.Foldable (fold, traverse_)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
@@ -29,7 +30,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Sugar.Binders
-import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -56,25 +56,63 @@ data IsabelleOptions = IsabelleOptions
 currentPhase :: Doc ()
 currentPhase = "compilation to Isabelle"
 
+freeVarRefs :: Expr DecidabilityBuiltin -> Set Identifier
+freeVarRefs = execWriter . go
+  where
+    go :: (MonadWriter (Set Identifier) m) => Expr DecidabilityBuiltin -> m ()
+    go = \case
+      FreeVar _ ident -> tell (Set.singleton ident)
+      App fun args -> do go fun; traverse_ (traverse_ go) args
+      Pi _ binder result -> do traverse_ go binder; go result
+      Lam _ binder body -> do traverse_ go binder; go body
+      Let _ bound binder body -> do go bound; traverse_ go binder; go body
+      Record _ _ fields -> traverse_ (go . snd) fields
+      RecordProj _ recordType record _ -> do go recordType; go record
+      _ -> return ()
+
+-- | Identifiers of zero-binder decls whose body transitively references a
+-- `@network`. These can't be theory-level `definition`s (networks aren't in
+-- scope outside the locale) so they get emitted as locale `defines` clauses.
+networkDependentDecls :: [Decl DecidabilityBuiltin] -> Set Identifier
+networkDependentDecls ds = fixpoint seed
+  where
+    seed = Set.fromList [identifierOf d | d@DefAbstract {} <- ds]
+    zeroBinderDecls =
+      [ (identifierOf d, body)
+        | d@(DefFunction _ _ (FunctionDecl 0 Nothing) _ body) <- ds
+      ]
+    step deps =
+      deps
+        <> Set.fromList
+          [ ident
+            | (ident, body) <- zeroBinderDecls,
+              not (Set.disjoint deps (freeVarRefs body))
+          ]
+    fixpoint deps =
+      let deps' = step deps
+       in if deps' == deps then deps else fixpoint deps'
+
 compileProgToIsabelle :: (MonadCompile m) => Prog DecidabilityBuiltin -> IsabelleOptions -> m (Doc a)
 compileProgToIsabelle (Main ds) options =
   logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal (Main ds)
-    -- Combine the printed documents
+    let networkDeps = networkDependentDecls ds
 
     -- Extract all locale assumptions (not as Doc annotations)
-    ((localeNets, localeAssms, programDoc), _) <-
+    ((localeNets, localeDefines, localeAssms, programDoc), _) <-
       runStateT
         ( runFreshNameBoundContextT $ do
             localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
-            programDoc <- compileProg options localeNets (Main ds)
+            localeDefines <- fmap concat (traverse (gatherLocaleDefines localeNets networkDeps) ds)
+            programDoc <- compileProg options localeNets networkDeps (Main ds)
             localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
-            return (localeNets, localeAssms, programDoc)
+            return (localeNets, localeDefines, localeAssms, programDoc)
         )
         Set.empty
     let programDependencies =
           collectCodeDependencies programDoc
             `Set.union` collectLocaleDependencies localeNets
+            `Set.union` collectLocaleDependencies localeDefines
             `Set.union` collectLocaleDependencies localeAssms
 
     let nameOfLocale = Text.pack $ case localeName options of
@@ -86,7 +124,7 @@ compileProgToIsabelle (Main ds) options =
             ( (vsep2 :: [Code] -> Code)
                 [ preamble nameOfLocale programDependencies localeAssms,
                   indent 2 programDoc,
-                  postamble nameOfLocale (localeNets ++ localeAssms)
+                  postamble nameOfLocale (localeNets ++ localeDefines ++ localeAssms)
                 ]
             )
 
@@ -124,6 +162,7 @@ collectLocaleDependencies = Set.unions . fmap deps
     deps :: LocaleDef -> Set Dependency
     deps = \case
       NetworkDefStatement name ty -> collectCodeDependencies name `Set.union` collectCodeDependencies ty
+      DefinesStatement name body -> collectCodeDependencies name `Set.union` collectCodeDependencies body
       PropertyDefStatement stmt -> collectCodeDependencies stmt
       TensorTypeDefStmt _ shape body -> collectCodeDependencies shape `Set.union` collectCodeDependencies body
       IndexTypeDefStmt _ maxI body -> collectCodeDependencies maxI `Set.union` collectCodeDependencies body
@@ -151,6 +190,8 @@ data Dependency
 
 data LocaleDef
   = NetworkDefStatement Code Code
+  | -- | `defines name_def: "name == ( body )"` in the locale header.
+    DefinesStatement Code Code
   | PropertyDefStatement Code
   | TensorTypeDefStmt Identifier Code Code
   | IndexTypeDefStmt Identifier Code Code
@@ -161,6 +202,14 @@ instance Pretty LocaleDef where
       where
         name = unAnnotate n
         tun = unAnnotate t
+    DefinesStatement n body ->
+      "defines "
+        <+> unAnnotate n
+        <> "_def: \""
+        <+> unAnnotate n
+        <+> "\\<equiv> ("
+        <+> unAnnotate body
+        <+> ") \""
     PropertyDefStatement l -> unAnnotate l
     TensorTypeDefStmt n shape l -> unAnnotate (compileTensorTypeDef n shape l)
     IndexTypeDefStmt n maxI l -> unAnnotate (compileIndexTypeDef n maxI l)
@@ -186,6 +235,11 @@ instance Pretty Library where
 onlyNetworkDef :: LocaleDef -> Bool
 onlyNetworkDef = \case
   NetworkDefStatement _ _ -> True
+  _ -> False
+
+onlyDefinesDef :: LocaleDef -> Bool
+onlyDefinesDef = \case
+  DefinesStatement _ _ -> True
   _ -> False
 
 onlyPropertyDef :: LocaleDef -> Bool
@@ -216,6 +270,7 @@ postamble locale localeAssms =
   (vsep2 :: [Code] -> Code)
     [ ("  locale " <+> pretty locale <+> " = "),
       indent 4 (vsep (map pretty (filter onlyNetworkDef localeAssms))),
+      indent 4 (vsep (map pretty (filter onlyDefinesDef localeAssms))),
       indent 4 (vsep (map pretty (filter onlyPropertyDef localeAssms))),
       indent 4 "begin",
       indent 4 "end",
@@ -325,14 +380,28 @@ type MonadIsabelleCompile m =
 --------------------------------------------------------------------------------
 -- Program Compilation
 
-compileProg :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Prog DecidabilityBuiltin -> m Code
-compileProg opts localeAssms (Main ds) = vsep2 <$> traverse (compileDecl opts localeAssms) (filter filterRelevantDecls ds)
+compileProg :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Set Identifier -> Prog DecidabilityBuiltin -> m Code
+compileProg opts localeAssms networkDeps (Main ds) =
+  vsep2 <$> traverse (compileDecl opts localeAssms) (filter (filterRelevantDecls networkDeps) ds)
 
 gatherLocaleNetworks :: (MonadIsabelleCompile m) => IsabelleOptions -> Decl DecidabilityBuiltin -> m [LocaleDef]
 gatherLocaleNetworks _opts = \case
   DefAbstract _ n _ t -> do
     cExpr <- compileExpr False [] t
     pure [(compilePostulate (compileIdentifier n) cExpr)]
+  _ -> pure []
+
+gatherLocaleDefines ::
+  (MonadIsabelleCompile m) =>
+  [LocaleDef] ->
+  Set Identifier ->
+  Decl DecidabilityBuiltin ->
+  m [LocaleDef]
+gatherLocaleDefines localeNets networkDeps = \case
+  DefFunction _ n (FunctionDecl 0 Nothing) _ body
+    | n `Set.member` networkDeps -> do
+        cBody <- compileExpr False localeNets body
+        pure [DefinesStatement (compileIdentifier n) cBody]
   _ -> pure []
 
 gatherLocaleStatements :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Decl DecidabilityBuiltin -> m [LocaleDef]
@@ -356,11 +425,12 @@ compileDecl _opts localeAssms = \case
     ProjectionDecl {} -> developerError "ProjectionDecl should have been filtered out"
   DefRecord p n _ telescope fields -> compileRecordDecl localeAssms p n telescope fields
 
-filterRelevantDecls :: Decl DecidabilityBuiltin -> Bool
-filterRelevantDecls = \case
+filterRelevantDecls :: Set Identifier -> Decl DecidabilityBuiltin -> Bool
+filterRelevantDecls networkDeps = \case
   DefAbstract _ _ _ _ -> False
-  DefFunction _ _ funSort _ _ -> case funSort of
+  DefFunction _ n funSort _ _ -> case funSort of
     FunctionDecl _ (Just AnnProperty) -> False
+    FunctionDecl 0 Nothing | n `Set.member` networkDeps -> False
     ProjectionDecl {} -> False
     _ -> True
   DefRecord {} -> True
@@ -780,6 +850,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     If -> annotateNotation localeAssms [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
+    Transpose -> annotateApp localeAssms [RequireImport VehicleTensor] "tensor_transpose" args
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
     Iterate -> unsupportedError

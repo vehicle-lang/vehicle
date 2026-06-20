@@ -532,7 +532,7 @@ class HasTensorLiterals expr builtin where
 -- For example `(xs + ys) ! i` becomes `xs ! i + ys ! i`.
 evalAtTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, PrintableBuiltin builtin, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
+  (MonadNormBuiltin m, PrintableBuiltin builtin, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin, BuiltinHasTensors builtin) =>
   NamedBoundCtx ->
   EvalApp builtin m ->
   Eval builtin m ->
@@ -542,6 +542,7 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
     goOp1 liftableTensorOp1s
       <|> goOp2 liftableTensorOp2s
       <|> goForeach
+      <|> goTranspose
   where
     recEvalAt :: Value builtin -> m (Value builtin)
     recEvalAt ys = evalAtTensor ctx evalApp eval (AtTensorArgs t d ds ys index)
@@ -570,6 +571,36 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
       Just (ForeachTensorArgs _ _ _ fn) -> Just $ do
         evalApp ctx fn [explicit index]
       _ -> Nothing
+
+    -- `(transpose t) ! i1 ! ... ! in` (scalar result) = `t ! in ! ... ! i1`.
+    goTranspose :: Maybe (m (Value builtin))
+    goTranspose = case ds of
+      IDimNil -> case collect tensor [(d, index)] of
+        Just (underlying, pairs) -> Just $ return $ rebuild underlying (reverse pairs)
+        Nothing -> Nothing
+      _ -> Nothing
+
+    collect ::
+      Value builtin ->
+      [(Value builtin, Value builtin)] ->
+      Maybe (Value builtin, [(Value builtin, Value builtin)])
+    collect inner acc = case getExpr accessTranspose inner of
+      Just (TransposeArgs _ _ underlying) -> Just (underlying, acc)
+      Nothing -> case getExpr accessAtTensor inner of
+        Just (AtTensorArgs _ d' _ inner' i') -> collect inner' ((d', i') : acc)
+        Nothing -> Nothing
+
+    rebuild ::
+      Value builtin ->
+      [(Value builtin, Value builtin)] ->
+      Value builtin
+    rebuild underlying pairs =
+      let dims = map fst pairs
+          step (acc, j) (dj, idx) =
+            let remDims = foldr IDimCons IDimNil (drop (j + 1) dims)
+             in (mkExpr accessAtTensor (AtTensorArgs t dj remDims acc idx), j + 1)
+          (result, _) = foldl step (underlying, 0 :: Int) pairs
+       in result
 
 unoptimisedEvalAtTensor ::
   forall builtin m.

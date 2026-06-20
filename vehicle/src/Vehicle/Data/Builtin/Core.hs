@@ -121,6 +121,7 @@ data BuiltinFunction
   | ConstTensor
   | Iterate
   | ForeachTensor
+  | Transpose
   | -- Vector operations
     AtVector
   | ForeachVector
@@ -174,6 +175,7 @@ instance Pretty BuiltinFunction where
     AtVector -> "atVector"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
+    Transpose -> "transpose"
 
 data BuiltinCast
   = -- Cast operations

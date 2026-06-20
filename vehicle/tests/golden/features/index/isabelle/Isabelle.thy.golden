@@ -24,6 +24,8 @@ begin
 
     
 
+    
+
     assumes  eqIndex :  " ((Abs_FlexIndex 0) :: nat) = ((Abs_FlexIndex 1) :: nat) "
     assumes  neqIndex :  " ((Abs_FlexIndex 0) :: nat) \<noteq> ((Abs_FlexIndex 1) :: nat) "
     assumes  leqIndex :  " ((Abs_FlexIndex 0) :: nat) \<le> ((Abs_FlexIndex 1) :: nat) "

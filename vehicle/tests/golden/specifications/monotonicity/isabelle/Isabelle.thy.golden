@@ -25,6 +25,8 @@ begin
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  monotonic :  " (\<forall> x1. (\<forall> x2. (((ltTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) x1)) \<and> ((ltTensorReduced x1 (flextensor_from_vec [] [ (((1 :: R) )) ])))) \<and> ((((ltTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) x2)) \<and> ((ltTensorReduced x2 (flextensor_from_vec [] [ (((1 :: R) )) ])))) \<and> ((leqTensorReduced x1 x2))) \<longrightarrow> (leqTensorReduced (f x1) (f x2)))) "
 
     begin

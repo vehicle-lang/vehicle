@@ -408,6 +408,7 @@ data RatTensorValue
   | VRatStackTensor (StackTensorArgs (Value Builtin))
   | VRatAtTensor (AtTensorArgs (Value Builtin))
   | VRatForeach (ForeachTensorArgs (Value Builtin))
+  | VRatTensorTranspose (TransposeArgs (Value Builtin))
   | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
   | VDatasetOrParameter Identifier
   | VRatAtVector (AtVectorArgs (Value Builtin))
@@ -438,6 +439,7 @@ toRatTensorValue expr = case expr of
   (getExpr accessStackTensor -> Just args) -> VRatStackTensor args
   (getExpr accessAtTensor -> Just args) -> VRatAtTensor args
   (getExpr accessForeachTensor -> Just args) -> VRatForeach args
+  (getExpr accessTranspose -> Just args) -> VRatTensorTranspose args
   (getExpr accessAtVector -> Just args) -> VRatAtVector args
   _ -> illTyped
   where
@@ -470,6 +472,7 @@ fromRatTensorValue = \case
   VRatStackTensor args -> mkExpr accessStackTensor args
   VRatAtTensor args -> mkExpr accessAtTensor args
   VRatForeach args -> mkExpr accessForeachTensor args
+  VRatTensorTranspose args -> mkExpr accessTranspose args
   VDatasetOrParameter ident -> VFreeVar ident []
   VRatTensorNetworkApp name args -> VFreeVar name (mkExpr accessSpine args)
   VRatAtVector args -> mkExpr accessAtVector args

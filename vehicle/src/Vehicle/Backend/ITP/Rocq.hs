@@ -562,6 +562,7 @@ compileBuiltin b args = case b of
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyRecord _ -> unsupportedTensorLikeQuantifier
     Iterate -> unsupportedError
+    Transpose -> compileApplication [VehicleImport VehicleUtils] "transpose_t" args
     Pow {} -> unsupportedError
     Log {} -> unsupportedError
     Exp {} -> unsupportedError

@@ -107,6 +107,7 @@ data JExpr
   | DimensionNil
   | DimensionCons JExpr JExpr
   | DimensionIndex Int
+  | Transpose JExpr -- (tensor): reverses every axis
   deriving (Show, Generic)
 
 instance ToJSON JProg where
@@ -293,6 +294,7 @@ convertBuiltin b spine = case b of
     L.ForeachTensor -> convertForeachTensor spine
     L.StackTensor -> convertStackTensor spine
     L.ConstTensor -> convertConstTensor spine
+    L.Transpose -> convertTranspose convertValue spine
     L.ForeachVector -> convertForeachVector spine
     L.AtVector -> convertAtVector spine
     -- Dimension operations, not yet converted
@@ -399,6 +401,15 @@ convertForeachVector :: (MonadJSON m) => Spine LossBuiltin -> m JExpr
 convertForeachVector = convertNonNullaryOp L.ForeachVector 4 $
   \(ForeachVectorArgs _t d fn) ->
     ForeachVector <$> convertValue d <*> convertValue fn
+
+convertTranspose ::
+  (MonadJSON m) =>
+  (Value LossBuiltin -> m JExpr) ->
+  Spine LossBuiltin ->
+  m JExpr
+convertTranspose convert spine = case getExpr accessSpine spine of
+  Just (TransposeArgs _t _ds xs) -> Transpose <$> convert xs
+  Nothing -> arityError L.Transpose 3 spine
 
 convertSearch :: (MonadJSON m) => Name -> Bool -> Spine LossBuiltin -> m JExpr
 convertSearch name minimise = convertNonNullaryOp (L.SearchRatTensor name minimise) 5 $
@@ -509,6 +520,7 @@ fromJExpr = \case
   ForeachTensor _n fn -> toFunction L.ForeachTensor [fn]
   ConstTensor c ds -> toFunction L.ConstTensor [c, ds]
   StackTensor xs -> toFunction L.StackTensor xs
+  Transpose xs -> toFunction L.Transpose [xs]
   VectorLiteral xs -> toConstructor L.VectorLiteral xs
   ForeachVector _n fn -> toFunction L.ForeachVector [fn]
   AtVector xs i -> toFunction L.AtVector [xs, i]

@@ -43,6 +43,8 @@ begin
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  p :  " (forallIndex (2 :: nat)  (\<lambda>  i . ((forallIndex (2 :: nat)  (\<lambda>  j . ((geqTensorReduced (flex_subtensor ((flex_subtensor ((tensor_plus (f subtraction) addition)) i)) j) (flextensor_from_vec [] [ (((0 :: R) )) ])))))))) "
 
     begin

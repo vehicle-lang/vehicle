@@ -86,6 +86,7 @@ purifyRatTensorExpr actions@UnblockingActions {..} incrDims expr = do
     VRatTensorNetworkApp n args -> unblockNetworkApp (recPurify incrDims) (unblockRecordValue actions) n args
     VRatRecordAcc typ value fieldName _ -> unblockRecordAcc (recPurify incrDims) typ value fieldName
     VRatAtVector args -> unblockAtVector (recPurify (incrDims + 1)) args
+    VRatTensorTranspose args -> unblockTranspose (recPurify incrDims) args
     VDatasetOrParameter {} -> developerError "datasets and parameters should have been eliminated"
   where
     recPurify = purifyRatTensorExpr actions

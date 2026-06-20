@@ -136,6 +136,29 @@ class TensorFlowBuiltins(
         return tf.reduce_max(x)
 
     @override
+    def Transpose(self, xs: tf.Tensor) -> tf.Tensor:
+        return tf.transpose(xs)
+
+    @override
+    def DimensionLookup(
+        self, xs: tf.Tensor | tuple[tf.Tensor, ...] | list[tf.Tensor], i: int
+    ) -> tf.Tensor:
+        # Despite the name, this implements element indexing (At operator in Haskell)
+        # The JSON AST uses 'DimensionLookup' but semantics are element access
+
+        # Handle tuple/sequence case (from StackTensor or similar)
+        if isinstance(xs, (tuple, list)):
+            return xs[i]
+
+        if xs.shape.ndims == 0:
+            raise error.VehicleInternalError(  # type: ignore[attr-defined]
+                "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
+            )
+
+        # Use tf.gather for proper type checking and TensorFlow best practices
+        return tf.gather(xs, i)
+
+    @override
     def DimensionCons(self, head: int, tail: Sequence[int]) -> tuple[int, ...]:
         return (head, *tail)
 

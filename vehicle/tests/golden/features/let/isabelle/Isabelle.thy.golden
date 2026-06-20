@@ -35,6 +35,8 @@ begin
 
     
 
+    
+
     assumes  e1 :  " let x = True in let y = False in x \<and> y "
     assumes  e2 :  " let y = (1 :: nat) in y \<ge> (2 :: nat) "
     assumes  forallLet :  " (\<forall> (x :: R tensor). let y = x in (eqTensorReduced y (flextensor_from_vec [] [ (((1 :: R) )) ]))) "

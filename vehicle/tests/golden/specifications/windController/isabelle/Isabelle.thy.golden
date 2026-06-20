@@ -101,6 +101,8 @@ begin
 
     fixes  controller  :: " InputVector \<Rightarrow> OutputVector "
 
+    
+
     assumes  safe :  " (\<forall> x. (safeInput controller x) \<longrightarrow> (safeOutput controller x)) "
 
     begin

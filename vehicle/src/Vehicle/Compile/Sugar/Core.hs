@@ -108,6 +108,8 @@ tokExists = mkToken B.TokExists "exists"
 
 tokForeach = mkToken B.TokForeach "foreach"
 
+tokTranspose = mkToken B.TokTranspose "transpose"
+
 tokImpl = mkToken B.TokImpl "=>"
 
 tokAnd = mkToken B.TokAnd "and"

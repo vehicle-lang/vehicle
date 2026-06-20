@@ -36,6 +36,8 @@ begin
 
     fixes  andGate  :: " R tensor \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  andGateCorrect :  " (\<forall> x1. (\<forall> x2. (validInput andGate x1) \<and> (validInput andGate x2) \<longrightarrow> (correctOutput andGate x1 x2))) "
 
     begin

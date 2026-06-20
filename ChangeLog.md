@@ -4,6 +4,9 @@
 
 ### Language
 
+* Added the `transpose` operator on tensors. See
+  [tensors](docs/language/tensors.rst) for the operator and
+  [exporting](docs/exporting.rst) for per-backend support.
 * BREAKING: with the introduction of `infinity` to the language in `v0.25` all reduction operations have
   sensible zero-dimensional values. Therefore the following operations no longer take the identity element
   as an argument, i.e.:

@@ -679,6 +679,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     If -> annotateNotation moduleDefs [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args
     StackTensor -> compileStack moduleDefs args
+    Transpose -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_transpose" args
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
     Iterate -> unsupportedError

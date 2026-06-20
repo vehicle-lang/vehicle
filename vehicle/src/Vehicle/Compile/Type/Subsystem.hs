@@ -33,6 +33,7 @@ import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface (BuiltinHasListLiterals)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin (..))
 import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Builtin.Interface.Type (standardBuiltinTypeDeps)
 import Vehicle.Data.Builtin.Linearity (LinearityBuiltin)
 import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
@@ -73,8 +74,9 @@ decidabilityTypeCheck ::
   Prog Builtin ->
   m (Prog DecidabilityBuiltin)
 decidabilityTypeCheck prog = do
-  prunedProg <- pruneUnusedDeclarations prog
-  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances prunedProg
+  prunedProg <- pruneUnusedDeclarations standardBuiltinTypeDeps prog
+  castFreeProg <- resolveInstanceArgumentsAndCasts prunedProg
+  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances castFreeProg
   decProg <- case errorOrDecProg of
     Left err -> developerError $ errorInSubsystemMessage "determine the decidability of the program for export to ITP" err
     Right decProg -> return decProg

@@ -2,9 +2,12 @@
 
 module Vehicle.Data.Builtin.Standard.Normalise
   ( foldReduceAndComparison,
+    evalTranspose,
   )
 where
 
+import Control.Applicative ((<|>))
+import Data.Maybe (fromMaybe)
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
@@ -12,6 +15,8 @@ import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (Tensor, TensorShape)
+import Vehicle.Data.Tensor qualified as Tensor
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 
@@ -88,6 +93,7 @@ instance NormalisableBuiltin Builtin where
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
+      Transpose -> Simple evalTranspose
       QuantifyRatTensor {} -> None
       QuantifyRecord {} -> None
     BuiltinCast c -> case c of
@@ -143,6 +149,84 @@ evalVectorToList args@(VectorToListArgs t d xs) =
   return $ case argExpr d of
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
+
+evalTranspose :: (MonadNormBuiltin m) => EvalSimple TransposeArgs Value Builtin m
+evalTranspose args@(TransposeArgs _ inputDims tensor) =
+  return $
+    fromMaybe (mkExpr accessTranspose args) $
+      goLiteral <|> goConst <|> goStack
+  where
+    revDims :: Maybe (Value Builtin)
+    revDims = mkDims . reverse <$> getDims inputDims
+
+    goLiteral :: Maybe (Value Builtin)
+    goLiteral =
+      foldTensorLit accessNatTensorLiteral
+        <|> foldTensorLit accessBoolTensorLiteral
+        <|> foldTensorLit accessRatTensorLiteral
+
+    foldTensorLit ::
+      (Eq a) =>
+      Accessor (Value Builtin) (Tensor a) ->
+      Maybe (Value Builtin)
+    foldTensorLit Access {getExpr = getLit, mkExpr = mkLit} = do
+      t <- getLit tensor
+      pure $ mkLit (Tensor.transposeTensor t)
+
+    goConst :: Maybe (Value Builtin)
+    goConst = do
+      ConstTensorArgs t v _ <- getExpr accessConstTensor tensor
+      rds <- revDims
+      pure $ mkExpr accessConstTensor (ConstTensorArgs t v rds)
+
+    goStack :: Maybe (Value Builtin)
+    goStack = do
+      shape <- getDims inputDims
+      leaves <- gatherStack shape tensor
+      pure $ buildStack tNat (reverse shape) (permuteFlat shape leaves)
+      where
+        tNat = INatType :: Value Builtin
+
+    gatherStack :: TensorShape -> Value Builtin -> Maybe [Value Builtin]
+    gatherStack [] v = Just [v]
+    gatherStack (d : ds) v = do
+      StackTensorArgs _ _ _ rows <- getExpr accessStackTensor v
+      if length rows /= d
+        then Nothing
+        else concat <$> traverse (gatherStack ds) rows
+
+    permuteFlat :: TensorShape -> [a] -> [a]
+    permuteFlat shape leaves =
+      [ leaves !! flattenIndices shape (reverse revIs)
+        | revIs <- allMultiIndices (reverse shape)
+      ]
+      where
+        flattenIndices ds is = sum (zipWith (*) is (drop 1 (scanr (*) 1 ds)))
+
+    allMultiIndices :: TensorShape -> [[Int]]
+    allMultiIndices = \case
+      [] -> [[]]
+      d : ds -> [i : rest | i <- [0 .. d - 1], rest <- allMultiIndices ds]
+
+    buildStack :: Value Builtin -> TensorShape -> [Value Builtin] -> Value Builtin
+    buildStack _tElem [] [v] = v
+    buildStack _tElem [] _ = mkExpr accessTranspose args
+    buildStack tElem (d : ds) vs =
+      let chunkSize = product ds
+          rows = chunksOf chunkSize vs
+          subStacks = map (buildStack tElem ds) rows
+       in mkExpr
+            accessStackTensor
+            ( StackTensorArgs
+                tElem
+                (INatLiteral d)
+                (foldr (IDimCons . INatLiteral) IDimNil ds)
+                subStacks
+            )
+
+    chunksOf :: Int -> [a] -> [[a]]
+    chunksOf _ [] = []
+    chunksOf n xs = take n xs : chunksOf n (drop n xs)
 
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->

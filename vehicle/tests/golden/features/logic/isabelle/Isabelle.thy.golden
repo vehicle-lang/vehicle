@@ -52,6 +52,8 @@ begin
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  p :  " (\<forall> x. (geqTensorReduced (f x) (true myLogic))) "
 
     begin

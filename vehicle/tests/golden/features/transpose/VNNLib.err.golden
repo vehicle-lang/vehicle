@@ -1,0 +1,4 @@
+[93m
+Warning: In property 'boundedScalar' there are quantified variables that not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification. These variables are:
+  - variable 'v'
+[m

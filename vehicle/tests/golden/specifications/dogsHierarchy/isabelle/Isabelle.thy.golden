@@ -130,6 +130,8 @@ begin
 
     fixes  score  :: " Image \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  doesNotConfuseBigAndSmall :  " (\<forall> x. (validImage score x) \<longrightarrow> (noConfusionWith score x bigDogs smallDogs)) "
 
     begin

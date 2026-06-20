@@ -136,6 +136,7 @@ class BuiltinHasTensors builtin where
   accessStackTensorBuiltin :: Accessor builtin ()
   accessConstTensorBuiltin :: Accessor builtin ()
   accessAtTensorBuiltin :: Accessor builtin ()
+  accessTransposeBuiltin :: Accessor builtin ()
 
 class BuiltinHasForeach builtin where
   accessForeachTensorBuiltin :: Accessor builtin ()

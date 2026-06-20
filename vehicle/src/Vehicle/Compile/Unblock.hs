@@ -8,6 +8,7 @@ module Vehicle.Compile.Unblock
     unblockIf,
     unblockAtTensor,
     unblockAtVector,
+    unblockTranspose,
     unblockForeachTensor,
     unblockReduceTensor,
     unblockMinRatTensor,
@@ -24,6 +25,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Normalise (evalTranspose)
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), elimIfTree, forIfTreeM)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
@@ -137,6 +139,7 @@ unblockRatTensorValue actions@UnblockingActions {..} expr = showEntry expr $ do
     VRatAtTensor args -> unblockAtTensor unblock args
     VRatAtVector args -> unblockAtVector unblock args
     VRatForeach args -> unblockForeachTensor args
+    VRatTensorTranspose args -> unblockTranspose unblock args
     VRatRecordAcc typ value fieldName _ -> unblockRecordAcc (unblockRecordValue actions) typ value fieldName
   where
     unblock = unblockRatTensorValue actions
@@ -283,6 +286,15 @@ unblockRecordAcc unblock typ value fieldName = do
   forIfTreeM value' $ \value'' ->
     IfLeaf <$> do
       evalRecordAcc typ value'' fieldName
+
+unblockTranspose ::
+  (MonadUnblock m) =>
+  TypeUnblockingFunction (Value Builtin) m ->
+  OperationUnblockingFunction TransposeArgs (Value Builtin) m
+unblockTranspose unblock (TransposeArgs t ds xs) = do
+  xs' <- unblock xs
+  forIfTreeM xs' $ \xs'' ->
+    IfLeaf <$> evalTranspose (TransposeArgs t ds xs'')
 
 unblockForeachTensor ::
   (MonadUnblock m) =>

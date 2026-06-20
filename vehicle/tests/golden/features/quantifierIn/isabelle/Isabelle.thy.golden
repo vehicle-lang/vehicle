@@ -26,6 +26,8 @@ begin
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  empty :  " (forallInList (\<lambda>  x . (True)) dataset) "
     assumes  double :  " (forallInList (\<lambda>  x . ((forallInList (\<lambda>  y . ((eqTensorReduced x y))) dataset))) dataset) "
     assumes  forallForallIn :  " (\<forall> x. (forallInList (\<lambda>  y . ((eqTensorReduced x y))) dataset)) "

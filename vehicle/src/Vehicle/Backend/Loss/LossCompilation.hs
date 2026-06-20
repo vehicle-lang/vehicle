@@ -310,6 +310,7 @@ convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VRatAtTensor args -> convertAtTensor convertRatTensor args
   VRatAtVector args -> convertAtVector (convertVector convertRatTensor) args
   VRatForeach args -> convertForeachTensor convertRatTensor args
+  VRatTensorTranspose args -> convertTranspose convertRatTensor args
   VRatRecordAcc {} -> developerError "Record accesses in loss functions are not supported yet"
 
 --------------------------------------------------------------------------------
@@ -425,6 +426,16 @@ convertForeachTensor convertValue (ForeachTensorArgs t dim dims fn) = do
   fn' <- convertFunction convertValue fn
   return $ mkExpr accessForeachTensor $ ForeachTensorArgs t' dim' dims' fn'
 
+convertTranspose ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  TransposeArgs (Value Builtin) ->
+  m (Value LossBuiltin)
+convertTranspose convertValue (TransposeArgs t ds xs) = do
+  t' <- convertType t
+  ds' <- convertDims ds
+  xs' <- convertValue xs
+  return $ mkExpr accessTranspose $ TransposeArgs t' ds' xs'
 convertAtVector ::
   (MonadLogic m) =>
   (Value Builtin -> m (Value LossBuiltin)) ->

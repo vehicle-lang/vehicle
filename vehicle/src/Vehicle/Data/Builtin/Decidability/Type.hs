@@ -200,12 +200,18 @@ convertToDecidabilityFreeVars f p ident args = do
   finalArgs <- insertNewArgs args' declType
   return $ normAppList (FreeVar p ident) finalArgs
   where
+    -- For each leading auto-generalised implicit Pi binder, consume a
+    -- matching implicit from the spine if present (stdlib bodies fill
+    -- these via the recursive arg traversal); otherwise prepend a `Hole`.
     insertNewArgs :: [Arg DecidabilityBuiltin] -> Type DecidabilityBuiltin -> m [Arg DecidabilityBuiltin]
     insertNewArgs as = \case
-      Pi _ binder result -> do
-        if wasInsertedByCompiler binder && isImplicit binder
-          then (argFromBinder binder (Hole p "_") :) <$> insertNewArgs as result
-          else return as
+      Pi _ binder result | wasInsertedByCompiler binder && isImplicit binder ->
+        case as of
+          a : rest
+            | isImplicit a ->
+                (a :) <$> insertNewArgs rest result
+          _ ->
+            (argFromBinder binder (Hole p "_") :) <$> insertNewArgs as result
       _ -> return as
 
 convertToDecidabilityBuiltins ::
@@ -251,6 +257,7 @@ convertToDecidabilityBuiltins p b args = return $
         FoldList -> sameFunction f
         MapList -> sameFunction f
         Iterate -> sameFunction f
+        Transpose -> sameFunction f
         StackTensor -> sameFunction f
         ConstTensor -> sameFunction f
     BuiltinConstructor c -> do

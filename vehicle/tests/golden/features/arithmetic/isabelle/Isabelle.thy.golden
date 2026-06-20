@@ -31,6 +31,8 @@ begin
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  property :  " (geqTensorReduced (flex_subtensor ((f ((combine_subtensors [natLitNatLitDiv])))) (Abs_FlexIndex 0)) (flextensor_from_vec [] [ (((0 :: R) )) ])) "
 
     begin
