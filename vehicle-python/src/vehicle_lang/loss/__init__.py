@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Iterable
 from .. import session as session
 from .._ast import _nodes
 from ..error import VehicleInternalError
-from ..typing import DeclarationName, DifferentiableLogic, Target
+from ..typing import DeclarationName, DifferentiableLogic, VehicleDifferentiableLogic
 
 __all__ = ["load_ast", "tensorflow", "pytorch"]
 
@@ -19,14 +19,14 @@ def load_ast(
     path: str | Path,
     *,
     declarations: Iterable[DeclarationName] = (),
-    target: Target = DifferentiableLogic.Vehicle,
+    target: DifferentiableLogic = VehicleDifferentiableLogic(),
 ) -> _nodes.Program:
     args = [
         "--json",
         "compile",
         "loss",
         "--logic",
-        target._vehicle_option_name,
+        target._vehicle_option_name(),
         f"--specification={path}",
         *[f"--declaration={declaration_name}" for declaration_name in declarations],
     ]

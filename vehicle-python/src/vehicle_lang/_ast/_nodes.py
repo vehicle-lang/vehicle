@@ -348,8 +348,8 @@ class DimensionIndex(Expression):
 @dataclass(frozen=True)
 class ConstTensor(Expression):
 
-    c: ExtendedFraction
-    ds: Sequence[int]
+    c: Expression
+    ds: Expression
 
 
 @dataclass(frozen=True)

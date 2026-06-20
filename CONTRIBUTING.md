@@ -729,7 +729,7 @@ The pygments tests verify the integration with [the Pygments syntax highlighter]
 Run the following command:
 
 ```sh
-uv run --extra test --extra pygments python -m pytest tests/test_pygments.py
+uv run --extra test --extra pygments python -m pytest tests/internals/test_pygments.py
 ```
 
 

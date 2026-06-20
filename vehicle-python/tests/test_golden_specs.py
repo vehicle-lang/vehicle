@@ -20,7 +20,7 @@ GOLDEN_SPEC_FILES = [
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[untyped-decorator]
 def test_golden_spec_load(spec_path: Path) -> None:
     """Test that golden specs can be loaded into AST."""
-    loss.load_ast(spec_path, target=vcl.DifferentiableLogic.DL2)
+    loss.load_ast(spec_path, target=vcl.DL2DifferentiableLogic())
 
 
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[untyped-decorator]
@@ -32,7 +32,7 @@ def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
     )
     output = loss_tf.load_specification(
         spec_path,
-        logic=vcl.DifferentiableLogic.DL2,
+        logic=vcl.DL2DifferentiableLogic(),
     )
 
     assert isinstance(output, dict)
@@ -50,7 +50,7 @@ def test_golden_spec_pytorch_compile(spec_path: Path) -> None:
     )
     output = loss_pt.load_specification(
         spec_path,
-        logic=vcl.DifferentiableLogic.DL2,
+        logic=vcl.DL2DifferentiableLogic(),
     )
 
     assert isinstance(output, dict)
