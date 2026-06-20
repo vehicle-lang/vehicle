@@ -76,24 +76,24 @@ minimalCoC x =
 
 minimalStrongRight : UnnormalisedInputVector -> Bool
 minimalStrongRight x = 
+    normAcasXu x ! strongRight < (normAcasXu x ! clearOfConflict) and
     normAcasXu x ! strongRight < (normAcasXu x ! weakLeft) and 
     normAcasXu x ! strongRight < (normAcasXu x ! weakRight) and 
-    normAcasXu x ! strongRight < (normAcasXu x ! strongLeft) and 
-    normAcasXu x ! strongRight < (normAcasXu x ! clearOfConflict)
+    normAcasXu x ! strongRight < (normAcasXu x ! strongLeft)
 
 minimalStrongLeft : UnnormalisedInputVector -> Bool
 minimalStrongLeft x = 
-    normAcasXu x ! strongLeft < (normAcasXu x ! weakRight) and 
-    normAcasXu x ! strongLeft < (normAcasXu x ! strongRight) and 
     normAcasXu x ! strongLeft < (normAcasXu x ! clearOfConflict) and
-    normAcasXu x ! strongLeft < (normAcasXu x ! weakLeft)
+    normAcasXu x ! strongLeft < (normAcasXu x ! weakLeft) and
+    normAcasXu x ! strongLeft < (normAcasXu x ! weakRight) and 
+    normAcasXu x ! strongLeft < (normAcasXu x ! strongRight)
 
 minimalWeakLeft : UnnormalisedInputVector -> Bool
 minimalWeakLeft x = 
-    normAcasXu x ! weakLeft < (normAcasXu x ! strongLeft) and 
+    normAcasXu x ! weakLeft < (normAcasXu x ! clearOfConflict) and
     normAcasXu x ! weakLeft < (normAcasXu x ! weakRight) and 
-    normAcasXu x ! weakLeft < (normAcasXu x ! strongRight) and 
-    normAcasXu x ! weakLeft < (normAcasXu x ! clearOfConflict)
+    normAcasXu x ! weakLeft < (normAcasXu x ! strongLeft) and 
+    normAcasXu x ! weakLeft < (normAcasXu x ! strongRight)
 
 --------------------------------------------------------------------------------
 -- Property 1

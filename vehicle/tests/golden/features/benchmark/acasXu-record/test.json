@@ -7,6 +7,22 @@
     ]
   },
   {
+    "name": "Marabou",
+    "run": "vehicle compile queries -s acasXu-record.vcl -f MarabouQueries -o Marabou.queries --network acasXu:fake.onnx",
+    "needs": [
+      "acasXu-record.vcl",
+      "fake.onnx"
+    ],
+    "produces": [
+      "Marabou.queries/*.txt",
+      "Marabou.queries/property*.vcl-plan"
+    ],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "sizeOnly": ".vcl-plan"
+  },
+  {
     "name": "Agda",
     "run": "vehicle compile itp -s acasXu-record.vcl -t Agda -o Agda.agda",
     "needs": [

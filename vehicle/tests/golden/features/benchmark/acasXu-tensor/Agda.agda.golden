@@ -163,3 +163,4 @@ IntruderFarAway2 : UnnormalisedInputVector → Set
 IntruderFarAway2 x = ((natScalar 36000) ≤ (x ! uDistanceToIntruder) × (x ! uDistanceToIntruder) ≤ (natScalar 60760)) × (((scalar (ℤ.+ 7 ℚ./ 10)) ≤ (x ! uAngleToIntruder) × (x ! uAngleToIntruder) ≤ pi) × ((𝕋.- pi ≤ (x ! uIntruderHeading) × (x ! uIntruderHeading) ≤ 𝕋.- pi 𝕋.+ (scalar (ℤ.+ 1 ℚ./ 100))) × (((natScalar 900) ≤ (x ! uSpeed) × (x ! uSpeed) ≤ (natScalar 1200)) × ((natScalar 600) ≤ (x ! uIntruderSpeed) × (x ! uIntruderSpeed) ≤ (natScalar 1200)))))
 
 postulate property10 : ∀ x → ValidInput x × IntruderFarAway2 x → MinimalCoC x
+asdfdfd
