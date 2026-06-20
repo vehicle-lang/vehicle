@@ -3,7 +3,6 @@
 ################
 
 import pytest
-
 from vehicle_lang.typing import CustomDifferentiableLogic
 
 tf = pytest.importorskip(
