@@ -935,11 +935,11 @@ formatCompileError = \case
       }
     where
       unboundedVarInfo =
-        case toTypeValue inputValue of
-          (VRecordType typ fields) -> do
+        case inputValue of
+          VRecord recordType fields -> do
             let varName = "x" :: Name
             let fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
-            let typeIdent = case typ of
+            let typeIdent = case recordType of
                   (VFreeVar i _) -> Just i
                   _ -> Nothing
             pretty varName
