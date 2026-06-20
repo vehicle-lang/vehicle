@@ -7,6 +7,22 @@
         ]
     },
     {
+        "name": "Marabou",
+        "run": "vehicle compile queries -s windController-tensor.vcl -f MarabouQueries -o Marabou.queries --network controller:fake.onnx",
+        "needs": [
+            "windController-tensor.vcl",
+            "fake.onnx"
+        ],
+        "produces": [
+            "Marabou.queries/*.txt",
+            "Marabou.queries/safe*.vcl-plan"
+        ],
+        "ignore": {
+            "lines": ".*\"fileHash\".*"
+        },
+        "sizeOnly": ".vcl-plan"
+    },
+    {
         "name": "Agda",
         "run": "vehicle compile itp -s windController-tensor.vcl -t Agda -o Agda.agda",
         "needs": [
