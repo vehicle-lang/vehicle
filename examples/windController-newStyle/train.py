@@ -31,8 +31,7 @@ class Controller(nn.Module):
         )
 
     def forward(self, x: Input) -> Output:
-        flat = torch.stack([x.currentSensor, x.previousSensor], dim=-1)
-        return Output(deltaVelocity=self.net(flat).squeeze(-1))
+        return self.net(x)
 
 
 if __name__ == "__main__":
