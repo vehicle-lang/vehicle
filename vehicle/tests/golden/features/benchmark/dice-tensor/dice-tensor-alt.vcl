@@ -69,7 +69,7 @@ oneOrOther image x y = (predicts image x) or (predicts image y)
 oppositeFaces : Image -> Bool
 oppositeFaces image = forall (perturbation : Image) .
   let perturbedImage = image - perturbation in
-    imageBoundedBy epsilon (-epsilon) perturbation and imageBoundedBy 0 1 perturbedImage =>
+    imageBoundedBy (-epsilon) epsilon perturbation and imageBoundedBy 0 1 perturbedImage =>
       ( (notBoth perturbedImage face1 face6) and (oneOrOther perturbedImage face1 face6) ) and
       ( (notBoth perturbedImage face2 face5) and (oneOrOther perturbedImage face2 face5) ) and
       ( (notBoth perturbedImage face3 face4) and (oneOrOther perturbedImage face3 face4) )
