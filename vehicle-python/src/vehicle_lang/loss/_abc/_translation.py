@@ -86,8 +86,6 @@ class ABCTranslation(
                 return self.translate_Record(expression)
             case vcl_ast.RecordAcc():
                 return self.translate_RecordAcc(expression)
-            case vcl_ast.SearchRecord():
-                return self.translate_SearchRecord(expression)
             case vcl_ast.Dimension():
                 return self.translate_Dimension(expression)
             case vcl_ast.DimensionCons():
@@ -241,11 +239,6 @@ class ABCTranslation(
     @abstractmethod
     def translate_RecordAcc(
         self, expression: vcl_ast.RecordAcc
-    ) -> vcl_var.Expression: ...
-
-    @abstractmethod
-    def translate_SearchRecord(
-        self, expression: vcl_ast.SearchRecord
     ) -> vcl_var.Expression: ...
 
     @abstractmethod

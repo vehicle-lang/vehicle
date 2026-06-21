@@ -31,9 +31,22 @@ _IGNORED_RETURN_KEYS = {
     "__vehicle__",
     "__vehicle_user_samplers__",
     "__vehicle_record_types__",
+    "__vehicle_autocast__",
     "__builtins__",
     "__annotations__",
 }
+
+
+def _autocast_return(f: Any, cls: Any) -> Any:
+    """Wrap f so its return is cls.from_tensor(result) when not already cls."""
+
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        result = f(*args, **kwargs)
+        if isinstance(result, cls):
+            return result
+        return cls.from_tensor(result)
+
+    return wrapper
 
 
 @dataclass(frozen=True)
@@ -54,6 +67,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         try:
             declaration_context["__vehicle__"] = self.builtins
             declaration_context["__vehicle_user_samplers__"] = samplers
+            declaration_context["__vehicle_autocast__"] = _autocast_return
             before_exec = dict(declaration_context)
             py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
@@ -119,6 +133,30 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             **asdict(binder.provenance),
         )
 
+    def _maybe_autocast(self, binder: vcl.Binder) -> py.stmt | None:
+        if binder.name is None:
+            return None
+        if not isinstance(binder.type, vcl.Pi):
+            return None
+        if not isinstance(binder.type.output_type, vcl.RecordType):
+            return None
+        schema = binder.type.output_type.schema
+        return py.Assign(
+            targets=[
+                py.Name(id=binder.name, ctx=py.Store(), **asdict(binder.provenance))
+            ],
+            value=py.Call(
+                func=py_name("__vehicle_autocast__", provenance=binder.provenance),
+                args=[
+                    py_name(binder.name, provenance=binder.provenance),
+                    py_name(schema, provenance=binder.provenance),
+                ],
+                keywords=[],
+                **asdict(binder.provenance),
+            ),
+            **asdict(binder.provenance),
+        )
+
     def translate_declarations(
         self, declarations: Iterator[vcl.Declaration]
     ) -> Iterator[py.stmt]:
@@ -132,8 +170,12 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_DefFunction(self, declaration: vcl.DefFunction) -> py.stmt:
         body = declaration.body
         binders = []
+        autocast_stmts: list[py.stmt] = []
         while isinstance(body, vcl.Lam):
             binders.append(self.translate_binder(body.binder))
+            wrap = self._maybe_autocast(body.binder)
+            if wrap is not None:
+                autocast_stmts.append(wrap)
             body = body.body
 
         if binders:
@@ -141,10 +183,11 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 name=declaration.name,
                 args=py_binder(*binders),
                 body=[
+                    *autocast_stmts,
                     py.Return(
                         value=self.translate_expression(body),
                         **asdict(declaration.provenance),
-                    )
+                    ),
                 ],
                 decorator_list=[],
                 **asdict(declaration.provenance),
@@ -366,28 +409,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             attr=expression.field,
             ctx=py.Load(),
             **asdict(vcl.MISSING),
-        )
-
-    def translate_SearchRecord(self, expression: vcl.SearchRecord) -> py.expr:
-        """Translate SearchRecord to a sampler call."""
-        sampler_call = py_app(
-            py_subscript(
-                py_qualified_name("__vehicle_user_samplers__", provenance=vcl.MISSING),
-                py.Constant(value=expression.name, **asdict(vcl.MISSING)),
-                provenance=vcl.MISSING,
-            ),
-            self.translate_expression(expression.dims),
-            self.translate_expression(expression.lower_bound),
-            self.translate_expression(expression.upper_bound),
-            self.translate_expression(expression.search_lambda),
-            py.Constant(value=expression.minimise, **asdict(vcl.MISSING)),
-            provenance=vcl.MISSING,
-        )
-
-        return py_app(
-            self.translate_expression(expression.reduction_op),
-            sampler_call,
-            provenance=vcl.MISSING,
         )
 
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:

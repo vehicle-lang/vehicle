@@ -423,20 +423,6 @@ class RecordAcc(Expression):
     field: Name
 
 
-@dataclass(frozen=True)
-class SearchRecord(Expression):
-    """Search record: SearchRecord name schema reduction_op dims …"""
-
-    name: str
-    schema: Name
-    reduction_op: Expression
-    dims: Expression
-    lower_bound: Expression
-    upper_bound: Expression
-    search_lambda: Expression
-    minimise: bool
-
-
 ################################################################################
 # Declarations
 ################################################################################

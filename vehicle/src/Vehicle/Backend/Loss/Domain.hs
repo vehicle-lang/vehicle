@@ -1,8 +1,5 @@
 module Vehicle.Backend.Loss.Domain
   ( compileQuantifier,
-    compileQuantifierWith,
-    compileSearch,
-    SearchEmitter,
   )
 where
 
@@ -48,30 +45,12 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
--- | Builds the final search value from FM-extracted bounds. The rat-tensor
--- path uses 'compileSearch'; the record path uses a wrapper that re-tags
--- the result.
-type SearchEmitter m =
-  Name ->
-  VDims LossBuiltin ->
-  VBinder LossBuiltin ->
-  Closure LossBuiltin ->
-  Domain (DimensionedTensorValue LossBuiltin) ->
-  m (Value LossBuiltin)
-
 compileQuantifier ::
   (MonadLogic m) =>
   (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin)) ->
   m (Value LossBuiltin)
-compileQuantifier = compileQuantifierWith compileSearch
-
-compileQuantifierWith ::
-  (MonadLogic m) =>
-  SearchEmitter m ->
-  (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin)) ->
-  m (Value LossBuiltin)
-compileQuantifierWith emitter (q, args) = do
-  maybePartitions <- compileQuantifierInternal emitter (q, args)
+compileQuantifier (q, args) = do
+  maybePartitions <- compileQuantifierInternal (q, args)
   case maybePartitions of
     Trivial b ->
       -- TODO add a warning
@@ -93,31 +72,28 @@ checkFinalPartitionUnconstrained = \case
 
 compileQuantifierInternal ::
   (MonadLogic m) =>
-  SearchEmitter m ->
   (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin)) ->
   m (MaybeTrivial Partitions)
-compileQuantifierInternal emitter (q, args) = case q of
-  Exists -> compileExists emitter args
-  Forall -> compileForall emitter args
+compileQuantifierInternal (q, args) = case q of
+  Exists -> compileExists args
+  Forall -> compileForall args
 
 compileForall ::
   (MonadLogic m) =>
-  SearchEmitter m ->
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (MaybeTrivial Partitions)
-compileForall emitter args = do
+compileForall args = do
   notArgs <- negateRatTensorQuantifierBody args
-  maybePartitions <- compileExists emitter notArgs
+  maybePartitions <- compileExists notArgs
   case maybePartitions of
     Trivial b -> return $ Trivial $ not b
     NonTrivial partitions -> NonTrivial <$> notPartitions IDimNil partitions
 
 compileExists ::
   (MonadLogic m) =>
-  SearchEmitter m ->
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (MaybeTrivial Partitions)
-compileExists emitter (QuantifyRatTensorArgs dims binder closure) =
+compileExists (QuantifyRatTensorArgs dims binder closure) =
   logCompilerSection2 MaxDetail "convert-exists" $ do
     -- Extract the domain for the search
     lv <- getBinderDepth
@@ -133,21 +109,20 @@ compileExists emitter (QuantifyRatTensorArgs dims binder closure) =
         NonTrivial partitions -> do
           logDebug MaxDetail $ "number-of-partitions:" <+> pretty (numberOfPartitions partitions)
           userTensorVar <- lookupNestedTensorVariable $ UserTensorVariable $ TensorVariable $ SliceVariable lv
-          xs <- traverse (compileConstraints emitter finalCtx dims binder userTensorVar) (partitionsToDisjuncts partitions)
+          xs <- traverse (compileConstraints finalCtx dims binder userTensorVar) (partitionsToDisjuncts partitions)
           disjunctMaybeTrivialPartitions xs
 
     return result
 
 compileConstraints ::
   (MonadLogic m) =>
-  SearchEmitter m ->
   BoundCtx () ->
   VDims Builtin ->
   VBinder Builtin ->
   NestedSliceVariable ->
   Partition ->
   m (MaybeTrivial Partitions)
-compileConstraints emitter finalCtx dims binder var (maybeConstraints, maybeRemainder) = do
+compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) = do
   let (varName, _) = getNamedBinderInfo binder
   logCompilerSection2 MidDetail ("extracting bounds for" <+> quotePretty varName <+> "from partition") $ do
     -- Extract the constraints we can use to bound the variable
@@ -208,7 +183,7 @@ compileConstraints emitter finalCtx dims binder var (maybeConstraints, maybeRema
 
         lossBinder <- traverse convertType binder
         lossDims <- convertDims dims
-        finalValue <- emitter varName lossDims lossBinder remainder domain
+        finalValue <- compileSearch varName lossDims lossBinder remainder domain
         return $ singletonPartition (remainingTree, Just finalValue)
     NonTrivial <$> disjunctPartitions newPartitions
 
@@ -420,7 +395,7 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VOr args -> compileOr args
   VBoolIf args -> compileBool =<< unfoldIf args
   VNot args -> compileBool =<< lowerNot args
-  VQuantifyRatTensor args -> compileQuantifierInternal compileSearch args
+  VQuantifyRatTensor args -> compileQuantifierInternal args
   VQuantifyRecord _args -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
   -------------------
   -- Blocked cases --

@@ -3,6 +3,9 @@
 module Vehicle.Backend.Loss.JSON
   ( convertToJSONProg,
     convertFromJSONProg,
+    JProg (..),
+    JDecl (..),
+    JFieldType (..),
   )
 where
 
@@ -118,7 +121,6 @@ data JExpr
   | -- Tensor records
     Record Name [(Name, JExpr)] -- (Schema, Fields)
   | RecordAcc JExpr Name -- (Record, FieldName)
-  | SearchRecord Name Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Name, Schema, ReductionOp, Dims, LowerBound, UpperBound, SearchLambda, Minimise)
   | -- Vector
     VectorLiteral [JExpr]
   | AtVector JExpr JExpr
@@ -405,7 +407,6 @@ convertBuiltin b spine = case b of
     L.FoldList -> unsupportedError b
   L.LossBuiltinExtraFunction f -> case f of
     L.SearchRatTensor name minimise -> convertSearch name minimise spine
-    L.SearchRecord name minimise -> convertSearchRecord name minimise spine
 
 convertNullaryOp :: (MonadJSON m) => LossBuiltin -> a -> Spine LossBuiltin -> m a
 convertNullaryOp b fn = \case
@@ -508,19 +509,6 @@ convertSearch :: (MonadJSON m) => Name -> Bool -> Spine LossBuiltin -> m JExpr
 convertSearch name minimise = convertNonNullaryOp (L.SearchRatTensor name minimise) 5 $
   \(SearchRatTensorArgs dims unaryOp lowerBound upperBound fn) ->
     SearchRatTensor name <$> convertValue unaryOp <*> convertValue dims <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn <*> pure minimise
-
-convertSearchRecord :: (MonadJSON m) => Name -> Bool -> Spine LossBuiltin -> m JExpr
-convertSearchRecord name minimise spine = case spine of
-  (Arg _ _ (VFreeVar schemaIdent _) : rest)
-    | Just (SearchRatTensorArgs dims unaryOp lowerBound upperBound fn) <- getExpr accessSpine rest ->
-        SearchRecord name (nameOf schemaIdent)
-          <$> convertValue unaryOp
-          <*> convertValue dims
-          <*> convertValue lowerBound
-          <*> convertValue upperBound
-          <*> convertValue fn
-          <*> pure minimise
-  _ -> arityError (show (L.SearchRecord name minimise)) 6 spine
 
 arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> Spine LossBuiltin -> m a
 arityError fun arity explicitArgs =
@@ -641,10 +629,6 @@ fromJExpr = \case
     record' <- fromJExpr recordVal
     let fieldIdent = Identifier userModulePath fieldName
     return $ normAppList (S.FreeVar mempty fieldIdent) [explicit record']
-  SearchRecord name schemaName dims e1 e2 e3 e4 minimise -> do
-    let schemaIdent = Identifier userModulePath schemaName
-    body <- toExtraFunction (L.SearchRatTensor name minimise) [dims, e1, e2, e3, e4]
-    return $ normAppList body [explicit (S.FreeVar mempty schemaIdent)]
   Dimension d -> toConstructor (L.NatLiteral d) []
   DimensionNil -> toConstructor L.Nil []
   DimensionCons e1 e2 -> toConstructor L.Cons [e1, e2]

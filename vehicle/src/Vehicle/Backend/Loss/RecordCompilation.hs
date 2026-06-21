@@ -12,7 +12,6 @@ module Vehicle.Backend.Loss.RecordCompilation
 
     -- * Record quantifier compilation
     wrapQuantifyRecordForLoss,
-    compileRecordSearch,
   )
 where
 
@@ -24,7 +23,6 @@ import Vehicle.Compile.Normalise.NBE qualified as NBE
 import Vehicle.Compile.Normalise.Quote (unnormaliseInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Data.Bound (Domain)
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard (Builtin)
 import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructTensorisableDims)
@@ -153,34 +151,3 @@ wrapQuantifyRecordForLoss QuantifyRecordArgs {..} = do
 
   let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
   return $ QuantifyRatTensorArgs normalisedDims tensorBinder (Closure boundEnv nestedBody)
-
--- | Delegates to the supplied tensor emitter and re-tags the resulting
--- 'SearchRatTensor' to 'SearchRecord' with the schema identifier prepended.
--- The emitter is passed in to avoid an import cycle.
-compileRecordSearch ::
-  forall m.
-  (MonadLogic m) =>
-  Identifier ->
-  ( Name ->
-    VDims LossBuiltin ->
-    VBinder LossBuiltin ->
-    Closure LossBuiltin ->
-    Domain (DimensionedTensorValue LossBuiltin) ->
-    m (Value LossBuiltin)
-  ) ->
-  Name ->
-  VDims LossBuiltin ->
-  VBinder LossBuiltin ->
-  Closure LossBuiltin ->
-  Domain (DimensionedTensorValue LossBuiltin) ->
-  m (Value LossBuiltin)
-compileRecordSearch schemaIdent baseEmitter varName dims lossBinder closure dom = do
-  baseResult <- baseEmitter varName dims lossBinder closure dom
-  case baseResult of
-    VBuiltin (LossBuiltinExtraFunction (SearchRatTensor _ minimise)) spine ->
-      let schemaRef = VFreeVar schemaIdent [] :: Value LossBuiltin
-       in return $
-            VBuiltin
-              (LossBuiltinExtraFunction (SearchRecord varName minimise))
-              (explicit schemaRef : spine)
-    _ -> developerError "compileRecordSearch: base emitter returned non-SearchRatTensor value"

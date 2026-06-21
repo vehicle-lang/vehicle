@@ -147,13 +147,11 @@ instance Pretty LossBuiltinFunction where
 
 data LossBuiltinExtraFunction
   = SearchRatTensor Name LogicDirection
-  | SearchRecord Name LogicDirection
   deriving (Show, Eq, Ord, Generic)
 
 instance Pretty LossBuiltinExtraFunction where
   pretty = \case
     SearchRatTensor name _direction -> "search[" <> pretty name <> "]"
-    SearchRecord name _direction -> "searchRecord[" <> pretty name <> "]"
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -383,7 +381,6 @@ instance ConvertableBuiltin LossBuiltinFunction Builtin where
 instance ConvertableBuiltin LossBuiltinExtraFunction Builtin where
   convertBuiltin p b = case b of
     SearchRatTensor {} -> cheatConvertBuiltin p $ pretty b
-    SearchRecord {} -> cheatConvertBuiltin p $ pretty b
 
 instance ConvertableBuiltin LossBuiltin Builtin where
   convertBuiltin p b = case b of

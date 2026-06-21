@@ -7,7 +7,7 @@ import Control.Monad.Reader (ReaderT)
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.Core
-import Vehicle.Backend.Loss.Domain (compileQuantifier, compileQuantifierWith, compileSearch)
+import Vehicle.Backend.Loss.Domain (compileQuantifier)
 import Vehicle.Backend.Loss.LogicCompilation (findAndCompileLogic)
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Loss.LossCompilation qualified as Loss ()
@@ -20,7 +20,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
-import Vehicle.Data.Code.Interface.Args (QuantifyRecordArgs (quantifyRecordType))
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
@@ -152,11 +151,7 @@ convertTensorProperty value = case toBoolTensorValue value of
   VBoolTensorQuantifyRat args -> compileQuantifier args
   VBoolTensorQuantifyRecord (q, recordArgs) -> do
     flattenedArgs <- RecordCompilation.wrapQuantifyRecordForLoss recordArgs
-    schemaIdent <- case toTypeValue (quantifyRecordType recordArgs) of
-      VFreeTypeVar v _ -> return v
-      _ -> developerError "Record quantifier's binder is not a free type-var reference"
-    let recordEmitter = RecordCompilation.compileRecordSearch schemaIdent compileSearch
-    compileQuantifierWith recordEmitter (q, flattenedArgs)
+    compileQuantifier (q, flattenedArgs)
   VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertTensorProperty args
   VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertTensorProperty args
   VBoolTensorIf args -> convertIf args

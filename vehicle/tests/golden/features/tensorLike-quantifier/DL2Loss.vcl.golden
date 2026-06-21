@@ -3,8 +3,8 @@ record Pair where {a : Real, b : Real}
 
 @property;
 p : (Pair -> Pair) -> Tensor Real;
-p = \ f -> 1.0 / search[_t0] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 10.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))) - _t0 ! 0)) Pair
+p = \ f -> 1.0 / search[_t0] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 10.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))) - _t0 ! 0))
 
 @property;
 parallel : (Pair -> Pair) -> Tensor Real;
-parallel = \ f -> 1.0 / search[_t0] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 10.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))))) Pair + search[_t0] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 10.0 [2]) (\ _t0 -> max 0.0 (5.0 - b (f (Pair (_t0 ! 0) (_t0 ! 1))))) Pair
+parallel = \ f -> 1.0 / search[_t0] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 10.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))))) + search[_t0] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 10.0 [2]) (\ _t0 -> max 0.0 (5.0 - b (f (Pair (_t0 ! 0) (_t0 ! 1)))))
