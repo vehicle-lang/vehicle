@@ -21,7 +21,7 @@ module Vehicle.Libraries.StandardLibrary
     hasComparisonIdent,
     standardLibraryCompareRatTensorReduced,
     validDatasetTypeIdent,
-    validDatasetListElementTypeIdent
+    validDatasetListElementTypeIdent,
   )
 where
 

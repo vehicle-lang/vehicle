@@ -29,7 +29,7 @@ module Vehicle.Backend.Loss.LossCompilation
 where
 
 import Vehicle.Backend.Loss.Core hiding (currentPass)
-import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
+import Vehicle.Compile.Normalise.NBE (evalApp, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -65,7 +65,6 @@ convertType typ = logConversion typ $ case toTypeValue typ of
   VVectorType tElem d -> IVectorType <$> convertType tElem <*> convertDim d
   VBoolTensorType ds -> ITensorType <$> convertBoolType <*> convertDims ds
   VRatTensorType ds -> ITensorType IRatType <$> convertDims ds
-  VRecordType {} -> developerError "Records in loss functions are not supported yet"
   VNatTensorType ds -> ITensorType INatType <$> convertDims ds
   VIndexTensorType n ds -> (ITensorType . IIndexType <$> convertDim n) <*> convertDims ds
 
@@ -190,8 +189,8 @@ convertBoolTensor value = logConversion value $ case toBoolTensorValue value of
 
 convertBoolTensorLiteral :: (MonadLogic m) => Tensor Bool -> m (Value LossBuiltin)
 convertBoolTensorLiteral tensor = do
-  trueExpr <- getLogicField TruthityElement
-  falseExpr <- getLogicField FalsityElement
+  trueExpr <- getLogicFieldValue TruthityElement
+  falseExpr <- getLogicFieldValue FalsityElement
 
   let convertBool b = if b then trueExpr else falseExpr
   let foldLayer shape elems = do
@@ -259,11 +258,11 @@ convertLogicField ::
   args (Value LossBuiltin) ->
   m (Value LossBuiltin)
 convertLogicField field args = do
-  fn <- getLogicField field
+  fn <- getLogicFieldValue field
   logDebugM MaxDetail $ do
     fnDoc <- prettyFriendlyInCtx fn
     return $ "subst-field" <+> pretty field <> ":" <+> fnDoc
-  normaliseAppInEmptyFreeEnv mempty fn (mkExpr accessSpine args)
+  evalApp mempty fn (mkExpr accessSpine args)
 
 --------------------------------------------------------------------------------
 -- Index
