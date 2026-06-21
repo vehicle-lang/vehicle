@@ -1,0 +1,82 @@
+#!/bin/sh
+
+# Hyperfine wrapper for the loss-backend training benchmark.
+# Produces JSON in the same schema as scripts/benchmark on the
+# lauren-benchmark branch.
+#
+# Pre-reqs: hyperfine, jq, uv. The vehicle-python project must already
+# be syncable (uv sync --all-extras --project vehicle-python).
+
+fail=$(mktemp)
+
+HYPERFINE=$(which hyperfine || echo > "$fail")
+if [ -s "$fail" ]; then
+  rm "$fail"
+  echo "scripts/benchmark-loss requires 'hyperfine' on PATH (https://github.com/sharkdp/hyperfine)" >&2
+  exit 1
+fi
+
+JQ=$(which jq || echo > "$fail")
+if [ -s "$fail" ]; then
+  rm "$fail"
+  echo "scripts/benchmark-loss requires 'jq' on PATH (https://stedolan.github.io/jq/)" >&2
+  exit 1
+fi
+
+UV=$(which uv || echo > "$fail")
+if [ -s "$fail" ]; then
+  rm "$fail"
+  echo "scripts/benchmark-loss requires 'uv' on PATH (https://docs.astral.sh/uv/)" >&2
+  exit 1
+fi
+
+REPO_ROOT=$(git rev-parse --show-toplevel || echo > "$fail")
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+COMMIT_HASH=$(git rev-parse --short HEAD || echo > "$fail")
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+SYSTEM=$(uname -s | cut -d- -f1 || echo > "$fail")
+[ ! -s "$fail" ] || (rm "$fail" && exit 1)
+
+case "$SYSTEM" in
+  CYGWIN_NT|MINGW32_NT|MINGW64_NT|MSYS_NT) PLATFORM="Windows" ;;
+  Darwin) PLATFORM="macOS" ;;
+  Linux)  PLATFORM="Linux" ;;
+  *)
+    echo "Unsupported system '$SYSTEM'" >&2
+    rm "$fail" && exit 1
+    ;;
+esac
+
+BENCHMARK_DIR="$REPO_ROOT/.benchmarks"
+BENCHMARK_NAME="loss-$COMMIT_HASH-$PLATFORM"
+BENCHMARK_FILE="$BENCHMARK_DIR/$BENCHMARK_NAME.json"
+
+mkdir -p "$BENCHMARK_DIR" || (rm "$fail" && exit 1)
+
+STEPS=${STEPS:-500}
+SEED=${SEED:-0}
+WARMUP=${WARMUP:-3}
+RUNS=${RUNS:-10}
+
+RECORDS_CMD="$UV run --project $REPO_ROOT/vehicle-python python $REPO_ROOT/examples/windController-newStyle/bench_train.py --steps $STEPS --seed $SEED --quiet"
+TENSORS_CMD="$UV run --project $REPO_ROOT/vehicle-python python $REPO_ROOT/examples/windController/bench_train.py --steps $STEPS --seed $SEED --quiet"
+
+echo "Running loss benchmark: STEPS=$STEPS SEED=$SEED WARMUP=$WARMUP RUNS=$RUNS"
+echo "Output: $BENCHMARK_FILE"
+
+"$HYPERFINE" \
+  --warmup "$WARMUP" \
+  --runs "$RUNS" \
+  --export-json "$BENCHMARK_FILE" \
+  --command-name "windController-tensors" "$TENSORS_CMD" \
+  --command-name "windController-records" "$RECORDS_CMD" \
+  || (rm "$fail" && exit 1)
+
+# Annotate the JSON with benchmark metadata.
+$JQ ". + {commit: \"$COMMIT_HASH\", platform: \"$PLATFORM\", steps: $STEPS, seed: $SEED}" \
+  "$BENCHMARK_FILE" > "$BENCHMARK_FILE.tmp" && mv "$BENCHMARK_FILE.tmp" "$BENCHMARK_FILE"
+
+rm -f "$fail"
+echo "Results: $BENCHMARK_FILE"
