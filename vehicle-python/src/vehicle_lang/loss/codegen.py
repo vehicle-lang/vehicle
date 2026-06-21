@@ -4,23 +4,24 @@ from __future__ import annotations
 
 import argparse
 import io
+import math
 import sys
 from pathlib import Path
-from typing import TextIO
+from typing import Sequence, TextIO
 
+from .. import session
 from .._ast import _nodes as vcl
-from ..typing import DifferentiableLogic
-from . import load_ast
+from ..error import VehicleInternalError
 
 
-def generate(
-    spec_path: str | Path,
-    output: TextIO | Path,
-    *,
-    logic: DifferentiableLogic = DifferentiableLogic.DL2,
-) -> None:
-    """Read 'spec_path' and emit @dataclass definitions for each @tensor record schema."""
-    program = load_ast(spec_path, target=logic)
+def generate(spec_path: str | Path, output: TextIO | Path) -> None:
+    """Read 'spec_path' and emit torch.Tensor subclasses for each @tensor record schema."""
+    raw = session.execute_command(
+        ["--json", "list", "records", f"--specification={spec_path}"]
+    )
+    if raw is None:
+        raise VehicleInternalError("vehicle compile records produced no output")
+    program = vcl.Program.from_json(raw)
     if not isinstance(program, vcl.Main):
         raise RuntimeError(
             f"unexpected Program shape from {spec_path}: {type(program).__name__}"
@@ -40,7 +41,7 @@ def generate(
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="vehicle compile python-types",
-        description="Emit a typed Python module with @dataclass definitions for each @tensor record in the spec.",
+        description="Emit a typed Python module with torch.Tensor subclasses for each @tensor record in the spec.",
     )
     parser.add_argument(
         "-s", "--specification", required=True, help="path to the .vcl spec"
@@ -51,22 +52,13 @@ def main() -> int:
         required=True,
         help="path to the output .py file, or '-' for stdout",
     )
-    parser.add_argument(
-        "--logic",
-        default="DL2",
-        help="differentiable logic used to load the spec (default: DL2)",
-    )
     args = parser.parse_args()
 
-    logic = DifferentiableLogic[args.logic]
     if args.output == "-":
-        generate(args.specification, sys.stdout, logic=logic)
+        generate(args.specification, sys.stdout)
     else:
-        generate(args.specification, Path(args.output), logic=logic)
+        generate(args.specification, Path(args.output))
     return 0
-
-
-# Emission helpers -------------------------------------------------------------
 
 
 def _emit_module(
@@ -76,16 +68,132 @@ def _emit_module(
     out.write("\n")
     out.write("from __future__ import annotations\n")
     out.write("\n")
-    out.write("from dataclasses import dataclass\n")
+    out.write("import torch\n")
     out.write("\n")
     out.write("from jaxtyping import Float\n")
     out.write("from torch import Tensor\n")
+    widths: dict[str, int] = {}
     for schema in schemas:
-        out.write("\n\n")
-        out.write("@dataclass(frozen=True)\n")
-        out.write(f"class {schema.name}:\n")
-        for fname, ftype in schema.fields:
-            out.write(f"    {fname}: {_field_annotation(ftype)}\n")
+        _emit_schema(out, schema, widths)
+
+
+def _emit_schema(
+    out: TextIO, schema: vcl.DefRecordSchema, widths: dict[str, int]
+) -> None:
+    name = schema.name
+    field_names: list[str] = [fname for fname, _ in schema.fields]
+    field_widths: list[int] = [_flat_width(ftype, widths) for _, ftype in schema.fields]
+    offsets: list[int] = []
+    acc = 0
+    for w in field_widths:
+        offsets.append(acc)
+        acc += w
+    total = acc
+    widths[name] = total
+
+    out.write("\n\n")
+    out.write(f"class {name}(torch.Tensor):  # type: ignore[misc]\n")
+    out.write("    # Make torch.* ops return plain Tensor, not this subclass.\n")
+    out.write("    __torch_function__ = torch._C._disabled_torch_function_impl\n")
+    out.write("\n")
+    out.write(f"    _FIELDS: tuple[str, ...] = {tuple(field_names)!r}\n")
+    out.write(f"    _FLAT_WIDTH: int = {total}\n")
+    out.write("    _FIELD_SLOTS: dict[str, tuple[int, int]] = {\n")
+    for fname, off, w in zip(field_names, offsets, field_widths):
+        out.write(f"        {fname!r}: ({off}, {off + w}),\n")
+    out.write("    }\n")
+    out.write("\n")
+
+    out.write("    @staticmethod\n")
+    out.write(
+        f"    def __new__(cls, *, _from_tensor: Tensor | None = None, **fields: Tensor) -> {name!r}:\n"
+    )
+    out.write("        if _from_tensor is not None:\n")
+    out.write(
+        "            return _from_tensor.as_subclass(cls)  # type: ignore[no-any-return]\n"
+    )
+    out.write("        slabs = []\n")
+    for fname, ftype in schema.fields:
+        match ftype:
+            case vcl.JFieldScalarReal():
+                out.write(f"        v_{fname} = torch.as_tensor(fields[{fname!r}])\n")
+                out.write(
+                    f"        slabs.append(v_{fname}.reshape(*v_{fname}.shape, 1))\n"
+                )
+            case vcl.JFieldTensorReal(shape):
+                out.write(f"        v_{fname} = torch.as_tensor(fields[{fname!r}])\n")
+                width = _prod_shape(shape)
+                out.write(
+                    f"        slabs.append(v_{fname}.reshape(*v_{fname}.shape[:-{len(shape)}], {width}))\n"
+                )
+            case vcl.JFieldRecordRef(_):
+                out.write(f"        v_{fname} = fields[{fname!r}]\n")
+                out.write(
+                    f"        slabs.append(v_{fname}.as_subclass(torch.Tensor))\n"
+                )
+            case _:
+                raise NotImplementedError(
+                    f"unsupported FieldType: {type(ftype).__name__}"
+                )
+    out.write(
+        "        return torch.cat(slabs, dim=-1).as_subclass(cls)  # type: ignore[no-any-return]\n"
+    )
+    out.write("\n")
+
+    out.write("    @classmethod\n")
+    out.write(f"    def from_tensor(cls, t: Tensor) -> {name!r}:\n")
+    out.write("        return t.as_subclass(cls)  # type: ignore[no-any-return]\n")
+    out.write("\n")
+    out.write("    def to_tensor(self) -> Tensor:\n")
+    out.write("        return self.as_subclass(torch.Tensor)\n")
+
+    for fname, ftype in schema.fields:
+        out.write("\n")
+        out.write("    @property\n")
+        out.write(f"    def {fname}(self) -> {_field_annotation(ftype)}:\n")
+        out.write(f"        lo, hi = {name}._FIELD_SLOTS[{fname!r}]\n")
+        out.write("        base = self.as_subclass(torch.Tensor)[..., lo:hi]\n")
+        match ftype:
+            case vcl.JFieldScalarReal():
+                out.write("        return base.reshape(self.shape[:-1])\n")
+            case vcl.JFieldTensorReal(shape):
+                shape_tuple = tuple(shape)
+                out.write(
+                    f"        return base.reshape((*self.shape[:-1], *{shape_tuple!r}))\n"
+                )
+            case vcl.JFieldRecordRef(ref):
+                out.write(f"        return {ref}.from_tensor(base)\n")
+            case _:
+                raise NotImplementedError(
+                    f"unsupported FieldType: {type(ftype).__name__}"
+                )
+
+
+def _flat_width(ftype: vcl.FieldType, widths: dict[str, int]) -> int:
+    match ftype:
+        case vcl.JFieldScalarReal():
+            return 1
+        case vcl.JFieldTensorReal(shape):
+            return _prod_shape(shape)
+        case vcl.JFieldRecordRef(ref):
+            if ref not in widths:
+                raise RuntimeError(
+                    f"record schema {ref!r} referenced before definition; "
+                    f"schemas must be emitted in topological order"
+                )
+            return widths[ref]
+        case _:
+            raise NotImplementedError(f"unsupported FieldType: {type(ftype).__name__}")
+
+
+def _prod_shape(shape: Sequence[int | str]) -> int:
+    concrete: list[int] = []
+    for d in shape:
+        if isinstance(d, int):
+            concrete.append(d)
+        else:
+            raise NotImplementedError(f"symbolic dim {d!r} in @tensor record field")
+    return math.prod(concrete) if concrete else 1
 
 
 def _field_annotation(ftype: vcl.FieldType) -> str:

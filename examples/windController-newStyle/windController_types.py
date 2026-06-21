@@ -2,18 +2,85 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
+import torch
 from jaxtyping import Float
 from torch import Tensor
 
 
-@dataclass(frozen=True)
-class Input:
-    currentSensor: Float[Tensor, ""]
-    previousSensor: Float[Tensor, ""]
+class Input(torch.Tensor):  # type: ignore[misc]
+    # Make torch.* ops return plain Tensor, not this subclass.
+    __torch_function__ = torch._C._disabled_torch_function_impl
+
+    _FIELDS: tuple[str, ...] = ("currentSensor", "previousSensor")
+    _FLAT_WIDTH: int = 2
+    _FIELD_SLOTS: dict[str, tuple[int, int]] = {
+        "currentSensor": (0, 1),
+        "previousSensor": (1, 2),
+    }
+
+    @staticmethod
+    def __new__(
+        cls, *, _from_tensor: Tensor | None = None, **fields: Tensor
+    ) -> "Input":
+        if _from_tensor is not None:
+            return _from_tensor.as_subclass(cls)  # type: ignore[no-any-return]
+        slabs = []
+        v_currentSensor = torch.as_tensor(fields["currentSensor"])
+        slabs.append(v_currentSensor.reshape(*v_currentSensor.shape, 1))
+        v_previousSensor = torch.as_tensor(fields["previousSensor"])
+        slabs.append(v_previousSensor.reshape(*v_previousSensor.shape, 1))
+        return torch.cat(slabs, dim=-1).as_subclass(cls)  # type: ignore[no-any-return]
+
+    @classmethod
+    def from_tensor(cls, t: Tensor) -> "Input":
+        return t.as_subclass(cls)  # type: ignore[no-any-return]
+
+    def to_tensor(self) -> Tensor:
+        return self.as_subclass(torch.Tensor)
+
+    @property
+    def currentSensor(self) -> Float[Tensor, ""]:
+        lo, hi = Input._FIELD_SLOTS["currentSensor"]
+        base = self.as_subclass(torch.Tensor)[..., lo:hi]
+        return base.reshape(self.shape[:-1])
+
+    @property
+    def previousSensor(self) -> Float[Tensor, ""]:
+        lo, hi = Input._FIELD_SLOTS["previousSensor"]
+        base = self.as_subclass(torch.Tensor)[..., lo:hi]
+        return base.reshape(self.shape[:-1])
 
 
-@dataclass(frozen=True)
-class Output:
-    deltaVelocity: Float[Tensor, ""]
+class Output(torch.Tensor):  # type: ignore[misc]
+    # Make torch.* ops return plain Tensor, not this subclass.
+    __torch_function__ = torch._C._disabled_torch_function_impl
+
+    _FIELDS: tuple[str, ...] = ("deltaVelocity",)
+    _FLAT_WIDTH: int = 1
+    _FIELD_SLOTS: dict[str, tuple[int, int]] = {
+        "deltaVelocity": (0, 1),
+    }
+
+    @staticmethod
+    def __new__(
+        cls, *, _from_tensor: Tensor | None = None, **fields: Tensor
+    ) -> "Output":
+        if _from_tensor is not None:
+            return _from_tensor.as_subclass(cls)  # type: ignore[no-any-return]
+        slabs = []
+        v_deltaVelocity = torch.as_tensor(fields["deltaVelocity"])
+        slabs.append(v_deltaVelocity.reshape(*v_deltaVelocity.shape, 1))
+        return torch.cat(slabs, dim=-1).as_subclass(cls)  # type: ignore[no-any-return]
+
+    @classmethod
+    def from_tensor(cls, t: Tensor) -> "Output":
+        return t.as_subclass(cls)  # type: ignore[no-any-return]
+
+    def to_tensor(self) -> Tensor:
+        return self.as_subclass(torch.Tensor)
+
+    @property
+    def deltaVelocity(self) -> Float[Tensor, ""]:
+        lo, hi = Output._FIELD_SLOTS["deltaVelocity"]
+        base = self.as_subclass(torch.Tensor)[..., lo:hi]
+        return base.reshape(self.shape[:-1])

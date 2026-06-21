@@ -24,7 +24,7 @@ def types(tmp_path_factory: pytest.TempPathFactory) -> ModuleType:
     """Run codegen on the test spec, import the generated module, yield it."""
     out_dir = tmp_path_factory.mktemp("types")
     out_path = out_dir / "pair_types.py"
-    codegen.generate(SPEC, out_path, logic=vcl.DifferentiableLogic.DL2)
+    codegen.generate(SPEC, out_path)
     sys.path.insert(0, str(out_dir))
     try:
         return importlib.import_module("pair_types")
@@ -39,19 +39,22 @@ def _load(types: ModuleType) -> Any:
 
 
 def test_schema_materialised_as_dataclass(types: ModuleType) -> None:
-    """Test that codegen emits a @dataclass(frozen=True) with the spec's fields."""
+    """Test that codegen emits a torch.Tensor subclass with the spec's fields in declaration order."""
     Pair = types.Pair
-    assert hasattr(Pair, "__dataclass_fields__"), "Pair should be a dataclass"
-    field_names = list(Pair.__dataclass_fields__.keys())
-    assert field_names == ["a", "b"]
+    assert issubclass(Pair, torch.Tensor), "Pair should subclass torch.Tensor"
+    assert Pair._FIELDS == ("a", "b")
+    assert Pair._FLAT_WIDTH == 2
+    assert Pair._FIELD_SLOTS == {"a": (0, 1), "b": (1, 2)}
 
 
 def test_pair_construction_and_field_access(types: ModuleType) -> None:
-    """Test that codegen-emitted dataclass supports kwarg construction + attribute access."""
+    """Test that codegen-emitted Tensor subclass supports kwarg construction + attribute access."""
     Pair = types.Pair
     x = Pair(a=1.0, b=2.0)
-    assert x.a == 1.0
-    assert x.b == 2.0
+    assert isinstance(x, torch.Tensor)
+    assert x.shape == (2,)
+    assert x.a.item() == 1.0
+    assert x.b.item() == 2.0
 
 
 def test_property_runs_with_record_controller(types: ModuleType) -> None:
@@ -151,12 +154,51 @@ def test_record_spec_without_types_raises() -> None:
         loss_pt.load_specification(SPEC, logic=vcl.DifferentiableLogic.DL2)
 
 
+def test_pair_is_torch_tensor(types: ModuleType) -> None:
+    """Test that Pair acts as a torch.Tensor in standard ops."""
+    Pair = types.Pair
+    p = Pair(a=torch.tensor(1.0), b=torch.tensor(2.0))
+    assert isinstance(p, torch.Tensor)
+    # nn.Linear consumes the Pair directly (last dim is 2).
+    out = torch.nn.Linear(2, 1)(p)
+    # __torch_function__ = _disabled_torch_function_impl: output is plain Tensor.
+    assert type(out) is torch.Tensor
+
+
+def test_batched_pair_field_access(types: ModuleType) -> None:
+    """Test that batched Pair instances expose per-field tensors with the right shape."""
+    Pair = types.Pair
+    batch = Pair(a=torch.zeros(4), b=torch.ones(4))
+    assert batch.shape == (4, 2)
+    assert batch.a.shape == (4,)
+    assert torch.equal(batch.a, torch.zeros(4))
+    assert torch.equal(batch.b, torch.ones(4))
+
+
+def test_controller_returning_plain_tensor_is_autocast(types: ModuleType) -> None:
+    """Test that a tensor-returning controller works against a record-returning spec."""
+    Pair = types.Pair
+    decls = _load(types)
+    safe = decls["p"]
+
+    saw_args: list[type] = []
+
+    def controller(x: Any) -> Any:
+        saw_args.append(type(x))
+        return x * 2.0
+
+    loss = safe(controller)
+    assert torch.is_tensor(loss)
+    assert saw_args, "controller was not invoked"
+    assert all(t is Pair for t in saw_args), f"controller saw non-Pair: {set(saw_args)}"
+
+
 def test_codegen_source_matches_golden() -> None:
     """Test that the codegen output for the test spec matches the checked-in golden source."""
     import io
 
     buf = io.StringIO()
-    codegen.generate(SPEC, buf, logic=vcl.DifferentiableLogic.DL2)
+    codegen.generate(SPEC, buf)
     assert buf.getvalue() == GOLDEN_SOURCE.read_text(), (
         f"codegen output diverged from {GOLDEN_SOURCE}; "
         f"regenerate via 'vehicle compile python-types -s {SPEC} -o {GOLDEN_SOURCE}'"
