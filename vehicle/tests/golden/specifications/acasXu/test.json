@@ -6,7 +6,7 @@
   },
   {
     "name": "List",
-    "run": "vehicle list -s spec.vcl -j",
+    "run": "vehicle list entities -s spec.vcl -j",
     "needs": ["spec.vcl"]
   },
   {

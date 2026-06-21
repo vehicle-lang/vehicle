@@ -34,5 +34,13 @@
   {
     "name": "vehicle-list",
     "run": "vehicle list --help"
+  },
+  {
+    "name": "vehicle-list-entities",
+    "run": "vehicle list entities --help"
+  },
+  {
+    "name": "vehicle-list-records",
+    "run": "vehicle list records --help"
   }
 ]

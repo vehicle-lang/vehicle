@@ -187,6 +187,7 @@ library
     Vehicle.Libraries.Core
     Vehicle.Libraries.StandardLibrary
     Vehicle.List
+    Vehicle.List.RecordSchema
     Vehicle.Prelude
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Warning

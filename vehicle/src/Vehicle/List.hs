@@ -1,5 +1,7 @@
 module Vehicle.List
   ( ListOptions (..),
+    ListEntitiesOptions (..),
+    ListRecordsOptions (..),
     list,
   )
 where
@@ -24,6 +26,7 @@ import Vehicle.Data.Code.Interface (QuantifyRatTensorArgs (..), accessQuantifyRa
 import Vehicle.Data.Code.Value (Closure, Spine, VDecl, VType, Value (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
+import Vehicle.List.RecordSchema (listRecordSchemas)
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.Core (PropertyAddress)
@@ -32,7 +35,12 @@ import Vehicle.Verify.Specification (MultiProperty)
 --------------------------------------------------------------------------------
 -- List mode
 
-data ListOptions = ListOptions
+data ListOptions
+  = ListEntitiesTarget ListEntitiesOptions
+  | ListRecordsTarget ListRecordsOptions
+  deriving (Eq, Show)
+
+data ListEntitiesOptions = ListEntitiesOptions
   { specification :: FilePath,
     networkLocations :: NetworkLocations,
     datasetLocations :: DatasetLocations,
@@ -40,8 +48,19 @@ data ListOptions = ListOptions
   }
   deriving (Eq, Show)
 
+data ListRecordsOptions = ListRecordsOptions
+  { specification :: FilePath,
+    outputFile :: Maybe FilePath
+  }
+  deriving (Eq, Show)
+
 list :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ListOptions -> IO ()
-list loggingSettings outputAsJSON ListOptions {..} =
+list loggingSettings outputAsJSON = \case
+  ListEntitiesTarget opts -> listEntities loggingSettings outputAsJSON opts
+  ListRecordsTarget opts -> listRecords loggingSettings outputAsJSON opts
+
+listEntities :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ListEntitiesOptions -> IO ()
+listEntities loggingSettings outputAsJSON ListEntitiesOptions {..} =
   runCompileMonad loggingSettings outputAsJSON $ do
     -- Type check the program
     typedProg <-
@@ -63,6 +82,18 @@ list loggingSettings outputAsJSON ListOptions {..} =
 
     -- Produce the output (at the moment only support JSON)
     programOutput $ prettyAsJSON entities
+
+listRecords :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ListRecordsOptions -> IO ()
+listRecords loggingSettings outputAsJSON ListRecordsOptions {..} =
+  runCompileMonad loggingSettings outputAsJSON $ do
+    typedProg <-
+      typeCheckUserProg $
+        TypeCheckOptions
+          { specification = specification,
+            secondaryTypeSystem = Nothing,
+            declarationsToCompile = mempty
+          }
+    listRecordSchemas outputFile typedProg
 
 --------------------------------------------------------------------------------
 -- Output format

@@ -87,7 +87,7 @@ def list_entities(specification: str | Path) -> SpecificationSummary:
     :param specification: The path to the Vehicle specification file to list entities for.
     :return: A summary of all entities in the specification.
     """
-    args = ["list", "--specification", str(specification), "--json"]
+    args = ["--json", "list", "entities", "--specification", str(specification)]
 
     # Call Vehicle
     out = session.execute_command(args)

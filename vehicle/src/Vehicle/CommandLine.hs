@@ -20,7 +20,7 @@ import Options.Applicative
 import Vehicle.Backend.Prelude (BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..))
 import Vehicle.Compile (CompileOptions (..), ITPOptions (..), LossOptions (..), QueryOptions (..))
 import Vehicle.Export (ExportOptions (..))
-import Vehicle.List (ListOptions (..))
+import Vehicle.List (ListEntitiesOptions (..), ListOptions (..), ListRecordsOptions (..))
 import Vehicle.Prelude
   ( Doc,
     Pretty (..),
@@ -181,21 +181,58 @@ typeCheckParserInfo = info (TypeCheck <$> typeCheckParser) typeCheckDescription
 listDescription :: InfoMod ModeOptions
 listDescription =
   progDesc $
-    "List entities for a "
+    "List the contents of a "
       <> specificationFileExtension
-      <> " specification file"
-      <> "."
+      <> " specification file."
+
+listParserInfo :: ParserInfo ModeOptions
+listParserInfo = info (List <$> listParser) listDescription
 
 listParser :: Parser ListOptions
 listParser =
-  ListOptions
+  hsubparser $
+    command "entities" listEntitiesParserInfo
+      <> command "records" listRecordsParserInfo
+
+--------------------------------------------------------------------------------
+-- List entities mode
+
+listEntitiesParserInfo :: ParserInfo ListOptions
+listEntitiesParserInfo =
+  info (ListEntitiesTarget <$> listEntitiesParser) listEntitiesDescription
+
+listEntitiesDescription :: InfoMod ListOptions
+listEntitiesDescription =
+  progDesc $
+    "List the networks, datasets, parameters, and properties in a "
+      <> specificationFileExtension
+      <> " specification file."
+
+listEntitiesParser :: Parser ListEntitiesOptions
+listEntitiesParser =
+  ListEntitiesOptions
     <$> specificationParser
     <*> networkParser
     <*> datasetParser
     <*> parameterParser
 
-listParserInfo :: ParserInfo ModeOptions
-listParserInfo = info (List <$> listParser) listDescription
+--------------------------------------------------------------------------------
+-- List records mode
+
+listRecordsParserInfo :: ParserInfo ListOptions
+listRecordsParserInfo =
+  info (ListRecordsTarget <$> listRecordsParser) listRecordsDescription
+
+listRecordsDescription :: InfoMod ListOptions
+listRecordsDescription =
+  progDesc
+    "Emit the spec's @tensor record schemas as JSON for static typing support."
+
+listRecordsParser :: Parser ListRecordsOptions
+listRecordsParser =
+  ListRecordsOptions
+    <$> specificationParser
+    <*> outputParser
 
 --------------------------------------------------------------------------------
 -- Compile mode

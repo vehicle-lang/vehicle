@@ -1,0 +1,9 @@
+Usage: vehicle list records (-s|--specification FILE) [-o|--output FILE]
+
+  Emit the spec's @tensor record schemas as JSON for static typing support.
+
+Available options:
+  -s,--specification FILE  The .vcl file containing the specification.
+  -o,--output FILE         Output location for compiled file(s). Defaults to
+                           `stdout` if not provided.
+  -h,--help                Show this help text
