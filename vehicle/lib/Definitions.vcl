@@ -19,6 +19,14 @@ forallInList f xs = fold (\x y -> x and y) True (map f xs)
 existsInList : (A -> Bool) -> List A -> Bool
 existsInList f xs = fold (\x y -> x or y) False (map f xs)
 
+-------
+
+append : List A -> List A -> List A
+append xs ys = fold (\y x -> x:y) ys xs
+-- append xs ys = fold (\x y -> x++y) xs ys -- alt, appending at end
+-- reference haskell file: standard library (maps std lib definitions to identifier)
+-- (identifier IDs free variables, uses application syntax @@  in DSL)
+
 --------------------------------------------------------------------------------
 -- Tensor
 --------------------------------------------------------------------------------
@@ -26,7 +34,7 @@ existsInList f xs = fold (\x y -> x or y) False (map f xs)
 -- representation of relationships between zero-dimensional tensors
 -- (i.e. pointwise comparison).
 
-eqRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
+eqRatTensorReduced : {dim: Nat} -> {dims : List Nat} -> Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
 eqRatTensorReduced xs ys = reduceAnd True (xs ==. ys)
 
 neRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
@@ -43,6 +51,16 @@ geRatTensorReduced xs ys = reduceAnd True (xs >=. ys)
 
 gtRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
 gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
+
+--------------------------------------------------------------------------------
+-- TensorLike
+--------------------------------------------------------------------------------
+
+@typeclass
+record TensorLike r t dims where
+  { toTensor         : r -> NonCastingTensor t dims
+  , fromTensor       : NonCastingTensor t dims -> r
+  }
 
 --------------------------------------------------------------------------------
 -- Index
@@ -72,6 +90,17 @@ natHasAdd = { addTC = addNat }
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 
+@instance
+tensorLikeHasAdd : {{ TensorLike r t dims }} -> {{ HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasAdd r r r
+tensorLikeHasAdd =
+    { addTC = \r1 r2 ->
+        fromTensor
+            (addTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
+
 -- HasSub
 @typeclass
 record HasSub t1 t2 t3 where
@@ -81,6 +110,17 @@ record HasSub t1 t2 t3 where
 @instance
 realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasSub = { subTC = subRealTensor }
+
+@instance
+tensorLikeHasSub : {{ TensorLike r t dims }} -> {{ HasSub (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasSub r r r
+tensorLikeHasSub =
+    { subTC = \r1 r2 ->
+        fromTensor
+            (subTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
 
 -- HasMul
 @typeclass
@@ -96,6 +136,18 @@ natHasMul = { mulTC = mulNat }
 realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasMul = { mulTC = mulRealTensor }
 
+@instance
+tensorLikeHasMul : {{ TensorLike r t dims }} -> {{ HasMul (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasMul r r r
+tensorLikeHasMul =
+    { mulTC = \r1 r2 ->
+        fromTensor
+            (mulTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
+
+
 -- HasDiv
 @typeclass
 record HasDiv t1 t2 t3 where
@@ -105,6 +157,17 @@ record HasDiv t1 t2 t3 where
 @instance
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
+
+@instance
+tensorLikeHasDiv : {{ TensorLike r t dims }} -> {{ HasDiv (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasDiv r r r
+tensorLikeHasDiv =
+    { divTC = \r1 r2 ->
+        fromTensor
+            (divTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
 
 -- Quantifiers
 @typeclass
@@ -134,14 +197,6 @@ record HasValidNetworkIOType (t : Type) where {}
 @instance
 realTensorHasValidNetworkIOType : HasValidNetworkIOType (Tensor Real dims)
 realTensorHasValidNetworkIOType = {}
-
--- Network Fields
-@typeclass
-record HasValidNetworkFieldType (t : Type) where {}
-
-@instance
-realTensorHasValidNetworkFieldType : HasValidNetworkFieldType (Tensor Real dims)
-realTensorHasValidNetworkFieldType = {}
 
 -- Network types
 @typeclass
@@ -202,6 +257,16 @@ realTensorHasComparison = { leTC = compareRatTensorReducedLe
                           , neTC = compareRatTensorReducedNe
                           }
 
+@instance
+realTensorLikeHasComparison : {{ TensorLike r t dims }} -> {{ HasComparison (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasComparison r r
+realTensorLikeHasComparison = { leTC = \r1 r2 -> ( leTC (toTensor r1) (toTensor r2) )
+                              , ltTC = \r1 r2 -> ( ltTC (toTensor r1) (toTensor r2) )
+                              , geTC = \r1 r2 -> ( geTC (toTensor r1) (toTensor r2) )
+                              , gtTC = \r1 r2 -> ( gtTC (toTensor r1) (toTensor r2) )
+                              , eqTC = \r1 r2 -> ( eqTC (toTensor r1) (toTensor r2) )
+                              , neTC = \r1 r2 -> ( neTC (toTensor r1) (toTensor r2) )
+                              }
+
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------
@@ -240,8 +305,8 @@ record DifferentiableTensorLogic where
 
 VehicleLoss : DifferentiableTensorLogic
 VehicleLoss =
-  { trueElement                = -infinity
-  , falseElement               = infinity
+  { trueElement                = -1000000
+  , falseElement               = 1000000
   , pointwiseNegation          = \x -> -x
   , pointwiseConjunction       = \x y -> max x y
   , pointwiseDisjunction       = \x y -> min x y
@@ -258,7 +323,7 @@ VehicleLoss =
 DL2Loss : DifferentiableTensorLogic
 DL2Loss =
   { trueElement                = 0
-  , falseElement               = infinity
+  , falseElement               = 1000000 -- TODO should be infinity
   , pointwiseNegation          = \{dims} x -> (const 1 dims) / x
   , pointwiseConjunction       = \x y -> x + y
   , pointwiseDisjunction       = \x y -> x * y

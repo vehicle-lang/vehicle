@@ -12,7 +12,7 @@ import Vehicle.Data.DSL
 import Vehicle.Prelude (Provenance, Relevance (..))
 import Prelude hiding (iterate)
 import Vehicle.Data.DSL (forAll)
-import Vehicle.Data.Code.DSL (forAllDim, tRatTensor)
+import Vehicle.Data.Code.DSL (forAllDim, tRatTensor, forAllDims)
 
 class (NormalisableBuiltin builtin, Ord builtin) => TypableBuiltin builtin where
   -- | Construct a type for the builtin
@@ -85,11 +85,9 @@ typeOfBuiltinFunction = \case
   CompareNat {} ->
     tNat ~> tNat ~> tBoolTensor dimNil
   CompareRatTensor {} ->
-    forAllDims $ \dims ->
-      tDims ~> tDims ~> tRatTensor ~> tRatTensor ~> tBoolTensor dims1
-      -- tDims ~> tDims ~> tRatTensor xdims ~> tRatTensor ydims ~> tBoolTensor dims1
-      -- where dims1 -> dims2, xdims == ydims == dims1++dims2
-
+    forAllDims $ \pointwiseDims -> 
+      forAllDims $ \reduceDims ->
+        tRatTensor (append tNat pointwiseDims reduceDims) ~> tRatTensor (append tNat pointwiseDims reduceDims) ~> tBoolTensor pointwiseDims
   -- CompareRatTensorPointwise {} ->
     -- forAllDims $ \dims ->
       -- tRatTensor dims ~> tRatTensor dims ~> tBoolTensor dims

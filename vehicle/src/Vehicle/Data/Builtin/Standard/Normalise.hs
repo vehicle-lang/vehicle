@@ -39,23 +39,25 @@ instance HasLiftableTensorOperations Builtin where
       (getExpr accessMinRatTensor, evalMinRatTensor, IRatType),
       (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType),
       (getExpr accessAndTensor, evalAnd, IBoolType),
-      (getExpr accessOrTensor, evalOr, IBoolType),
+      (getExpr accessOrTensor, evalOr, IBoolType),      
       compPointwise Eq,
-      compPointwise Ne,
-      compPointwise Le,
-      compPointwise Lt,
-      compPointwise Ge,
-      compPointwise Gt
+      -- compPointwise Ne,
+      -- compPointwise Le,
+      -- compPointwise Lt,
+      -- compPointwise Ge,
+      _
     ]
     where
-      compPointwise op = (getExpr (accessArgsForOp accessCompareRatTensorPointwise op), evalCompareRatTensorPointwise op, IBoolType)
+      compPointwise op = (getExpr (accessArgsForOp accessCompareRatTensor op), evalCompareRatTensor op, IBoolType)
+      -- compPointwise op = (getExpr (accessArgsForOp accessCompareRatTensorPointwise op), evalCompareRatTensorPointwise op, IBoolType)
 
 instance NormalisableBuiltin Builtin where
   evalScheme = \case
     BuiltinFunction f -> case f of
       CompareIndex op -> Simple (evalCompareIndex op)
       CompareNat op -> Simple (evalCompareNat op)
-      CompareRatTensorPointwise op -> Simple (evalCompareRatTensorPointwise op)
+      CompareRatTensor op -> Simple (evalCompareRatTensor op)
+      -- CompareRatTensorPointwise op -> Simple (evalCompareRatTensorPointwise op)
       Not -> Simple evalNot
       And -> Simple evalAnd
       Or -> Simple evalOr

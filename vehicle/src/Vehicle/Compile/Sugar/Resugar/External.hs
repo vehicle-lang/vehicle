@@ -232,7 +232,7 @@ delabDerivedFunction fun args = case fun of
   V.TypeAnn -> delabInfixOp2 B.Ann tokElemOf (reverse args)
   V.QuantifyIndex q -> delabQuantifier q args
   V.QuantifyInList q -> delabQuantifierIn q args
-  V.CompareRatTensorReduced op -> delabTypeClassOp (V.CompareTC op) args
+  -- V.CompareRatTensorReduced op -> delabTypeClassOp (V.CompareTC op) args
 
 delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg V.Builtin] -> m B.Expr
 delabBuiltinFunction fun args = case fun of
@@ -253,12 +253,13 @@ delabBuiltinFunction fun args = case fun of
   V.Exp _dom -> delabApp (B.Exp tokExp) args
   V.QuantifyRatTensor q -> delabQuantifier q args
   V.QuantifyRecord q -> delabQuantifier q args
-  V.CompareRatTensorPointwise V.Eq -> delabInfixOp2 B.EqPoint tokEqPoint args
-  V.CompareRatTensorPointwise V.Ne -> delabInfixOp2 B.NePoint tokNePoint args
-  V.CompareRatTensorPointwise V.Le -> delabInfixOp2 B.LePoint tokLePoint args
-  V.CompareRatTensorPointwise V.Lt -> delabInfixOp2 B.LtPoint tokLtPoint args
-  V.CompareRatTensorPointwise V.Ge -> delabInfixOp2 B.GePoint tokGePoint args
-  V.CompareRatTensorPointwise V.Gt -> delabInfixOp2 B.GtPoint tokGtPoint args
+  V.CompareRatTensor op -> delabTypeClassOp (V.CompareTC op) args
+  -- V.CompareRatTensorPointwise V.Eq -> delabInfixOp2 B.EqPoint tokEqPoint args
+  -- V.CompareRatTensorPointwise V.Ne -> delabInfixOp2 B.NePoint tokNePoint args
+  -- V.CompareRatTensorPointwise V.Le -> delabInfixOp2 B.LePoint tokLePoint args
+  -- V.CompareRatTensorPointwise V.Lt -> delabInfixOp2 B.LtPoint tokLtPoint args
+  -- V.CompareRatTensorPointwise V.Ge -> delabInfixOp2 B.GePoint tokGePoint args
+  -- V.CompareRatTensorPointwise V.Gt -> delabInfixOp2 B.GtPoint tokGtPoint args
   V.CompareIndex op -> delabTypeClassOp (V.CompareTC op) args
   V.CompareNat op -> delabTypeClassOp (V.CompareTC op) args
   V.FoldList -> delabTypeClassOp V.FoldTC args

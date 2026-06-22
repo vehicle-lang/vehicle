@@ -476,13 +476,14 @@ evalReduceMinRatTensor = evalReduceTensor accessReduceMinRatBuiltin accessRatTen
 evalReduceMaxRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
 evalReduceMaxRatTensor = evalReduceTensor accessReduceMaxRatBuiltin accessRatTensorLiteral evalMaxRatTensor max
 
-evalCompareRatTensorPointwise ::
+evalCompareRatTensor ::
   (MonadNormBuiltin m, HasBoolExpr Value builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) =>
   ComparisonOp ->
-  EvalSimple TensorOp2Args Value builtin m
-evalCompareRatTensorPointwise op =
+  EvalSimple TensorComparisonArgs Value builtin m
+evalCompareRatTensor -- pattern matching on args (dims) here
+evalCompareRatTensor op =
   evalHeteroTensorOp2
-    (mkExpr accessCompareRatTensorPointwiseBuiltin op)
+    (mkExpr accessCompareRatTensorBuiltin op)
     accessRatTensorLiteral
     accessBoolTensorLiteral
     (comparisonOp op)
@@ -490,6 +491,25 @@ evalCompareRatTensorPointwise op =
     Nothing
     Nothing
     Nothing
+
+-- type EvalSimple args expr builtin m =
+  -- args (expr builtin) ->
+  -- m (expr builtin)
+
+-- evalCompareRatTensorPointwise ::
+--   (MonadNormBuiltin m, HasBoolExpr Value builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) =>
+--   ComparisonOp ->
+--   EvalSimple TensorOp2Args Value builtin m
+-- evalCompareRatTensorPointwise op =
+--   evalHeteroTensorOp2
+--     (mkExpr accessCompareRatTensorPointwiseBuiltin op)
+--     accessRatTensorLiteral
+--     accessBoolTensorLiteral
+--     (comparisonOp op)
+--     Nothing
+--     Nothing
+--     Nothing
+--     Nothing
 
 -----------------------------------------------------------------------------
 -- Generic vector operations

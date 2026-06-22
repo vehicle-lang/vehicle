@@ -31,6 +31,7 @@ import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Prelude
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Token
+import qualified Vehicle.Data.DSL as V
 
 --------------------------------------------------------------------------------
 -- Monad
@@ -440,7 +441,7 @@ elabExpr expr = case expr of
   B.CompareNatLt tk -> builtinFunction (V.CompareNat V.Lt) tk []
   B.CompareNatGe tk -> builtinFunction (V.CompareNat V.Ge) tk []
   B.CompareNatGt tk -> builtinFunction (V.CompareNat V.Gt) tk []
-  B.CompareRatTensorPointwiseEq tk -> builtinFunction (V.CompareRatTensorPointwise V.Eq) tk []
+  B.CompareRatTensorPointwiseEq tk -> builtinFunction (V.CompareRatTensorPointwise V.Eq) tk [V.Builtin _ V.nil, mkHole]
   B.CompareRatTensorPointwiseNe tk -> builtinFunction (V.CompareRatTensorPointwise V.Ne) tk []
   B.CompareRatTensorPointwiseLe tk -> builtinFunction (V.CompareRatTensorPointwise V.Le) tk []
   B.CompareRatTensorPointwiseLt tk -> builtinFunction (V.CompareRatTensorPointwise V.Lt) tk []

@@ -240,3 +240,6 @@ iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr built
 iterate t f n e = do
   let fn = explLam "f" (t ~> t) $ \iterFn -> explLam "e" t $ \resultSoFar -> f iterFn resultSoFar
   builtinFunction Iterate @@@ [t] @@ [fn, n, e]
+
+append :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+append t xs ys = standardLib "append" @@@ [t] @@ [xs, ys] 

@@ -14,6 +14,7 @@ import Vehicle.Data.Builtin.Core.Derived as X
 import Vehicle.Data.Builtin.Core.TypeClass as X
     ( TypeClassOp(..), TypeClass(..) )
 import Vehicle.Data.Tensor
+import Vehicle.Data.Real
 
 --------------------------------------------------------------------------------
 -- Types

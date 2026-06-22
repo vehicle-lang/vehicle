@@ -19,6 +19,7 @@ module Vehicle.Libraries.StandardLibrary
     hasMulIdent,
     hasDivIdent,
     hasComparisonIdent,
+    append,
     standardLibraryCompareRatTensorReduced,
   )
 where
@@ -35,6 +36,7 @@ import Vehicle.Data.Builtin.Core.BasicOperations (ComparisonOp (..))
 import Vehicle.Libraries
 import Vehicle.Libraries.Core (LibraryContent)
 import Vehicle.Prelude
+import Data.ByteString.Builder (standard)
 
 standardLibIdent :: Name -> Identifier
 standardLibIdent = Identifier standardLibraryDefinitionsModulePath
@@ -54,6 +56,7 @@ standardLibraryInstanceOps =
       standardLibIdent "divTC",
       standardLibIdent "forallTC",
       standardLibIdent "existsTC",
+      -- standardLibIdent "foldTC",
       standardLibIdent "leTC",
       standardLibIdent "ltTC",
       standardLibIdent "geTC",
@@ -95,6 +98,9 @@ hasDivIdent = standardLibIdent "HasDiv"
 
 hasComparisonIdent :: Identifier
 hasComparisonIdent = standardLibIdent "HasComparison"
+
+append :: Identifier
+append = standardLibIdent "append"
 
 isBuiltinModule :: ModulePath -> Bool
 isBuiltinModule = \case
