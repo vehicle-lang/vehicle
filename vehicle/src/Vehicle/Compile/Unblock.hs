@@ -98,9 +98,9 @@ unblockBoolTensorValue actions expr = showEntry expr $
     VBoolTensorIf args -> unblockIf unblock args
     VBoolTensorReduceAnd args -> unblockReduceTensor unblock unoptimisedEvalReduceAndTensor args
     VBoolTensorReduceOr args -> unblockReduceTensor unblock evalReduceOrTensor args
-    VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
+    VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 actions (evalCompareIndex op) args
     VBoolTensorCompareNat (op, args) -> unblockOp2 unblockNatValue (evalCompareNat op) args
-    VBoolTensorAt args -> unblockAtTensor unblock args
+    VBoolTensorAt args -> unblockAtTensor actions unblock args
     VBoolTensorForeach args -> unblockForeachTensor args
   where
     unblock = unblockBoolTensorValue actions
@@ -134,8 +134,8 @@ unblockRatTensorValue actions@UnblockingActions {..} expr = showEntry expr $ do
     VRatTensorBoundVar v -> unblock =<< unblockRatTensorBoundVar v
     VRatTensorNetworkApp n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
     VDatasetOrParameter ident -> unblock =<< unblockDatasetOrParameter ident
-    VRatAtTensor args -> unblockAtTensor unblock args
-    VRatAtVector args -> unblockAtVector unblock args
+    VRatAtTensor args -> unblockAtTensor actions unblock args
+    VRatAtVector args -> unblockAtVector actions unblock args
     VRatForeach args -> unblockForeachTensor args
     VRatRecordAcc typ value fieldName _ -> unblockRecordAcc (unblockRecordValue actions) typ value fieldName
   where
@@ -149,15 +149,16 @@ unblockRecordValue actions@UnblockingActions {..} expr = showEntry expr $ do
     VRecordLiteral {} -> return $ IfLeaf expr
     VRecordNetworkApp n args -> unblockNetworkApp unblockTensor unblockRecord n args
     VRecordBoundVar v -> unblockRecord =<< unblockRecordBoundVar v
+    VRecordVectorAt args -> unblockAtVector actions (unblockVectorValue actions) args
   where
     unblockTensor = unblockRatTensorValue actions
     unblockRecord = unblockRecordValue actions
 
-unblockIndexValue :: TypeUnblockingFunction (Value Builtin) m
-unblockIndexValue expr = showEntry expr $ case toIndexValue expr of
+unblockIndexValue :: UnblockingActions m -> TypeUnblockingFunction (Value Builtin) m
+unblockIndexValue actions expr = showEntry expr $ case toIndexValue expr of
   VIndexLiteral {} -> return $ IfLeaf expr
-  VIndexIf args -> unblockIf unblockIndexValue args
-  VIndexAtVector args -> unblockAtVector unblockVectorValue args
+  VIndexIf args -> unblockIf (unblockIndexValue actions) args
+  VIndexAtVector args -> unblockAtVector actions (unblockVectorValue actions) args
   VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
   VIndexParameter {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
@@ -170,13 +171,13 @@ unblockNatValue expr = showEntry expr $ case toNatValue expr of
   VNatBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
   VNatParameter {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
-unblockVectorValue :: TypeUnblockingFunction (Value Builtin) m
-unblockVectorValue expr = showEntry expr $ case toVectorValue expr of
+unblockVectorValue :: UnblockingActions m -> TypeUnblockingFunction (Value Builtin) m
+unblockVectorValue actions expr = showEntry expr $ case toVectorValue expr of
   VVectorLiteral {} -> return $ IfLeaf expr
-  VVectorIf args -> unblockIf unblockVectorValue args
+  VVectorIf args -> unblockIf (unblockVectorValue actions) args
   VVectorForeach args -> unblockForeachVector args
   VVectorBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
-  VVectorDataset {} -> unexpectedExprError currentPass (prettyVerbose expr)
+  VVectorDataset ident -> unblockVectorValue actions =<< unblockDatasetOrParameter actions ident
 
 --------------------------------------------------------------------------------
 -- Unblocking individual operations
@@ -205,11 +206,12 @@ unblockOp2 unblock evalFn (Op2Args x y) = do
 
 unblockIndexOp2 ::
   (MonadUnblock m) =>
+  UnblockingActions m ->
   EvalSimple IndexComparisonArgs Value Builtin m ->
   OperationUnblockingFunction IndexComparisonArgs (Value Builtin) m
-unblockIndexOp2 evalFn (IndexComparisonArgs n1 n2 x y) = do
-  x' <- unblockIndexValue x
-  y' <- unblockIndexValue y
+unblockIndexOp2 actions evalFn (IndexComparisonArgs n1 n2 x y) = do
+  x' <- unblockIndexValue actions x
+  y' <- unblockIndexValue actions y
   forIfTreeM x' $ \x'' ->
     forIfTreeM y' $ \y'' ->
       IfLeaf <$> do
@@ -248,11 +250,12 @@ unblockReduceTensor unblock evalFn (TensorReductionArgs ds xs) = do
 
 unblockAtTensor ::
   (MonadUnblock m) =>
+  UnblockingActions m ->
   TypeUnblockingFunction (Value Builtin) m ->
   OperationUnblockingFunction AtTensorArgs (Value Builtin) m
-unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
+unblockAtTensor actions unblock (AtTensorArgs tElem d ds xs i) = do
   xs' <- unblock xs
-  i' <- unblockIndexValue i
+  i' <- unblockIndexValue actions i
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->
       IfLeaf <$> do
@@ -261,11 +264,12 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
 
 unblockAtVector ::
   (MonadUnblock m) =>
+  UnblockingActions m ->
   TypeUnblockingFunction (Value Builtin) m ->
   OperationUnblockingFunction AtVectorArgs (Value Builtin) m
-unblockAtVector unblock (AtVectorArgs tElem d xs i) = do
+unblockAtVector actions unblock (AtVectorArgs tElem d xs i) = do
   xs' <- unblock xs
-  i' <- unblockIndexValue i
+  i' <- unblockIndexValue actions i
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->
       IfLeaf <$> do

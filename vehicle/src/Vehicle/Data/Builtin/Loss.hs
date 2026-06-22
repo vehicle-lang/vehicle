@@ -30,7 +30,6 @@ data LossBuiltinType
   | ListType
   | VectorType
   | TensorType
-  | RecordType
   deriving (Eq, Ord, Show)
 
 lossToStandardBuiltinType :: LossBuiltinType -> S.BuiltinType
@@ -42,7 +41,6 @@ lossToStandardBuiltinType = \case
   ListType -> S.ListType
   VectorType -> S.VectorType
   TensorType -> S.TensorType
-  RecordType -> developerError "RecordType has no surface-conversion target; it only exists as a JSON-side schema marker"
 
 instance Pretty LossBuiltinType where
   pretty = pretty . lossToStandardBuiltinType

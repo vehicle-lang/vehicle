@@ -217,7 +217,7 @@ convertJFieldType typ = do
       return $ case dims of
         [] -> JFieldScalarReal
         _ -> JFieldTensorReal dims
-    VBuiltin (L.LossBuiltinType L.RecordType) (fmap argExpr -> [VFreeVar refIdent _]) ->
+    VFreeVar refIdent _ ->
       return $ JFieldRecordRef (nameOf refIdent)
     _ -> developerError $ "Unsupported @tensor record field type:" <+> prettyVerbose typVal
 
@@ -256,7 +256,7 @@ convertTypeValue expr = do
   showEntry expr
   result <- case expr of
     VMeta {} -> resolutionError currentPass "VMeta"
-    VFreeVar {} -> resolutionError currentPass "VFreeVar"
+    VFreeVar ident _ -> return $ RecordType (nameOf ident)
     VUniverse {} -> resolutionError currentPass "Universe"
     VRecord {} -> resolutionError currentPass "VRecord"
     VRecordAcc {} -> resolutionError currentPass "VRecordAcc"
@@ -282,7 +282,6 @@ convertBuiltinType b spine = case b of
     L.RatType -> convertNullaryOp b RatType spine
     L.ListType -> convertNullaryOp b DimensionsType spine
     L.TensorType -> convertTensorType spine
-    L.RecordType -> convertRecordTypeRef spine
     L.VectorType -> convertVectorType spine
   _ -> dependentTypesError b
 
@@ -295,11 +294,6 @@ convertTensorType :: (MonadJSON m) => Spine LossBuiltin -> m JType
 convertTensorType spine = case spine of
   (fmap argExpr -> [t, _ds]) -> TensorType <$> convertTypeValue t
   _ -> arityError L.TensorType 2 spine
-
-convertRecordTypeRef :: (MonadJSON m) => Spine LossBuiltin -> m JType
-convertRecordTypeRef spine = case fmap argExpr spine of
-  [VFreeVar ident _] -> return $ RecordType (nameOf ident)
-  _ -> developerError $ "Unexpected RecordType spine:" <+> prettyVerbose spine
 
 convertVectorType :: (MonadJSON m) => Spine LossBuiltin -> m JType
 convertVectorType spine = case spine of
@@ -344,9 +338,8 @@ convertValue expr = do
 
 recordSchemaFromTypeMarker :: VType LossBuiltin -> Name
 recordSchemaFromTypeMarker = \case
-  VBuiltin (L.LossBuiltinType L.RecordType) (fmap argExpr -> [VFreeVar ident _]) ->
-    nameOf ident
-  v -> developerError $ "Expected RecordType marker on VRecord/VRecordAcc, got:" <+> prettyVerbose v
+  VFreeVar ident _ -> nameOf ident
+  v -> developerError $ "Expected FreeVar type on VRecord/VRecordAcc, got:" <+> prettyVerbose v
 
 convertBinder :: (MonadJSON m) => VBinder LossBuiltin -> m JBinder
 convertBinder binder = do
@@ -587,9 +580,7 @@ fromJType = \case
     let ix = maybe (developerError ("ill-scoped JExpr, no variable" <+> squotes (pretty name))) Ix (elemIndex (Just name) nameCtx)
     spine' <- traverse fromJExpr spine
     return $ normAppList (S.BoundVar mempty ix) (fmap explicit spine')
-  RecordType schemaName -> do
-    let ident = Identifier userModulePath schemaName
-    return $ S.FreeVar mempty ident
+  RecordType schemaName -> return $ S.FreeVar mempty (Identifier userModulePath schemaName)
 
 toType :: (MonadNameContext m) => LossBuiltinType -> [JType] -> m (S.Expr LossBuiltin)
 toType op = toExpr fromJType (LossBuiltinType op)

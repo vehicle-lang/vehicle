@@ -372,17 +372,20 @@ fromMultiDimBoolTensorValue = \case
 
 -------------------------------------------------------------------------------
 -- Record
+
 data RecordValue
   = VRecordNetworkApp Identifier (NetworkAppArgs (Value Builtin))
   | VRecordBoundVar Lv
   | VRecordLiteral (VType Builtin) !(VRecordFields Builtin)
+  | VRecordVectorAt (AtVectorArgs (Value Builtin))
 
 toRecordValue :: (HasCallStack) => Value Builtin -> RecordValue
 toRecordValue expr = case expr of
   VBoundVar lv [] -> VRecordBoundVar lv
   VFreeVar n (getExpr accessSpine -> Just networkArgs) -> VRecordNetworkApp n networkArgs
   VRecord typ fields -> VRecordLiteral typ fields
-  _ -> developerError $ "ill-typed Record expression" <+> prettyVerbose expr
+  (getExpr accessAtVector -> Just args) -> VRecordVectorAt args
+  _ -> developerError $ "ill-typed Record expression" <+> prettyVerbose expr <+> pretty (show expr)
 
 -------------------------------------------------------------------------------
 -- Tensor Rat

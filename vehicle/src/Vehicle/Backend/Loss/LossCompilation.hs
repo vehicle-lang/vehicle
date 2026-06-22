@@ -28,8 +28,9 @@ module Vehicle.Backend.Loss.LossCompilation
   )
 where
 
+import Control.Monad.Except (MonadError (..))
 import Vehicle.Backend.Loss.Core hiding (currentPass)
-import Vehicle.Backend.Loss.RecordCompilation qualified as RecordCompilation
+import Vehicle.Compile.Error (CompileError (UnsupportedLossOperation))
 import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
@@ -56,8 +57,7 @@ convertType ::
 convertType typ = logConversion typ $ case toTypeValue typ of
   VPiType binder closure -> convertPiType binder closure
   VUnitType {} -> unexpectedOperation "unit type"
-  -- @tensor record reference, e.g. `Pair` in `controller : Pair -> Pair`.
-  VFreeTypeVar ident _spine -> RecordCompilation.convertRecordType ident
+  VFreeTypeVar ident spine -> convertRecordType ident spine
   VBoolType -> convertBoolType
   VBoundTypeVar lv spine -> convertBoundVar lv spine
   VRatType -> return IRatType
@@ -79,6 +79,13 @@ convertPiType binder closure = do
   binder' <- traverse convertType binder
   closure' <- convertClosure convertType binder closure
   return $ VPi binder' closure'
+
+convertRecordType :: (MonadLogic m) => Identifier -> Spine Builtin -> m (Value LossBuiltin)
+convertRecordType ident = \case
+  [] -> return (VFreeVar ident [])
+  _ -> do
+    declProv <- getDeclProvenance
+    throwError $ UnsupportedLossOperation declProv "type with args"
 
 --------------------------------------------------------------------------------
 -- Dims
@@ -165,10 +172,35 @@ convertFreeVar name = \case
     Nothing -> unexpectedExprError currentPass "non-network args"
     Just (NetworkAppArgs arg) -> do
       convertedArg <- case arg of
-        VRecord typ fields -> RecordCompilation.convertRecord convertRatTensor typ fields
+        VRecord typ fields -> convertRecord convertRatTensor typ fields
         _ -> convertRatTensor arg
       let args' = NetworkAppArgs convertedArg
       return $ VFreeVar name $ mkExpr accessSpine args'
+
+convertRecord ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  VType Builtin ->
+  VRecordFields Builtin ->
+  m (Value LossBuiltin)
+convertRecord convertValue recordType fields = do
+  recordType' <- convertType recordType
+  fields' <- traverse convertValue fields
+  return $ VRecord recordType' fields'
+
+convertRecordAcc ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  VType Builtin ->
+  Value Builtin ->
+  FieldName ->
+  Spine Builtin ->
+  m (Value LossBuiltin)
+convertRecordAcc convertValue recordType recordVal field spine = do
+  recordType' <- convertType recordType
+  record' <- convertValue recordVal
+  spine' <- traverse (traverse convertValue) spine
+  return $ VRecordAcc recordType' record' field spine'
 
 --------------------------------------------------------------------------------
 -- Bool
@@ -316,8 +348,7 @@ convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VRatAtTensor args -> convertAtTensor convertRatTensor args
   VRatAtVector args -> convertAtVector (convertVector convertRatTensor) args
   VRatForeach args -> convertForeachTensor convertRatTensor args
-  VRatRecordAcc typ record fieldName spine ->
-    RecordCompilation.convertRecordAcc convertRatTensor typ record fieldName spine
+  VRatRecordAcc typ record fieldName spine -> convertRecordAcc convertRatTensor typ record fieldName spine
 
 --------------------------------------------------------------------------------
 -- Vector
