@@ -18,7 +18,7 @@ import torch.nn as nn
 import torch.optim as optim
 from vehicle_lang.loss.pytorch import load_specification
 
-SPEC_PATH = Path(__file__).parent / "windController.vcl"
+SPEC_PATH = Path(__file__).parent / "dice-tensor.vcl"
 
 
 class Controller(nn.Module):

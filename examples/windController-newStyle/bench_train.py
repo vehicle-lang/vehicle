@@ -48,24 +48,24 @@ def main() -> None:
 
     controller = Controller()
     spec = load_specification(SPEC_PATH, types=windController_types)
-    safe = spec["safe"]
-    optimiser = optim.Adam(controller.parameters(), lr=1e-2)
+    # safe = spec["safe"]
+    # optimiser = optim.Adam(controller.parameters(), lr=1e-2)
 
-    t0 = time.perf_counter()
-    for _ in range(args.steps):
-        optimiser.zero_grad()
-        loss = safe(controller).mean()
-        loss.backward()
-        optimiser.step()
-    elapsed = time.perf_counter() - t0
+    # t0 = time.perf_counter()
+    # for _ in range(args.steps):
+    #     optimiser.zero_grad()
+    #     loss = safe(controller).mean()
+    #     loss.backward()
+    #     optimiser.step()
+    # elapsed = time.perf_counter() - t0
 
-    final = safe(controller).mean().item()
-    if not args.quiet:
-        print(
-            f"encoding=records steps={args.steps} seed={args.seed} "
-            f"final_loss={final:.6f} loop_seconds={elapsed:.4f} "
-            f"per_step_ms={elapsed / args.steps * 1000:.3f}"
-        )
+    # final = safe(controller).mean().item()
+    # if not args.quiet:
+    #     print(
+    #         f"encoding=records steps={args.steps} seed={args.seed} "
+    #         f"final_loss={final:.6f} loop_seconds={elapsed:.4f} "
+    #         f"per_step_ms={elapsed / args.steps * 1000:.3f}"
+    #     )
 
 
 if __name__ == "__main__":
