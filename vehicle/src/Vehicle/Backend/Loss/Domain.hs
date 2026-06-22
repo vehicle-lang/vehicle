@@ -142,7 +142,7 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
       Nothing -> do
         (ident, _p) <- getDeclProvenance
         logWarning $ BoundsOnlyQuantifier (nameOf ident) varName
-        getLogicField TruthityElement
+        getLogicFieldValue TruthityElement
 
     logDebugM MidDetail $ do
       remainderDoc <- prettyFriendlyInCtx remainingBody
@@ -197,11 +197,13 @@ compileSearch ::
   m (Value LossBuiltin)
 compileSearch varName lossDims lossBinder closure (Domain lowerBound upperBound) = do
   -- Generate the operation for doing the reduction
-  nameCtx <- getNameContext
+  -- We do not know how many samples the quantifier will generate so we must append
+  -- an explicit lambda that takes them and then applies them appropriately.
+  -- The sample implementation will then provide them at run time.
   genericReductionOp <- getLogicField ReduceDisjunction
-  -- TODO This is a complete hack. We really need the notion of an unknown dimension inside Vehicle.
-  let reductionDims = IDimCons (INatLiteral (-1)) lossDims
-  reductionOp <- normaliseAppInEmptyFreeEnv nameCtx genericReductionOp [implicitIrrelevant reductionDims]
+  let explicitDimsBinder = mkExplicitBinder (IListType INatType) (Just (mempty, "dims"))
+  let explicitDimsReductionOp = Lam mempty explicitDimsBinder (normAppList genericReductionOp [implicitIrrelevant (BoundVar mempty (Ix 0))])
+  reductionOp <- evalInEmptyEnv explicitDimsReductionOp
 
   -- Reform the predicate as if we had no tensor variables at all
   let lossPredicate = VLam lossBinder closure
@@ -282,6 +284,7 @@ type MonadDomain m =
   ( MonadCompile m,
     MonadReader LossCtx m,
     MonadFreeContext Builtin m,
+    MonadFreeContext LossBuiltin m,
     MonadTensorBoundContext m
   )
 

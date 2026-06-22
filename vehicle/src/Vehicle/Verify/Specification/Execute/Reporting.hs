@@ -22,6 +22,7 @@ import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types
 import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy.Char8 qualified as ByteString (unpack)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (intercalate, pack)
 import Data.Text.Lazy qualified as LazyText
 import GHC.Generics (Generic)
@@ -31,6 +32,7 @@ import System.IO (stdout)
 import System.ProgressBar
 import Vehicle.Compile.Prelude
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
+import Vehicle.Data.Tensor (prettyTensor)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Core as Core
@@ -271,8 +273,15 @@ statusSymbol verified = do
 
 prettyUserVariableAssignment :: UserVariableAssignment -> Doc a
 prettyUserVariableAssignment (UserVariableAssignment assignment) = do
-  let prettyLine (var, value) = pretty var <> ":" <+> pretty value
   vsep (fmap prettyLine assignment)
+  where
+    prettyLine a = do
+      case a of
+        (var, TensorValue value) -> pretty var <> ":" <+> pretty value
+        (var, RecordValue fields) ->
+          pretty var
+            <> ":"
+            <> lineIndent (prettyRecordValueEntries (map (Data.Bifunctor.bimap pretty (prettyTensor pretty)) (NonEmpty.toList fields)))
 
 closeProgressBar :: (MonadStdIO m) => ProgressBar () -> m ()
 closeProgressBar _ = writeStdoutLn ""

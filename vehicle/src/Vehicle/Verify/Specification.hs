@@ -27,6 +27,7 @@ where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set (Set)
@@ -66,6 +67,7 @@ data CompilationStep
   = SolveEquality NestedSliceVariable LinearExpression
   | SolveInequalities SliceVariable LinearBounds
   | ReconstructTensorVariable NestedSliceVariable ReconstructionDepth
+  | ConvertQuantifiedTensorLike Name Name (NonEmpty Name)
   deriving (Show, Eq, Ord, Generic)
 
 instance NFData CompilationStep

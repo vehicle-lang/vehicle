@@ -617,6 +617,8 @@ instance
       prettyUsing @restVar (toSliceVar var, ctx)
         <+> "->"
         <+> pretty d
+    ConvertQuantifiedTensorLike _tensorName recordName _fields ->
+      "Convert" <+> pretty recordName <+> "to record"
 
 instance
   (PrettyUsing restVar (variable `In` ctx)) =>

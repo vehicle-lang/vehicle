@@ -9,26 +9,40 @@ Companion Rocq library for the Vehicle compiler's Rocq backend. Two pieces:
   tactic, which discharges `@property` obligations against a pre-computed
   verification cache.
 
-## Building
+## Installing
 
-This package uses [dune](https://dune.build) (≥ 3.13). With Rocq 9.0+ and
-mathcomp on the path:
+vehicle-rocq currently tracks `math-comp` master (post tensor-PR #1535) plus
+matching `finmap` and `analysis` commits. The exact pins are declared in
+`vehicle-rocq.opam`'s `pin-depends` field and opam will follow them
+automatically. Because those pins shadow any released versions of
+`rocq-mathcomp-*` and `rocq-mathcomp-{finmap,classical,reals}`, we recommend
+that you **use a dedicated opam switch** rather than your default one,
+otherwise you'll overwrite stable math-comp on which other projects depend.
+
+```sh
+# 1. Create a dedicated switch (any compatible ocaml is fine)
+opam switch create vehicle 5.4.1
+eval $(opam env --switch=vehicle)
+
+# 2. Add the Rocq opam repository
+opam repo add rocq-released https://rocq-prover.org/opam/released
+
+# 3. Install vehicle-rocq — opam follows pin-depends and pulls in
+#    math-comp / finmap / analysis at the pinned commits.
+opam install -y ./vehicle-rocq
+```
+
+This installs the `.v` files and the plugin's `.cmxs` so that
+generated Vehicle files can do `From vehicle Require Import utils.` and
+(if compiled with `--cache`) `From vehicle Require Import validate.`.
+
+If you only want to build locally (no install), the package uses
+[dune](https://dune.build) (≥ 3.13):
 
 ```sh
 cd vehicle-rocq
 dune build
-dune install
 ```
-
-Or via opam:
-
-```sh
-opam install ./vehicle-rocq.opam
-```
-
-Either form installs the `.v` files and the plugin's `.cmxs` so that
-generated Vehicle files can do `From vehicle Require Import utils.` and
-(if compiled with `--cache`) `From vehicle Require Import validate.`.
 
 ## The `vehicle_validate` tactic
 

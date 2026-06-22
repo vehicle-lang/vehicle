@@ -21,7 +21,7 @@ def export_to_solver(
     :param cache: The location of the verification cache for ITP compilation.
     """
 
-    args = ["export", "--target", str(target._vehicle_option_name)]
+    args = ["export", "--target", str(target._vehicle_option_name())]
 
     # Add output file if specified
     if output_file is not None:

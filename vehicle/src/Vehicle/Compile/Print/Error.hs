@@ -10,7 +10,9 @@ where
 import Control.Monad.Except (ExceptT, runExceptT)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Map.Ordered qualified as OMap
 import Data.These (mergeTheseWith)
+import Prettyprinter (surround)
 import System.FilePath
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -26,7 +28,6 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -924,18 +925,37 @@ formatCompileError = \case
           "The property"
             <+> quotePretty ident
             <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
-            <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModulePath networkName) [explicit inputValue]) ctx))
-            <> line
-            <> "In particular,"
-              <+> missingBounds unboundedInputs
-              <+> "for"
-              <+> squotes (prettyFriendly (WithContext inputValue ctx)),
+            <+> lineIndent (pretty networkName)
+            <+> unboundedVarInfo,
         fix =
           Just $
             "add additional inequalities that restrict the value of" <+> case userVariables of
               [v] -> "the quantified variable" <+> quotePretty v
               _ -> "the following quantified variables:" <+> hsep (fmap pretty userVariables)
       }
+    where
+      unboundedVarInfo =
+        case inputValue of
+          VRecord recordType fields -> do
+            let varName = "x" :: Name
+            let fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
+            let typeIdent = case recordType of
+                  (VFreeVar i _) -> Just i
+                  _ -> Nothing
+            pretty varName
+              <> line
+              <> "In particular,"
+                <+> missingBoundsRecord varName fieldNames unboundedInputs
+                <+> "for"
+                <+> maybe mempty (\t -> pretty $ nameOf t) typeIdent
+                <+> squotes (pretty varName)
+          _ ->
+            lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModulePath networkName) [explicit inputValue]) ctx))
+              <> line
+              <> "In particular,"
+                <+> missingBounds unboundedInputs
+                <+> "for tensor"
+                <+> squotes (prettyFriendly (WithContext inputValue ctx))
   UnknownDifferentiableLogic name possibleNames ->
     VehicleUserError
       { provenance = Nothing,
@@ -1051,13 +1071,13 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
       LHSImpliesProvenance p pp ->
         transform p ("being on the LHS of the" <+> quotePretty Implies) : go (neg q) pp
       PolFunctionProvenance p pp position ->
-        surround p (prettyAuxiliaryFunctionProvenance position) : go q pp
+        wrap p (prettyAuxiliaryFunctionProvenance position) : go q pp
       where
-        surround p x =
+        wrap p x =
           "which is" <+> x <+> "in" <+> pretty p
 
         transform p x =
-          surround p ("turned into" <+> prettyQuantifierArticle q <+> "by" <+> x)
+          wrap p ("turned into" <+> prettyQuantifierArticle q <+> "by" <+> x)
 
     finalLine :: Doc a
     finalLine =
@@ -1134,3 +1154,32 @@ missingOneSidedBounds isLowerBound missingIndices =
   "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <> case missingIndices of
     [[]] -> ""
     _ -> " for indices" <+> vsep (fmap pretty missingIndices)
+
+missingBoundsRecord :: Name -> [Name] -> UnboundedIndices -> Doc a
+missingBoundsRecord varName fieldNames =
+  mergeTheseWith
+    (missingOneSidedBoundsRecord varName fieldNames True)
+    (missingOneSidedBoundsRecord varName fieldNames False)
+    (\u v -> u <+> "and" <+> v)
+
+missingOneSidedBoundsRecord :: Name -> [Name] -> Bool -> NonEmpty TensorIndices -> Doc a
+missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
+  "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <+> case missingFields of
+    [] :| [] -> ""
+    _ ->
+      "for fields"
+        <+> concatWith
+          (surround ", ")
+          (fmap prettyRecordIndices missingFields)
+  where
+    prettyRecordIndices :: TensorIndices -> Doc a
+    prettyRecordIndices = \case
+      [] -> developerError "only time empty indices can occur is when whole record is bounded"
+      i : is ->
+        pretty varName
+          <> "."
+          <> pretty (fieldNames !! i)
+          <> ( case is of
+                 [] -> ""
+                 _ -> pretty is
+             )

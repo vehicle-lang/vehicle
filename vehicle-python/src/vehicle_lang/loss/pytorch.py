@@ -6,7 +6,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Iterable, Mapping, MutableMapping
 
-from ..typing import DeclarationName, DifferentiableLogic
+from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
 from ._common import load_loss_specification
 from ._pytorch._translation import PyTorchTranslation
 from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler
@@ -21,7 +21,7 @@ __all__ = [
 def load_specification(
     path: str | Path,
     *,
-    logic: DifferentiableLogic = DifferentiableLogic.DL2,
+    logic: DifferentiableLogic = DL2DifferentiableLogic(),
     samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,

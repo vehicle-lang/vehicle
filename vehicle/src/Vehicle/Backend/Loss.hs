@@ -24,7 +24,7 @@ import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Variable.Bound.Context.Tensor (TensorBoundContextT)
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), addDeclEntryToContext, addDeclToContext, runFreshFreeContextT)
 
 convertToLossTensors ::
   (MonadCompile m) =>
@@ -35,13 +35,14 @@ convertToLossTensors logicID prog@(Main ds) =
   logCompilerSection2 MinDetail currentPass $ do
     logic <- findAndCompileLogic logicID prog
     runFreshFreeContextT (Proxy @Builtin) $ do
-      Main <$> convertDecls logicID logic ds
+      runFreshFreeContextT (Proxy @LossBuiltin) $ do
+        Main <$> convertDecls logicID logic ds
 
 --------------------------------------------------------------------------------
 -- Program conversion
 
 convertDecls ::
-  (MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadCompile m, MonadFreeContext Builtin m, MonadFreeContext LossBuiltin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   [Decl Builtin] ->
@@ -51,12 +52,15 @@ convertDecls logicID logic = \case
   decl : decls -> do
     normDecl <- evalDecl decl
     maybeLossDecl <- convertDecl logicID logic normDecl
-    decls' <- addDeclEntryToContext normDecl $ convertDecls logicID logic decls
+    decls' <-
+      maybe id addDeclToContext maybeLossDecl $
+        addDeclEntryToContext normDecl $
+          convertDecls logicID logic decls
     return $ maybeToList maybeLossDecl ++ decls'
 
 convertDecl ::
   forall m.
-  (MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadCompile m, MonadFreeContext Builtin m, MonadFreeContext LossBuiltin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   VDecl Builtin ->

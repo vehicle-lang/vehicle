@@ -15,7 +15,6 @@ class SecondaryTypeSystem(Enum):
     Linearity = 2
     Decidability = 3
 
-    @property
     def _vehicle_option_name(self) -> str:
         return {
             SecondaryTypeSystem.Polarity: "Polarity",
@@ -66,7 +65,7 @@ def typecheck_with_typesystem(
         "--specification",
         str(specification),
         "--type-system",
-        typeSystem._vehicle_option_name,
+        typeSystem._vehicle_option_name(),
     ]
 
     # Call Vehicle

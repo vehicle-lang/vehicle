@@ -222,6 +222,7 @@ compareTensor f t1 t2 = allTensor id $ zipWithTensor f t1 t2
 
 prettyTensor :: (a -> Doc b) -> Tensor a -> Doc b
 prettyTensor prettyElement = \case
+  ConstantTensor [] value -> prettyElement value
   ConstantTensor shape value -> "const" <+> prettyElement value <+> pretty shape
   denseTensor -> do
     let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
