@@ -1,0 +1,41 @@
+[
+    {
+        "name": "TypeCheck",
+        "run": "vehicle typecheck -s dice-record.vcl",
+        "needs": [
+            "dice-record.vcl"
+        ]
+    },
+    {
+        "name": "Marabou",
+        "run": "vehicle compile queries -s dice-record.vcl -f MarabouQueries -o Marabou.queries --network classifier:fake.onnx -d images:/home/lauren/vehicle/vehicle/tests/golden/features/benchmark/dice-record/dice-images-1.idx -p epsilon:8/255",
+        "needs": [
+            "dice-record.vcl",
+            "fake.onnx"
+        ],
+        "produces": [
+            "Marabou.queries/robust!0-query5.txt",
+            "Marabou.queries/robust!0-query3.txt",
+            "Marabou.queries/robust!0-query1.txt",
+            "Marabou.queries/robust!0.vcl-plan",
+            "Marabou.queries/robust!0-query2.txt",
+            "Marabou.queries/robust!0-query4.txt",
+            "Marabou.queries/robust!0-query6.txt",
+            "Marabou.queries/robust!0.vcl-plan"
+        ],
+        "ignore": {
+            "lines": ".*\"fileHash\".*"
+        },
+        "sizeOnly": ".vcl-plan"
+    },
+    {
+        "name": "Agda",
+        "run": "vehicle compile itp -s dice-record.vcl -t Agda -o Agda.agda",
+        "needs": [
+            "dice-record.vcl"
+        ],
+        "produces": [
+            "Agda.agda"
+        ]
+    }
+]

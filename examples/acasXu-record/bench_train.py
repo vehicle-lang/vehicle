@@ -17,6 +17,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from vehicle_lang.loss.pytorch import load_specification
+import acasXu_record_types
 
 SPEC_PATH = Path(__file__).parent / "acasXu-record.vcl"
 
@@ -45,7 +46,7 @@ def main() -> None:
     torch.manual_seed(args.seed)
 
     controller = Controller()
-    spec = load_specification(SPEC_PATH)
+    spec = load_specification(SPEC_PATH, types=acasXu_record_types)
     # safe = spec["safe"]
     # optimiser = optim.Adam(controller.parameters(), lr=1e-2)
 
