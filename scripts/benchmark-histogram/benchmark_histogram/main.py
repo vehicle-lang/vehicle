@@ -6,7 +6,6 @@ import re
 import typing
 
 import click
-import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
