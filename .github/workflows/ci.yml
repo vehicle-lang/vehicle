@@ -27,13 +27,13 @@ jobs:
   test-integration-bumpver:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: pipx run bumpver update --patch --dry
 
   test-integration-citation-cff:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dieghernan/cff-validator@v5
 
   # NOTE: This job is disabled because Marabou reliably runs out of memory.
@@ -44,7 +44,7 @@ jobs:
   test-integration-ormolu:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: mrkkrp/ormolu-action@v15
         with:
           version: "0.7.1.0"
