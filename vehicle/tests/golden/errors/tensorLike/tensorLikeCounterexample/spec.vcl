@@ -2,7 +2,7 @@
 record Pair where
   { a : Real
   , b : Real
-  }
+  } supports Addition
 
 minBound : Pair
 minBound = { a = 0, b = 0 }

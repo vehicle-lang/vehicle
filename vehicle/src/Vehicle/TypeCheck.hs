@@ -19,7 +19,7 @@ import Data.Set qualified as Set
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (AdjacencyGraph, emptyAdjacencyGraph, insertEdge, insertNode, topologicalSort)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Compile.Monomorphisation (DeclarationFilter, monomorphise)
 import Vehicle.Compile.Normalise.NBE (evalDecl)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -35,7 +35,6 @@ import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Instances (standardBuiltinInstances)
-import Vehicle.Data.Builtin.Standard.Scoping ()
 import Vehicle.Data.Builtin.Standard.Type ()
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeEnvs, typedModule)
 import Vehicle.Data.Code.Value (FreeEnv)
@@ -88,7 +87,7 @@ checkDeclarationNamesPresent ::
   (MonadCompile m) =>
   Prog Builtin ->
   DeclarationNames ->
-  m (Identifier -> Bool)
+  m (DeclarationFilter Builtin)
 checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
   let actualDeclNames = Set.fromList $ fmap nameOf decls
   let missingNames = Set.toList $ Set.fromList requestedDeclNames `Set.difference` actualDeclNames
@@ -98,12 +97,19 @@ checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
       throwError $
         MissingRequestedDeclarations (n :| ns)
 
-  return $
-    if null requestedDeclNames
-      then isUserCode
-      else do
-        let declsToCompile = Set.fromList requestedDeclNames
-        \ident -> Set.member (nameOf ident) declsToCompile
+  let isRootDecl :: Decl Builtin -> Bool
+      isRootDecl
+        | null requestedDeclNames = \d -> isUserCode d
+        | otherwise = do
+            let declsToCompile = Set.fromList requestedDeclNames
+            \d -> Set.member (nameOf $ identifierOf d) declsToCompile
+
+  return $ \d ->
+    -- Keep the declarations the users requested
+    isRootDecl d
+      ||
+      -- Keep tensor coercions as they may be inserted by Loss or Solver backends.
+      isTensorCoercionDecl d
 
 printPropertyTypes ::
   (MonadStdIO m, MonadCompile m, PrintableBuiltin builtin) =>

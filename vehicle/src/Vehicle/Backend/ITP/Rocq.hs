@@ -303,7 +303,8 @@ compileDecl opts = \case
     FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty opts n e
     FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Rocq"
     ProjectionDecl {} -> return Nothing
-  DefRecord p n _ telescope fields ->
+    TensorCoercionDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
+  DefRecord p n _ telescope fields _supports ->
     Just <$> compileRecordDecl p n telescope fields
 
 compileFunctionDecl ::

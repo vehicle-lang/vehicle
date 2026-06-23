@@ -29,12 +29,12 @@ import Vehicle.Compile.Normalise.Quote (unnormaliseInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar, constructTensorisableDims, constructToTensorFreeVar)
 import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..))
 import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, unoptimisedEvalReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructTensorisableDims, constructToTensorFreeVar)
 import Vehicle.Data.Code.BooleanExpr (elimIfTree)
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface

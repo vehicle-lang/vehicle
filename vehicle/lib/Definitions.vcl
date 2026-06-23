@@ -164,43 +164,47 @@ record HasComparison t1 t2 where
 
 @instance
 indexHasComparison : HasComparison (Index n1) (Index n2)
-indexHasComparison =  { leTC = compareIndexLe
-                      , ltTC = compareIndexLt
-                      , geTC = compareIndexGe
-                      , gtTC = compareIndexGt
-                      , eqTC = compareIndexEq
-                      , neTC = compareIndexNe
-                      }
+indexHasComparison =
+  { leTC = compareIndexLe
+  , ltTC = compareIndexLt
+  , geTC = compareIndexGe
+  , gtTC = compareIndexGt
+  , eqTC = compareIndexEq
+  , neTC = compareIndexNe
+  }
 
 @instance
 natHasComparison : HasComparison Nat Nat
-natHasComparison =  { leTC = compareNatLe
-                    , ltTC = compareNatLt
-                    , geTC = compareNatGe
-                    , gtTC = compareNatGt
-                    , eqTC = compareNatEq
-                    , neTC = compareNatNe
-                    }
+natHasComparison =
+  { leTC = compareNatLe
+  , ltTC = compareNatLt
+  , geTC = compareNatGe
+  , gtTC = compareNatGt
+  , eqTC = compareNatEq
+  , neTC = compareNatNe
+  }
 
 @instance
 realTensorEmptyDimsHasComparison : HasComparison (Tensor Real []) (Tensor Real [])
-realTensorEmptyDimsHasComparison = { leTC = compareRatTensorPointwiseLe
-                                   , ltTC = compareRatTensorPointwiseLt
-                                   , geTC = compareRatTensorPointwiseGe
-                                   , gtTC = compareRatTensorPointwiseGt
-                                   , eqTC = compareRatTensorPointwiseEq
-                                   , neTC = compareRatTensorPointwiseNe
-                                   }
+realTensorEmptyDimsHasComparison =
+  { leTC = compareRatTensorPointwiseLe
+  , ltTC = compareRatTensorPointwiseLt
+  , geTC = compareRatTensorPointwiseGe
+  , gtTC = compareRatTensorPointwiseGt
+  , eqTC = compareRatTensorPointwiseEq
+  , neTC = compareRatTensorPointwiseNe
+  }
 
 @instance
 realTensorHasComparison : HasComparison (Tensor Real (dim :: dims)) (Tensor Real (dim :: dims))
-realTensorHasComparison = { leTC = compareRatTensorReducedLe
-                          , ltTC = compareRatTensorReducedLt
-                          , geTC = compareRatTensorReducedGe
-                          , gtTC = compareRatTensorReducedGt
-                          , eqTC = compareRatTensorReducedEq
-                          , neTC = compareRatTensorReducedNe
-                          }
+realTensorHasComparison =
+  { leTC = compareRatTensorReducedLe
+  , ltTC = compareRatTensorReducedLt
+  , geTC = compareRatTensorReducedGe
+  , gtTC = compareRatTensorReducedGt
+  , eqTC = compareRatTensorReducedEq
+  , neTC = compareRatTensorReducedNe
+  }
 
 -- Dataset tensor element types
 @typeclass
