@@ -3,9 +3,7 @@ requires = [
   "find_libpython>=0.3; sys_platform=='win32'",
   "packaging>=23",
   "setuptools>=45",
-  "setuptools-scm<10",
-  "ninja==1.11.1.4",
-  "swig==4.4.1",
+  "swig>=4",
 ]
 build-backend = "setuptools.build_meta"
 
