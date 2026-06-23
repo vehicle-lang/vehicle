@@ -93,6 +93,11 @@ isProjectionDecl = \case
   DefFunction _ _ ProjectionDecl {} _ _ -> True
   _ -> False
 
+isTensorCoercionDecl :: GenericDecl expr -> Bool
+isTensorCoercionDecl = \case
+  DefFunction _ _ TensorCoercionDecl {} _ _ -> True
+  _ -> False
+
 isAbstractDecl :: GenericDecl expr -> Bool
 isAbstractDecl = \case
   DefAbstract {} -> True
@@ -180,6 +185,8 @@ data DefFunctionSort
     FunctionDecl LHSBinderCount (Maybe FunctionDeclAnnotation)
   | -- | The function was generated as a projection from a record
     ProjectionDecl LHSBinderCount
+  | -- | The function was generated as a tensor coercion
+    TensorCoercionDecl LHSBinderCount
   deriving (Eq, Show, Generic)
 
 instance NFData DefFunctionSort

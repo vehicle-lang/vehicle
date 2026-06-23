@@ -74,6 +74,7 @@ instance Delaborate (V.Decl V.Builtin) [B.Decl] where
       V.TypeDecl binderCount -> delabTypeDecl n binderCount e
       V.FunctionDecl binderCount ann -> delabFunctionDecl n binderCount ann t e
       V.ProjectionDecl binderCount -> delabFunctionDecl n binderCount Nothing t e
+      V.TensorCoercionDecl binderCount -> delabFunctionDecl n binderCount Nothing t e
     V.DefRecord _ n sort t e s -> do
       delabRecordDecl n sort t e s
 

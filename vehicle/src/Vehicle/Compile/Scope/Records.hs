@@ -47,8 +47,7 @@ generateBuiltinAuxiliaryRecordDefinitions p ident sort telescope fields derivedO
   tensorConversionFunctionsAndInstances <-
     if isAnnotatedAsTensor sort
       then createTensorRecordConversionFunctions p ident telescope fields
-      else
-        return []
+      else return []
 
   -- Generate the instances for the supports
   derivedInstances <- generateDerivedInstances p ident telescope fields derivedOps
@@ -231,34 +230,6 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   -- All @tensor annotations should also derive the following operations
   return instances
 
-createTensorToRecord ::
-  Provenance ->
-  Identifier ->
-  DSLExpr Builtin ->
-  DSLExpr Builtin ->
-  NonEmpty (GenericRecordField (Type Builtin)) ->
-  Decl Builtin
-createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
-  -- Create the name
-  let functionName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
-  let functionIdent = Identifier (modulePath recordIdent) functionName
-
-  -- Create the type
-  let firstDimension = dim (length fields)
-  let recordType = freeVar recordIdent
-  let tensorType = tTensor fieldElementType (dimCons firstDimension fieldDimensions)
-  let functionType = fromDSL mempty $ tensorType ~> recordType
-
-  let fieldNames = fmap fst (toList fields)
-  let tensorIndices = fmap indexLit ([0 .. length fields - 1] :: [Int]) :: [DSLExpr Builtin]
-
-  -- Create the body
-  let functionBody = fromDSL mempty $ explLam "x" tensorType $ \tensor -> do
-        let fieldContents = fmap (\index -> atTensor fieldElementType firstDimension fieldDimensions tensor index) tensorIndices
-        record recordType (zip fieldNames fieldContents)
-
-  DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
-
 createValidNetworkFieldInstance ::
   Provenance ->
   Identifier ->
@@ -298,6 +269,34 @@ createValidDatasetListElementTypeInstance p recordIdent = do
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
+createTensorToRecord ::
+  Provenance ->
+  Identifier ->
+  DSLExpr Builtin ->
+  DSLExpr Builtin ->
+  NonEmpty (GenericRecordField (Type Builtin)) ->
+  Decl Builtin
+createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
+  -- Create the name
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  -- Create the type
+  let firstDimension = dim (length fields)
+  let recordType = freeVar recordIdent
+  let tensorType = tTensor fieldElementType (dimCons firstDimension fieldDimensions)
+  let functionType = fromDSL mempty $ tensorType ~> recordType
+
+  let fieldNames = fmap fst (toList fields)
+  let tensorIndices = fmap indexLit ([0 .. length fields - 1] :: [Int]) :: [DSLExpr Builtin]
+
+  -- Create the body
+  let functionBody = fromDSL mempty $ explLam "x" tensorType $ \tensor -> do
+        let fieldContents = fmap (\index -> atTensor fieldElementType firstDimension fieldDimensions tensor index) tensorIndices
+        record recordType (zip fieldNames fieldContents)
+
+  DefFunction p functionIdent (TensorCoercionDecl 1) functionType functionBody
+
 createRecordToTensor ::
   Provenance ->
   Identifier ->
@@ -321,7 +320,7 @@ createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
         let tensorElements = fmap (\(fieldName, _) -> recordProj (freeVar recordIdent) r fieldName) fields
         stackTensor fieldElementType firstDimension fieldDimensions tensorElements
 
-  DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
+  DefFunction p functionIdent (TensorCoercionDecl 1) functionType functionBody
 
 createTensorLikeHasQuantifierInstance ::
   Provenance ->

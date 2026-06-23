@@ -354,6 +354,7 @@ compileDecl _opts localeAssms = \case
     FunctionDecl _ (Just AnnProperty) -> developerError "Properties should have been filtered out"
     FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Isabelle"
     ProjectionDecl {} -> developerError "ProjectionDecl should have been filtered out"
+    TensorCoercionDecl binderCount -> compileFunctionDecl localeAssms n binderCount t e
   DefRecord p n _ telescope fields _supports -> compileRecordDecl localeAssms p n telescope fields
 
 filterRelevantDecls :: Decl DecidabilityBuiltin -> Bool
