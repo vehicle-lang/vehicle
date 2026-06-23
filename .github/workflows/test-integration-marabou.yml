@@ -9,7 +9,6 @@ defaults:
 
 jobs:
   test-vehicle-marabou:
-    if: false
     strategy:
       matrix:
         os:
