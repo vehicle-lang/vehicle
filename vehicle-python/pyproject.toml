@@ -114,3 +114,6 @@ testpaths = ["tests"]
 
 [tool.setuptools.dynamic]
 version = { attr = "vehicle_lang._version.VERSION" }
+
+[tool.setuptools_scm.tag]
+strict = true
