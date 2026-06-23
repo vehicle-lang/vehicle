@@ -56,6 +56,10 @@ vehicle = "vehicle_lang.__main__:main"
 [project.entry-points.'pygments.lexers']
 vehicle = "vehicle_lang.pygments:VehicleLexer"
 
+[[tool.cibuildwheel.overrides]]
+select = "*-musllinux*"
+before-all = "pip install ninja"
+
 [tool.cibuildwheel]
 # 18-04-2023:
 # Cross-compilation does not work with GHC and Cabal.
