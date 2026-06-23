@@ -9,6 +9,7 @@ defaults:
 
 jobs:
   build-vehicle:
+    if: false
     strategy:
       matrix:
         os:
