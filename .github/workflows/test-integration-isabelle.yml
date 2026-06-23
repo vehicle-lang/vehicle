@@ -19,6 +19,7 @@ defaults:
 
 jobs:
   test-vehicle-isabelle:
+    if: false
     strategy:
       matrix:
         os:

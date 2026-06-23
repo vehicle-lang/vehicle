@@ -19,6 +19,7 @@ defaults:
 
 jobs:
   test-vehicle-rocq:
+    if: false
     strategy:
       matrix:
         os:

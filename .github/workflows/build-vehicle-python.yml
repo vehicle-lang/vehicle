@@ -61,6 +61,10 @@ jobs:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
+      - name: "Run"
+        run: |
+          python -m pip download ninja --only-binary=:all:
+
       - name: Build wheel
         uses: pypa/cibuildwheel@v4.1.0
         with:
