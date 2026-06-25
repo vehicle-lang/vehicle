@@ -56,10 +56,6 @@ vehicle = "vehicle_lang.__main__:main"
 [project.entry-points.'pygments.lexers']
 vehicle = "vehicle_lang.pygments:VehicleLexer"
 
-[[tool.cibuildwheel.overrides]]
-select = "*-musllinux*"
-before-all = "pip install ninja"
-
 [tool.cibuildwheel]
 # 18-04-2023:
 # Cross-compilation does not work with GHC and Cabal.
@@ -71,13 +67,10 @@ build = [
   "*-macosx_arm64",
   # Using a GitHub runner
   "*-win_amd64",
-  # Using wenkokke/manylinux2014_ghc965_x86_64
+  # Using images hosted at wenkokke/* (see below)
   "*-manylinux_x86_64",
-  # Using wenkokke/manylinux2014_ghc965_i686
   "*-manylinux_i686",
-  # Using wenkokke/manylinux_2_28_ghc965_aarch64
   "*-manylinux_aarch64",
-  # Using wenkokke/musllinux_1_1_ghc965_x86_64
   "*-musllinux_x86_64",
 ]
 skip = [
