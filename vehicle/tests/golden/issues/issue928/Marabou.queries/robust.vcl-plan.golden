@@ -37,10 +37,13 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2,
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            2,
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 5
                       },
                       "AllDimensions"
@@ -50,9 +53,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 10
                       },
                       "AllDimensions"
@@ -62,10 +68,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2,
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            2,
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 0
                       },
                       {
@@ -111,22 +120,28 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            1
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              1
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            2,
-                            1
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              2,
+                              1
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },

@@ -34184,11 +34184,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 2440
                       },
                       "AllDimensions"
@@ -34198,9 +34201,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 4880
                       },
                       "AllDimensions"
@@ -34210,9 +34216,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 7327
                       },
                       {
@@ -34244,11 +34253,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 4887
                       },
                       {
@@ -34282,9 +34294,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 9774
                       },
                       {
@@ -34316,11 +34331,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 7334
                       },
                       {
@@ -34354,9 +34372,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 12221
                       },
                       {
@@ -34388,11 +34409,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 9781
                       },
                       {
@@ -34426,9 +34450,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 14668
                       },
                       {
@@ -34460,11 +34487,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 12228
                       },
                       {
@@ -34498,9 +34528,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 17115
                       },
                       {
@@ -34532,11 +34565,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 14675
                       },
                       {
@@ -34570,9 +34606,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 19562
                       },
                       {
@@ -34604,11 +34643,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 17122
                       },
                       {
@@ -34642,9 +34684,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 22009
                       },
                       {
@@ -34676,11 +34721,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 19569
                       },
                       {
@@ -34714,9 +34762,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 24456
                       },
                       {
@@ -34748,11 +34799,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 22016
                       },
                       {
@@ -34786,9 +34840,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 26903
                       },
                       {
@@ -34820,11 +34877,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 24463
                       },
                       {
@@ -34858,9 +34918,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 29350
                       },
                       {
@@ -34892,11 +34955,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 26910
                       },
                       {
@@ -34930,9 +34996,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 31797
                       },
                       {
@@ -34964,11 +35033,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 29357
                       },
                       {
@@ -35002,10 +35074,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1627
                       },
                       {
@@ -38172,10 +38247,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 814
                       },
                       {
@@ -41342,10 +41420,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -44512,11 +44593,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 0
                       },
                       "OneDimension"
@@ -44541,23 +44625,29 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            6
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              6
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            3,
-                            28,
-                            28
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              3,
+                              28,
+                              28
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },
@@ -78745,11 +78835,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 2440
                       },
                       "AllDimensions"
@@ -78759,9 +78852,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 4880
                       },
                       "AllDimensions"
@@ -78771,9 +78867,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 7327
                       },
                       {
@@ -78805,11 +78904,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 4887
                       },
                       {
@@ -78843,9 +78945,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 9774
                       },
                       {
@@ -78877,11 +78982,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 7334
                       },
                       {
@@ -78915,9 +79023,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 12221
                       },
                       {
@@ -78949,11 +79060,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 9781
                       },
                       {
@@ -78987,9 +79101,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 14668
                       },
                       {
@@ -79021,11 +79138,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 12228
                       },
                       {
@@ -79059,9 +79179,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 17115
                       },
                       {
@@ -79093,11 +79216,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 14675
                       },
                       {
@@ -79131,9 +79257,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 19562
                       },
                       {
@@ -79165,11 +79294,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 17122
                       },
                       {
@@ -79203,9 +79335,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 22009
                       },
                       {
@@ -79237,11 +79372,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 19569
                       },
                       {
@@ -79275,9 +79413,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 24456
                       },
                       {
@@ -79309,11 +79450,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 22016
                       },
                       {
@@ -79347,9 +79491,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 26903
                       },
                       {
@@ -79381,11 +79528,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 24463
                       },
                       {
@@ -79419,9 +79569,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 29350
                       },
                       {
@@ -79453,11 +79606,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 26910
                       },
                       {
@@ -79491,9 +79647,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 31797
                       },
                       {
@@ -79525,11 +79684,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 29357
                       },
                       {
@@ -79563,10 +79725,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1627
                       },
                       {
@@ -82733,10 +82898,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 814
                       },
                       {
@@ -85903,10 +86071,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -89073,11 +89244,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 0
                       },
                       "OneDimension"
@@ -89102,23 +89276,29 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            6
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              6
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            3,
-                            28,
-                            28
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              3,
+                              28,
+                              28
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },
@@ -123306,11 +123486,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 2440
                       },
                       "AllDimensions"
@@ -123320,9 +123503,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 4880
                       },
                       "AllDimensions"
@@ -123332,9 +123518,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 7327
                       },
                       {
@@ -123366,11 +123555,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 4887
                       },
                       {
@@ -123404,9 +123596,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 9774
                       },
                       {
@@ -123438,11 +123633,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 7334
                       },
                       {
@@ -123476,9 +123674,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 12221
                       },
                       {
@@ -123510,11 +123711,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 9781
                       },
                       {
@@ -123548,9 +123752,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 14668
                       },
                       {
@@ -123582,11 +123789,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 12228
                       },
                       {
@@ -123620,9 +123830,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 17115
                       },
                       {
@@ -123654,11 +123867,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 14675
                       },
                       {
@@ -123692,9 +123908,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 19562
                       },
                       {
@@ -123726,11 +123945,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 17122
                       },
                       {
@@ -123764,9 +123986,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 22009
                       },
                       {
@@ -123798,11 +124023,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 19569
                       },
                       {
@@ -123836,9 +124064,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 24456
                       },
                       {
@@ -123870,11 +124101,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 22016
                       },
                       {
@@ -123908,9 +124142,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 26903
                       },
                       {
@@ -123942,11 +124179,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 24463
                       },
                       {
@@ -123980,9 +124220,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 29350
                       },
                       {
@@ -124014,11 +124257,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 26910
                       },
                       {
@@ -124052,9 +124298,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 31797
                       },
                       {
@@ -124086,11 +124335,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 29357
                       },
                       {
@@ -124124,10 +124376,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1627
                       },
                       {
@@ -127294,10 +127549,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 814
                       },
                       {
@@ -130464,10 +130722,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -133634,11 +133895,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 0
                       },
                       "OneDimension"
@@ -133663,23 +133927,29 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            6
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              6
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            3,
-                            28,
-                            28
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              3,
+                              28,
+                              28
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },
@@ -167867,11 +168137,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 2440
                       },
                       "AllDimensions"
@@ -167881,9 +168154,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 4880
                       },
                       "AllDimensions"
@@ -167893,9 +168169,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 7327
                       },
                       {
@@ -167927,11 +168206,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 4887
                       },
                       {
@@ -167965,9 +168247,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 9774
                       },
                       {
@@ -167999,11 +168284,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 7334
                       },
                       {
@@ -168037,9 +168325,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 12221
                       },
                       {
@@ -168071,11 +168362,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 9781
                       },
                       {
@@ -168109,9 +168403,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 14668
                       },
                       {
@@ -168143,11 +168440,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 12228
                       },
                       {
@@ -168181,9 +168481,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 17115
                       },
                       {
@@ -168215,11 +168518,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 14675
                       },
                       {
@@ -168253,9 +168559,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 19562
                       },
                       {
@@ -168287,11 +168596,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 17122
                       },
                       {
@@ -168325,9 +168637,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 22009
                       },
                       {
@@ -168359,11 +168674,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 19569
                       },
                       {
@@ -168397,9 +168715,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 24456
                       },
                       {
@@ -168431,11 +168752,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 22016
                       },
                       {
@@ -168469,9 +168793,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 26903
                       },
                       {
@@ -168503,11 +168830,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 24463
                       },
                       {
@@ -168541,9 +168871,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 29350
                       },
                       {
@@ -168575,11 +168908,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 26910
                       },
                       {
@@ -168613,9 +168949,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 31797
                       },
                       {
@@ -168647,11 +168986,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 29357
                       },
                       {
@@ -168685,10 +169027,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1627
                       },
                       {
@@ -171855,10 +172200,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 814
                       },
                       {
@@ -175025,10 +175373,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -178195,11 +178546,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 0
                       },
                       "OneDimension"
@@ -178224,23 +178578,29 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            6
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              6
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            3,
-                            28,
-                            28
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              3,
+                              28,
+                              28
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },
@@ -212428,11 +212788,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 2440
                       },
                       "AllDimensions"
@@ -212442,9 +212805,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 4880
                       },
                       "AllDimensions"
@@ -212454,9 +212820,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 7327
                       },
                       {
@@ -212488,11 +212857,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 4887
                       },
                       {
@@ -212526,9 +212898,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 9774
                       },
                       {
@@ -212560,11 +212935,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 7334
                       },
                       {
@@ -212598,9 +212976,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 12221
                       },
                       {
@@ -212632,11 +213013,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 9781
                       },
                       {
@@ -212670,9 +213054,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 14668
                       },
                       {
@@ -212704,11 +213091,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 12228
                       },
                       {
@@ -212742,9 +213132,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 17115
                       },
                       {
@@ -212776,11 +213169,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 14675
                       },
                       {
@@ -212814,9 +213210,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 19562
                       },
                       {
@@ -212848,11 +213247,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 17122
                       },
                       {
@@ -212886,9 +213288,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 22009
                       },
                       {
@@ -212920,11 +213325,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 19569
                       },
                       {
@@ -212958,9 +213366,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 24456
                       },
                       {
@@ -212992,11 +213403,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 22016
                       },
                       {
@@ -213030,9 +213444,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 26903
                       },
                       {
@@ -213064,11 +213481,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 24463
                       },
                       {
@@ -213102,9 +213522,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 29350
                       },
                       {
@@ -213136,11 +213559,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 26910
                       },
                       {
@@ -213174,9 +213600,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 31797
                       },
                       {
@@ -213208,11 +213637,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 29357
                       },
                       {
@@ -213246,10 +213678,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1627
                       },
                       {
@@ -216416,10 +216851,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 814
                       },
                       {
@@ -219586,10 +220024,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -222756,11 +223197,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 0
                       },
                       "OneDimension"
@@ -222785,23 +223229,29 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            6
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              6
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            3,
-                            28,
-                            28
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              3,
+                              28,
+                              28
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },
@@ -256989,11 +257439,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 2440
                       },
                       "AllDimensions"
@@ -257003,9 +257456,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 4880
                       },
                       "AllDimensions"
@@ -257015,9 +257471,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 7327
                       },
                       {
@@ -257049,11 +257508,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 4887
                       },
                       {
@@ -257087,9 +257549,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 9774
                       },
                       {
@@ -257121,11 +257586,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 7334
                       },
                       {
@@ -257159,9 +257627,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 12221
                       },
                       {
@@ -257193,11 +257664,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 9781
                       },
                       {
@@ -257231,9 +257705,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 14668
                       },
                       {
@@ -257265,11 +257742,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 12228
                       },
                       {
@@ -257303,9 +257783,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 17115
                       },
                       {
@@ -257337,11 +257820,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 14675
                       },
                       {
@@ -257375,9 +257861,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 19562
                       },
                       {
@@ -257409,11 +257898,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 17122
                       },
                       {
@@ -257447,9 +257939,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 22009
                       },
                       {
@@ -257481,11 +257976,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 19569
                       },
                       {
@@ -257519,9 +258017,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 24456
                       },
                       {
@@ -257553,11 +258054,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 22016
                       },
                       {
@@ -257591,9 +258095,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 26903
                       },
                       {
@@ -257625,11 +258132,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 24463
                       },
                       {
@@ -257663,9 +258173,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 29350
                       },
                       {
@@ -257697,11 +258210,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 26910
                       },
                       {
@@ -257735,9 +258251,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          6
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            6
+                          ]
+                        },
                         "nestedStartingVariable": 31797
                       },
                       {
@@ -257769,11 +258288,14 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 29357
                       },
                       {
@@ -257807,10 +258329,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1627
                       },
                       {
@@ -260977,10 +261502,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 814
                       },
                       {
@@ -264147,10 +264675,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -267317,11 +267848,14 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          3,
-                          28,
-                          28
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "SingleInputOrOutput",
+                          "contents": [
+                            3,
+                            28,
+                            28
+                          ]
+                        },
                         "nestedStartingVariable": 0
                       },
                       "OneDimension"
@@ -267346,23 +267880,29 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            6
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              6
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "SingleInputOrOutput",
                         "contents": {
-                          "dimensions": [
-                            3,
-                            28,
-                            28
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              3,
+                              28,
+                              28
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },
