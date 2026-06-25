@@ -124,9 +124,6 @@ position token TokReduceMul {"reduceMul"};
 position token TokReduceMin {"reduceMin"};
 position token TokReduceMax {"reduceMax"};
 
-position token TokHasLeq    {"HasLeq"};
-position token TokHasEq     {"HasEq"};
-position token TokHasNotEq  {"HasNotEq"};
 position token TokHasFold   {"HasFold"};
 position token TokHasMap    {"HasMap"};
 position token TokIsTensorType {"IsTensorType"};
@@ -139,8 +136,6 @@ position token TokAnnDefaultOpt {"default"};
 position token Name         (letter (letter | digit | '_')*) ;
 position token FieldAccess  ({"."} letter (letter | digit | '_')*);
 position token HoleToken    ({"?"} (letter | digit | '_')*);
-
-separator Name "";
 
 -- * Modalities
 
@@ -192,6 +187,10 @@ separator RecordFieldDef ",";
 
 FieldAssign. RecordFieldAssign ::= Name "=" Expr;
 separator RecordFieldAssign ",";
+
+Supports.   RecordSupports ::= "supports" [Name];
+NoSupports. RecordSupports ::= "";
+separator nonempty Name ",";
 
 -- * Literals
 
@@ -329,9 +328,6 @@ Real.          Expr16 ::= TokReal;
 List.          Expr16 ::= TokList;
 Vector.        Expr16 ::= TokVector;
 Tensor.        Expr16 ::= TokTensor;
-HasEq.         Expr16 ::= TokHasEq;
-HasNotEq.      Expr16 ::= TokHasNotEq;
-HasLeq.        Expr16 ::= TokHasLeq;
 HasMap.        Expr16 ::= TokHasMap;
 HasFold.       Expr16 ::= TokHasFold;
 IsTensorType.  Expr16 ::= TokIsTensorType;
@@ -360,7 +356,7 @@ DefAnn.       Decl ::= TokAnnotation DeclAnnOpts;
 DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
-DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}";
+DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}" RecordSupports;
 
 separator Decl ";";
 

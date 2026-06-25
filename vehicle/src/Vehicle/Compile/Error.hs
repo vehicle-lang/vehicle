@@ -165,6 +165,7 @@ data ParseError
     UnknownBuiltin Provenance Text
   | MissingVariables Provenance Name
   | UnchainableComparisons Provenance ComparisonOp ComparisonOp
+  | UnknownSupportsOperation Provenance String
   deriving (Show)
 
 --------------------------------------------------------------------------------

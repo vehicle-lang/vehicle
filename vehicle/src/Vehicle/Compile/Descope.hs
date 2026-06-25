@@ -29,9 +29,9 @@ descopeDecl decl = do
   case builtinDecl of
     DefFunction p ident sort t e -> DefFunction p ident sort (descopeExprInEmptyCtx t) (descopeExprInEmptyCtx e)
     DefAbstract p ident sort t -> DefAbstract p ident sort (descopeExprInEmptyCtx t)
-    DefRecord p ident sort t f -> do
+    DefRecord p ident sort t f s -> do
       let (t', f') = descopeRecordTelescope t f
-      DefRecord p ident sort t' f'
+      DefRecord p ident sort t' f' s
 
 descopeRecordTelescope ::
   (PrintableBuiltin Builtin) =>

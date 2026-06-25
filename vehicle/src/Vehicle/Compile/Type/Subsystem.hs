@@ -48,7 +48,7 @@ polarityTypeCheck ::
   Set Identifier ->
   m (Either CompileError (Prog PolarityBuiltin))
 polarityTypeCheck prog declarationsToCompile = do
-  let keepUnused = if Set.null declarationsToCompile then isUserCode else (`Set.member` declarationsToCompile)
+  let keepUnused = if Set.null declarationsToCompile then isUserCode else (\d -> identifierOf d `Set.member` declarationsToCompile)
   monomorphisedProg <- monomorphise prog keepUnused
   irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
   implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
@@ -61,7 +61,7 @@ linearityTypeCheck ::
   Set Identifier ->
   m (Either CompileError (Prog LinearityBuiltin))
 linearityTypeCheck prog declarationsToCompile = do
-  let keepUnused = if Set.null declarationsToCompile then isUserCode else (`Set.member` declarationsToCompile)
+  let keepUnused = if Set.null declarationsToCompile then isUserCode else (\d -> identifierOf d `Set.member` declarationsToCompile)
   monomorphisedProg <- monomorphise prog keepUnused
   irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
   implicitFreeProg <- removeImplicitArgs irrelevantFreeProg

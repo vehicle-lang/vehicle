@@ -55,7 +55,7 @@ getRecordFields ::
 getRecordFields ident = do
   decl <- getDeclEntry (Proxy @Builtin) ident
   case decl of
-    DefRecord _ _ _ _ fields -> return fields
+    DefRecord _ _ _ _ fields _ -> return fields
     _ -> developerError "Record declaration is not of expected format."
 
 getRecordFieldNames ::
@@ -65,7 +65,7 @@ getRecordFieldNames ::
 getRecordFieldNames ident = do
   decl <- getDeclEntry (Proxy @Builtin) ident
   fieldNames <- case decl of
-    DefRecord _p _ident _sort _telescope fields -> return $ map (\(field, _typ) -> nameOf field) fields
+    DefRecord _p _ident _sort _telescope fields _supportedOps -> return $ map (\(field, _typ) -> nameOf field) fields
     _ -> developerError "Record declaration is not of expected format."
 
   case NonEmpty.nonEmpty fieldNames of
@@ -79,5 +79,5 @@ getRecordProvenance ::
 getRecordProvenance ident = do
   decl <- getDeclEntry (Proxy @Builtin) ident
   case decl of
-    (DefRecord p _ _ _ _) -> return p
+    (DefRecord p _ _ _ _ _) -> return p
     _ -> developerError "Record declaration is not of expected format."

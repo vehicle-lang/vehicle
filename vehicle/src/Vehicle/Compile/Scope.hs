@@ -14,7 +14,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
-import Vehicle.Compile.Scope.RecordInstances (createAuxilliaryRecordDeclarations)
 import Vehicle.Data.AST.Expr.Desugared qualified as S
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.ModuleInterface
@@ -45,10 +44,10 @@ scopeDecl decl =
         t' <- runMonadScopeExprT $ scopeExpr =<< generaliseType t
         e' <- runMonadScopeExprT $ scopeExpr e
         return [DefFunction p ident anns t' e']
-      DefRecord p ident sort telescope fields -> do
+      DefRecord p ident sort telescope fields supports -> do
         (telescope', fields') <- runMonadScopeExprT $ scopeRecordDefinition ident telescope fields
-        auxiliaryDeclarations <- createAuxilliaryRecordDeclarations p ident sort telescope' fields'
-        let defFun = DefRecord p ident sort telescope' fields'
+        auxiliaryDeclarations <- generateAuxiliaryRecordDefinitions p ident sort telescope' fields' supports
+        let defFun = DefRecord p ident sort telescope' fields' supports
         return $ defFun : auxiliaryDeclarations
 
     traverse_ addNewDecl scopedDecls
