@@ -87,8 +87,8 @@ appendTensorVariableToNestedCtx binder shape (NestedTensorVariableCtx ctx nameCt
 
 variableNamesForAllSlices :: Name -> NetworkIOShape TensorShape -> [Name]
 variableNamesForAllSlices parentName = \case
-  Single shape -> reverse (fmap mkName (allIndicesForShape shape))
-  RecordOf _shapes -> error "multimodal IO is not implemented yet"
+  SingleInputOrOutput shape -> reverse (fmap mkName (allIndicesForShape shape))
+  RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
   where
     mkName :: TensorIndices -> Name
     mkName indices = parentName <> Text.pack (showTensorIndices indices)

@@ -96,7 +96,7 @@ instance (Monad m) => MonadTensorBoundContext (TensorBoundContextT m) where
   addTensorBinderToContext dims binder action =
     TensorBoundContextT $ do
       let partialShape = extractPartialShape dims
-      localState (appendTensorVariableToNestedCtx (void binder) (Single $ knownPrefix partialShape)) $
+      localState (appendTensorVariableToNestedCtx (void binder) (SingleInputOrOutput $ knownPrefix partialShape)) $
         unTensorBoundContextT action
 
   addTensorBinderToContextPermenantly p name shape = do

@@ -85,12 +85,12 @@ compileNetworkApp networkName networkType appIndex = do
         | otherwise = ""
   let networkVarName = compileNetworkName networkName appIndex
   let networkInputDocs = case networkTensor networkName networkType appIndex Input of
-        (name, Single shape) -> compileNetworkInput name shape
-        (_name, RecordOf _shapes) -> error "Multimodal IO is unimplemented"
+        (name, SingleInputOrOutput shape) -> compileNetworkInput name shape
+        (_name, RecordOfInputsOrOutputs _shapes) -> error "Multimodal IO is unimplemented"
 
   let networkOutputDocs = case networkTensor networkName networkType appIndex Output of
-        (name, Single shape) -> compileNetworkOutput name shape
-        (_name, RecordOf _shapes) -> error "Multimodal IO is unimplemented"
+        (name, SingleInputOrOutput shape) -> compileNetworkOutput name shape
+        (_name, RecordOfInputsOrOutputs _shapes) -> error "Multimodal IO is unimplemented"
 
   "(declare-network" <+> networkVarName
     <> line

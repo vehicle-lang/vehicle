@@ -61,7 +61,7 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
 
     -- Update the global context
     globalCtx <- get
-    (userVar, newGlobalCtx) <- addUserVarToGlobalContext binder (Single userVarShape) globalCtx
+    (userVar, newGlobalCtx) <- addUserVarToGlobalContext binder (SingleInputOrOutput userVarShape) globalCtx
     put newGlobalCtx
 
     -- Normalise the expression
@@ -231,24 +231,24 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
 
   -- If our network outputs a tensorisable, convert our output expression to a record
   transformedOutputVarExpr <- case networkOutputType typ of
-    Single (RecordIOType (NetworkRecordType _ recordTyp _ _)) -> do
+    SingleInputOrOutput (RecordIOType (NetworkRecordType _ recordTyp _ _)) -> do
       fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
       evalApp ctx fromTensorFn [explicit outputVarExpr]
-    RecordOf _ -> error "Multimodal IO is not implemented yet"
+    RecordOfInputsOrOutputs _ -> error "Multimodal IO is not implemented yet"
     _ -> return outputVarExpr
 
   -- Create our input equality in terms of tensors (as record equality just converts to tensor equality anyway)
   -- If our network input is a tensorisable, i.e. arg is tensorisable, convert it to a tensor
   transformedArg <- case networkInputType typ of
-    Single (RecordIOType (NetworkRecordType _ recordTyp _ _)) -> do
+    SingleInputOrOutput (RecordIOType (NetworkRecordType _ recordTyp _ _)) -> do
       toTensorFn <- eval ctx emptyBoundEnv (constructToTensorFreeVar recordTyp mempty)
       evalApp ctx toTensorFn [explicit arg]
-    RecordOf _ -> error "Multimodal IO is not implemented yet"
+    RecordOfInputsOrOutputs _ -> error "Multimodal IO is not implemented yet"
     _ -> return arg
 
   let inputEquality = case inputShape networkInfo of
-        RecordOf _shapes -> error "Multimodal IO is not implemented yet"
-        Single shape ->
+        RecordOfInputsOrOutputs _shapes -> error "Multimodal IO is not implemented yet"
+        SingleInputOrOutput shape ->
           fromBoolValue $
             VCompareRatTensor
               ( Eq,
@@ -271,9 +271,9 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
 
   case networkOutputType typ of
     -- Unblock depending on the type of the output expression from our network
-    Single (RecordIOType (NetworkRecordType {})) -> unblockFnRecord transformedOutputVarExpr
-    Single (TensorIOType (NetworkTensorType {})) -> unblockFnTensor transformedOutputVarExpr
-    RecordOf _ -> error "Multimodal IO is not implemented yet"
+    SingleInputOrOutput (RecordIOType (NetworkRecordType {})) -> unblockFnRecord transformedOutputVarExpr
+    SingleInputOrOutput (TensorIOType (NetworkTensorType {})) -> unblockFnTensor transformedOutputVarExpr
+    RecordOfInputsOrOutputs _ -> error "Multimodal IO is not implemented yet"
 
 --------------------------------------------------------------------------------
 -- Elimination operations

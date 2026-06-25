@@ -35,8 +35,8 @@ type NetworkIOType = NetworkIOShape NetworkIOBase
 data NetworkIOShape a
   = -- Change to SingleInputOrOutput
     -- Change to RecordOfInputsOrOutputs
-    Single a
-  | RecordOf [(Name, a)]
+    SingleInputOrOutput a
+  | RecordOfInputsOrOutputs [(Name, a)]
   deriving (Eq, Ord, Show, Generic)
 
 instance (NFData a) => NFData (NetworkIOShape a)
@@ -46,12 +46,12 @@ instance (ToJSON a) => ToJSON (NetworkIOShape a)
 instance (FromJSON a) => FromJSON (NetworkIOShape a)
 
 instance (Pretty a) => Pretty (NetworkIOShape a) where
-  pretty (Single e) = pretty e
-  pretty (RecordOf es) = pretty es
+  pretty (SingleInputOrOutput e) = pretty e
+  pretty (RecordOfInputsOrOutputs es) = pretty es
 
 instance Functor NetworkIOShape where
-  fmap f (Single a) = Single (f a)
-  fmap f (RecordOf as) = RecordOf (fmap applyRight as)
+  fmap f (SingleInputOrOutput a) = SingleInputOrOutput (f a)
+  fmap f (RecordOfInputsOrOutputs as) = RecordOfInputsOrOutputs (fmap applyRight as)
     where
       applyRight (a, b) = (a, f b)
 

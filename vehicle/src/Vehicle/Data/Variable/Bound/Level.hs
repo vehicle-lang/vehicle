@@ -230,8 +230,8 @@ instance Pretty NestedSliceVariable where
 
 instance HasShape NestedSliceVariable where
   shapeOf (NestedSliceVariable shapeOrShapes _) = case shapeOrShapes of
-    Single shape -> shape
-    RecordOf _shapes -> error "multimodal IO is not implemented yet"
+    SingleInputOrOutput shape -> shape
+    RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
 
 instance VariableLike NestedSliceVariable where
   toLv = toLv . nestedStartingVariable
@@ -244,8 +244,8 @@ numberOfSliceVariablesIn shape = sum $ NonEmpty.scanl (*) 1 shape
 
 childVariablesOf :: NestedSliceVariable -> Maybe [NestedSliceVariable]
 childVariablesOf (NestedSliceVariable shapeOrShapes startingVar) = case shapeOrShapes of
-  Single shape -> getChildrenOf shape
-  RecordOf _shapes -> error "multimodal IO is not implemented yet"
+  SingleInputOrOutput shape -> getChildrenOf shape
+  RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
   where
     getChildrenOf :: TensorShape -> Maybe [NestedSliceVariable]
     getChildrenOf s = case s of
@@ -253,7 +253,7 @@ childVariablesOf (NestedSliceVariable shapeOrShapes startingVar) = case shapeOrS
       d : ds -> Just $ do
         let subSize = numberOfSliceVariablesIn ds
         let calculateChildStartingVar i = SliceVariable $ toLv startingVar + Lv (1 + subSize * i)
-        fmap (NestedSliceVariable (Single ds) . calculateChildStartingVar) [0 .. d - 1]
+        fmap (NestedSliceVariable (SingleInputOrOutput ds) . calculateChildStartingVar) [0 .. d - 1]
 
 elementVariablesOf :: NestedSliceVariable -> [(NetworkIOElementVariable, TensorIndices)]
 elementVariablesOf = go mempty
@@ -266,8 +266,8 @@ elementVariablesOf = go mempty
 -- | Returns the shape of the provided slice variable
 findSliceShape :: NestedSliceVariable -> SliceVariable -> NetworkIOShape TensorShape
 findSliceShape (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
-  Single shape -> Single (go startIndex shape)
-  RecordOf _shapes -> error "multimodal IO is not implemented yet"
+  SingleInputOrOutput shape -> SingleInputOrOutput (go startIndex shape)
+  RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
   where
     startIndex :: Int
     startIndex = unLv $ toLv var - toLv lv
@@ -282,8 +282,8 @@ findSliceShape (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes o
 -- | Returns the indices into the provided parent variable of the provided slice variable
 findSliceIndices :: (SliceVariableLike variable) => NestedSliceVariable -> variable -> TensorIndices
 findSliceIndices (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
-  Single shape -> go mempty startIndex shape
-  RecordOf _shapes -> error "multimodal IO is not implemented yet"
+  SingleInputOrOutput shape -> go mempty startIndex shape
+  RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
   where
     startIndex :: Int
     startIndex = unLv $ toLv var - toLv lv
