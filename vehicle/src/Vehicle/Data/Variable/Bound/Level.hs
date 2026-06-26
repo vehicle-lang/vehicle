@@ -27,7 +27,7 @@ import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Coerce
 import Data.List.NonEmpty qualified as NonEmpty
 import GHC.Generics (Generic)
-import Vehicle.Compile.Resource (NetworkIOShape (..))
+import Vehicle.Compile.Resource (NetworkModality (..))
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Level.Core as Core
 import Vehicle.Prelude
@@ -214,7 +214,7 @@ instance SliceVariableLike NetworkIOElementVariable where
 --
 -- We store it like this in order to maximise space efficiency.
 data NestedSliceVariable = NestedSliceVariable
-  { nestedTensorShape :: NetworkIOShape TensorShape,
+  { nestedTensorShape :: NetworkModality TensorShape,
     nestedStartingVariable :: SliceVariable
   }
   deriving (Show, Eq, Ord, Generic)
@@ -230,8 +230,8 @@ instance Pretty NestedSliceVariable where
 
 instance HasShape NestedSliceVariable where
   shapeOf (NestedSliceVariable shapeOrShapes _) = case shapeOrShapes of
-    SingleInputOrOutput shape -> shape
-    RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
+    UniModal shape -> shape
+    MultiModal _shapes -> error "MultiModal IO is not implemented yet"
 
 instance VariableLike NestedSliceVariable where
   toLv = toLv . nestedStartingVariable
@@ -244,8 +244,8 @@ numberOfSliceVariablesIn shape = sum $ NonEmpty.scanl (*) 1 shape
 
 childVariablesOf :: NestedSliceVariable -> Maybe [NestedSliceVariable]
 childVariablesOf (NestedSliceVariable shapeOrShapes startingVar) = case shapeOrShapes of
-  SingleInputOrOutput shape -> getChildrenOf shape
-  RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
+  UniModal shape -> getChildrenOf shape
+  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
   where
     getChildrenOf :: TensorShape -> Maybe [NestedSliceVariable]
     getChildrenOf s = case s of
@@ -253,7 +253,7 @@ childVariablesOf (NestedSliceVariable shapeOrShapes startingVar) = case shapeOrS
       d : ds -> Just $ do
         let subSize = numberOfSliceVariablesIn ds
         let calculateChildStartingVar i = SliceVariable $ toLv startingVar + Lv (1 + subSize * i)
-        fmap (NestedSliceVariable (SingleInputOrOutput ds) . calculateChildStartingVar) [0 .. d - 1]
+        fmap (NestedSliceVariable (UniModal ds) . calculateChildStartingVar) [0 .. d - 1]
 
 elementVariablesOf :: NestedSliceVariable -> [(NetworkIOElementVariable, TensorIndices)]
 elementVariablesOf = go mempty
@@ -264,10 +264,10 @@ elementVariablesOf = go mempty
       Just childVars -> concatMap (\(v, index) -> go (index : indices) v) $ zip childVars [0 ..]
 
 -- | Returns the shape of the provided slice variable
-findSliceShape :: NestedSliceVariable -> SliceVariable -> NetworkIOShape TensorShape
+findSliceShape :: NestedSliceVariable -> SliceVariable -> NetworkModality TensorShape
 findSliceShape (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
-  SingleInputOrOutput shape -> SingleInputOrOutput (go startIndex shape)
-  RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
+  UniModal shape -> UniModal (go startIndex shape)
+  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
   where
     startIndex :: Int
     startIndex = unLv $ toLv var - toLv lv
@@ -282,8 +282,8 @@ findSliceShape (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes o
 -- | Returns the indices into the provided parent variable of the provided slice variable
 findSliceIndices :: (SliceVariableLike variable) => NestedSliceVariable -> variable -> TensorIndices
 findSliceIndices (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
-  SingleInputOrOutput shape -> go mempty startIndex shape
-  RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
+  UniModal shape -> go mempty startIndex shape
+  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
   where
     startIndex :: Int
     startIndex = unLv $ toLv var - toLv lv

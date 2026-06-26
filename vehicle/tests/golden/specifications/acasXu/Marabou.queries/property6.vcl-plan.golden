@@ -99,7 +99,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -114,7 +114,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -129,7 +129,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -166,7 +166,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -203,7 +203,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -240,7 +240,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -277,7 +277,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -314,7 +314,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -351,7 +351,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -388,7 +388,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -425,7 +425,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 5
@@ -458,7 +458,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 4
@@ -491,7 +491,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 3
@@ -524,7 +524,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 2
@@ -557,7 +557,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 1
@@ -590,7 +590,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -617,7 +617,7 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -629,7 +629,7 @@
                         }
                       },
                       "networkInputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -740,7 +740,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -755,7 +755,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -770,7 +770,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -807,7 +807,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -844,7 +844,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -881,7 +881,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -918,7 +918,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -955,7 +955,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -992,7 +992,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1029,7 +1029,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1066,7 +1066,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 5
@@ -1099,7 +1099,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 4
@@ -1132,7 +1132,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 3
@@ -1165,7 +1165,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 2
@@ -1198,7 +1198,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 1
@@ -1231,7 +1231,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1258,7 +1258,7 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -1270,7 +1270,7 @@
                         }
                       },
                       "networkInputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -1381,7 +1381,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1396,7 +1396,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1411,7 +1411,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1448,7 +1448,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1485,7 +1485,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1522,7 +1522,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1559,7 +1559,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1596,7 +1596,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1633,7 +1633,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1670,7 +1670,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1707,7 +1707,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 5
@@ -1740,7 +1740,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 4
@@ -1773,7 +1773,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 3
@@ -1806,7 +1806,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 2
@@ -1839,7 +1839,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 1
@@ -1872,7 +1872,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -1899,7 +1899,7 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -1911,7 +1911,7 @@
                         }
                       },
                       "networkInputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -2022,7 +2022,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2037,7 +2037,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2052,7 +2052,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2089,7 +2089,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2126,7 +2126,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2163,7 +2163,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2200,7 +2200,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2237,7 +2237,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2274,7 +2274,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2311,7 +2311,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2348,7 +2348,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 5
@@ -2381,7 +2381,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 4
@@ -2414,7 +2414,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 3
@@ -2447,7 +2447,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 2
@@ -2480,7 +2480,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 1
@@ -2513,7 +2513,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2540,7 +2540,7 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -2552,7 +2552,7 @@
                         }
                       },
                       "networkInputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -2663,7 +2663,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2678,7 +2678,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2693,7 +2693,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2730,7 +2730,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2767,7 +2767,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2804,7 +2804,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2841,7 +2841,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2878,7 +2878,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2915,7 +2915,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2952,7 +2952,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -2989,7 +2989,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 5
@@ -3022,7 +3022,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 4
@@ -3055,7 +3055,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 3
@@ -3088,7 +3088,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 2
@@ -3121,7 +3121,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 1
@@ -3154,7 +3154,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3181,7 +3181,7 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -3193,7 +3193,7 @@
                         }
                       },
                       "networkInputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -3304,7 +3304,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3319,7 +3319,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3334,7 +3334,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3371,7 +3371,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3408,7 +3408,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3445,7 +3445,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3482,7 +3482,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3519,7 +3519,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3556,7 +3556,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3593,7 +3593,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3630,7 +3630,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 5
@@ -3663,7 +3663,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 4
@@ -3696,7 +3696,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 3
@@ -3729,7 +3729,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 2
@@ -3762,7 +3762,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 1
@@ -3795,7 +3795,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3822,7 +3822,7 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -3834,7 +3834,7 @@
                         }
                       },
                       "networkInputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -3945,7 +3945,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3960,7 +3960,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -3975,7 +3975,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4012,7 +4012,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4049,7 +4049,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4086,7 +4086,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4123,7 +4123,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4160,7 +4160,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4197,7 +4197,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4234,7 +4234,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4271,7 +4271,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 5
@@ -4304,7 +4304,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 4
@@ -4337,7 +4337,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 3
@@ -4370,7 +4370,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 2
@@ -4403,7 +4403,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 1
@@ -4436,7 +4436,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4463,7 +4463,7 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -4475,7 +4475,7 @@
                         }
                       },
                       "networkInputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -4586,7 +4586,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4601,7 +4601,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4616,7 +4616,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4653,7 +4653,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4690,7 +4690,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4727,7 +4727,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4764,7 +4764,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4801,7 +4801,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4838,7 +4838,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4875,7 +4875,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -4912,7 +4912,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 5
@@ -4945,7 +4945,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 4
@@ -4978,7 +4978,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 3
@@ -5011,7 +5011,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 2
@@ -5044,7 +5044,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": []
                         },
                         "nestedStartingVariable": 1
@@ -5077,7 +5077,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             5
                           ]
@@ -5104,7 +5104,7 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -5116,7 +5116,7 @@
                         }
                       },
                       "networkInputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {

@@ -41,7 +41,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             1,
                             1
@@ -57,7 +57,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             2
                           ]
@@ -72,7 +72,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             2
                           ]
@@ -109,7 +109,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             1,
                             1
@@ -148,7 +148,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": {
-                          "tag": "SingleInputOrOutput",
+                          "tag": "UniModal",
                           "contents": [
                             1,
                             1
@@ -199,7 +199,7 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
@@ -211,7 +211,7 @@
                         }
                       },
                       "networkInputType": {
-                        "tag": "SingleInputOrOutput",
+                        "tag": "UniModal",
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {

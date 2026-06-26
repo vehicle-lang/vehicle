@@ -4,7 +4,7 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkIOShape (..), NetworkType (networkInputType), getIODims, networkOutputType)
+import Vehicle.Compile.Resource (NetworkModality (..), NetworkType (networkInputType), getIODims, networkOutputType)
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core
@@ -85,12 +85,12 @@ compileNetworkApp networkName networkType appIndex = do
         | otherwise = ""
   let networkVarName = compileNetworkName networkName appIndex
   let networkInputDocs = case networkTensor networkName networkType appIndex Input of
-        (name, SingleInputOrOutput shape) -> compileNetworkInput name shape
-        (_name, RecordOfInputsOrOutputs _shapes) -> error "Multimodal IO is unimplemented"
+        (name, UniModal shape) -> compileNetworkInput name shape
+        (_name, MultiModal _shapes) -> error "MultiModal IO is unimplemented"
 
   let networkOutputDocs = case networkTensor networkName networkType appIndex Output of
-        (name, SingleInputOrOutput shape) -> compileNetworkOutput name shape
-        (_name, RecordOfInputsOrOutputs _shapes) -> error "Multimodal IO is unimplemented"
+        (name, UniModal shape) -> compileNetworkOutput name shape
+        (_name, MultiModal _shapes) -> error "MultiModal IO is unimplemented"
 
   "(declare-network" <+> networkVarName
     <> line
@@ -105,7 +105,7 @@ compileNetworkApp networkName networkType appIndex = do
     <> ")"
 
 -- | Generates the variable name and fetches the shape of the the input or output network tensor
-networkTensor :: Name -> NetworkType -> Int -> InputOrOutput -> (Name, NetworkIOShape TensorShape)
+networkTensor :: Name -> NetworkType -> Int -> InputOrOutput -> (Name, NetworkModality TensorShape)
 networkTensor networkName networkType appIndex inputOrOutput = do
   let name = layoutAsText $ compileNetworkVariableName networkName appIndex inputOrOutput
   case inputOrOutput of

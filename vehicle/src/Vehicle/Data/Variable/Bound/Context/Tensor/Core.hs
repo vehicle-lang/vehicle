@@ -7,7 +7,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
-import Vehicle.Compile.Resource (NetworkIOShape (..))
+import Vehicle.Compile.Resource (NetworkModality (..))
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Context.Core (GenericBoundCtx, boundCtxLv)
 import Vehicle.Data.Variable.Bound.Context.Generic (BoundCtx)
@@ -76,7 +76,7 @@ appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx) 
 
 appendTensorVariableToNestedCtx ::
   GenericBinder () ->
-  NetworkIOShape TensorShape ->
+  NetworkModality TensorShape ->
   NestedTensorVariableCtx ->
   NestedTensorVariableCtx
 appendTensorVariableToNestedCtx binder shape (NestedTensorVariableCtx ctx nameCtx) = do
@@ -85,10 +85,10 @@ appendTensorVariableToNestedCtx binder shape (NestedTensorVariableCtx ctx nameCt
   let newNameCtx = variableNamesForAllSlices (fst $ getNamedBinderInfo binder) shape <> nameCtx
   NestedTensorVariableCtx newCtx newNameCtx
 
-variableNamesForAllSlices :: Name -> NetworkIOShape TensorShape -> [Name]
+variableNamesForAllSlices :: Name -> NetworkModality TensorShape -> [Name]
 variableNamesForAllSlices parentName = \case
-  SingleInputOrOutput shape -> reverse (fmap mkName (allIndicesForShape shape))
-  RecordOfInputsOrOutputs _shapes -> error "multimodal IO is not implemented yet"
+  UniModal shape -> reverse (fmap mkName (allIndicesForShape shape))
+  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
   where
     mkName :: TensorIndices -> Name
     mkName indices = parentName <> Text.pack (showTensorIndices indices)

@@ -32,10 +32,10 @@ instance FromJSON NetworkContextInfo
 -- | A list of neural networks used in a given query.
 type MetaNetwork = [(Name, NetworkContextInfo, Int)]
 
-inputShape :: NetworkContextInfo -> NetworkIOShape TensorShape
+inputShape :: NetworkContextInfo -> NetworkModality TensorShape
 inputShape = fmap getIODims . networkInputType . networkType
 
-outputShape :: NetworkContextInfo -> NetworkIOShape TensorShape
+outputShape :: NetworkContextInfo -> NetworkModality TensorShape
 outputShape = fmap getIODims . networkOutputType . networkType
 
 --------------------------------------------------------------------------------

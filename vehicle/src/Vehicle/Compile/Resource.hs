@@ -30,28 +30,26 @@ instance Pretty NetworkType where
   pretty (NetworkType input output) =
     pretty input <+> "->" <+> pretty output
 
-type NetworkIOType = NetworkIOShape NetworkIOBase
+type NetworkIOType = NetworkModality NetworkIOBase
 
-data NetworkIOShape a
-  = -- Change to SingleInputOrOutput
-    -- Change to RecordOfInputsOrOutputs
-    SingleInputOrOutput a
-  | RecordOfInputsOrOutputs [(Name, a)]
+data NetworkModality a
+  = UniModal a
+  | MultiModal [(Name, a)]
   deriving (Eq, Ord, Show, Generic)
 
-instance (NFData a) => NFData (NetworkIOShape a)
+instance (NFData a) => NFData (NetworkModality a)
 
-instance (ToJSON a) => ToJSON (NetworkIOShape a)
+instance (ToJSON a) => ToJSON (NetworkModality a)
 
-instance (FromJSON a) => FromJSON (NetworkIOShape a)
+instance (FromJSON a) => FromJSON (NetworkModality a)
 
-instance (Pretty a) => Pretty (NetworkIOShape a) where
-  pretty (SingleInputOrOutput e) = pretty e
-  pretty (RecordOfInputsOrOutputs es) = pretty es
+instance (Pretty a) => Pretty (NetworkModality a) where
+  pretty (UniModal e) = pretty e
+  pretty (MultiModal es) = pretty es
 
-instance Functor NetworkIOShape where
-  fmap f (SingleInputOrOutput a) = SingleInputOrOutput (f a)
-  fmap f (RecordOfInputsOrOutputs as) = RecordOfInputsOrOutputs (fmap applyRight as)
+instance Functor NetworkModality where
+  fmap f (UniModal a) = UniModal (f a)
+  fmap f (MultiModal as) = MultiModal (fmap applyRight as)
     where
       applyRight (a, b) = (a, f b)
 

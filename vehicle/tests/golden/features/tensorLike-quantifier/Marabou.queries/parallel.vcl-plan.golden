@@ -40,7 +40,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": [
                                   2
                                 ]
@@ -55,7 +55,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": [
                                   2
                                 ]
@@ -70,7 +70,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": []
                               },
                               "nestedStartingVariable": 2
@@ -103,7 +103,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": []
                               },
                               "nestedStartingVariable": 1
@@ -136,7 +136,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": [
                                   2
                                 ]
@@ -163,7 +163,7 @@
                         {
                           "networkType": {
                             "networkOutputType": {
-                              "tag": "SingleInputOrOutput",
+                              "tag": "UniModal",
                               "contents": {
                                 "tag": "RecordIOType",
                                 "contents": {
@@ -183,7 +183,7 @@
                               }
                             },
                             "networkInputType": {
-                              "tag": "SingleInputOrOutput",
+                              "tag": "UniModal",
                               "contents": {
                                 "tag": "RecordIOType",
                                 "contents": {
@@ -258,7 +258,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": [
                                   2
                                 ]
@@ -273,7 +273,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": [
                                   2
                                 ]
@@ -288,7 +288,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": []
                               },
                               "nestedStartingVariable": 11
@@ -321,7 +321,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": []
                               },
                               "nestedStartingVariable": 10
@@ -354,7 +354,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": {
-                                "tag": "SingleInputOrOutput",
+                                "tag": "UniModal",
                                 "contents": [
                                   2
                                 ]
@@ -381,7 +381,7 @@
                         {
                           "networkType": {
                             "networkOutputType": {
-                              "tag": "SingleInputOrOutput",
+                              "tag": "UniModal",
                               "contents": {
                                 "tag": "RecordIOType",
                                 "contents": {
@@ -401,7 +401,7 @@
                               }
                             },
                             "networkInputType": {
-                              "tag": "SingleInputOrOutput",
+                              "tag": "UniModal",
                               "contents": {
                                 "tag": "RecordIOType",
                                 "contents": {
