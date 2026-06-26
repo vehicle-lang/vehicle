@@ -19,6 +19,8 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor (Tensor, TensorShape, at, extendTensor, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Code.Interface.Operations (accessCompareRatTensor, accessRatTensorLiteral, accessBoolTensorLiteral)
+import System.Console.ANSI (xtermSystem)
 
 -- Okay so the important thing to remember about this module is that we have
 -- a variety of different typing schemes for builtins (standard, polarity,
@@ -476,40 +478,42 @@ evalReduceMinRatTensor = evalReduceTensor accessReduceMinRatBuiltin accessRatTen
 evalReduceMaxRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
 evalReduceMaxRatTensor = evalReduceTensor accessReduceMaxRatBuiltin accessRatTensorLiteral evalMaxRatTensor max
 
-evalCompareRatTensor ::
-  (MonadNormBuiltin m, HasBoolExpr Value builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) =>
-  ComparisonOp ->
-  EvalSimple TensorComparisonArgs Value builtin m
-evalCompareRatTensor -- pattern matching on args (dims) here
-evalCompareRatTensor op =
-  evalHeteroTensorOp2
-    (mkExpr accessCompareRatTensorBuiltin op)
-    accessRatTensorLiteral
-    accessBoolTensorLiteral
-    (comparisonOp op)
-    Nothing
-    Nothing
-    Nothing
-    Nothing
-
--- type EvalSimple args expr builtin m =
-  -- args (expr builtin) ->
-  -- m (expr builtin)
-
--- evalCompareRatTensorPointwise ::
---   (MonadNormBuiltin m, HasBoolExpr Value builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) =>
---   ComparisonOp ->
---   EvalSimple TensorOp2Args Value builtin m
--- evalCompareRatTensorPointwise op =
---   evalHeteroTensorOp2
---     (mkExpr accessCompareRatTensorPointwiseBuiltin op)
---     accessRatTensorLiteral
---     accessBoolTensorLiteral
---     (comparisonOp op)
---     Nothing
---     Nothing
---     Nothing
---     Nothing
+-- call evalCompareRatTensor when (recursively) patternmatching on an expression, and match on a CompareRatTensor expression
+evalCompareRatTensor :: (MonadNormBuiltin m, HasBoolExpr Value builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) => ComparisonOp -> EvalSimple TensorComparisonArgs Value builtin m
+evalCompareRatTensor op = \case
+  -- base case where we are up to pointwise comparison (dims1/pDims = [])
+  TensorComparisonArgs (IDimCons IDimNill rDims) xs ys -> -- xs and ys passed on to evalHeteteroTensorOp2 to handle
+    evalHeteroTensorOp2 (mkExpr accessCompareRatTensor op) accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing
+  -- reduction cases (two consts) should just be result of one element vs other element, in the shape of pDims
+  TensorComparisonArgs (IDimCons pDims _) (getExpr accessConstTensor -> Just xs) (getExpr accessConstTensor -> Just ys) ->
+    Just $ do
+      newConstValue <- IBoolLiteral (comparisonOp op) (constValue x) (constValue y)
+      mkExpr accessConstTensor $ xs {constValue = newConstValue, constDims=pDims}
+  -- reduction cases (literal/stack cases)
+  -- for tensorLiterals: use unstackExpr, for stackTensors: use stackElements
+  TensorComparisonArgs (IDimCons pDims _) (getExpr accessRatTensorLiteral -> Just xs) (getExpr accessRatTensorLiteral -> Just ys) ->
+    Just $ do
+      newElements <- zipWithM (evalCompareRatTensor op) (unstackExpr xs) (unstackExpr ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] $ xs {stackelements = newElements}
+  TensorComparisonArgs (IDimCons pDims _) (getExpr accessStackTensor -> Just xs) (getExpr accessRatTensorLiteral -> Just ys) ->
+    Just $ do
+      newElements <- zipWithM (evalCompareRatTensor op) (stackElements xrows) (unstackExpr ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] $ xs {stackelements = newElements}
+  TensorComparisonArgs (IDimCons pDims _) (getExpr accessRatTensorLiteral -> Just xs) (getExpr accessStackTensor -> Just ys) ->
+    Just $ do
+      newElements <- zipWithM (evalCompareRatTensor op) (unstackExpr xs) (stackElements ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] $ xs {stackelements = newElements}
+  TensorComparisonArgs (IDimCons pDims _) (getExpr accessStackTensor -> Just xs) (getExpr accessStackTensor -> Just ys) ->
+    Just $ do
+      newElements <- zipWithM (evalCompareRatTensor op) (stackElements xs) (stackElements ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] $ xs {stackelements = newElements}
+  _ -> Nothing
+  where
+    unstackExpr :: Tensor a -> [Value builtin]
+    unstackExpr xs = mkExpr accessRatTensorLiteral <$> unstack xs
+-- for each index in dims, compareRatTensor
+-- pattern matching on args (dims) here, use prototype compiler
+-- returns an expression (that has been evaluated) w/ the help of the arguments class, with the same monad m.
 
 -----------------------------------------------------------------------------
 -- Generic vector operations
