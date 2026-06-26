@@ -196,9 +196,15 @@ tokMul = mkToken B.TokMul "*"
 
 tokDiv = mkToken B.TokDiv "/"
 
+tokPow = mkToken B.TokPow "^"
+
 tokMin = mkToken B.TokMin "min"
 
 tokMax = mkToken B.TokMax "max"
+
+tokLog = mkToken B.TokLog "log"
+
+tokExp = mkToken B.TokExp "exp"
 
 tokAddNat = mkToken B.TokAddNat "addNat"
 
@@ -239,12 +245,6 @@ tokReduceMul = mkToken B.TokReduceMul "reduceMul"
 tokReduceMin = mkToken B.TokReduceMin "reduceMin"
 
 tokReduceMax = mkToken B.TokReduceMax "reduceMax"
-
-tokHasEq = mkToken B.TokHasEq "HasEq"
-
-tokHasNotEq = mkToken B.TokHasNotEq "HasNotEq"
-
-tokHasLeq = mkToken B.TokHasLeq "HasLeq"
 
 tokHasMap = mkToken B.TokHasMap "HasMap"
 

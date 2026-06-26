@@ -31,7 +31,7 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -362,7 +362,8 @@ compileDecl _opts moduleDefs = \case
     FunctionDecl _ (Just AnnProperty) -> developerError "Properties should have been filtered out"
     FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Imandra"
     ProjectionDecl {} -> developerError "ProjectionDecl should have been filtered out"
-  DefRecord p n _ telescope fields -> compileRecordDecl moduleDefs p n telescope fields
+    TensorCoercionDecl binderCount -> compileFunctionDecl moduleDefs n binderCount t e
+  DefRecord p n _ telescope fields _supports -> compileRecordDecl moduleDefs p n telescope fields
 
 filterRelevantDecls :: Decl DecidabilityBuiltin -> Bool
 filterRelevantDecls = \case
@@ -679,10 +680,12 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     If -> annotateNotation moduleDefs [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args
     StackTensor -> compileStack moduleDefs args
-    Iterate -> unsupportedError
-    PowRat -> unsupportedError
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
+    Iterate -> unsupportedError
+    Pow {} -> unsupportedError
+    Log {} -> unsupportedError
+    Exp {} -> unsupportedError
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return "bool"
     PropTrue -> return "true"
@@ -857,7 +860,7 @@ compileStack moduleDefs args = do
 
 compileVecLiteral :: (MonadImandraCompile m) => [ModuleDef] -> [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral moduleDefs xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse (compileExpr False moduleDefs) ds
+  Just (VectorLitArgs _t _d ds) -> toVec <$> traverse (compileExpr False moduleDefs) ds
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: [Code] -> Code

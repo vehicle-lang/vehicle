@@ -46,26 +46,28 @@ findCorrespondingVariableInOriginalCtx ::
   [(OriginalLv, Maybe NestedSliceVariable)]
 findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx _) vars = do
   let sortedVarList = sortBy (comparing Down) (Set.toList vars)
-  go 0 wholeCtx sortedVarList
+  go wholeCtx sortedVarList
   where
-    go :: (VariableLike var) => OriginalLv -> GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> [var] -> [(Lv, Maybe NestedSliceVariable)]
-    go _ [] _ = []
-    go _ _ [] = []
-    go lv ((_binder, maybeTensorVar) : ctx) (v : vs) = case maybeTensorVar of
-      Nothing
-        | lv == toLv v -> (lv, Nothing) : go (lv + 1) ctx (v : vs)
-        | otherwise -> go (lv + 1) ctx (v : vs)
-      Just tensorVar -> do
-        let startPoint = toLv tensorVar
-        let endPoint = startPoint + Lv (numberOfSliceVariablesIn $ shapeOf tensorVar)
-        if toLv v >= endPoint
-          then developerError "Incorrectly sorted slice variables"
-          else
-            if toLv v < startPoint
-              then go (lv + 1) ctx (v : vs)
-              else do
-                let newVars = dropWhile (\u -> toLv u >= startPoint) vs
-                (lv, Just tensorVar) : go (lv + 1) ctx newVars
+    go :: (VariableLike var) => GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> [var] -> [(Lv, Maybe NestedSliceVariable)]
+    go _ [] = []
+    go [] (_v : _vs) = developerError "variables not found in nested tensor context"
+    go ((_binder, maybeTensorVar) : ctx) (v : vs) = do
+      let lv = Lv $ length ctx
+      case maybeTensorVar of
+        Nothing
+          | lv == toLv v -> (lv, Nothing) : go ctx vs
+          | otherwise -> go ctx (v : vs)
+        Just tensorVar -> do
+          let startPoint = toLv tensorVar
+          let endPoint = startPoint + Lv (numberOfSliceVariablesIn $ shapeOf tensorVar)
+          if toLv v >= endPoint
+            then developerError "Incorrectly sorted slice variables"
+            else
+              if toLv v < startPoint
+                then go ctx (v : vs)
+                else do
+                  let newVars = dropWhile (\u -> toLv u >= startPoint) vs
+                  (lv, Just tensorVar) : go ctx newVars
 
 appendNonTensorVariableToNestedCtx :: GenericBinder () -> NestedTensorVariableCtx -> NestedTensorVariableCtx
 appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx) = do

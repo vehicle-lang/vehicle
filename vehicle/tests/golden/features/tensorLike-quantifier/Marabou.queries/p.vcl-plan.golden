@@ -62,6 +62,17 @@
                     ]
                   },
                   {
+                    "tag": "ConvertQuantifiedTensorLike",
+                    "contents": [
+                      "_t0",
+                      "x",
+                      [
+                        "a",
+                        "b"
+                      ]
+                    ]
+                  },
+                  {
                     "tag": "SolveEquality",
                     "contents": [
                       {

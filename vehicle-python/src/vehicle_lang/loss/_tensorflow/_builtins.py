@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import TYPE_CHECKING, Any, Sequence, cast
+from typing import TYPE_CHECKING, Any, Callable, List, Sequence, Tuple, cast
 
 from typing_extensions import override
 
@@ -54,6 +54,7 @@ class TensorFlowBuiltins(
         int,
         float,
         tf.Tensor,
+        List[Any],
     ]
 ):
     dtype_index: tf.DType = tf.uint32
@@ -107,51 +108,32 @@ class TensorFlowBuiltins(
         return tf.maximum(x, y)
 
     @override
-    def ReduceAddRatTensor(
-        self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]
-    ) -> tf.Tensor:
-        xs = tf.stack(xs)
-        return tf.add(tf.reduce_sum(xs), e)
+    def PowRatTensor(self, x: tf.Tensor, y: float) -> tf.Tensor:
+        return tf.pow(x, tf.fill(dims=x.shape, value=y, dtype=self.dtype_rat))
 
     @override
-    def ReduceMulRatTensor(
-        self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
-    ) -> tf.Tensor:
-        x = tf.stack(x)
-        return tf.multiply(tf.reduce_prod(x), e)
+    def LogRatTensor(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.math.log(x)
 
     @override
-    def ReduceMinRatTensor(
-        self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
-    ) -> tf.Tensor:
-        x = tf.stack([tf.constant(e, dtype=self.dtype_rat)] + list(x))
+    def ExpRatTensor(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.math.exp(x)
+
+    @override
+    def ReduceAddRatTensor(self, xs: tf.Tensor) -> tf.Tensor:
+        return tf.reduce_sum(xs)
+
+    @override
+    def ReduceMulRatTensor(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.reduce_prod(x)
+
+    @override
+    def ReduceMinRatTensor(self, x: tf.Tensor) -> tf.Tensor:
         return tf.reduce_min(x)
 
     @override
-    def ReduceMaxRatTensor(
-        self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
-    ) -> tf.Tensor:
-        x = tf.stack([tf.constant(e, dtype=self.dtype_rat)] + list(x))
+    def ReduceMaxRatTensor(self, x: tf.Tensor) -> tf.Tensor:
         return tf.reduce_max(x)
-
-    @override
-    def DimensionLookup(
-        self, xs: tf.Tensor | tuple[tf.Tensor, ...] | list[tf.Tensor], i: int
-    ) -> tf.Tensor:
-        # Despite the name, this implements element indexing (At operator in Haskell)
-        # The JSON AST uses 'DimensionLookup' but semantics are element access
-
-        # Handle tuple/sequence case (from StackTensor or similar)
-        if isinstance(xs, (tuple, list)):
-            return xs[i]
-
-        if xs.shape.ndims == 0:
-            raise error.VehicleInternalError(
-                "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
-            )
-
-        # Use tf.gather for proper type checking and TensorFlow best practices
-        return tf.gather(xs, i)
 
     @override
     def DimensionCons(self, head: int, tail: Sequence[int]) -> tuple[int, ...]:
@@ -174,3 +156,47 @@ class TensorFlowBuiltins(
     @override
     def StackTensor(self, tensors: Sequence[tf.Tensor]) -> tf.Tensor:
         return tf.stack(tensors)
+
+    @override
+    def AtTensor(
+        self, xs: tf.Tensor | tuple[tf.Tensor, ...] | list[tf.Tensor], i: int
+    ) -> tf.Tensor:
+        # Handle tuple/sequence case (from StackTensor or similar)
+        if isinstance(xs, (tuple, list)):
+            return xs[i]
+
+        if xs.shape.ndims == 0:
+            raise error.VehicleInternalError(
+                "Cannot index into a scalar tensor in AtTensor, make an issue in GitHub."
+            )
+
+        # Use tf.gather for proper type checking and TensorFlow best practices
+        return tf.gather(xs, i)
+
+    @override
+    def ForeachTensor(
+        self, size: int, function: Callable[[int], tf.Tensor]
+    ) -> tf.Tensor:
+        # Apply the function to each index and stack the results
+        return tf.stack([function(i) for i in range(size)])
+
+    @override
+    def VectorLiteral(self, xs: Sequence[Any]) -> List[Any]:
+        return list(xs)
+
+    @override
+    def AtVector(self, xs: tf.Tensor | Tuple[Any, ...] | List[Any], i: int) -> Any:
+        if isinstance(xs, tf.Tensor):
+            if xs.shape.ndims != 0:
+                return tf.gather(xs, i)
+
+            raise error.VehicleInternalError(
+                "Cannot index into a scalar tensor in AtVector, make an issue in GitHub."
+            )
+
+        return xs[i]
+
+    @override
+    def ForeachVector(self, size: int, function: Callable[[int], Any]) -> List[Any]:
+        # Apply the function to each index and stack the results
+        return [function(i) for i in range(size)]

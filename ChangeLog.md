@@ -1,5 +1,55 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Language
+
+* BREAKING: with the introduction of `infinity` to the language in `v0.25` all reduction operations have
+  sensible zero-dimensional values. Therefore the following operations no longer take the identity element
+  as an argument, i.e.:
+  ```
+  reduceAdd e xs -> reduceAdd xs   (if 0D returns 0)
+  reduceMul e xs -> reduceMul xs   (if 0D returns 1)
+  reduceMin e xs -> reduceMin xs   (if 0D returns infinity)
+  reduceMax e xs -> reduceMax xs   (if 0D returns -infinity)
+  reduceAnd e xs -> reduceAnd xs   (if 0D returns True)
+  reduceOr  e xs -> reduceOr  xs   (if 0D returns False)
+  ```
+
+* Added the operators:
+  ```
+  ^ : Tensor Real ds -> Real -> Tensor Real ds
+  log : Tensor Real ds -> Tensor Real ds
+  exp : Tensor Real ds -> Tensor Real ds
+  ```
+  Note that these operators are currently only supported by the loss backend.
+
+### Loss
+
+* BREAKING: Differentiable logics are now referenced in the Python bindings via: `VehicleDifferentiableLogic()` instead of `DifferentiableLogic.Vehicle`.
+
+* Added the ability to call a custom differentiable logic via the new class `CustomDifferentiableLogic(name)`.
+
+* Fixed bugs where:
+  - specs with multiple quantified values would sometimes have the variables switched around in the generated code.
+  - negations were occasionally being translated with the wrong dimensions.
+  - `const` wasn't being correctly translated.
+  - Tensorflow and PyTorch code was occasionally being generated with invalid `-1` dimensions.
+  - logics that depended on `@parameter` were not supported.
+
+* Added better support for `Vector` operations, e.g. the `mnist-robustness` specification.
+
+### Verification
+
+* Verification cache now uses absolute paths. This means that the verification cache can no longer be moved, however it does mean that
+the ITP backend code can be invoked from any location.
+
+### Agda backend
+
+* Upgraded to v2.3 of the Agda Standard Library.
+
+* Fixed a few minor bugs in the translation of Agda.
+
 ## v0.25.1
 
 ### Rocq backend
@@ -8,7 +58,7 @@
 
 ## v0.25
 
-### General
+### Language
 
 * Improved language documentation to show per-backend support.
 

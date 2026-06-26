@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: 🛠️ Install Haskell
         uses: haskell-actions/setup@v2
@@ -88,17 +88,29 @@ jobs:
       - name: 🛠️ Add Rocq opam repository
         run: opam repo add rocq-released https://rocq-prover.org/opam/released
 
-      - name: 🛠️ Install Rocq
-        run: opam install -y rocq-core.${{ matrix.rocq.version }}
+      - name: 💾 Restore opam cache
+        uses: actions/cache/restore@v5
+        if: ${{ !env.ACT }}
+        id: cache-opam
+        env:
+          key: opam-${{ matrix.os.name }}-ocaml-${{ matrix.ocaml.version }}-rocq-${{ matrix.rocq.version }}
+        with:
+          path: ~/.opam
+          key: ${{ env.key }}-deps-${{ hashFiles('vehicle-rocq/vehicle-rocq.opam') }}
+          restore-keys: ${{ env.key }}-
 
-      # The Rocq backend currently compiles against math-comp master, soon to be
-      # released as 2.6.0. Analysis and finmap master need to be pinned as well to
-      # master, as current releases do not compile with math-comp master.
-      - name: 🛠️ Pin math-comp+finmap+analysis to master
+      - name: 🛠️ Install Rocq + vehicle-rocq deps
+        if: ${{ env.ACT || steps.cache-opam.outputs.cache-hit != 'true' }}
         run: |
-          opam pin add -y -k git https://github.com/math-comp/math-comp.git#master
-          opam pin add -y -k git https://github.com/math-comp/finmap.git#master
-          opam pin add -y -k git https://github.com/math-comp/analysis.git#master
+          opam install -y rocq-core.${{ matrix.rocq.version }}
+          opam install -y --deps-only ./vehicle-rocq
+
+      - name: 💾 Save opam cache
+        uses: actions/cache/save@v5
+        if: ${{ !env.ACT && steps.cache-opam.outputs.cache-hit != 'true' }}
+        with:
+          path: ~/.opam
+          key: ${{ steps.cache-opam.outputs.cache-primary-key }}
 
       - name: 🛠️ Install vehicle-rocq
         run: opam install -y ./vehicle-rocq

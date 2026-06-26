@@ -57,7 +57,6 @@ data DecidabilityBuiltinTypeClass
   | HasTensorTypeClassField TensorTypeClassField
   | HasVectorTypeClassField VectorTypeClassField
   | ValidPropertyType
-  | ValidNetworkType
   deriving (Eq, Ord, Show, Generic)
 
 instance Hashable DecidabilityBuiltinTypeClass
@@ -218,7 +217,6 @@ instance Pretty DecidabilityBuiltinTypeClass where
     IsTensorType -> pretty $ show t
     IsVectorType -> pretty $ show t
     ValidPropertyType -> pretty $ show t
-    ValidNetworkType -> pretty $ show t
 
 instance Pretty DecidabilityBuiltinFunction where
   pretty = \case

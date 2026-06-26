@@ -1,7 +1,9 @@
 {- HLINT ignore "Use fewer imports" -}
 module Vehicle.Backend.Solver.UserVariableElimination
   ( eliminateExists,
+    eliminateExistsRecord,
     eliminateExistless,
+    compileBoolExpr,
   )
 where
 
@@ -12,6 +14,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
+import Data.Map qualified as Map
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
 import Vehicle.Backend.Solver.UserVariableElimination.LinearExpr (LinearityError (..), compileLinearAssertion)
@@ -22,26 +25,85 @@ import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot)
 import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Normalise.Quote (unnormaliseInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar, constructTensorisableDims, constructToTensorFreeVar)
 import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..))
 import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, unoptimisedEvalReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructToTensorFreeVar)
 import Vehicle.Data.Code.BooleanExpr (elimIfTree)
+import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DSL (fromDSL, toDSL)
 import Vehicle.Data.MaybeTrivial
-import Vehicle.Data.Variable.Bound.Context.Name (getNameContext, prettyFriendlyInCtx)
+import Vehicle.Data.Variable.Bound.Context.Name (getFreshTensorBinderName, getNameContext, prettyFriendlyInCtx)
 import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStackedChildren)
 import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields, getRecordProvenance)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
+import Vehicle.Verify.Specification (CompilationStep (..))
 import Prelude hiding (Applicative (..))
+
+eliminateExistsRecord ::
+  (MonadQueryStructure m) =>
+  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
+  m (MaybeTrivial Partitions)
+eliminateExistsRecord args = do
+  (wrappedBinderArgs, step) <- wrapQuantifyRecord args
+  maybePartitions <- eliminateExists wrappedBinderArgs
+
+  return $ case maybePartitions of
+    Trivial b -> Trivial b
+    NonTrivial (Partitions m) ->
+      NonTrivial (Partitions (Map.mapKeys ([step] ++) m))
+
+-- | Takes a record quantifier and wraps the binder & body in a tensor quantifier
+--  e.g. given Pair has fields { a : Real, b : Real }
+--  forall (r : Pair) . (body)
+--  becomes
+--  forall (_t0 : tensor Real [2]) . (body (_PairFromTensor _t0))
+wrapQuantifyRecord ::
+  (MonadQueryStructure m) =>
+  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
+  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin), CompilationStep)
+wrapQuantifyRecord QuantifyRecordArgs {..} = do
+  namedCtx <- getNameContext
+  recordTypeIdent <- case toTypeValue quantifyRecordType of
+    VFreeTypeVar v _spine -> pure v
+    _ -> developerError "Record binder is not of expected format."
+
+  -- Construct \r -> body from binder and body in record quantifier args
+  recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody
+  fields <- getRecordFields recordTypeIdent
+  let shape = constructTensorisableDims fields
+  let dims = mkDims shape
+
+  -- Build tensor binder with appropriate dims and type for record
+  let Closure boundEnv _body = quantifyRecordBody
+  tensorType <- eval namedCtx boundEnv $ fromDSL mempty $ tTensor tRat (toDSL dims)
+  normalisedDims <- eval namedCtx boundEnv dims
+  let tensorBinderName = getFreshTensorBinderName namedCtx
+  let tensorBinder = mkExplicitBinder tensorType (Just (mempty, tensorBinderName))
+
+  let tensorBoundVar = explicit $ BoundVar mempty 0
+  recordTypeProv <- getRecordProvenance recordTypeIdent
+  -- Construct _PairFromTensor _t0
+  let fromTensorExpr = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
+
+  -- Construct body (_PairFromTensor _t0)
+  let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
+  let ratTensorArgs = QuantifyRatTensorArgs normalisedDims tensorBinder (Closure boundEnv nestedBody)
+
+  fieldNames <- getRecordFieldNames recordTypeIdent
+  let name = getBinderName quantifyRecordBinder
+  return (ratTensorArgs, ConvertQuantifiedTensorLike tensorBinderName name fieldNames)
 
 eliminateExists ::
   (MonadQueryStructure m) =>
@@ -111,8 +173,7 @@ compileBoolExpr expr = do
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VQuantifyRatTensor (Exists, args) -> eliminateExists args
-    -- TODO: RECORD SUPPORT
-    VQuantifyRecord (Exists, _args) -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
+    VQuantifyRecord (Exists, args) -> eliminateExistsRecord args
     ---------------------
     -- Recursive cases --
     ---------------------
@@ -314,7 +375,7 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
             evalCompareRatTensor op (TensorOp2Args ds xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       let stackExpr = fromBoolTensorValue $ VBoolStackTensor (StackTensorArgs tElem d d0Arg stackElements)
-      result <- unoptimisedEvalReduceAndTensor (TensorReductionArgs (mkDims [n]) (IBoolLiteral True) stackExpr)
+      result <- unoptimisedEvalReduceAndTensor (TensorReductionArgs (mkDims [n]) stackExpr)
       return result
     _ -> compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose dims)
 

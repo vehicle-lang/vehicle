@@ -33,8 +33,6 @@ instance Hashable FieldName
 
 instance ToJSON FieldName
 
--- instance FromJSON FieldName
-
 instance Pretty FieldName where
   pretty (FieldName _ name) = pretty name
 

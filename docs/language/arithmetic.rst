@@ -61,6 +61,10 @@ The available operations over reals are:
      - Syntax
      - Type
      - Support
+   * - Negation
+     - :code:`- y`
+     - :code:`Real → Real`
+     - |backendall_full|
    * - Add
      - :code:`x + y`
      - :code:`Real → Real → Real`
@@ -87,10 +91,33 @@ The available operations over reals are:
        | |backendrocq_full|
        | |backendimandra_full|
        | |backendisabelle_full|
-   * - Negation
-     - :code:`- y`
+   * - Power
+     - :code:`x ^ y`
+     - :code:`Real → Real → Real`
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - Natural log
+     - :code:`log x`
      - :code:`Real → Real`
-     - |backendall_full|
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - Exponential
+     - :code:`exp x`
+     - :code:`Real → Real`
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
    * - Compare
      - | ``x < y``
        | ``x > y``

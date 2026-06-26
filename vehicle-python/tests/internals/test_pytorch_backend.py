@@ -33,7 +33,7 @@ def test_pytorch_builtins_advanced_operations() -> None:
 
     # Test reductions
     x = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
-    sum_result = builtins.ReduceAddRatTensor(0, x)
+    sum_result = builtins.ReduceAddRatTensor(x)
     expected = torch.tensor(10.0)
     assert torch.allclose(
         sum_result, expected

@@ -108,7 +108,9 @@ data BuiltinFunction
   | Div DivDomain
   | Min MinDomain
   | Max MaxDomain
-  | PowRat
+  | Pow PowDomain
+  | Log LogDomain
+  | Exp ExpDomain
   | ReduceAddRatTensor
   | ReduceMulRatTensor
   | ReduceMinRatTensor
@@ -153,7 +155,9 @@ instance Pretty BuiltinFunction where
     Div dom -> "div" <> pretty dom
     Min dom -> "min" <> pretty dom
     Max dom -> "max" <> pretty dom
-    PowRat -> "**"
+    Pow dom -> "pow" <> pretty dom
+    Log dom -> "log" <> pretty dom
+    Exp dom -> "exp" <> pretty dom
     ReduceAddRatTensor -> "reduceAddRatTensor"
     ReduceMulRatTensor -> "reduceMulRatTensor"
     ReduceMinRatTensor -> "reduceMinRatTensor"
@@ -166,8 +170,8 @@ instance Pretty BuiltinFunction where
     ForeachTensor -> "foreachTensor"
     ForeachVector -> "foreachVector"
     Iterate -> "iterate"
-    AtTensor -> "!t"
-    AtVector -> "!v"
+    AtTensor -> "atTensor"
+    AtVector -> "atVector"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
 

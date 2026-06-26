@@ -1,3 +1,3 @@
 @property;
 someProperty : (Tensor Real -> Tensor Real) -> Tensor Real;
-someProperty = \ classifier -> 1.0 / search[x] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ x -> reduceAdd 0.0 (max [ 0.0 ] ([ 0.0 ] - classifier x)))
+someProperty = \ classifier -> 1.0 / search[x] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x -> reduceAdd (max (const 0.0 [1]) ((const 0.0 [1]) - classifier x)))

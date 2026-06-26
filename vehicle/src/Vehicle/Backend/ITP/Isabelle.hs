@@ -33,7 +33,7 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -354,7 +354,8 @@ compileDecl _opts localeAssms = \case
     FunctionDecl _ (Just AnnProperty) -> developerError "Properties should have been filtered out"
     FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Isabelle"
     ProjectionDecl {} -> developerError "ProjectionDecl should have been filtered out"
-  DefRecord p n _ telescope fields -> compileRecordDecl localeAssms p n telescope fields
+    TensorCoercionDecl binderCount -> compileFunctionDecl localeAssms n binderCount t e
+  DefRecord p n _ telescope fields _supports -> compileRecordDecl localeAssms p n telescope fields
 
 filterRelevantDecls :: Decl DecidabilityBuiltin -> Bool
 filterRelevantDecls = \case
@@ -780,10 +781,12 @@ compileBuiltin isOutType localeAssms b args = case b of
     If -> annotateNotation localeAssms [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
-    Iterate -> unsupportedError
-    PowRat -> unsupportedError
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
+    Iterate -> unsupportedError
+    Pow {} -> unsupportedError
+    Log {} -> unsupportedError
+    Exp {} -> unsupportedError
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return "bool"
     PropTrue -> return "True"
@@ -977,7 +980,7 @@ compileStack localeAssms args = do
 
 compileVecLiteral :: (MonadIsabelleCompile m) => [LocaleDef] -> [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral localeAssms xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse (compileExpr False localeAssms) ds
+  Just (VectorLitArgs _t _d ds) -> toVec <$> traverse (compileExpr False localeAssms) ds
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: [Code] -> Code

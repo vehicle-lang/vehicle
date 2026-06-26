@@ -6,7 +6,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda -c Marabou.queries",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },
