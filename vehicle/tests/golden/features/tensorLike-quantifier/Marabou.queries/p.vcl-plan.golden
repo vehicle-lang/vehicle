@@ -35,9 +35,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 3
                       },
                       "AllDimensions"
@@ -47,9 +50,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 6
                       },
                       "AllDimensions"
@@ -70,7 +76,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 2
                       },
                       {
@@ -100,7 +109,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -130,9 +142,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 0
                       },
                       "OneDimension"
@@ -155,37 +170,43 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "RecordIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "recordTypeIdent": {
-                            "modulePath": "User",
-                            "identifierName": "Pair"
-                          },
-                          "recordFields": [
-                            "a",
-                            "b"
-                          ],
-                          "recordDims": [
-                            2
-                          ],
-                          "baseRecordType": []
+                          "tag": "RecordIOType",
+                          "contents": {
+                            "recordTypeIdent": {
+                              "modulePath": "User",
+                              "identifierName": "Pair"
+                            },
+                            "recordFields": [
+                              "a",
+                              "b"
+                            ],
+                            "recordDims": [
+                              2
+                            ],
+                            "baseRecordType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "RecordIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "recordTypeIdent": {
-                            "modulePath": "User",
-                            "identifierName": "Pair"
-                          },
-                          "recordFields": [
-                            "a",
-                            "b"
-                          ],
-                          "recordDims": [
-                            2
-                          ],
-                          "baseRecordType": []
+                          "tag": "RecordIOType",
+                          "contents": {
+                            "recordTypeIdent": {
+                              "modulePath": "User",
+                              "identifierName": "Pair"
+                            },
+                            "recordFields": [
+                              "a",
+                              "b"
+                            ],
+                            "recordDims": [
+                              2
+                            ],
+                            "baseRecordType": []
+                          }
                         }
                       }
                     },

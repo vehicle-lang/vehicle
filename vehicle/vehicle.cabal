@@ -316,6 +316,7 @@ library
     Vehicle.Data.Variable.Bound.Context.Tensor.Class
     Vehicle.Data.Variable.Bound.Context.Tensor.Core
     Vehicle.Data.Variable.Bound.Context.Tensor.Instance
+    Vehicle.Data.Variable.Bound.Level.Core
     Vehicle.Data.Variable.Free.Context.Class
     Vehicle.Data.Variable.Free.Context.Core
     Vehicle.Data.Variable.Free.Context.Instance
