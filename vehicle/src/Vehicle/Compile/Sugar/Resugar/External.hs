@@ -253,12 +253,11 @@ delabBuiltinFunction fun args = case fun of
   V.Exp _dom -> delabApp (B.Exp tokExp) args
   V.QuantifyRatTensor q -> delabQuantifier q args
   V.QuantifyRecord q -> delabQuantifier q args
-  V.CompareRatTensor op -> case reverse args of -- xs : x : _ = dims2/rdims : dims1/pdims : _ ??
-    -- unsure of exact order the arguments are given in, am probably getting lost in the abstraction sauce again?
+  V.CompareRatTensor op -> case args of
     -- if dims1 (pointwiseDims) is Nil, call delabCompareReduced
-    rDims : V.nil : _ -> delabCompareReduced (V.CompareTC op) args
+    [argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), _rDims, xs, ys] -> delabCompareReduced op [xs, ys]
     -- if dims2 (reduceDims) is Nil, call delabComparePointwise
-    V.nil : pDims : _ -> delabComparePointwise (V.CompareTC op) args
+    [_pDims, argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), xs, ys] -> delabComparePointwise op [xs, ys]
     -- otherwise, call cheatDelabPretty
     _ -> cheatDelabPretty (V.CompareTC op) args
   V.CompareIndex op -> delabTypeClassOp (V.CompareTC op) args
@@ -473,51 +472,23 @@ delabRecord fields = do
   fields' <- traverse (bitraverse delabM delabM) fields
   return $ B.Record (fmap (uncurry B.FieldAssign) fields')
 
--- delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
--- delabTypeClassOp op args = case op of
-  -- V.FromNatTC {} -> cheatDelabPretty op args
-  -- V.FromRatTC {} -> cheatDelabPretty op args
-  -- V.VecLiteralTC {} -> delabVecLiteral args
-  -- V.NegTC -> delabOp1 B.Neg tokSub args
-  -- V.CompareTC eq -> case eq of
-    -- V.Eq -> delabInfixOp2 B.Eq tokEq args
-    -- V.Ne -> delabInfixOp2 B.Ne tokNe args
-    -- V.Le -> delabInfixOp2 B.Le tokLe args
-    -- V.Lt -> delabInfixOp2 B.Lt tokLt args
-    -- V.Ge -> delabInfixOp2 B.Ge tokGe args
-    -- V.Gt -> delabInfixOp2 B.Gt tokGt args
-  -- V.MapTC -> delabApp (B.Map tokMap) args
-  -- V.FoldTC -> delabApp (B.Fold tokFold) args
-  -- V.AtTC -> delabInfixOp2 B.At tokAt args
-  -- V.ForeachTC -> delabForeach args
-  -- V.TensorTypeTC -> cheatDelabPretty op args
-
-
--- delabInfixOp2 :: (MonadDelab m, IsToken token) => (B.Expr -> token -> B.Expr -> B.Expr) -> token -> [V.Arg V.Builtin] -> m B.Expr
--- delabInfixOp2 op tk args@[arg1, arg2]
---   | all V.isExplicit args = op <$> delabM (argExpr arg1) <*> pure tk <*> delabM (argExpr arg2)
--- delabInfixOp2 _op tk args
---   | null args = delabApp (cheatDelab $ "(" <> tkSymbol tk <> ")") []
---   | otherwise = delabApp (cheatDelab $ tkSymbol tk) args
-
-delabCompareReduced :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
+delabCompareReduced :: (MonadDelab m) => V.ComparisonOp -> [V.Arg V.Builtin] -> m B.Expr
 delabCompareReduced op args = case op of
+  V.Eq -> delabInfixOp2 B.Eq tokEq args
+  V.Ne -> delabInfixOp2 B.Ne tokNe args
+  V.Le -> delabInfixOp2 B.Le tokLe args
+  V.Lt -> delabInfixOp2 B.Lt tokLt args
+  V.Ge -> delabInfixOp2 B.Ge tokGe args
+  V.Gt -> delabInfixOp2 B.Gt tokGt args
+  
+delabComparePointwise :: (MonadDelab m) => V.ComparisonOp -> [V.Arg V.Builtin] -> m B.Expr
+delabComparePointwise op args = case op of
   V.Eq -> delabInfixOp2 B.EqPoint tokEqPoint args
   V.Ne -> delabInfixOp2 B.NePoint tokNePoint args
   V.Le -> delabInfixOp2 B.LePoint tokLePoint args
   V.Lt -> delabInfixOp2 B.LtPoint tokLtPoint args
   V.Ge -> delabInfixOp2 B.GePoint tokGePoint args
   V.Gt -> delabInfixOp2 B.GtPoint tokGtPoint args
-
-delabComparePointwise :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
--- delabComparePointwise op args = case op of
---   V.Eq -> delabInfixOp2 B.Eq tokEq args
---   V.Ne -> delabInfixOp2 B.Ne tokNe args
---   V.Le -> delabInfixOp2 B.Le tokLe args
---   V.Lt -> delabInfixOp2 B.Lt tokLt args
---   V.Ge -> delabInfixOp2 B.Ge tokGe args
---   V.Gt -> delabInfixOp2 B.Gt tokGt args
-
 
 delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts

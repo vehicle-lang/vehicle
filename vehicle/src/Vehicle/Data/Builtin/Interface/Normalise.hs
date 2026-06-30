@@ -478,42 +478,40 @@ evalReduceMinRatTensor = evalReduceTensor accessReduceMinRatBuiltin accessRatTen
 evalReduceMaxRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
 evalReduceMaxRatTensor = evalReduceTensor accessReduceMaxRatBuiltin accessRatTensorLiteral evalMaxRatTensor max
 
--- call evalCompareRatTensor when (recursively) patternmatching on an expression, and match on a CompareRatTensor expression
 evalCompareRatTensor :: (MonadNormBuiltin m, HasBoolExpr Value builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) => ComparisonOp -> EvalSimple TensorComparisonArgs Value builtin m
 evalCompareRatTensor op = \case
   -- base case where we are up to pointwise comparison (dims1/pDims = [])
-  TensorComparisonArgs (IDimCons IDimNill rDims) xs ys -> -- xs and ys passed on to evalHeteteroTensorOp2 to handle
-    evalHeteroTensorOp2 (mkExpr accessCompareRatTensor op) accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing
+  TensorComparisonArgs IDimNil rDims xs ys -> -- xs and ys passed on to evalHeteteroTensorOp2 to handle
+    evalHeteroTensorOp2 (mkExpr accessCompareRatTensorBuiltin op) accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing (TensorOp2Args rDims xs ys)
   -- reduction cases (two consts) should just be result of one element vs other element, in the shape of pDims
-  TensorComparisonArgs (IDimCons pDims _) (getExpr accessConstTensor -> Just xs) (getExpr accessConstTensor -> Just ys) ->
-    Just $ do
-      newConstValue <- IBoolLiteral (comparisonOp op) (constValue x) (constValue y)
-      mkExpr accessConstTensor $ xs {constValue = newConstValue, constDims=pDims}
+  TensorComparisonArgs pDims _rDims (getExpr accessConstTensor -> Just xs) (getExpr accessConstTensor -> Just ys) ->
+    do
+      newConstValue <- evalHeteroTensorOp2 (mkExpr accessCompareRatTensorBuiltin op) accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing (TensorOp2Args IDimNil (constValue xs) (constValue ys))
+      return $ mkExpr accessConstTensor $ ConstTensorArgs {constType = IBoolType, constValue = newConstValue, constDims = pDims}
   -- reduction cases (literal/stack cases)
   -- for tensorLiterals: use unstackExpr, for stackTensors: use stackElements
-  TensorComparisonArgs (IDimCons pDims _) (getExpr accessRatTensorLiteral -> Just xs) (getExpr accessRatTensorLiteral -> Just ys) ->
-    Just $ do
-      newElements <- zipWithM (evalCompareRatTensor op) (unstackExpr xs) (unstackExpr ys)
-      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] $ xs {stackelements = newElements}
-  TensorComparisonArgs (IDimCons pDims _) (getExpr accessStackTensor -> Just xs) (getExpr accessRatTensorLiteral -> Just ys) ->
-    Just $ do
-      newElements <- zipWithM (evalCompareRatTensor op) (stackElements xrows) (unstackExpr ys)
-      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] $ xs {stackelements = newElements}
-  TensorComparisonArgs (IDimCons pDims _) (getExpr accessRatTensorLiteral -> Just xs) (getExpr accessStackTensor -> Just ys) ->
-    Just $ do
-      newElements <- zipWithM (evalCompareRatTensor op) (unstackExpr xs) (stackElements ys)
-      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] $ xs {stackelements = newElements}
-  TensorComparisonArgs (IDimCons pDims _) (getExpr accessStackTensor -> Just xs) (getExpr accessStackTensor -> Just ys) ->
-    Just $ do
-      newElements <- zipWithM (evalCompareRatTensor op) (stackElements xs) (stackElements ys)
-      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] $ xs {stackelements = newElements}
-  _ -> Nothing
+  TensorComparisonArgs (IDimCons pDim pDims) _rDims (getExpr accessRatTensorLiteral -> Just xs) (getExpr accessRatTensorLiteral -> Just ys) ->
+    do
+      newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (unstackExpr xs) (unstackExpr ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
+  TensorComparisonArgs (IDimCons pDim pDims) _rDims (getExpr accessStackTensor -> Just xs) (getExpr accessRatTensorLiteral -> Just ys) ->
+    do
+      newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (stackElements xs) (unstackExpr ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
+  TensorComparisonArgs (IDimCons pDim pDims) _rDims (getExpr accessRatTensorLiteral -> Just xs) (getExpr accessStackTensor -> Just ys) ->
+    do
+      newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (unstackExpr xs) (stackElements ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
+  TensorComparisonArgs (IDimCons pDim pDims) _rDims (getExpr accessStackTensor -> Just xs) (getExpr accessStackTensor -> Just ys) ->
+    do
+      newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (stackElements xs) (stackElements ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
+  _ -> _
+  -- _ -> Nothing
+
   where
-    unstackExpr :: Tensor a -> [Value builtin]
+    unstackExpr :: Tensor ExtendedRational -> [Value builtin]
     unstackExpr xs = mkExpr accessRatTensorLiteral <$> unstack xs
--- for each index in dims, compareRatTensor
--- pattern matching on args (dims) here, use prototype compiler
--- returns an expression (that has been evaluated) w/ the help of the arguments class, with the same monad m.
 
 -----------------------------------------------------------------------------
 -- Generic vector operations
@@ -541,6 +539,7 @@ type TensorOpEvalData args builtin m =
 class HasLiftableTensorOperations builtin where
   liftableTensorOp1s :: (MonadNormBuiltin m) => [TensorOpEvalData TensorOp1Args builtin m]
   liftableTensorOp2s :: (MonadNormBuiltin m) => [TensorOpEvalData TensorOp2Args builtin m]
+  liftableTensorComparisons :: (MonadNormBuiltin m) => [TensorOpEvalData TensorComparisonArgs builtin m]
 
 data TensorLiteralAccessor expr builtin
   = forall a. (Eq a) => Wrapper (Accessor (expr builtin) (Tensor a))
@@ -565,6 +564,7 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
   fromMaybe (unoptimisedEvalAtTensor args) $
     goOp1 liftableTensorOp1s
       <|> goOp2 liftableTensorOp2s
+      <|> goComparisons liftableTensorComparisons
       <|> goForeach
   where
     recEvalAt :: Value builtin -> m (Value builtin)
@@ -588,6 +588,19 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
           evalOp2 $ TensorOp2Args ds xsi ysi
         _ -> goOp2 remainingOps2
       _ -> Nothing
+
+    goComparisons :: [TensorOpEvalData TensorComparisonArgs builtin m] -> Maybe (m (Value builtin))
+    goComparisons = \case
+      (accessOpC, evalOpC, _) : remainingOpsComparison -> case accessOpC tensor of
+        Just (TensorComparisonArgs pDims _rDims xs ys) -> Just $ do
+          xsi <- recEvalAt xs
+          ysi <- recEvalAt ys
+          evalOpC $ TensorComparisonArgs pDims ds xsi ysi
+          -- rDims goes down to ds (remaining dimensions after indexing?)
+          -- pDims remains the same
+        _ -> goComparisons remainingOpsComparison
+      [] -> Nothing
+    -- do the same thing as above (evaluation at i)
 
     goForeach :: Maybe (m (Value builtin))
     goForeach = case getExpr accessForeachTensor tensor of
