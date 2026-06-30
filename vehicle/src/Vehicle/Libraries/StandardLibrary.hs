@@ -18,7 +18,14 @@ module Vehicle.Libraries.StandardLibrary
     hasSubIdent,
     hasMulIdent,
     hasDivIdent,
+    addTCProj,
+    subTCProj,
+    mulTCProj,
+    divTCProj,
     hasComparisonIdent,
+    standardLibraryCompareRatTensorReduced,
+    validDatasetTypeIdent,
+    validDatasetListElementTypeIdent,
   )
 where
 
@@ -29,6 +36,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text.Encoding (decodeUtf8)
 import Vehicle.Backend.Prelude
+import Vehicle.Data.Builtin.Core (ComparisonOp)
+import Vehicle.Data.Builtin.Core.BasicOperations (ComparisonOp (..))
 import Vehicle.Libraries
 import Vehicle.Libraries.Core (LibraryContent)
 import Vehicle.Prelude
@@ -45,10 +54,10 @@ standardLibraryDefinitionsModulePath = ModulePath ["Definitions"]
 standardLibraryInstanceOps :: Set Identifier
 standardLibraryInstanceOps =
   Set.fromList
-    [ standardLibIdent "addTC",
-      standardLibIdent "subTC",
-      standardLibIdent "mulTC",
-      standardLibIdent "divTC",
+    [ addTCProj,
+      subTCProj,
+      mulTCProj,
+      divTCProj,
       standardLibIdent "forallTC",
       standardLibIdent "existsTC",
       standardLibIdent "leTC",
@@ -75,20 +84,38 @@ validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
 validNetworkFieldTypeIdent :: Identifier
 validNetworkFieldTypeIdent = standardLibIdent "HasValidNetworkFieldType"
 
+validDatasetTypeIdent :: Identifier
+validDatasetTypeIdent = standardLibIdent "HasValidDatasetType"
+
+validDatasetListElementTypeIdent :: Identifier
+validDatasetListElementTypeIdent = standardLibIdent "HasValidDatasetListElementType"
+
 hasQuantifierIdent :: Identifier
 hasQuantifierIdent = standardLibIdent "HasQuantifier"
 
 hasAddIdent :: Identifier
 hasAddIdent = standardLibIdent "HasAdd"
 
+addTCProj :: Identifier
+addTCProj = standardLibIdent "addTC"
+
 hasSubIdent :: Identifier
 hasSubIdent = standardLibIdent "HasSub"
+
+subTCProj :: Identifier
+subTCProj = standardLibIdent "subTC"
 
 hasMulIdent :: Identifier
 hasMulIdent = standardLibIdent "HasMul"
 
+mulTCProj :: Identifier
+mulTCProj = standardLibIdent "mulTC"
+
 hasDivIdent :: Identifier
 hasDivIdent = standardLibIdent "HasDiv"
+
+divTCProj :: Identifier
+divTCProj = standardLibIdent "divTC"
 
 hasComparisonIdent :: Identifier
 hasComparisonIdent = standardLibIdent "HasComparison"
@@ -100,6 +127,18 @@ isBuiltinModule = \case
 
 standardLibraryName :: LibraryName
 standardLibraryName = "std"
+
+standardLibraryCompareRatTensorReduced :: ComparisonOp -> Identifier
+standardLibraryCompareRatTensorReduced op = do
+  let prefix = case op of
+        Le -> "le"
+        Lt -> "lt"
+        Ge -> "ge"
+        Gt -> "gt"
+        Eq -> "eq"
+        Ne -> "ne"
+
+  standardLibIdent $ prefix <> "RatTensorReduced"
 
 standardLibraryContent :: LibraryContent
 standardLibraryContent =

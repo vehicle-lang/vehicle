@@ -5,8 +5,8 @@ from functools import reduce
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
+from ..._ast import _nodes as vcl
 from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
-from .._ast import _nodes as vcl
 
 
 # Helper to convert Vehicle provenance to Python AST kwargs
@@ -73,12 +73,12 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
-                # NOTE: 'vehicle_lang.loss._ast._nodes' is imported for 'Tensor'
+                # NOTE: 'vehicle_lang._ast._nodes' is imported for 'Tensor'
                 #       which is used to translate vcl.Tensor
                 py.Import(
                     names=[
                         py.alias(
-                            name="vehicle_lang.loss._ast._nodes",
+                            name="vehicle_lang._ast._nodes",
                             asname=None,
                             lineno=0,
                             col_offset=0,
@@ -248,6 +248,31 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_PowRatTensor(self, expression: vcl.PowRatTensor) -> py.expr:
+        """Translate PowRatTensor to builtin call."""
+        return py_app(
+            py_builtin("PowRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_LogRatTensor(self, expression: vcl.LogRatTensor) -> py.expr:
+        """Translate LogRatTensor to builtin call."""
+        return py_app(
+            py_builtin("LogRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ExpRatTensor(self, expression: vcl.ExpRatTensor) -> py.expr:
+        """Translate ExpRatTensor to builtin call."""
+        return py_app(
+            py_builtin("ExpRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
     def translate_NegRatTensor(self, expression: vcl.NegRatTensor) -> py.expr:
         """Translate NegRatTensor to builtin call."""
         return py_app(
@@ -262,7 +287,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceAddRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceAddRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),  # Note: using current field names
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -273,7 +297,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceMulRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceMulRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -284,7 +307,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceMinRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceMinRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -295,7 +317,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ReduceMaxRatTensor to builtin call."""
         return py_app(
             py_builtin("ReduceMaxRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
             self.translate_expression(expression.x),
             provenance=vcl.MISSING,
         )
@@ -303,12 +324,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
         """Translate SearchRatTensor to builtin call.
 
-        The reduction_op is a curried function (λe. λxs. reduce e xs) where:
-        - e is the identity element (a 0-dimensional tensor)
+        The reduction_op is a curried function (λxs. reduce xs) where:
         - xs is the sequence of samples to reduce
-
-        Since the Python Reduce* functions don't actually use the identity parameter,
-        we pass a dummy 0-dimensional tensor with value 0.
         """
         # Call sampler once to get samples
         sampler_call = py_app(
@@ -325,27 +342,31 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
-        # Create a dummy identity element (0-dimensional tensor with value 0)
-        # The Python Reduce* implementations don't actually use this parameter
-        identity = py_app(
-            py_builtin("ConstTensor", provenance=vcl.MISSING),
-            py.Constant(value=0, **asdict(vcl.MISSING)),
-            py_app(
-                py_builtin("DimensionNil", provenance=vcl.MISSING),
-                provenance=vcl.MISSING,
-            ),
-            provenance=vcl.MISSING,
-        )
-
-        # Apply as: reduction_op(identity)(samples)
-        partial_reduction = py_app(
-            self.translate_expression(expression.reduction_op),
-            identity,
-            provenance=vcl.MISSING,
-        )
-
+        # Apply as: (λsamples. reduction_op(len(samples))(samples).
+        # We cannot know the number of samples at compile time, so we pass both the samples and their length to the reduction_op.
+        # The number of samples is important as it may use them to construct constant tensors of the relevant dimension.
+        samples_name = "_samples"
+        samples_var = py_name(samples_name, provenance=vcl.MISSING)
         return py_app(
-            partial_reduction,
+            py.Lambda(
+                args=py_binder(
+                    py.arg(arg=samples_name, annotation=None, **asdict(vcl.MISSING))
+                ),
+                body=py_app(
+                    py_app(
+                        self.translate_expression(expression.reduction_op),
+                        py_app(
+                            py_name("len", provenance=vcl.MISSING),
+                            samples_var,
+                            provenance=vcl.MISSING,
+                        ),
+                        provenance=vcl.MISSING,
+                    ),
+                    samples_var,
+                    provenance=vcl.MISSING,
+                ),
+                **asdict(vcl.MISSING),
+            ),
             sampler_call,
             provenance=vcl.MISSING,
         )
@@ -353,15 +374,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Dimension(self, expression: vcl.Dimension) -> py.expr:
         """Translate Dimension to constant."""
         return py.Constant(value=expression.value, **asdict(vcl.MISSING))
-
-    def translate_DimensionLookup(self, expression: vcl.DimensionLookup) -> py.expr:
-        """Translate DimensionLookup to builtin call."""
-        return py_app(
-            py_builtin("DimensionLookup", provenance=vcl.MISSING),
-            self.translate_expression(expression.xs),
-            self.translate_expression(expression.i),
-            provenance=vcl.MISSING,
-        )
 
     def translate_DimensionCons(self, expression: vcl.DimensionCons) -> py.expr:
         """Translate DimensionCons to builtin call."""
@@ -384,14 +396,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ConstTensor to builtin call."""
         return py_app(
             py_builtin("ConstTensor", provenance=vcl.MISSING),
-            py_scalar(expression.c, provenance=vcl.MISSING),
-            py_tuple(
-                [
-                    py.Constant(value=dim, **asdict(vcl.MISSING))
-                    for dim in expression.ds
-                ],
-                provenance=vcl.MISSING,
-            ),
+            self.translate_expression(expression.c),
+            self.translate_expression(expression.ds),
             provenance=vcl.MISSING,
         )
 
@@ -411,6 +417,53 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return py_app(
             py_builtin("Transpose", provenance=vcl.MISSING),
             self.translate_expression(expression.xs),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_AtTensor(self, expression: vcl.AtTensor) -> py.expr:
+        """Translate AtTensor to builtin call."""
+        return py_app(
+            py_builtin("AtTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.xs),
+            self.translate_expression(expression.i),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ForeachTensor(self, expression: vcl.ForeachTensor) -> py.expr:
+        """Translate ForeachTensor to builtin call."""
+        return py_app(
+            py_builtin("ForeachTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.size),
+            self.translate_expression(expression.function),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_VectorLiteral(self, expression: vcl.VectorLiteral) -> py.expr:
+        """Translate VectorLiteral to builtin call."""
+        return py_app(
+            py_builtin("VectorLiteral", provenance=vcl.MISSING),
+            py_tuple(
+                [self.translate_expression(x) for x in expression.elements],
+                provenance=vcl.MISSING,
+            ),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_AtVector(self, expression: vcl.AtVector) -> py.expr:
+        """Translate AtVector to builtin call."""
+        return py_app(
+            py_builtin("AtVector", provenance=vcl.MISSING),
+            self.translate_expression(expression.xs),
+            self.translate_expression(expression.i),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ForeachVector(self, expression: vcl.ForeachVector) -> py.expr:
+        """Translate ForeachVector to builtin call."""
+        return py_app(
+            py_builtin("ForeachVector", provenance=vcl.MISSING),
+            self.translate_expression(expression.size),
+            self.translate_expression(expression.function),
             provenance=vcl.MISSING,
         )
 
@@ -488,11 +541,25 @@ def py_fraction(value: Fraction, provenance: vcl.Provenance) -> py.expr:
     )
 
 
+def py_extended_fraction(
+    value: vcl.ExtendedFraction, provenance: vcl.Provenance
+) -> py.expr:
+    match value:
+        case vcl.Finite(value=inner):
+            return py_fraction(inner, provenance=provenance)
+        case vcl.PosInfinity():
+            return py.Constant(value=float("inf"), **asdict(provenance))
+        case vcl.NegInfinity():
+            return py.Constant(value=float("-inf"), **asdict(provenance))
+        case _:
+            raise ValueError(f"Unknown extended rational type: {type(value)}")
+
+
 def py_scalar(value: vcl.DType, provenance: vcl.Provenance) -> py.expr:
     """Make a scalar."""
     match value:
-        case Fraction():
-            return py_fraction(value, provenance=provenance)
+        case vcl.ExtendedFraction():
+            return py_extended_fraction(value, provenance=provenance)
         case _:
             return py.Constant(
                 value=value,

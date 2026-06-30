@@ -5,6 +5,7 @@ module Vehicle.Compile.Sugar.Core where
 import Data.Text (Text, pack)
 import Vehicle.Compile.Prelude (Provenance)
 import Vehicle.Data.AST.Expr.Desugared (Expr)
+import Vehicle.Data.Real
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Token (mkToken)
 
@@ -12,7 +13,7 @@ class DesugarableBuiltin builtin where
   elabUnitLiteral :: Provenance -> Expr builtin
   elabBoolLiteral :: Provenance -> Bool -> Expr builtin
   elabNatLiteral :: Provenance -> Int -> Expr builtin
-  elabDecimalLiteral :: Provenance -> Rational -> Expr builtin
+  elabDecimalLiteral :: Provenance -> ExtendedRational -> Expr builtin
 
 {-
   foreachBuiltin :: Expr builtin
@@ -197,9 +198,15 @@ tokMul = mkToken B.TokMul "*"
 
 tokDiv = mkToken B.TokDiv "/"
 
+tokPow = mkToken B.TokPow "^"
+
 tokMin = mkToken B.TokMin "min"
 
 tokMax = mkToken B.TokMax "max"
+
+tokLog = mkToken B.TokLog "log"
+
+tokExp = mkToken B.TokExp "exp"
 
 tokAddNat = mkToken B.TokAddNat "addNat"
 
@@ -240,12 +247,6 @@ tokReduceMul = mkToken B.TokReduceMul "reduceMul"
 tokReduceMin = mkToken B.TokReduceMin "reduceMin"
 
 tokReduceMax = mkToken B.TokReduceMax "reduceMax"
-
-tokHasEq = mkToken B.TokHasEq "HasEq"
-
-tokHasNotEq = mkToken B.TokHasNotEq "HasNotEq"
-
-tokHasLeq = mkToken B.TokHasLeq "HasLeq"
 
 tokHasMap = mkToken B.TokHasMap "HasMap"
 

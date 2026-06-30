@@ -175,6 +175,20 @@ accessQuantifyRatTensor =
       mkExpr = \(q, args) -> mkBuiltin accessQuantifyRatTensorBuiltin q (mkExpr accessQuantifyRatTensorSpine args)
     }
 
+accessQuantifyRecord ::
+  (HasBoolExpr expr builtin, HasLambdaConstructor expr body) =>
+  Accessor (expr builtin) (Quantifier, QuantifyRecordArgs (expr builtin) (body builtin))
+accessQuantifyRecord =
+  Access
+    { getExpr = \case
+        (getBuiltin accessQuantifyRecordBuiltin -> Just (q, spine)) ->
+          case getExpr accessQuantifyRecordSpine spine of
+            Just args -> Just (q, args)
+            _ -> Nothing
+        _ -> Nothing,
+      mkExpr = \(q, args) -> mkBuiltin accessQuantifyRecordBuiltin q (mkExpr accessQuantifyRecordSpine args)
+    }
+
 --------------------------------------------------------------------------------
 -- Indices
 
@@ -238,11 +252,17 @@ type HasRatExpr expr builtin =
 accessRatType :: (HasRatType expr builtin) => Accessor (expr builtin) ()
 accessRatType = accessNoArgs accessRatTypeBuiltin
 
-accessRatTensorLiteral :: (HasRatExpr expr builtin) => Accessor (expr builtin) RatTensor
+accessRatTensorLiteral :: (HasRatExpr expr builtin) => Accessor (expr builtin) ExtendedRatTensor
 accessRatTensorLiteral = accessNoArgs accessRatTensorLitBuiltin
 
 accessNegRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
 accessNegRatTensor = accessArgs accessNegRatTensorBuiltin
+
+accessLogRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
+accessLogRatTensor = accessArgs accessLogRatTensorBuiltin
+
+accessExpRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
+accessExpRatTensor = accessArgs accessExpRatTensorBuiltin
 
 accessAddRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
 accessAddRatTensor = accessArgs accessAddRatTensorBuiltin
@@ -322,7 +342,7 @@ type HasVectorExpr expr builtin =
 accessVectorType :: (HasVectorType expr builtin) => Accessor (expr builtin) (VectorTypeArgs (expr builtin))
 accessVectorType = accessArgs accessVectorTypeBuiltin
 
-accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (VecLitArgs (expr builtin))
+accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (VectorLitArgs (expr builtin))
 accessVecLit = accessArgs accessVecLitBuiltin
 
 accessAtVector :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (AtVectorArgs (expr builtin))

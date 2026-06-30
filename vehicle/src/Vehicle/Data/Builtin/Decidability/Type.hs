@@ -6,7 +6,6 @@ module Vehicle.Data.Builtin.Decidability.Type
 where
 
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -54,7 +53,8 @@ typeDecidabilityBuiltin = \case
   StandardBuiltinType t -> typeOfBuiltinType t
   StandardBuiltinConstructor c -> typeOfBuiltinConstructor c
   StandardBuiltinFunction f -> case f of
-    QuantifyRatTensor {} -> forAllDims $ \_dims -> forAllTypes $ \t -> (t ~> tProp) ~> tProp
+    QuantifyRatTensor {} -> forAllDims $ \dims -> (tRatTensor dims ~> tProp) ~> tProp
+    QuantifyRecord {} -> forAllTypes $ \t -> (t ~> tProp) ~> tProp
     _ -> typeOfBuiltinFunction f
   StandardBuiltinDerivedFunction f -> typeOfDerivedFunction f
   DecidabilityBuiltinTypeClass t -> typeDecidableTypeClass t
@@ -78,7 +78,6 @@ typeDecidableTypeClass = \case
   HasTensorTypeClassField _f -> absTensorType ~> type0
   HasVectorTypeClassField _f -> absVectorType ~> type0
   ValidPropertyType -> type0 ~> type0
-  ValidNetworkType -> type0 ~> type0
 
 typeDecidableTypeClassOp :: DecidabilityBuiltinTypeClassOp -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClassOp = \case
@@ -113,8 +112,8 @@ typeDecidableTypeClassOp = \case
               FieldAnd -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
               FieldOr -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
               FieldImplies -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
-              FieldReduceAnd -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
-              FieldReduceOr -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
+              FieldReduceAnd -> forAllDims $ \ds -> tensor tBool ds ~> tensor tBool dimNil
+              FieldReduceOr -> forAllDims $ \ds -> tensor tBool ds ~> tensor tBool dimNil
               FieldForeachTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> (tIndex d ~> tensor tElem ds) ~> tensor tElem (dimCons d ds)
               FieldAtTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> tensor tElem (dimCons d ds) ~> (tIndex d ~> tensor tElem ds)
               FieldCompareIndex {} -> typeOfCompareIndex (tensor tBool dimNil)
@@ -239,7 +238,7 @@ convertToDecidabilityBuiltins p b args = return $
         CompareNat op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
         -- Nothing needs to change
         QuantifyRatTensor {} -> sameFunction f
-        QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
+        QuantifyRecord {} -> sameFunction f
         If -> sameFunction f
         Neg {} -> sameFunction f
         Add {} -> sameFunction f
@@ -248,7 +247,9 @@ convertToDecidabilityBuiltins p b args = return $
         Div {} -> sameFunction f
         Min {} -> sameFunction f
         Max {} -> sameFunction f
-        PowRat -> sameFunction f
+        Pow {} -> sameFunction f
+        Exp {} -> sameFunction f
+        Log {} -> sameFunction f
         ReduceAddRatTensor -> sameFunction f
         ReduceMulRatTensor -> sameFunction f
         ReduceMinRatTensor -> sameFunction f
@@ -299,7 +300,6 @@ restrictDecidabilityDeclType ::
 restrictDecidabilityDeclType declSort (ident, p) declType = do
   let maybeTypeClass = case declSort of
         RestrictedProperty -> Just ValidPropertyType
-        RestrictedNetwork -> Just ValidNetworkType
         _ -> Nothing
 
   case maybeTypeClass of

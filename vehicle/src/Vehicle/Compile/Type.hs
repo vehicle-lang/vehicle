@@ -76,7 +76,7 @@ typeCheckDecl uncheckedDecl isUnused =
     decl <- case convertedDecl of
       DefAbstract p n s t -> typeCheckAbstractDef p n s t isUnused
       DefFunction p n s t e -> typeCheckFunctionDef p n s t e isUnused
-      DefRecord p n s t f -> typeCheckRecordDef p n s t f isUnused
+      DefRecord p n s t f o -> typeCheckRecordDef p n s t f o isUnused
     checkAllUnknownsSolved (Proxy @builtin)
     finalDecl <- substMetaVariables decl
     logCompilerPassOutput $ prettyExternal finalDecl
@@ -166,9 +166,10 @@ typeCheckRecordDef ::
   Maybe DefRecordSort ->
   Telescope builtin ->
   RecordFields builtin ->
+  [DerivableRecordOperation] ->
   DeclIsUnused ->
   m (Decl builtin)
-typeCheckRecordDef p ident anns uncheckedTelescope uncheckedFields isUnused = do
+typeCheckRecordDef p ident anns uncheckedTelescope uncheckedFields operations isUnused = do
   -- Type check the body.
   let pass = bidirectionalPassDoc <+> "fields of" <+> quotePretty ident
   (checkedTelescope, checkedFields) <-
@@ -180,7 +181,7 @@ typeCheckRecordDef p ident anns uncheckedTelescope uncheckedFields isUnused = do
       restrictRecordAnnotatedAsTensor (ident, p) checkedFields
 
   -- Reconstruct the function.
-  let checkedDecl = DefRecord p ident anns checkedTelescope checkedFields
+  let checkedDecl = DefRecord p ident anns checkedTelescope checkedFields operations
 
   -- Solve constraints and substitute through.
   setCurrentDecl $ Just (checkedDecl, isUnused)

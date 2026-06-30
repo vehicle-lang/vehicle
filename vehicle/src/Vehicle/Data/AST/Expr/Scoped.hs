@@ -51,7 +51,7 @@ import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Code.Interface (HasBuiltinConstructor (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
-import Vehicle.Data.Variable.Bound.Level (Lv, dbIndexToLevel, unLv)
+import Vehicle.Data.Variable.Bound.Level.Core (Lv, dbIndexToLevel, unLv)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------

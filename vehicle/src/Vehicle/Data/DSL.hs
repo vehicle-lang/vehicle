@@ -42,7 +42,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Universe
-import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Data.Variable.Bound.Level.Core
 import Vehicle.Prelude
 import Prelude hiding (pi)
 

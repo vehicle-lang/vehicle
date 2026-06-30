@@ -172,6 +172,14 @@ instance BuiltinHasBoolLiterals Builtin where
         mkExpr = BuiltinFunction . QuantifyRatTensor
       }
 
+  accessQuantifyRecordBuiltin =
+    Access
+      { getExpr = \case
+          BuiltinFunction (QuantifyRecord q) -> Just q
+          _ -> Nothing,
+        mkExpr = BuiltinFunction . QuantifyRecord
+      }
+
 --------------------------------------------------------------------------------
 -- Index
 
@@ -229,13 +237,15 @@ instance BuiltinHasRatLiterals Builtin where
       }
 
   accessNegRatTensorBuiltin = functionAccessor $ Neg NegRatTensor
+  accessLogRatTensorBuiltin = functionAccessor $ Log LogRatTensor
+  accessExpRatTensorBuiltin = functionAccessor $ Exp ExpRatTensor
   accessAddRatTensorBuiltin = functionAccessor $ Add AddRatTensor
   accessMulRatTensorBuiltin = functionAccessor $ Mul MulRatTensor
   accessSubRatTensorBuiltin = functionAccessor $ Sub SubRatTensor
   accessDivRatTensorBuiltin = functionAccessor $ Div DivRatTensor
   accessMinRatTensorBuiltin = functionAccessor $ Min MinRatTensor
   accessMaxRatTensorBuiltin = functionAccessor $ Max MaxRatTensor
-  accessPowRatTensorBuiltin = functionAccessor PowRat
+  accessPowRatTensorBuiltin = functionAccessor $ Pow PowRatTensor
   accessReduceAddRatBuiltin = functionAccessor ReduceAddRatTensor
   accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
   accessReduceMinRatBuiltin = functionAccessor ReduceMinRatTensor

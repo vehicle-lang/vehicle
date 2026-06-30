@@ -20,21 +20,21 @@ Operations
 The following operations over lists are currently supported:
 
 .. list-table::
-   :widths: 15 12 43 30
+   :widths: 14 17 37 32
    :header-rows: 1
 
    * - Operation
-     - Symbol
+     - Syntax
      - Type
-     - Example
+     - Support
    * - Map
-     - :code:`map`
-     - :code:`(A -> B) -> List A -> List B`
-     - :code:`map (\\x -> x + 1) xs`
+     - :code:`map f xs`
+     - :code:`(A → B) → List A → List B`
+     - |backendall_full|
    * - Fold
-     - :code:`fold`
-     - :code:`(A -> B -> B) -> B -> List A -> B`
-     - :code:`fold (\\x y -> x + y) 0 xs`
+     - :code:`fold f e xs`
+     - :code:`(A → B → B) → B → List A → B`
+     - |backendall_full|
 
 Absence of a lookup function
 ----------------------------

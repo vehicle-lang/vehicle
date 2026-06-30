@@ -1,7 +1,17 @@
 name: Test Rocq
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - dev
+    tags:
+      - "v*"
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  merge_group:
 
 defaults:
   run:
@@ -14,50 +24,98 @@ jobs:
         os:
           - name: "Linux"
             type: "ubuntu-latest"
-            plat: "manylinux_2_17_x86_64.manylinux2014_x86_64"
           - name: "macOS"
             type: "macos-latest"
-            plat: "macosx_10_9_x86_64"
         haskell:
           - ghc:
-              version: "9.4.8"
+              version: "9.6.5"
             cabal:
-              version: "3.14.2.1"
-              project-file: "cabal.project.ghc-9.4.8"
+              version: "3.14.2.0"
+              project-file: "cabal.project"
               extra-args: ""
+              extra-args-test-golden: ""
         ocaml:
-          - version: "5"
+          - version: "5.4.1"
         rocq:
-          - version: "9.0.0"
+          - version: "9.1.1"
 
-    name: rocq / ${{ matrix.os.name }} - Ocaml ${{ matrix.ocaml.version }} - Rocq ${{ matrix.rocq.version }}
+    name: Rocq / ${{ matrix.os.name }} - Rocq ${{ matrix.rocq.version }}
     runs-on: ${{ matrix.os.type }}
 
     steps:
-      - uses: actions/checkout@v6
+      - name: 📥 Checkout
+        uses: actions/checkout@v7
 
-      - name: Setup Haskell
-        uses: ./.github/actions/setup-haskell
+      - name: 🛠️ Install Haskell
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: ${{ matrix.haskell.ghc.version }}
           cabal-version: ${{ matrix.haskell.cabal.version }}
-          cabal-project-file: ${{ matrix.haskell.cabal.project-file }}
-          cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
 
-      - name: Setup Ocaml
-        uses: ocaml/setup-ocaml@v3.4.6
+      - name: 🛠️ Configure
+        run: |
+          cabal configure --project-file=${{ matrix.haskell.cabal.project-file }}
+          cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
+
+      - name: 💾 Restore Cabal dependencies
+        uses: actions/cache/restore@v6
+        if: ${{ !env.ACT }}
+        id: cache-haskell
+        env:
+          key: ${{ matrix.os.name }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ env.key }}-
+
+      - name: 🛠️ Install Cabal dependencies
+        if: ${{ env.ACT || steps.cache-haskell.outputs.cache-hit != 'true' }}
+        run: cabal build all --only-dependencies
+
+      - name: 💾 Save Cabal dependencies
+        uses: actions/cache/save@v6
+        if: ${{ !env.ACT && steps.cache-haskell.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
+
+      - name: 🛠️ Install OCaml
+        uses: ocaml/setup-ocaml@v3.6.1
         with:
           ocaml-compiler: ${{ matrix.ocaml.version }}
 
-      - name: Install Rocq
-        run: opam install rocq-prover.${{ matrix.rocq.version }}
+      - name: 🛠️ Add Rocq opam repository
+        run: opam repo add rocq-released https://rocq-prover.org/opam/released
 
-      - name: Install libraries
+      - name: 💾 Restore opam cache
+        uses: actions/cache/restore@v6
+        if: ${{ !env.ACT }}
+        id: cache-opam
+        env:
+          key: opam-${{ matrix.os.name }}-ocaml-${{ matrix.ocaml.version }}-rocq-${{ matrix.rocq.version }}
+        with:
+          path: ~/.opam
+          key: ${{ env.key }}-deps-${{ hashFiles('vehicle-rocq/vehicle-rocq.opam') }}
+          restore-keys: ${{ env.key }}-
+
+      - name: 🛠️ Install Rocq + vehicle-rocq deps
+        if: ${{ env.ACT || steps.cache-opam.outputs.cache-hit != 'true' }}
         run: |
-          opam repo add coq-released https://coq.inria.fr/opam/released
-          opam install ./vehicle-rocq
+          opam install -y rocq-core.${{ matrix.rocq.version }}
+          opam install -y --deps-only ./vehicle-rocq
 
-      - name: Test Vehicle-Rocq interaction
+      - name: 💾 Save opam cache
+        uses: actions/cache/save@v6
+        if: ${{ !env.ACT && steps.cache-opam.outputs.cache-hit != 'true' }}
+        with:
+          path: ~/.opam
+          key: ${{ steps.cache-opam.outputs.cache-primary-key }}
+
+      - name: 🛠️ Install vehicle-rocq
+        run: opam install -y ./vehicle-rocq
+
+      - name: 🧪 Test Vehicle-Rocq interaction
         run: |
           eval $(opam env)
           cabal test                                 \
@@ -65,4 +123,6 @@ jobs:
             --test-show-details=always               \
             --test-option=--color=always             \
             --test-option=--num-threads=1            \
+            --test-option=-p                         \
+            --test-option='/Rocq/'                   \
             --test-option=--allowlist-externals=rocq

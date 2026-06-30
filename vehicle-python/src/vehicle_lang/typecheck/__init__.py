@@ -1,59 +1,82 @@
 from enum import Enum
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from .. import session
-from ..error import VehicleError
+from ..error import VehicleUserError
 
 
-class TypeSystem(Enum):
+class SecondaryTypeSystem(Enum):
     """
     The type systems supported by Vehicle.
     """
 
-    Standard = 1
-    Polarity = 2
-    Linearity = 3
-    Decidability = 4
+    Polarity = 1
+    Linearity = 2
+    Decidability = 3
 
-    @property
     def _vehicle_option_name(self) -> str:
         return {
-            TypeSystem.Standard: "Standard",
-            TypeSystem.Polarity: "Polarity",
-            TypeSystem.Linearity: "Linearity",
-            TypeSystem.Decidability: "Decidability",
+            SecondaryTypeSystem.Polarity: "Polarity",
+            SecondaryTypeSystem.Linearity: "Linearity",
+            SecondaryTypeSystem.Decidability: "Decidability",
         }[self]
 
 
 def typecheck(
-    specification: str | Path, *, typeSystem: TypeSystem = TypeSystem.Standard
+    specification: str | Path,
+) -> Optional[VehicleUserError]:
+    """
+    Type-check a .vcl specification file.
+
+    :param specification: The path to the Vehicle specification file to verify.
+    :returns: None if type-checking succeeded, or a `VehicleUserError` if type-checking failed with a user error.
+    :raises VehicleInternalError: If the Vehicle command fails to execute.
+    """
+    args = [
+        "--json",
+        "typecheck",
+        "--specification",
+        str(specification),
+    ]
+
+    # Call Vehicle
+    try:
+        session.execute_command(args)
+        return None
+    except VehicleUserError as err:
+        return err
+
+
+def typecheck_with_typesystem(
+    specification: str | Path, typeSystem: SecondaryTypeSystem
 ) -> str:
     """
     Type-check a .vcl specification file.
 
     :param specification: The path to the Vehicle specification file to verify.
-    :param typeSystem: The type system that should be used.
+    :param typeSystem: The secondary type system that should be used.
+    :returns: a JSON string containing Vehicle's output.
+    :raises VehicleInternalError: If the Vehicle command fails to execute.
     """
     args = [
+        "--json",
         "typecheck",
         "--specification",
         str(specification),
-        "--typeSystem",
-        typeSystem._vehicle_option_name,
-        "--json",
+        "--type-system",
+        typeSystem._vehicle_option_name(),
     ]
 
     # Call Vehicle
-    exc, out, err, _ = session.check_output(args)
-
-    # Check for errors
-    if exc != 0:
-        raise VehicleError(f"{err}")
-    elif not out:
+    out = session.execute_command(args)
+    if not out:
         return ""
-
     return out
 
 
-__all__: List[str] = ["TypeSystem", "typecheck"]
+__all__: List[str] = [
+    "SecondaryTypeSystem",
+    "typecheck",
+    "typecheck_with_typesystem",
+]

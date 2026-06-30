@@ -4,7 +4,7 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkTensorType (dimensions), NetworkType (inputTensor, outputTensor))
+import Vehicle.Compile.Resource (NetworkModality (..), NetworkType (networkInputType), getIODims, networkOutputType)
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core
@@ -84,8 +84,14 @@ compileNetworkApp networkName networkType appIndex = do
         | appIndex > 1 = "(equalTo" <+> compileNetworkName networkName 1 <> ")" <> line
         | otherwise = ""
   let networkVarName = compileNetworkName networkName appIndex
-  let networkInputDocs = uncurry compileNetworkInput $ networkTensor networkName networkType appIndex Input
-  let networkOutputDocs = uncurry compileNetworkOutput $ networkTensor networkName networkType appIndex Output
+  let networkInputDocs = case networkTensor networkName networkType appIndex Input of
+        (name, UniModal shape) -> compileNetworkInput name shape
+        (_name, MultiModal _shapes) -> error "MultiModal IO is unimplemented"
+
+  let networkOutputDocs = case networkTensor networkName networkType appIndex Output of
+        (name, UniModal shape) -> compileNetworkOutput name shape
+        (_name, MultiModal _shapes) -> error "MultiModal IO is unimplemented"
+
   "(declare-network" <+> networkVarName
     <> line
     <> indent
@@ -99,12 +105,12 @@ compileNetworkApp networkName networkType appIndex = do
     <> ")"
 
 -- | Generates the variable name and fetches the shape of the the input or output network tensor
-networkTensor :: Name -> NetworkType -> Int -> InputOrOutput -> (Name, TensorShape)
+networkTensor :: Name -> NetworkType -> Int -> InputOrOutput -> (Name, NetworkModality TensorShape)
 networkTensor networkName networkType appIndex inputOrOutput = do
   let name = layoutAsText $ compileNetworkVariableName networkName appIndex inputOrOutput
   case inputOrOutput of
-    Input -> (name, dimensions $ inputTensor networkType)
-    Output -> (name, dimensions $ outputTensor networkType)
+    Input -> (name, getIODims <$> networkInputType networkType)
+    Output -> (name, getIODims <$> networkOutputType networkType)
 
 -- | Compile network name. Prefixes an index to all subsequent network applications
 compileNetworkName :: Name -> Int -> Doc a
@@ -172,7 +178,7 @@ compileRel = \case
   LtRel -> "<"
   GtRel -> ">"
 
-compileCoefVar :: (Coefficient, QueryVariable) -> Doc a
+compileCoefVar :: (Rational, QueryVariable) -> Doc a
 compileCoefVar (coef, var)
   | coef == 1 = pretty var
   | coef == -1 = parens ("-" <+> pretty var)

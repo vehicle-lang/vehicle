@@ -6,8 +6,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, MutableMapping, Protocol, cast
 
+from ..loss import load_ast
 from ..typing import DeclarationName, DifferentiableLogic
-from . import _ast
 
 
 class _SamplerProtocol(Protocol):
@@ -36,8 +36,10 @@ def load_loss_specification(
     if samplers is None:
         default_sampler = default_sampler_factory()
         samplers = defaultdict(lambda: default_sampler.get_loss)
+    else:
+        samplers = {k: s.get_loss for k, s in samplers.items()}
 
-    program = _ast.load(
+    program = load_ast(
         path,
         target=logic,
         declarations=declarations,

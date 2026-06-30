@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, List, Optional
 
 from .. import session as session
-from ..error import VehicleError
+from ..error import VehicleInternalError
 from ..typing import ITP, DeclarationName, DifferentiableLogic, QueryFormat
 
 
@@ -31,9 +31,9 @@ def compile_specification(
     :param cache: The location of the verification cache for ITP compilation.
     """
 
-    args = [
+    args: List[str] = [
         "compile",
-        target._vehicle_option_name,
+        target._vehicle_option_name(),
         "--specification",
         str(path),
     ]
@@ -65,25 +65,17 @@ def compile_specification(
         args.extend(["--cache", str(cache)])
 
     # Call Vehicle
-    exec, out, err, _ = session.check_output(args)
-
-    if exec != 0:
-        raise VehicleError(f"{err}")
-    elif not out:
-        raise VehicleError("Vehicle produced no output")
-
+    out = session.execute_command(args)
+    if not out:
+        raise VehicleInternalError("Vehicle produced no output")
     return out
 
 
 def call_vehicle(args: list[str]) -> str:
     # Call Vehicle
-    exec, out, err, _ = session.check_output(args)
-
-    if exec != 0:
-        raise VehicleError(f"{err}")
-    elif not out:
-        raise VehicleError("Vehicle produced no output")
-
+    out = session.execute_command(args)
+    if not out:
+        raise VehicleInternalError("Vehicle produced no output")
     return out
 
 

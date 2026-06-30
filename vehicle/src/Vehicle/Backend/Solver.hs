@@ -13,15 +13,15 @@ import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Solver.QueryCompilation (compilePartitionsToQueries)
-import Vehicle.Backend.Solver.UserVariableElimination (eliminateExistless, eliminateExists)
+import Vehicle.Backend.Solver.UserVariableElimination (eliminateExistless, eliminateExists, eliminateExistsRecord)
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.Error
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
-import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
-import Vehicle.Compile.Normalise.NBE (evalDecl)
+import Vehicle.Compile.LowerNot (lowerNot, negateRatTensorQuantifierBody, negateRecordQuantifierBody)
+import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
@@ -82,8 +82,7 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder = do
   properties <- compileProg settings resourceFreeProg
 
   -- Check that there were actually properties in the specification.
-  when (null properties) $ do
-    throwError NoPropertiesFound
+  when (null properties) $ throwError NoPropertiesFound
 
   -- Write out the folder
   case maybeVerificationFolder of
@@ -107,13 +106,12 @@ compileProg ::
   CompilationSettings ->
   Prog Builtin ->
   m [(Name, MultiProperty PropertyAddress)]
-compileProg settings (Main decls) = do
+compileProg settings (Main decls) =
   runFreshFreeContextT (Proxy @Builtin) $
-    runSupplyT [(0 :: PropertyID) ..] $
-      compileDecls settings decls
+    compileDecls settings decls
 
 compileDecls ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m, MonadSupply PropertyID m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   CompilationSettings ->
   [Decl Builtin] ->
   m [(Name, MultiProperty PropertyAddress)]
@@ -137,18 +135,17 @@ compileDecls settings = \case
       return $ maybeToList property ++ properties
 
 compilePropertyDecl ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m, MonadSupply PropertyID m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   CompilationSettings ->
   DeclProvenance ->
   VType Builtin ->
   Value Builtin ->
   m (MultiProperty PropertyAddress)
 compilePropertyDecl settings prov typ body = do
-  propertyID <- demand
   let compilePropertyFn = compileSingleProperty settings prov
   logDebug MaxDetail $ prettyFriendlyEmptyCtx typ
   logDebug MaxDetail $ prettyFriendlyEmptyCtx body
-  errorOrResult <- traverseMultiProperty compilePropertyFn propertyID (nameOf prov) typ body
+  errorOrResult <- traverseMultiProperty compilePropertyFn (nameOf prov) typ body
   case errorOrResult of
     Left err -> throwError $ MultiPropertyTraveralError prov err
     Right result -> return result
@@ -191,7 +188,7 @@ compileSingleProperty CompilationSettings {..} prov propertyAddress expr =
 -- Assumptions - expression is well-typed in the empty context and of type Bool.
 compileQueries ::
   forall m.
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Value Builtin ->
   m (Property QueryMetaData)
 compileQueries expr = do
@@ -201,11 +198,16 @@ compileQueries expr = do
     -- Base cases --
     ----------------
     VBoolLiteral b -> return $ Trivial b
-    VQuantifyRatTensor (Exists, args) -> compileQuantifiedQuerySet False args
+    VQuantifyRatTensor (Exists, args) -> compileQuantifiedQuerySet False (Left args)
+    VQuantifyRecord (Exists, args) -> compileQuantifiedQuerySet False (Right args)
     VQuantifyRatTensor (Forall, args) -> do
       logDebug MaxDetail $ "negate" <+> pretty Forall
-      negatedArgs <- negateQuantifierBody args
-      compileQuantifiedQuerySet True negatedArgs
+      negatedArgs <- negateRatTensorQuantifierBody args
+      compileQuantifiedQuerySet True (Left negatedArgs)
+    VQuantifyRecord (Forall, args) -> do
+      logDebug MaxDetail $ "negate" <+> pretty Forall
+      negatedArgs <- negateRecordQuantifierBody args
+      compileQuantifiedQuerySet True (Right negatedArgs)
     ---------------------
     -- Recursive cases --
     ---------------------
@@ -236,18 +238,21 @@ compileQueries expr = do
     unblock = unblockBoolExpr topLevelUnblockingActions
 
 compileQuantifiedQuerySet ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Bool ->
-  QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
+  Either (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin)) (QuantifyRecordArgs (Value Builtin) (Closure Builtin)) ->
   m (Property QueryMetaData)
 compileQuantifiedQuerySet isPropertyNegated args =
   logCompilerSection2 MaxDetail "compilation of query set" $ do
-    (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
+    let action = case args of
+          Left tensorArgs -> eliminateExists tensorArgs
+          Right recordArgs -> eliminateExistsRecord recordArgs
+    (maybePartitions, globalCtx) <- runStateT action emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Value Builtin ->
   m (Property QueryMetaData)
 compileUnquantifiedQuerySet value = do
@@ -257,7 +262,7 @@ compileUnquantifiedQuerySet value = do
     compileQuerySetPartitions globalCtx False maybePartitions
 
 compileQuerySetPartitions ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   GlobalCtx ->
   QuerySetNegationStatus ->
   MaybeTrivial Partitions ->
@@ -271,11 +276,14 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
       Trivial b -> return $ Trivial b
       NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
 
-topLevelUnblockingActions :: (MonadCompile m) => UnblockingActions m
+topLevelUnblockingActions :: (Monad m) => UnblockingActions m
 topLevelUnblockingActions =
   UnblockingActions
-    (developerError "Should not be unblocking variables at top-level")
-    (developerError "Unblocking of constant network functions at top-level not yet supported")
+    { unblockRatTensorBoundVar = developerError "No bound variables should exist at top-level",
+      unblockRecordBoundVar = developerError "No bound variables should exist at top-level",
+      unblockNetworkApp = \_ _ _ -> developerError "Unblocking of constant network functions at top-level not yet supported",
+      unblockDatasetOrParameter = developerError "Should not be unblocking datasets or parameters"
+    }
 
 handlePropertyCompileError ::
   (MonadIO m, MonadCompile m) =>

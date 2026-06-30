@@ -1,12 +1,15 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Backend.Loss.Core where
 
 import Control.Monad.Error.Class (MonadError (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.Reader (MonadReader (..), MonadTrans (..), ReaderT (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Prettyprinter
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard.Core
@@ -14,7 +17,8 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadTensorBoundContext)
 import Vehicle.Data.Variable.Bound.Context.Tensor.Instance (TensorBoundContextT, runFreshTensorBoundContextT)
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
+import Vehicle.Data.Variable.Free.Context.Instance
 
 --------------------------------------------------------------------------------
 -- MonadLogic
@@ -25,15 +29,21 @@ type LossCtx =
     DifferentiableLogicImplementation
   )
 
-type MonadLogic m =
-  ( MonadCompile m,
+type MonadLogicCore m =
+  ( MonadLogger m,
     MonadReader LossCtx m,
     MonadFreeContext Builtin m,
     MonadTensorBoundContext m
   )
 
+type MonadLogic m =
+  ( MonadLogicCore m,
+    MonadError CompileError m,
+    MonadFreeContext LossBuiltin m
+  )
+
 runMonadLogicT ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   VDecl Builtin ->
@@ -53,26 +63,29 @@ getDeclProvenance = do
   (prov, _, _) <- ask
   return prov
 
-getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Value LossBuiltin)
+getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Expr LossBuiltin)
 getLogicField field = do
   (logic, _) <- getLogic
-  lookupLogicField field logic
+  return $ lookupLogicField field logic
+
+getLogicFieldValue :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Value LossBuiltin)
+getLogicFieldValue field = eval mempty emptyBoundEnv =<< getLogicField field
 
 getLogicDirection :: (MonadLogic m) => m Bool
 getLogicDirection = do
   (_, minimise) <- getLogic
   return minimise
 
-lookupLogicField :: (MonadCompile m, Ord field, Pretty field) => field -> Map field value -> m value
+lookupLogicField :: (Ord field, Pretty field) => field -> Map field value -> value
 lookupLogicField field logic = case Map.lookup field logic of
-  Nothing -> compilerDeveloperError $ "Non-compiled logic field" <+> quotePretty field <+> "found"
-  Just value -> return value
+  Nothing -> developerError $ "Non-compiled logic field" <+> quotePretty field <+> "found"
+  Just value -> value
 
 --------------------------------------------------------------------------------
 -- Other
 --------------------------------------------------------------------------------
 
-unsupportedOperation :: (MonadLogic m) => UnAnnDoc -> m b
+unsupportedOperation :: (MonadLogic m, MonadError CompileError m) => UnAnnDoc -> m b
 unsupportedOperation op = do
   prov <- getDeclProvenance
   throwError $ UnsupportedLossOperation prov op
@@ -86,4 +99,10 @@ missingLogicError names = \case
   CustomLogic name -> throwError $ UnknownDifferentiableLogic name names
 
 currentPass :: Doc a
-currentPass = "loss compilation"
+currentPass = "loss translation"
+
+-- This is a massive hack and we should get this fixed when we sort out the normalisation story.
+instance (MonadFreeContext Builtin m) => MonadFreeContext Builtin (FreeContextT LossBuiltin m) where
+  addDeclEntryToContext = mapFreeContextT . addDeclEntryToContext
+  getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy

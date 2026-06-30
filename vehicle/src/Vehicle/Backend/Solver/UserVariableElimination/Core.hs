@@ -1,6 +1,7 @@
 module Vehicle.Backend.Solver.UserVariableElimination.Core where
 
 import Control.Monad (forM)
+import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..))
 import Data.Char.SScript (subscript)
@@ -16,7 +17,7 @@ import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkName)
+import Vehicle.Compile.Resource (NetworkModality, NetworkName)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound (BoundedValue, Domain)
 import Vehicle.Data.Builtin.Standard
@@ -80,7 +81,7 @@ emptyGlobalCtx =
 addUserVarToGlobalContext ::
   (MonadLogger m, MonadTensorBoundContext m) =>
   VBinder Builtin ->
-  TensorShape ->
+  NetworkModality TensorShape ->
   GlobalCtx ->
   m (UserTensorVariable, GlobalCtx)
 addUserVarToGlobalContext binder shape GlobalCtx {..} = do
@@ -109,7 +110,7 @@ createNetworkVarName networkName application inputOrOutput =
 -- Monads
 
 type MonadPropertyStructure m =
-  ( MonadCompile m,
+  ( MonadLogger m,
     MonadFreeContext Builtin m,
     MonadReader PropertyMetaData m,
     MonadTensorBoundContext m,
@@ -118,11 +119,12 @@ type MonadPropertyStructure m =
 
 type MonadQueryStructure m =
   ( MonadPropertyStructure m,
-    MonadState GlobalCtx m
+    MonadState GlobalCtx m,
+    MonadError CompileError m
   )
 
 addNetworkApplicationToGlobalCtx ::
-  (MonadQueryStructure m) =>
+  (MonadPropertyStructure m, MonadState GlobalCtx m) =>
   Name ->
   NetworkContextInfo ->
   Value Builtin ->

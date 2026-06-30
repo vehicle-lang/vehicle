@@ -52,7 +52,7 @@ data CompilerPass
   | ITP
   | Loss
   | TypingSubsystem
-  | WitnessReconstruction
+  | Verification
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty CompilerPass where
@@ -63,7 +63,7 @@ instance Pretty CompilerPass where
     ITP -> "ITP compilation"
     Loss -> "loss compilation"
     TypingSubsystem -> "subsystem type checking"
-    WitnessReconstruction -> "witness reconstruction"
+    Verification -> "actual verification"
 
 allCompilerPasses :: [String]
 allCompilerPasses = map show (enumerate @CompilerPass)

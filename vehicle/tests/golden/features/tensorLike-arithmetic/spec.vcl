@@ -2,7 +2,7 @@
 record Test1 where
   { f1 : Real
   , f2 : Real
-  }
+  } supports Addition, Multiplication
 
 value1 : Test1
 value1 = { f1 = 1, f2 = 2 }

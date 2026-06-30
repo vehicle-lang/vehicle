@@ -13,8 +13,7 @@ import Vehicle.Data.Builtin.Core.BasicOperations
 
 data TypeClass
   = -- Operation type-classes
-    HasCompare ComparisonOp
-  | HasQuantifier Quantifier
+    HasQuantifier Quantifier
   | HasNeg
   | HasFold
   | HasMap
@@ -31,9 +30,6 @@ data TypeClass
     ValidPropertyType
   | ValidParameterType ParameterSort
   | ValidNetworkTensorType
-  | ValidDatasetType
-  | ValidDatasetListElementType
-  | ValidDatasetTensorElementType
   | ValidTensorLikeType
   deriving (Eq, Ord, Generic, Show)
 
@@ -45,7 +41,6 @@ instance Serialize TypeClass
 
 instance Pretty TypeClass where
   pretty = \case
-    HasCompare {} -> "HasComparison"
     HasQuantifier Forall -> "HasForall"
     HasQuantifier Exists -> "HasExists"
     HasQuantifierIn Forall -> "HasForallIn"
@@ -62,9 +57,6 @@ instance Pretty TypeClass where
     ValidPropertyType -> "ValidPropertyType"
     ValidParameterType {} -> "ValidParameterType"
     ValidNetworkTensorType -> "ValidNetworkTensorType"
-    ValidDatasetType -> "ValidDatasetType"
-    ValidDatasetListElementType -> "ValidDatasetListElementType"
-    ValidDatasetTensorElementType -> "ValidDatasetTensorElementType"
     ValidTensorLikeType -> "ValidTensorLikeType"
 
 -- Builtin operations for type-classes
@@ -78,7 +70,6 @@ data TypeClassOp
     -- have it as a literal in the type-class.
     VecLiteralTC
   | NegTC
-  | CompareTC ComparisonOp
   | AtTC
   | MapTC
   | FoldTC
@@ -98,7 +89,6 @@ instance Pretty TypeClassOp where
     FromNatTC -> "fromNat"
     FromRatTC -> "fromRat"
     VecLiteralTC {} -> "vec"
-    CompareTC op -> pretty op
     AtTC -> "!"
     MapTC -> "map"
     FoldTC -> "fold"

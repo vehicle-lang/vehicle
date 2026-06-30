@@ -1,6 +1,7 @@
 module Vehicle.Compile.LowerNot
   ( lowerNot,
-    negateQuantifierBody,
+    negateRatTensorQuantifierBody,
+    negateRecordQuantifierBody,
   )
 where
 
@@ -51,7 +52,8 @@ lowerNot (TensorOp1Args _ arg) = do
       -- it is not yet unnormalised. However, it's fine to stop here as we'll
       -- simply continue to normalise it once we re-encounter it again after
       -- normalising the quantifier.
-      VBoolTensorQuantifyRat (q, args) -> fromBoolValue . VQuantifyRatTensor . (neg q,) <$> negateQuantifierBody args
+      VBoolTensorQuantifyRat (q, args) -> fromBoolTensorValue . VBoolTensorQuantifyRat . (neg q,) <$> negateRatTensorQuantifierBody args
+      VBoolTensorQuantifyRecord (q, args) -> fromBoolTensorValue . VBoolTensorQuantifyRecord . (neg q,) <$> negateRecordQuantifierBody args
       ---------------------
       -- Inductive cases --
       ---------------------
@@ -59,21 +61,27 @@ lowerNot (TensorOp1Args _ arg) = do
       VBoolStackTensor args -> fromBoolTensorValue . VBoolStackTensor <$> traverseStackTensorElements go args
       VBoolTensorOr args -> fromBoolTensorValue . VBoolTensorAnd <$> traverseTensorOp2Args go args
       VBoolTensorAnd args -> fromBoolTensorValue . VBoolTensorOr <$> traverseTensorOp2Args go args
-      VBoolTensorBoolIf args -> fromBoolTensorValue . VBoolTensorBoolIf <$> traverseIfArgBranches go args
+      VBoolTensorIf args -> fromBoolTensorValue . VBoolTensorIf <$> traverseIfArgBranches go args
       VBoolTensorReduceOr args -> fromBoolTensorValue . VBoolTensorReduceAnd <$> traverseReductionArgs go args
       VBoolTensorReduceAnd args -> fromBoolTensorValue . VBoolTensorReduceOr <$> traverseReductionArgs go args
       VBoolTensorAt args -> fromBoolTensorValue . VBoolTensorAt <$> traverseAtTensorArg go args
       VBoolTensorForeach args -> fromBoolTensorValue . VBoolTensorForeach <$> negateForeachArgs args
 
-negateQuantifierBody ::
+negateRatTensorQuantifierBody ::
   (MonadReadableNameContext m) =>
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
-negateQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
-  lv <- getBinderDepth
-  let dims' = quote mempty lv dims
-  let newBody = mkExpr accessNotTensor $ TensorOp1Args dims' body
+negateRatTensorQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
+  let newBody = mkExpr accessNotTensor $ TensorOp1Args IDimNil body
   return $ QuantifyRatTensorArgs dims binder (Closure env newBody)
+
+negateRecordQuantifierBody ::
+  (MonadReadableNameContext m) =>
+  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
+  m (QuantifyRecordArgs (Value Builtin) (Closure Builtin))
+negateRecordQuantifierBody (QuantifyRecordArgs typ binder (Closure env body)) = do
+  let newBody = mkExpr accessNotTensor $ TensorOp1Args IDimNil body
+  return $ QuantifyRecordArgs typ binder (Closure env newBody)
 
 negateForeachArgs ::
   (MonadReadableNameContext m) =>

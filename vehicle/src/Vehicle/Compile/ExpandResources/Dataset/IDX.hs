@@ -4,6 +4,7 @@ module Vehicle.Compile.ExpandResources.Dataset.IDX
 where
 
 import Control.Exception (try)
+import Control.Monad (zipWithM)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.IDX
@@ -15,6 +16,7 @@ import Data.IDX
     isIDXIntegral,
   )
 import Data.Map qualified as Map
+import Data.Map.Ordered qualified as OMap
 import Data.Vector.Generic qualified as V
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
@@ -26,7 +28,9 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor as Tensor (Tensor, TensorShape, fromVector, mapTensor)
+import Vehicle.Data.Variable.Free.Context (getRecordFields)
 
 -- The current dimension in the dataset being parsed
 type CurrentDimension = Int
@@ -92,6 +96,7 @@ parseContainer ::
 parseContainer ctx currentDim actualDims elems expectedType = case toTypeValue expectedType of
   VListType expectedElemType -> parseList ctx currentDim expectedElemType actualDims elems
   VVectorType expectedElemType dim -> parseVector ctx currentDim expectedElemType dim actualDims elems
+  VFreeTypeVar ident spine -> parseRecord ctx currentDim actualDims elems ident spine
   VBoolTensorType expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue VBoolType) expectedDims
   VRatTensorType expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue VRatType) expectedDims
   VNatTensorType expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue VNatType) expectedDims
@@ -99,6 +104,31 @@ parseContainer ctx currentDim actualDims elems expectedType = case toTypeValue e
   _
     | currentDim == 0 -> typingError ctx
     | otherwise -> parseElements ctx actualDims elems expectedType
+
+parseRecord ::
+  forall m a.
+  (MonadExpandResources m, Vector.Unbox a) =>
+  ParseContext m a ->
+  CurrentDimension ->
+  TensorShape ->
+  Vector a ->
+  Identifier ->
+  Spine Builtin ->
+  m (Value Builtin)
+parseRecord ctx currentDim actualDims actualElems ident spine = do
+  case actualDims of
+    [] -> dimensionMismatchError ctx
+    d : ds -> do
+      fieldDeclarations <- getRecordFields ident
+      checkDimension ctx currentDim (INatLiteral $ length fieldDeclarations) d
+      let splitElems = partitionData d ds actualElems
+      exprs <- zipWithM (parseField ds) splitElems fieldDeclarations
+      return $ VRecord (VFreeVar ident spine) $ OMap.fromList exprs
+  where
+    parseField :: TensorShape -> Vector a -> GenericRecordField (VType Builtin) -> m (FieldName, Value Builtin)
+    parseField elemShape elems (fieldName, fieldTyp) = do
+      fieldValue <- parseContainer ctx (currentDim + 1) elemShape elems fieldTyp
+      return (fieldName, fieldValue)
 
 parseTensor ::
   (MonadExpandResources m, Vector.Unbox a) =>
@@ -214,7 +244,7 @@ doubleElemParser ::
 doubleElemParser decl datasetType file dims values expectedElementType =
   case toTypeValue expectedElementType of
     VRatType {} -> do
-      return $ IRatTensor (mapTensor toRational (toTensor dims values))
+      return $ IRatTensor (mapTensor (Finite . toRational) (toTensor dims values))
     _ -> do
       throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Rat"
 
