@@ -29,7 +29,7 @@ module Vehicle.Backend.Loss.LossCompilation
 where
 
 import Vehicle.Backend.Loss.Core hiding (currentPass)
-import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
+import Vehicle.Compile.Normalise.NBE (normaliseApp, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -262,7 +262,7 @@ convertLogicField field args = do
   logDebugM MaxDetail $ do
     fnDoc <- prettyFriendlyInCtx fn
     return $ "subst-field" <+> pretty field <> ":" <+> fnDoc
-  normaliseAppInEmptyFreeEnv mempty fn (mkExpr accessSpine args)
+  normaliseApp mempty fn (mkExpr accessSpine args)
 
 --------------------------------------------------------------------------------
 -- Index
@@ -436,6 +436,7 @@ convertTranspose convertValue (TransposeArgs t ds xs) = do
   ds' <- convertDims ds
   xs' <- convertValue xs
   return $ mkExpr accessTranspose $ TransposeArgs t' ds' xs'
+
 convertAtVector ::
   (MonadLogic m) =>
   (Value Builtin -> m (Value LossBuiltin)) ->
