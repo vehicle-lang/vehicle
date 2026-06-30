@@ -342,31 +342,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
-        # Apply as: (λsamples. reduction_op(len(samples))(samples).
-        # We cannot know the number of samples at compile time, so we pass both the samples and their length to the reduction_op.
-        # The number of samples is important as it may use them to construct constant tensors of the relevant dimension.
-        samples_name = "_samples"
-        samples_var = py_name(samples_name, provenance=vcl.MISSING)
+        # Apply as: reduction_op(samples)
         return py_app(
-            py.Lambda(
-                args=py_binder(
-                    py.arg(arg=samples_name, annotation=None, **asdict(vcl.MISSING))
-                ),
-                body=py_app(
-                    py_app(
-                        self.translate_expression(expression.reduction_op),
-                        py_app(
-                            py_name("len", provenance=vcl.MISSING),
-                            samples_var,
-                            provenance=vcl.MISSING,
-                        ),
-                        provenance=vcl.MISSING,
-                    ),
-                    samples_var,
-                    provenance=vcl.MISSING,
-                ),
-                **asdict(vcl.MISSING),
-            ),
+            self.translate_expression(expression.reduction_op),
             sampler_call,
             provenance=vcl.MISSING,
         )
@@ -396,8 +374,14 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ConstTensor to builtin call."""
         return py_app(
             py_builtin("ConstTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.c),
-            self.translate_expression(expression.ds),
+            py_scalar(expression.c, provenance=vcl.MISSING),
+            py_tuple(
+                [
+                    py.Constant(value=dim, **asdict(vcl.MISSING))
+                    for dim in expression.ds
+                ],
+                provenance=vcl.MISSING,
+            ),
             provenance=vcl.MISSING,
         )
 
@@ -417,9 +401,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return py_app(
             py_builtin("Transpose", provenance=vcl.MISSING),
             self.translate_expression(expression.xs),
-            provenance=vcl.MISSING,
-        )
-
     def translate_AtTensor(self, expression: vcl.AtTensor) -> py.expr:
         """Translate AtTensor to builtin call."""
         return py_app(

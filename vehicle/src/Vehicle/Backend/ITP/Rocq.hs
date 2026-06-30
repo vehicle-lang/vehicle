@@ -559,7 +559,7 @@ compileBuiltin b args = case b of
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 200) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
     StackTensor -> compileStack args
-    Transpose -> unsupportedError
+    Transpose -> compileApplication [VehicleImport VehicleUtils] "transpose_t" args
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyRecord _ -> unsupportedTensorLikeQuantifier

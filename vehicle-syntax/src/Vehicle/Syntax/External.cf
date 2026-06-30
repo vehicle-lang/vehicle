@@ -138,6 +138,8 @@ position token Name         (letter (letter | digit | '_')*) ;
 position token FieldAccess  ({"."} letter (letter | digit | '_')*);
 position token HoleToken    ({"?"} (letter | digit | '_')*);
 
+separator nonempty Name ",";
+
 -- * Modalities
 
 Irrelevant. Modality ::= "@0";
@@ -188,10 +190,6 @@ separator RecordFieldDef ",";
 
 FieldAssign. RecordFieldAssign ::= Name "=" Expr;
 separator RecordFieldAssign ",";
-
-Supports.   RecordSupports ::= "supports" [Name];
-NoSupports. RecordSupports ::= "";
-separator nonempty Name ",";
 
 -- * Literals
 
@@ -250,7 +248,7 @@ If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
 Impl.    Expr5  ::= Expr6 TokImpl Expr5;
 And.     Expr7  ::= Expr8 TokAnd Expr7;
 Or.      Expr7  ::= Expr8 TokOr  Expr7;
-Transpose. Expr15 ::= TokTranspose Expr15;
+Transpose. Expr14 ::= TokTranspose Expr15;
 Not.     Expr15 ::= TokNot Expr15;
 Eq.      Expr8  ::= Expr8 TokEq Expr9;
 Ne.      Expr8  ::= Expr8 TokNe Expr9;
@@ -359,6 +357,9 @@ DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
 DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}" RecordSupports;
+
+Supports.   RecordSupports ::= "supports" [Name];
+NoSupports. RecordSupports ::= "";
 
 separator Decl ";";
 

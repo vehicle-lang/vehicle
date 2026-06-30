@@ -356,10 +356,10 @@ instance NormalisableBuiltin LossBuiltin where
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
+      Transpose -> None
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       AtVector -> Simple evalAtVector
-      Transpose -> None
     _ -> None
 
   blockingStatus = developerError "Blocking arguments not yet implemented for LossBuiltin"

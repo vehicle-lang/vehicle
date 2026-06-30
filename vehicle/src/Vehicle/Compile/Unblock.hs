@@ -8,13 +8,13 @@ module Vehicle.Compile.Unblock
     unblockIf,
     unblockAtTensor,
     unblockAtVector,
+    unblockTranspose,
     unblockForeachTensor,
     unblockReduceTensor,
     unblockMinRatTensor,
     unblockMaxRatTensor,
     unblockTensorOp2,
     unblockTensorOp1,
-    unblockTranspose,
     unblockRecordAcc,
   )
 where
@@ -290,8 +290,7 @@ unblockRecordAcc unblock typ value fieldName = do
 unblockTranspose ::
   (MonadUnblock m) =>
   TypeUnblockingFunction (Value Builtin) m ->
-  TransposeArgs (Value Builtin) ->
-  m (IfTree (Value Builtin) (Value Builtin))
+  OperationUnblockingFunction TransposeArgs (Value Builtin) m
 unblockTranspose unblock (TransposeArgs t ds xs) = do
   xs' <- unblock xs
   forIfTreeM xs' $ \xs'' ->

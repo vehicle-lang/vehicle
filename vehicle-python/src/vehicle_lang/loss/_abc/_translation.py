@@ -232,9 +232,6 @@ class ABCTranslation(
     @abstractmethod
     def translate_Transpose(
         self, expression: vcl_ast.Transpose
-    ) -> vcl_var.Expression: ...
-
-    @abstractmethod
     def translate_AtTensor(
         self, expression: vcl_ast.AtTensor
     ) -> vcl_var.Expression: ...
