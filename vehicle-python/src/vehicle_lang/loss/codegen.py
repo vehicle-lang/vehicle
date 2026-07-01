@@ -61,6 +61,13 @@ def main() -> int:
     return 0
 
 
+def _dq_tuple(names: list[str]) -> str:
+    inner = ", ".join(f'"{n}"' for n in names)
+    if len(names) == 1:
+        return f"({inner},)"
+    return f"({inner})"
+
+
 def _emit_module(
     out: TextIO, spec_name: str, schemas: list[vcl.DefRecordSchema]
 ) -> None:
@@ -69,7 +76,6 @@ def _emit_module(
     out.write("from __future__ import annotations\n")
     out.write("\n")
     out.write("import torch\n")
-    out.write("\n")
     out.write("from jaxtyping import Float\n")
     out.write("from torch import Tensor\n")
     widths: dict[str, int] = {}
@@ -96,17 +102,17 @@ def _emit_schema(
     out.write("    # Make torch.* ops return plain Tensor, not this subclass.\n")
     out.write("    __torch_function__ = torch._C._disabled_torch_function_impl\n")
     out.write("\n")
-    out.write(f"    _FIELDS: tuple[str, ...] = {tuple(field_names)!r}\n")
+    out.write(f"    _FIELDS: tuple[str, ...] = {_dq_tuple(field_names)}\n")
     out.write(f"    _FLAT_WIDTH: int = {total}\n")
     out.write("    _FIELD_SLOTS: dict[str, tuple[int, int]] = {\n")
     for fname, off, w in zip(field_names, offsets, field_widths):
-        out.write(f"        {fname!r}: ({off}, {off + w}),\n")
+        out.write(f'        "{fname}": ({off}, {off + w}),\n')
     out.write("    }\n")
     out.write("\n")
 
     out.write("    @staticmethod\n")
     out.write(
-        f"    def __new__(cls, *, _from_tensor: Tensor | None = None, **fields: Tensor) -> {name!r}:\n"
+        f'    def __new__(cls, *, _from_tensor: Tensor | None = None, **fields: Tensor) -> "{name}":\n'
     )
     out.write("        if _from_tensor is not None:\n")
     out.write(
@@ -116,18 +122,18 @@ def _emit_schema(
     for fname, ftype in schema.fields:
         match ftype:
             case vcl.JFieldScalarReal():
-                out.write(f"        v_{fname} = torch.as_tensor(fields[{fname!r}])\n")
+                out.write(f'        v_{fname} = torch.as_tensor(fields["{fname}"])\n')
                 out.write(
                     f"        slabs.append(v_{fname}.reshape(*v_{fname}.shape, 1))\n"
                 )
             case vcl.JFieldTensorReal(shape):
-                out.write(f"        v_{fname} = torch.as_tensor(fields[{fname!r}])\n")
+                out.write(f'        v_{fname} = torch.as_tensor(fields["{fname}"])\n')
                 width = _prod_shape(shape)
                 out.write(
                     f"        slabs.append(v_{fname}.reshape(*v_{fname}.shape[:-{len(shape)}], {width}))\n"
                 )
             case vcl.JFieldRecordRef(_):
-                out.write(f"        v_{fname} = fields[{fname!r}]\n")
+                out.write(f'        v_{fname} = fields["{fname}"]\n')
                 out.write(
                     f"        slabs.append(v_{fname}.as_subclass(torch.Tensor))\n"
                 )
@@ -141,7 +147,7 @@ def _emit_schema(
     out.write("\n")
 
     out.write("    @classmethod\n")
-    out.write(f"    def from_tensor(cls, t: Tensor) -> {name!r}:\n")
+    out.write(f'    def from_tensor(cls, t: Tensor) -> "{name}":\n')
     out.write("        return t.as_subclass(cls)  # type: ignore[no-any-return]\n")
     out.write("\n")
     out.write("    def to_tensor(self) -> Tensor:\n")
@@ -151,7 +157,7 @@ def _emit_schema(
         out.write("\n")
         out.write("    @property\n")
         out.write(f"    def {fname}(self) -> {_field_annotation(ftype)}:\n")
-        out.write(f"        lo, hi = {name}._FIELD_SLOTS[{fname!r}]\n")
+        out.write(f'        lo, hi = {name}._FIELD_SLOTS["{fname}"]\n')
         out.write("        base = self.as_subclass(torch.Tensor)[..., lo:hi]\n")
         match ftype:
             case vcl.JFieldScalarReal():
