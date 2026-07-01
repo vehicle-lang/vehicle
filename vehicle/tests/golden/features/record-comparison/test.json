@@ -2,6 +2,6 @@
   {
     "name": "TypeCheck",
     "run": "vehicle typecheck -s spec.vcl",
-    "needs": "spec.vcl"
+    "needs": ["spec.vcl"]
   }
 ]

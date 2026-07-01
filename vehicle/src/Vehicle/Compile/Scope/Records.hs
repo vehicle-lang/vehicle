@@ -152,7 +152,7 @@ createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
 
   let mkConstraint (FieldName pf n, fieldType) k = instanceBinder pf n $ normAppList target [argument]
         where
-          target = FreeVar p validNetworkFieldTypeIdent
+          target = FreeVar mempty validNetworkFieldTypeIdent
           argument = explicit (liftDBIndices (Lv k) fieldType)
 
   -- Construct both the telescope and the typeclass constraints
@@ -189,10 +189,9 @@ createRecordComparisonInstance p recordIdent telescope fields = do
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasComparison"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  let mkConstraint (FieldName pf n, fieldType) k = instanceBinder pf n $ normAppList target [argument, argument]
-        where 
-          target = FreeVar p hasComparisonIdent
-          argument = explicit (liftDBIndices (Lv k) fieldType)
+  let mkConstraint (FieldName _ n, fieldType) k = instanceBinder mempty n $ normAppList target [argument, argument]
+        where target = FreeVar mempty hasComparisonIdent
+              argument = explicit (liftDBIndices (Lv k) fieldType)
 
   let implicitTelescope = fmap (flip setBinderVisibility $ Implicit True) telescope
   let constraintBinders = zipWith mkConstraint fields [0 .. length fields]
@@ -205,19 +204,25 @@ createRecordComparisonInstance p recordIdent telescope fields = do
   let parameterisedRecordType = toDSL $ normAppList (FreeVar p recordIdent) args
   let resultType = fromDSL mempty $ freeVar hasComparisonIdent @@ [parameterisedRecordType, parameterisedRecordType]
 
-  let reduceFieldsWith lRec rRec op (fieldName, _) acc = and' @@ [fieldResult, acc]
-        where 
-          getField r = recordProj parameterisedRecordType r fieldName
-          fieldResult = op @@ [getField lRec, getField rRec]
-          and' = toDSL $ Builtin p (BuiltinFunction And) 
+  let instanceMethods = flip map ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"] $ \methodName -> do
+        let mkComparisonInstance (_, ty) ix = recordProj targetInstanceTy targetInstanceVal targetMethod
+              where targetInstanceTy = freeVar hasComparisonIdent @@ [toDSL ty, toDSL ty] -- We want comparison for the field
+                    targetInstanceVal = toDSL (BoundVar mempty ix) -- We've been givent an instance of comparison at this ix
+                    targetMethod = FieldName mempty methodName -- Find the correct op under this method name
 
-  let generateMethod methodName = (FieldName p methodName, fromDSL p method)
-        where 
-          method = explLam "r1" parameterisedRecordType $ \r1 -> explLam "r2" parameterisedRecordType $ \r2 -> foldr (reduceFieldsWith r1 r2 operation) true fields
-          operation = freeVar $ standardLibIdent methodName -- Need to use the passed-in comparison instance rather than the overloaded one
-          true = toDSL . Builtin p . BuiltinConstructor $ BoolTensorLiteral (ConstantTensor [] True)
+        let reduceFields leftRec rightRec (field, compInst) acc = and' @@ [comparisonResult, acc]
+              where getFieldOf r = recordProj parameterisedRecordType r field
+                    comparisonResult = compInst @@ [getFieldOf leftRec, getFieldOf rightRec]
+                    and' = toDSL . Builtin p . BuiltinFunction $ And
 
-  let instanceMethods = fmap generateMethod ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"]
+        let comparisonInstances = zipWith mkComparisonInstance fields (drop (length telescope) binderIndices)
+
+        let methodFn = explLam "r1" parameterisedRecordType $ \l -> explLam "r2" parameterisedRecordType $ \r -> body l r
+              where body l r = foldr (reduceFields l r) true (zipWith pairFieldsAndInstance fields comparisonInstances)
+                    true = toDSL . Builtin p . BuiltinConstructor . BoolTensorLiteral $ ConstantTensor [] True
+                    pairFieldsAndInstance (name, _) inst = (name, inst)
+
+        (FieldName mempty methodName, fromDSL mempty methodFn)
 
   let functionType = foldr (Pi p) resultType binderList
   let functionBody = foldr (Lam p) (Record p resultType instanceMethods) binderList
