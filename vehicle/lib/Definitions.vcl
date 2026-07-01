@@ -24,8 +24,6 @@ existsInList f xs = fold (\x y -> x or y) False (map f xs)
 append : List A -> List A -> List A
 append xs ys = fold (\y x -> x:y) ys xs
 -- append xs ys = fold (\x y -> x++y) xs ys -- alt, appending at end
--- reference haskell file: standard library (maps std lib definitions to identifier)
--- (identifier IDs free variables, uses application syntax @@  in DSL)
 
 --------------------------------------------------------------------------------
 -- Tensor

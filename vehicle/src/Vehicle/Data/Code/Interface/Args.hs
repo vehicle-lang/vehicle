@@ -160,15 +160,13 @@ instance IsArgs IndexComparisonArgs where
         mkExpr = \(IndexCompArgs n1 n2 x y) -> [implicitIrrelevant n1, implicitIrrelevant n2, explicit x, explicit y]
       }
 
--- | Arguments for binary tensor operations (e.g. +, -)
--- | better desc?: Arguments for tensor comparison operations and reduction
+-- | Arguments for comparisons (e.g. ==, <= etc. ) over tensors
 
 data TensorComparisonArgs expr = TensorComparisonArgs
   { tensorPointwiseDims :: expr, -- implicit irrelevant, shape of tensor at the end
     tensorReduceDims   :: expr, -- implicit relevant, dimensions reduction is performed on.
     tensorOp2Arg1 :: expr, -- explicit, tensor
     tensorOp2Arg2 :: expr -- explicit, tensor
-    -- does naming them same as binary tensor operations cause any issues?
   }
 
 instance IsArgs TensorComparisonArgs where
