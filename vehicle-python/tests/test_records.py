@@ -34,7 +34,7 @@ def types(tmp_path_factory: pytest.TempPathFactory) -> ModuleType:
 
 def _load(types: ModuleType) -> Any:
     return loss_pt.load_specification(
-        SPEC, logic=vcl.DifferentiableLogic.DL2, types=types
+        SPEC, logic=vcl.DL2DifferentiableLogic(), types=types
     )
 
 
@@ -151,7 +151,7 @@ def test_property_receives_pair_instances_throughout(types: ModuleType) -> None:
 def test_record_spec_without_types_raises() -> None:
     """Test that load_specification on a record spec without types= raises with a clear message."""
     with pytest.raises(RuntimeError, match=r"declares @tensor record"):
-        loss_pt.load_specification(SPEC, logic=vcl.DifferentiableLogic.DL2)
+        loss_pt.load_specification(SPEC, logic=vcl.DL2DifferentiableLogic())
 
 
 def test_pair_is_torch_tensor(types: ModuleType) -> None:

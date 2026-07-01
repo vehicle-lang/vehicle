@@ -20,7 +20,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkName)
+import Vehicle.Compile.Resource (NetworkModality (..), NetworkName)
 import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
 import Vehicle.Data.Builtin.Standard.Core
@@ -66,7 +66,7 @@ findInputVariableBounds metaNetworkApps constraints = do
 type BoundsState =
   ( PropertyMetaData,
     GlobalCtx,
-    Map NetworkInputTensorVariable (NetworkName, NetworkApplicationInfo, TensorShape)
+    Map NetworkInputTensorVariable (NetworkName, NetworkApplicationInfo, NetworkModality TensorShape)
   )
 
 isNetworkTensorInputVar :: BoundsState -> SliceVariable -> Maybe NetworkInputTensorVariable
@@ -191,8 +191,10 @@ checkAllBoundsPresent (Partial allPartialbounds assertions) = do
     case Map.lookup var allPartialbounds of
       Nothing -> errorCase wholeTensorUnbounded
       Just partialBounds -> do
-        let partialShape = toPartialShape varShape Nothing
-        missingIndicesOrFlattenedBounds <- fourierMotzkinTensorBoundsElimination partialShape partialBounds
+        let partialShapeOrShapes = flip toPartialShape Nothing <$> varShape
+        missingIndicesOrFlattenedBounds <- case partialShapeOrShapes of
+          UniModal partialShape -> fourierMotzkinTensorBoundsElimination partialShape partialBounds
+          MultiModal _partialShapes -> error "MultiModal IO is not implmeneted yet"
         case missingIndicesOrFlattenedBounds of
           Right bounds -> return $ Right (BoundedValue var bounds)
           Left missingIndices -> errorCase missingIndices

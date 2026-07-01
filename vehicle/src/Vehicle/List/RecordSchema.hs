@@ -42,7 +42,7 @@ declToSchema ::
   Decl Builtin ->
   m (Maybe JDecl)
 declToSchema = \case
-  DefRecord p ident anns _telescope fields
+  DefRecord p ident anns _telescope fields _ops
     | isAnnotatedAsTensor anns -> do
         fieldSchemas <- traverse convertSchemaField fields
         return $ Just $ DefRecordSchema p (nameOf ident) fieldSchemas

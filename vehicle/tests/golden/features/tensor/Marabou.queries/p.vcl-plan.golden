@@ -46,10 +46,13 @@
                           "tag": "ReconstructTensorVariable",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                2,
-                                2
-                              ],
+                              "nestedTensorShape": {
+                                "tag": "UniModal",
+                                "contents": [
+                                  2,
+                                  2
+                                ]
+                              },
                               "nestedStartingVariable": 0
                             },
                             "AllDimensions"
@@ -59,10 +62,13 @@
                           "tag": "ReconstructTensorVariable",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                2,
-                                2
-                              ],
+                              "nestedTensorShape": {
+                                "tag": "UniModal",
+                                "contents": [
+                                  2,
+                                  2
+                                ]
+                              },
                               "nestedStartingVariable": 7
                             },
                             "AllDimensions"
@@ -85,23 +91,29 @@
                         {
                           "networkType": {
                             "networkOutputType": {
-                              "tag": "TensorIOType",
+                              "tag": "UniModal",
                               "contents": {
-                                "dimensions": [
-                                  2,
-                                  2
-                                ],
-                                "baseType": []
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    2,
+                                    2
+                                  ],
+                                  "baseType": []
+                                }
                               }
                             },
                             "networkInputType": {
-                              "tag": "TensorIOType",
+                              "tag": "UniModal",
                               "contents": {
-                                "dimensions": [
-                                  2,
-                                  2
-                                ],
-                                "baseType": []
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    2,
+                                    2
+                                  ],
+                                  "baseType": []
+                                }
                               }
                             }
                           },
@@ -171,10 +183,13 @@
                           "tag": "ReconstructTensorVariable",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                2,
-                                2
-                              ],
+                              "nestedTensorShape": {
+                                "tag": "UniModal",
+                                "contents": [
+                                  2,
+                                  2
+                                ]
+                              },
                               "nestedStartingVariable": 14
                             },
                             "AllDimensions"
@@ -184,10 +199,13 @@
                           "tag": "ReconstructTensorVariable",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                2,
-                                2
-                              ],
+                              "nestedTensorShape": {
+                                "tag": "UniModal",
+                                "contents": [
+                                  2,
+                                  2
+                                ]
+                              },
                               "nestedStartingVariable": 21
                             },
                             "AllDimensions"
@@ -210,23 +228,29 @@
                         {
                           "networkType": {
                             "networkOutputType": {
-                              "tag": "TensorIOType",
+                              "tag": "UniModal",
                               "contents": {
-                                "dimensions": [
-                                  2,
-                                  2
-                                ],
-                                "baseType": []
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    2,
+                                    2
+                                  ],
+                                  "baseType": []
+                                }
                               }
                             },
                             "networkInputType": {
-                              "tag": "TensorIOType",
+                              "tag": "UniModal",
                               "contents": {
-                                "dimensions": [
-                                  2,
-                                  2
-                                ],
-                                "baseType": []
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    2,
+                                    2
+                                  ],
+                                  "baseType": []
+                                }
                               }
                             }
                           },

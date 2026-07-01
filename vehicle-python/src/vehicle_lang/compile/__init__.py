@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, List, Optional
 
 from .. import session as session
 from ..error import VehicleInternalError
@@ -31,9 +31,9 @@ def compile_specification(
     :param cache: The location of the verification cache for ITP compilation.
     """
 
-    args = [
+    args: List[str] = [
         "compile",
-        target._vehicle_option_name,
+        target._vehicle_option_name(),
         "--specification",
         str(path),
     ]

@@ -26,9 +26,16 @@
 
 ### Loss
 
-* Fixed a bug where specs with multiple quantified values would sometimes have the variables switched around in the generated code.
+* BREAKING: Differentiable logics are now referenced in the Python bindings via: `VehicleDifferentiableLogic()` instead of `DifferentiableLogic.Vehicle`.
 
-* Fixed a bug where negations were occasionally being translated with the wrong dimensions.
+* Added the ability to call a custom differentiable logic via the new class `CustomDifferentiableLogic(name)`.
+
+* Fixed bugs where:
+  - specs with multiple quantified values would sometimes have the variables switched around in the generated code.
+  - negations were occasionally being translated with the wrong dimensions.
+  - `const` wasn't being correctly translated.
+  - Tensorflow and PyTorch code was occasionally being generated with invalid `-1` dimensions.
+  - logics that depended on `@parameter` were not supported.
 
 * Added better support for `Vector` operations, e.g. the `mnist-robustness` specification.
 

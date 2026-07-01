@@ -59,7 +59,6 @@ data TypeValue
   | VBoolTensorType (VDims Builtin)
   | VNatTensorType (VDims Builtin)
   | VRatTensorType (VDims Builtin)
-  | VRecordType (VType Builtin) !(VRecordFields Builtin)
   | VIndexTensorType (Value Builtin) (Value Builtin)
   | VListType (Value Builtin)
   | VVectorType (Value Builtin) (Value Builtin)
@@ -72,7 +71,6 @@ toTypeValue t = case t of
   VPi binder value -> VPiType binder value
   VBoundVar lv spine -> VBoundTypeVar lv spine
   VFreeVar v spine -> VFreeTypeVar v spine
-  VRecord recordType fields -> VRecordType recordType fields
   VBuiltin (BuiltinType typ) spine -> case (typ, spine) of
     (UnitType, []) -> VUnitType
     (BoolType, []) -> VBoolType
@@ -106,7 +104,6 @@ fromTypeValue t = case t of
   VNatTensorType ds -> ITensorType (fromTypeValue VNatType) ds
   VIndexTensorType n ds -> ITensorType (fromTypeValue (VIndexType n)) ds
   VVectorType tElem d -> IVectorType tElem d
-  VRecordType _recordType _fields -> undefined
 
 -------------------------------------------------------------------------------
 -- Index

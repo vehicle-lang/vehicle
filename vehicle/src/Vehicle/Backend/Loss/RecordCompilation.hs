@@ -9,8 +9,8 @@ import Vehicle.Backend.Loss.Core
 import Vehicle.Compile.Normalise.NBE qualified as NBE
 import Vehicle.Compile.Normalise.Quote (unnormaliseInCtx)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar, constructTensorisableDims)
 import Vehicle.Data.Builtin.Standard (Builtin)
-import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructTensorisableDims)
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView

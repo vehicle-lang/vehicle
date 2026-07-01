@@ -26,7 +26,6 @@ import Vehicle.Data.AST qualified as V
 import Vehicle.Data.AST.Expr.Desugared qualified as V
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard qualified as V
-import Vehicle.Data.Builtin.Standard.Scoping ()
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Prelude
 import Vehicle.Syntax.External.Abs qualified as B
@@ -105,8 +104,8 @@ elabDeclGroup anns = \case
     return (d', ds)
 
   -- Record declaration
-  B.DefRecord name telescope fields :| ds -> do
-    d' <- elabRecordDefinition anns name telescope fields
+  B.DefRecord name telescope fields supports :| ds -> do
+    d' <- elabRecordDefinition anns name telescope fields supports
     return (d', ds)
 
   -- Annotation declaration.
@@ -247,8 +246,9 @@ elabRecordDefinition ::
   B.Name ->
   [B.NameBinder] ->
   [B.RecordFieldDef] ->
+  B.RecordSupports ->
   m (V.Decl Builtin)
-elabRecordDefinition anns name telescope fields = do
+elabRecordDefinition anns name telescope fields supports = do
   p <- mkProvenance name
   ident <- elabName name
 
@@ -265,10 +265,11 @@ elabRecordDefinition anns name telescope fields = do
     [FunDeclAnn absAnn] ->
       throwError $ RecordDefWithFunctionAnnotation p ident (pretty absAnn)
 
-  fields' <- traverse elabRecordFieldDef fields
   telescope' <- traverse (elabNameBinder elabExpr False) telescope
+  fields' <- traverse elabRecordFieldDef fields
+  supports' <- elabSupportedOperations supports
 
-  return $ V.DefRecord p ident sort telescope' fields'
+  return $ V.DefRecord p ident sort telescope' fields' supports'
 
 elabGenericDefFun ::
   (MonadElab m, DesugarableBuiltin Builtin) =>
@@ -288,6 +289,25 @@ elabGenericDefFun p ident sort t binders e = do
         _ -> B.Lam tokLambda binders tokArrow e
   e' <- elabDeclType body
   return $ V.DefFunction p ident sort t' e'
+
+elabSupportedOperations ::
+  forall m.
+  (MonadElab m) =>
+  B.RecordSupports ->
+  m [V.DerivableRecordOperation]
+elabSupportedOperations = \case
+  B.NoSupports -> return []
+  B.Supports names -> traverse elabOp names
+  where
+    elabOp :: B.Name -> m V.DerivableRecordOperation
+    elabOp name = do
+      let nameStr = unpack $ tkSymbol name
+      let maybeOp = lookupEnumerable show nameStr
+      case maybeOp of
+        Just op -> return op
+        Nothing -> do
+          p <- mkProvenance name
+          throwError $ UnknownSupportsOperation p nameStr
 
 validateOpts :: forall m token. (MonadElab m, IsToken token) => token -> Set Text -> B.DeclAnnOpts -> m [B.DeclAnnOption]
 validateOpts _token _allowedNames B.DeclAnnWithoutOpts = return mempty
@@ -462,9 +482,6 @@ elabExpr expr = case expr of
   B.ReduceMul tk -> builtinFunction V.ReduceMulRatTensor tk []
   B.ReduceMin tk -> builtinFunction V.ReduceMinRatTensor tk []
   B.ReduceMax tk -> builtinFunction V.ReduceMaxRatTensor tk []
-  B.HasEq tk -> builtinTypeClass (V.HasCompare V.Eq) tk []
-  B.HasNotEq tk -> builtinTypeClass (V.HasCompare V.Ne) tk []
-  B.HasLeq tk -> builtinTypeClass (V.HasCompare V.Le) tk []
   B.HasMap tk -> builtinTypeClass V.HasMap tk []
   B.HasFold tk -> builtinTypeClass V.HasFold tk []
   B.IsTensorType tk -> builtinTypeClass V.IsTensorType tk []

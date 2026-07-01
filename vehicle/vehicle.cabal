@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.25.1
+version:            0.26.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -229,7 +229,7 @@ library
     Vehicle.Compile.Property
     Vehicle.Compile.Scope.Core
     Vehicle.Compile.Scope.Generalise
-    Vehicle.Compile.Scope.RecordInstances
+    Vehicle.Compile.Scope.Records
     Vehicle.Compile.Serialise
     Vehicle.Compile.Sugar.Binders
     Vehicle.Compile.Sugar.Core
@@ -297,7 +297,6 @@ library
     Vehicle.Data.Builtin.Standard.IndexSolver
     Vehicle.Data.Builtin.Standard.Instances
     Vehicle.Data.Builtin.Standard.Normalise
-    Vehicle.Data.Builtin.Standard.Scoping
     Vehicle.Data.Builtin.Standard.Type
     Vehicle.Data.Code.Interface.Args
     Vehicle.Data.Code.Interface.Operations
@@ -319,6 +318,7 @@ library
     Vehicle.Data.Variable.Bound.Context.Tensor.Class
     Vehicle.Data.Variable.Bound.Context.Tensor.Core
     Vehicle.Data.Variable.Bound.Context.Tensor.Instance
+    Vehicle.Data.Variable.Bound.Level.Core
     Vehicle.Data.Variable.Free.Context.Class
     Vehicle.Data.Variable.Free.Context.Core
     Vehicle.Data.Variable.Free.Context.Instance

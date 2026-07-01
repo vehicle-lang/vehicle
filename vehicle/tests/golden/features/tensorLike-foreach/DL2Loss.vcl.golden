@@ -3,4 +3,4 @@ record Pair where {a : Real, b : Real}
 
 @property;
 safeBatch : (Pair -> Pair) -> Vector (Tensor Real);
-safeBatch = \ f -> [1.0 / search[_t0] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 1.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))))), 1.0 / search[_t0] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 1.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))))), 1.0 / search[_t0] (\ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 1.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1)))))]
+safeBatch = \ f -> [1.0 / search[_t0] (\ dims -> \ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 1.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))))), 1.0 / search[_t0] (\ dims -> \ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 1.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1))))), 1.0 / search[_t0] (\ dims -> \ xs -> reduceMul xs) [2] (const 0.0 [2]) (const 1.0 [2]) (\ _t0 -> max 0.0 (a (f (Pair (_t0 ! 0) (_t0 ! 1)))))]

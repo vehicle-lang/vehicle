@@ -1,7 +1,8 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Vehicle.Compile.Monomorphisation
-  ( monomorphise,
+  ( DeclarationFilter,
+    monomorphise,
   )
 where
 
@@ -55,7 +56,7 @@ monomorphise ::
   forall m builtin.
   (MonadCompile m, Hashable builtin, PrintableBuiltin builtin) =>
   Prog builtin ->
-  RootDeclarations ->
+  DeclarationFilter builtin ->
   m (Prog builtin)
 monomorphise prog rootDecls =
   logCompilerSection2 MinDetail "monomorphisation" $ do
@@ -67,7 +68,8 @@ monomorphise prog rootDecls =
 --------------------------------------------------------------------------------
 -- Backward pass - collects the sites for monomorphisation
 
-type RootDeclarations = Identifier -> Bool
+-- | Should a declaration be kept in the program even if it is unused?
+type DeclarationFilter builtin = Decl builtin -> Bool
 
 -- | Applications of monomorphisable functions
 type CandidateApplications builtin = Map Identifier (NonEmpty [Arg builtin])
@@ -85,7 +87,7 @@ type MonadCollect builtin m =
 
 monomorphiseProg ::
   (MonadCollect builtin m) =>
-  RootDeclarations ->
+  DeclarationFilter builtin ->
   Prog builtin ->
   m (Prog builtin)
 monomorphiseProg rootDecls (Main decls) = do
@@ -95,28 +97,28 @@ monomorphiseProg rootDecls (Main decls) = do
 
 monomorphiseDecls ::
   (MonadCollect builtin m) =>
-  RootDeclarations ->
+  DeclarationFilter builtin ->
   Decl builtin ->
   m [Decl builtin]
 monomorphiseDecls rootDecls decl = do
   let ident = identifierOf decl
   logCompilerSection2 MaxDetail (quotePretty ident) $ do
     logDebug MaxDetail $ prettyExternal decl <> line
-    newDecls <- monomorphiseDecl decl (rootDecls ident)
+    newDecls <- monomorphiseDecl rootDecls decl
     forM_ newDecls collectReferences
     return newDecls
 
 monomorphiseDecl ::
   (MonadCollect builtin m) =>
+  DeclarationFilter builtin ->
   Decl builtin ->
-  Bool ->
   m [Decl builtin]
-monomorphiseDecl decl isRootDecl =
+monomorphiseDecl rootDecls decl =
   logCompilerSection2 MaxDetail "monomorphising based on previous applications" $ do
     let ident = identifierOf decl
     maybeApplications <- gets (Map.lookup ident)
     result <- case maybeApplications of
-      Nothing -> handleUnusedDecl decl isRootDecl
+      Nothing -> handleUnusedDecl rootDecls decl
       Just apps -> handleUsedDecl apps decl
     modify (Map.delete ident)
     return result
@@ -154,12 +156,13 @@ handleUsedDecl applications decl = do
 
 handleUnusedDecl ::
   (MonadCollect builtin m) =>
+  DeclarationFilter builtin ->
   Decl builtin ->
-  Bool ->
   m [Decl builtin]
-handleUnusedDecl decl isRootDecl = do
+handleUnusedDecl keepDecl decl = do
   logDebug MaxDetail $ "No applications of declaration" <+> quotePretty (identifierOf decl) <+> "found."
-  if isRootDecl && not (isInstanceDecl decl || isProjectionDecl decl)
+
+  if keepDecl decl && not (isInstanceDecl decl || isProjectionDecl decl)
     then do
       -- Work out if the unused declaration needs to be monomorphised
       let fakeArgs = explicit (Hole mempty "fakeArg") : fakeArgs

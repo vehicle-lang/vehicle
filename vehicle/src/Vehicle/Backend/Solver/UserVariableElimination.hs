@@ -1,7 +1,9 @@
 {- HLINT ignore "Use fewer imports" -}
 module Vehicle.Backend.Solver.UserVariableElimination
   ( eliminateExists,
+    eliminateExistsRecord,
     eliminateExistless,
+    compileBoolExpr,
   )
 where
 
@@ -12,6 +14,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
+import Data.Map qualified as Map
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
 import Vehicle.Backend.Solver.UserVariableElimination.LinearExpr (LinearityError (..), compileLinearAssertion)
@@ -22,26 +25,85 @@ import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot)
 import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Normalise.Quote (unnormaliseInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Resource
+import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar, constructTensorisableDims, constructToTensorFreeVar)
 import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..))
 import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, unoptimisedEvalReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructToTensorFreeVar)
 import Vehicle.Data.Code.BooleanExpr (elimIfTree)
+import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DSL (fromDSL, toDSL)
 import Vehicle.Data.MaybeTrivial
-import Vehicle.Data.Variable.Bound.Context.Name (getNameContext, prettyFriendlyInCtx)
+import Vehicle.Data.Variable.Bound.Context.Name (getFreshTensorBinderName, getNameContext, prettyFriendlyInCtx)
 import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStackedChildren)
 import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields, getRecordProvenance)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
+import Vehicle.Verify.Specification (CompilationStep (..))
 import Prelude hiding (Applicative (..))
+
+eliminateExistsRecord ::
+  (MonadQueryStructure m) =>
+  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
+  m (MaybeTrivial Partitions)
+eliminateExistsRecord args = do
+  (wrappedBinderArgs, step) <- wrapQuantifyRecord args
+  maybePartitions <- eliminateExists wrappedBinderArgs
+
+  return $ case maybePartitions of
+    Trivial b -> Trivial b
+    NonTrivial (Partitions m) ->
+      NonTrivial (Partitions (Map.mapKeys ([step] ++) m))
+
+-- | Takes a record quantifier and wraps the binder & body in a tensor quantifier
+--  e.g. given Pair has fields { a : Real, b : Real }
+--  forall (r : Pair) . (body)
+--  becomes
+--  forall (_t0 : tensor Real [2]) . (body (_PairFromTensor _t0))
+wrapQuantifyRecord ::
+  (MonadQueryStructure m) =>
+  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
+  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin), CompilationStep)
+wrapQuantifyRecord QuantifyRecordArgs {..} = do
+  namedCtx <- getNameContext
+  recordTypeIdent <- case toTypeValue quantifyRecordType of
+    VFreeTypeVar v _spine -> pure v
+    _ -> developerError "Record binder is not of expected format."
+
+  -- Construct \r -> body from binder and body in record quantifier args
+  recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody
+  fields <- getRecordFields recordTypeIdent
+  let shape = constructTensorisableDims fields
+  let dims = mkDims shape
+
+  -- Build tensor binder with appropriate dims and type for record
+  let Closure boundEnv _body = quantifyRecordBody
+  tensorType <- eval namedCtx boundEnv $ fromDSL mempty $ tTensor tRat (toDSL dims)
+  normalisedDims <- eval namedCtx boundEnv dims
+  let tensorBinderName = getFreshTensorBinderName namedCtx
+  let tensorBinder = mkExplicitBinder tensorType (Just (mempty, tensorBinderName))
+
+  let tensorBoundVar = explicit $ BoundVar mempty 0
+  recordTypeProv <- getRecordProvenance recordTypeIdent
+  -- Construct _PairFromTensor _t0
+  let fromTensorExpr = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
+
+  -- Construct body (_PairFromTensor _t0)
+  let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
+  let ratTensorArgs = QuantifyRatTensorArgs normalisedDims tensorBinder (Closure boundEnv nestedBody)
+
+  fieldNames <- getRecordFieldNames recordTypeIdent
+  let name = getBinderName quantifyRecordBinder
+  return (ratTensorArgs, ConvertQuantifiedTensorLike tensorBinderName name fieldNames)
 
 eliminateExists ::
   (MonadQueryStructure m) =>
@@ -61,7 +123,7 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
 
     -- Update the global context
     globalCtx <- get
-    (userVar, newGlobalCtx) <- addUserVarToGlobalContext binder userVarShape globalCtx
+    (userVar, newGlobalCtx) <- addUserVarToGlobalContext binder (UniModal userVarShape) globalCtx
     put newGlobalCtx
 
     -- Normalise the expression
@@ -111,8 +173,7 @@ compileBoolExpr expr = do
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VQuantifyRatTensor (Exists, args) -> eliminateExists args
-    -- TODO: RECORD SUPPORT
-    VQuantifyRecord (Exists, _args) -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
+    VQuantifyRecord (Exists, args) -> eliminateExistsRecord args
     ---------------------
     -- Recursive cases --
     ---------------------
@@ -231,29 +292,33 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
 
   -- If our network outputs a tensorisable, convert our output expression to a record
   transformedOutputVarExpr <- case networkOutputType typ of
-    RecordIOType (NetworkRecordType _ recordTyp _ _) -> do
+    UniModal (RecordIOType (NetworkRecordType _ recordTyp _ _)) -> do
       fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
       evalApp ctx fromTensorFn [explicit outputVarExpr]
+    MultiModal _ -> error "Multimodal IO is not implemented yet"
     _ -> return outputVarExpr
 
   -- Create our input equality in terms of tensors (as record equality just converts to tensor equality anyway)
   -- If our network input is a tensorisable, i.e. arg is tensorisable, convert it to a tensor
   transformedArg <- case networkInputType typ of
-    RecordIOType (NetworkRecordType _ recordTyp _ _) -> do
+    UniModal (RecordIOType (NetworkRecordType _ recordTyp _ _)) -> do
       toTensorFn <- eval ctx emptyBoundEnv (constructToTensorFreeVar recordTyp mempty)
       evalApp ctx toTensorFn [explicit arg]
+    MultiModal _ -> error "Multimodal IO is not implemented yet"
     _ -> return arg
 
-  let inputEquality =
-        fromBoolValue $
-          VCompareRatTensor
-            ( Eq,
-              TensorOp2Args
-                { tensorOp2Dims = mkDims (inputShape networkInfo),
-                  tensorOp2Arg1 = inputVarExpr,
-                  tensorOp2Arg2 = transformedArg
-                }
-            )
+  let inputEquality = case inputShape networkInfo of
+        MultiModal _ -> error "MultiModal IO is not implemented yet"
+        UniModal shape ->
+          fromBoolValue $
+            VCompareRatTensor
+              ( Eq,
+                TensorOp2Args
+                  { tensorOp2Dims = mkDims shape,
+                    tensorOp2Arg1 = inputVarExpr,
+                    tensorOp2Arg2 = transformedArg
+                  }
+              )
 
   tell [inputEquality]
 
@@ -267,8 +332,9 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
 
   case networkOutputType typ of
     -- Unblock depending on the type of the output expression from our network
-    RecordIOType (NetworkRecordType {}) -> unblockFnRecord transformedOutputVarExpr
-    TensorIOType (NetworkTensorType {}) -> unblockFnTensor transformedOutputVarExpr
+    UniModal (RecordIOType (NetworkRecordType {})) -> unblockFnRecord transformedOutputVarExpr
+    UniModal (TensorIOType (NetworkTensorType {})) -> unblockFnTensor transformedOutputVarExpr
+    MultiModal _ -> error "Multimodal IO is not implemented yet"
 
 --------------------------------------------------------------------------------
 -- Elimination operations

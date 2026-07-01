@@ -185,7 +185,7 @@ convertProg (S.Main decls) = Main <$> goDecls decls
 convertDecl :: (MonadJSON m) => S.Decl LossBuiltin -> m JDecl
 convertDecl = \case
   S.DefAbstract {} -> developerError "Found abstract definition when converting to JSON"
-  S.DefRecord p ident anns _telescope fields
+  S.DefRecord p ident anns _telescope fields _ops
     | isAnnotatedAsTensor anns -> do
         fieldSchemas <- traverse convertSchemaField fields
         return $ DefRecordSchema p (nameOf ident) fieldSchemas
@@ -280,7 +280,7 @@ convertBuiltinType b spine = case b of
     L.IndexType -> convertIndexType spine
     L.NatType -> convertNullaryOp b DimensionType spine
     L.RatType -> convertNullaryOp b RatType spine
-    L.ListType -> convertNullaryOp b DimensionsType spine
+    L.ListType -> convertListType spine
     L.TensorType -> convertTensorType spine
     L.VectorType -> convertVectorType spine
   _ -> dependentTypesError b
@@ -299,6 +299,11 @@ convertVectorType :: (MonadJSON m) => Spine LossBuiltin -> m JType
 convertVectorType spine = case spine of
   (fmap argExpr -> [t, _d]) -> VectorType <$> convertTypeValue t
   _ -> arityError L.VectorType 2 spine
+
+convertListType :: (MonadJSON m) => Spine LossBuiltin -> m JType
+convertListType spine = case spine of
+  (fmap argExpr -> [_t]) -> return DimensionsType
+  _ -> arityError L.ListType 1 spine
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -556,7 +561,7 @@ fromJDecl = \case
       ratTyp <- toType L.RatType []
       let recoverField (fname, ft) =
             (FieldName mempty fname, fieldTypeToExpr ratTyp ft)
-      return $ S.DefRecord p ident (Just AnnTensor) [] (fmap recoverField fields)
+      return $ S.DefRecord p ident (Just AnnTensor) [] (fmap recoverField fields) []
   where
     fieldTypeToExpr ratTyp = \case
       JFieldScalarReal -> ratTyp
