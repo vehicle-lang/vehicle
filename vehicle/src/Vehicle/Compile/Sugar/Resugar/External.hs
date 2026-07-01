@@ -280,7 +280,7 @@ delabBuiltinFunction fun args = case fun of
   V.StackTensor {} -> rawDelab
   V.ConstTensor -> delabApp (B.Const tokConst) args
   V.Iterate -> rawDelab
-  V.Transpose -> delabOp1 B.Transpose tokTranspose args
+  V.Transpose -> delabApp (B.Transpose tokTranspose) args
   where
     rawDelab = cheatDelabPretty fun args
 
