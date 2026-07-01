@@ -73,31 +73,6 @@ support for new ones should be relatively simple, assuming that they have
 the ability to call out to external solvers. Please get in touch if you are
 interested in adding support for a new ITP.
 
-Feature support across backends
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Language features with backend-specific restrictions:
-
-.. list-table::
-   :widths: 20 15 15 15 15
-   :header-rows: 1
-
-   * - Feature
-     - Agda
-     - Rocq
-     - Isabelle
-     - Imandra
-   * - ``transpose`` (any rank)
-     - yes
-     - rank-2 only [#rocq-transpose-rank]_
-     - yes
-     - yes
-
-.. [#rocq-transpose-rank] Targeting Rocq with a higher-rank transpose is
-   a compile error. The wrapped mathcomp matrix module does not expose
-   the tabulate-and-lookup primitive on ``'nT[R]_(us)`` the general-rank
-   case needs.
-
 Agda
 ~~~~
 
@@ -163,6 +138,16 @@ Postulated resources
 
 Similarly to Agda, networks and datasets are expressed as opaque :code:`Parameter`
 declarations within Rocq. Hence it is not possible to evaluate a network within Rocq.
+
+.. _exporting-rocq-transpose-limitation:
+
+Rank of ``transpose``
+#####################
+
+Targeting Rocq with a ``transpose`` of rank higher than 2 is a compile-time
+error. The mathcomp matrix module wrapped by ``'nT[R]_(us)`` does not
+expose the tabulate-and-lookup primitive that the general-rank case would
+need.
 
 Isabelle
 ~~~~~~~~
