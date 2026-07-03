@@ -552,7 +552,7 @@ compileBuiltin b args = case b of
     ReduceMaxRatTensor -> unsupportedError
     ReduceMulRatTensor -> compileApplication [] "reduceMul" args
     ConstTensor -> compileApplication [MathcompImport Algebra] "const_t" args
-    QuantifyRatTensor q -> compileQuantifierFunction q args 
+    QuantifyRatTensor q -> compileQuantifierFunction q args
     AtTensor -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] NotAssociative (Just 30) "$0 ^^ $1" (Just "nindex") args
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 200) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
@@ -655,8 +655,8 @@ compileDerivedFunction fn args = case fn of
 compileQuantifierFunction :: (MonadRocqCompile m) => Quantifier -> [Arg DecidabilityBuiltin] -> m Code
 compileQuantifierFunction q args = case reverse args of
   (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
-  _ -> 
-    compilerDeveloperError $ 
+  _ ->
+    compilerDeveloperError $
     "compilation of quantifier" <+> quotePretty q <+> "with args" <+> prettyVerbose args <+> "to Rocq unsupported"
 
 compileTypeLevelQuantifier ::
