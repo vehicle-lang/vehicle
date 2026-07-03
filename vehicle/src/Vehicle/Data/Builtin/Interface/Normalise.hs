@@ -478,7 +478,7 @@ evalReduceMinRatTensor = evalReduceTensor accessReduceMinRatBuiltin accessRatTen
 evalReduceMaxRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
 evalReduceMaxRatTensor = evalReduceTensor accessReduceMaxRatBuiltin accessRatTensorLiteral evalMaxRatTensor max
 
-evalCompareRatTensor :: (MonadNormBuiltin m, HasBoolExpr Value builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) => ComparisonOp -> EvalSimple TensorComparisonArgs Value builtin m
+evalCompareRatTensor :: forall builtin m. (MonadNormBuiltin m, HasBoolExpr Value builtin, BuiltinHasBoolType builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) => ComparisonOp -> EvalSimple TensorComparisonArgs Value builtin m
 evalCompareRatTensor op = \case
   -- base case where we are up to pointwise comparison (dims1/pDims = [])
   TensorComparisonArgs IDimNil rDims xs ys -> -- xs and ys passed on to evalHeteteroTensorOp2 to handle
@@ -506,8 +506,7 @@ evalCompareRatTensor op = \case
     do
       newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (stackElements xs) (stackElements ys)
       evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
-  _ -> _
-  -- _ -> Nothing
+  args -> return $ mkExpr accessCompareRatTensor (op, args)
 
   where
     unstackExpr :: Tensor ExtendedRational -> [Value builtin]
@@ -592,15 +591,12 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
     goComparisons :: [TensorOpEvalData TensorComparisonArgs builtin m] -> Maybe (m (Value builtin))
     goComparisons = \case
       (accessOpC, evalOpC, _) : remainingOpsComparison -> case accessOpC tensor of
-        Just (TensorComparisonArgs pDims _rDims xs ys) -> Just $ do
+        Just (TensorComparisonArgs (IDimCons _pDim pDims) rDims xs ys) -> Just $ do
           xsi <- recEvalAt xs
           ysi <- recEvalAt ys
-          evalOpC $ TensorComparisonArgs pDims ds xsi ysi
-          -- rDims goes down to ds (remaining dimensions after indexing?)
-          -- pDims remains the same
+          evalOpC $ TensorComparisonArgs pDims rDims xsi ysi
         _ -> goComparisons remainingOpsComparison
       [] -> Nothing
-    -- do the same thing as above (evaluation at i)
 
     goForeach :: Maybe (m (Value builtin))
     goForeach = case getExpr accessForeachTensor tensor of
