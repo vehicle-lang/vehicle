@@ -657,7 +657,7 @@ compileQuantifierFunction q args = case reverse args of
   (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
   _ ->
     compilerDeveloperError $
-    "compilation of quantifier" <+> quotePretty q <+> "with args" <+> prettyVerbose args <+> "to Rocq unsupported"
+      "compilation of quantifier" <+> quotePretty q <+> "with args" <+> prettyVerbose args <+> "to Rocq unsupported"
 
 compileTypeLevelQuantifier ::
   (MonadRocqCompile m) =>
