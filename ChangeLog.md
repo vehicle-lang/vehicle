@@ -2,6 +2,12 @@
 
 ## Next release
 
+### General
+
+* Fixed bug where comparisons of tensor inequalities underneath `exists` was being compiled incorrectly in both solver and loss backends.
+
+## v0.26.0
+
 ### Language
 
 * BREAKING: with the introduction of `infinity` to the language in `v0.25` all reduction operations have
