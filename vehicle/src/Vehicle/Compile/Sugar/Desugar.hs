@@ -553,6 +553,9 @@ elabTypeBinder elab folded = \case
   B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ That t
   B.BasicTypeBinder b -> elabBasicBinder elab folded b
 
+-- re: elabCompareReduced and elabComparePointwise, even though Pointwise and Reduced Tensor Comparisons are distinct in the frontend/user syntax,
+-- the compiler moves them to a single representation, CompareRatTensor that is able to handle both pointwise and reduced.
+
 elabCompareReduced :: (MonadElab m) => B.Expr -> m (V.Expr Builtin)
 elabCompareReduced = \case
   B.CompareRatTensorReducedEq tk -> builtinFunction (V.CompareRatTensor V.Eq) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
