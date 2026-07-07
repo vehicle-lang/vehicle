@@ -186,8 +186,7 @@ data BoolValue
   | VOr (TensorOp2Args (Value Builtin))
   | VCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
   | VCompareNat (ComparisonOp, Op2Args (Value Builtin))
-  | VCompareRatTensor (ComparisonOp, TensorComparisonArgs (Value Builtin))
-  -- | VCompareRatTensor (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VCompareRatTensor (ComparisonOp, TensorOp2Args (Value Builtin))
   | VReduceAndTensor (TensorReductionArgs (Value Builtin))
   | VReduceOrTensor (TensorReductionArgs (Value Builtin))
   | VQuantifyRatTensor (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
@@ -201,10 +200,7 @@ toBoolValue expr = case expr of
   (getExpr accessAndTensor -> Just args) -> VAnd args
   (getExpr accessOrTensor -> Just args) -> VOr args
   (getExpr accessNotTensor -> Just args) -> VNot args
-  (getExpr accessCompareRatTensor -> Just args) -> VCompareRatTensor args
-    -- should be able to just pass this directly, as it doesn't need to be differentiated from a pointwise and a reduced
-  -- (getExpr accessCompareRatTensorPointwise -> Just args) -> fromComparison $ Left args
-  -- (getExpr accessCompareRatTensorReduced -> Just args) -> fromComparison $ Right args
+  (getExpr accessCompareRatTensor -> Just args) -> fromComparison args
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just args) -> VQuantifyRatTensor args
@@ -226,8 +222,7 @@ fromBoolValue = \case
   VNot args -> mkExpr accessNotTensor args
   VCompareNat args -> mkExpr accessCompareNat args
   VCompareIndex args -> mkExpr accessCompareIndex args
-  VCompareRatTensor args -> mkExpr accessCompareRatTensor args
-  -- VCompareRatTensor args -> toComparison args
+  VCompareRatTensor (op, args) -> mkExpr accessCompareRatTensor (op, toTCArgs (Left args))
   VQuantifyRatTensor args -> mkExpr accessQuantifyRatTensor args
   VQuantifyRecord _args -> undefined
   VReduceAndTensor args -> mkExpr accessReduceAnd args
@@ -235,21 +230,13 @@ fromBoolValue = \case
   VBoolIf args -> mkExpr accessIf args
   VBoolAt args -> mkExpr accessAtTensor args
 
--- fromComparison ::
---   Either
---     (ComparisonOp, TensorOp2Args (Value Builtin))
---     (ComparisonOp, TensorReduceComparisonArgs (Value Builtin)) ->
---   BoolValue
--- fromComparison = \case
---   Left (op, args) -> VCompareRatTensor (op, args)
---   Right (op, TensorReduceComparisonArgs d ds e1 e2) ->
---     VCompareRatTensor (op, TensorOp2Args (IDimCons d ds) e1 e2)
+-- take TensorComparisonArgs and move to BoolValue with TensorOp2Args
+fromComparison :: (ComparisonOp, TensorComparisonArgs (Value Builtin)) -> BoolValue
+fromComparison (op, args) = case args of
+  TensorComparisonArgs pDims (toDimensionsValue -> VDimsNil) e1 e2 -> VCompareRatTensor (op, TensorOp2Args pDims e1 e2)
+  TensorComparisonArgs (toDimensionsValue -> VDimsNil) rDims e1 e2 -> VCompareRatTensor (op, TensorOp2Args rDims e1 e2)
+  _ -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose (mkExpr accessCompareRatTensor (op, args))
 
--- toComparison :: (ComparisonOp, TensorOp2Args (Value Builtin)) -> Value Builtin
--- toComparison (op, TensorOp2Args dims e1 e2) = case toDimensionsValue dims of
---   VDimsNil -> mkExpr accessCompareRatTensorPointwise (op, TensorOp2Args dims e1 e2)
---   VDimsCons d ds -> mkExpr accessCompareRatTensorReduced (op, TensorReduceComparisonArgs d ds e1 e2)
---   _ -> developerError "Unexpected tensorOp2Args for comparison"
 
 -- is defined in normalise so doesnt need to be handled here?
 -- evalCompareRatTensor :: (MonadNormBuiltin m, MonadFreeContext Builtin m, MonadReadableNameContext m) => ComparisonOp -> EvalSimple TensorComparisonArgs Value Builtin m
@@ -275,8 +262,8 @@ data BoolTensorValue
   | VBoolTensorOr (TensorOp2Args (Value Builtin))
   | VBoolTensorCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
   | VBoolTensorCompareNat (ComparisonOp, Op2Args (Value Builtin))
-  | VBoolTensorCompareRatPointwise (ComparisonOp, TensorComparisonArgs (Value Builtin))
-  | VBoolTensorCompareRatReduced (ComparisonOp, TensorComparisonArgs (Value Builtin))
+  | VBoolTensorCompareRatPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VBoolTensorCompareRatReduced (ComparisonOp, TensorReduceComparisonArgs (Value Builtin))
   | VBoolTensorReduceAnd (TensorReductionArgs (Value Builtin))
   | VBoolTensorReduceOr (TensorReductionArgs (Value Builtin))
   | VBoolTensorQuantifyRat (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
@@ -293,13 +280,11 @@ toBoolTensorValue expr = case expr of
   (getExpr accessAndTensor -> Just args) -> VBoolTensorAnd args
   (getExpr accessOrTensor -> Just args) -> VBoolTensorOr args
   (getExpr accessNotTensor -> Just args) -> VBoolTensorNot args
-  (getExpr accessCompareRatTensor -> Just args) -> case args of 
-    (_op, TensorComparisonArgs _pDims (toDimensionsValue -> VDimsNil) _xs _ys) -> VBoolTensorCompareRatPointwise args
-    (_op, TensorComparisonArgs (toDimensionsValue -> VDimsNil) _rDims _xs _ys) -> VBoolTensorCompareRatReduced args
-    -- actually not too sure what we should do in this case
-    _ -> developerError $ "ill-typed BoolTensor expression:" <+> prettyVerbose expr
-  -- (getExpr accessCompareRatTensorPointwise -> Just args) -> VBoolTensorCompareRatPointwise args
-  -- (getExpr accessCompareRatTensorReduced -> Just args) -> VBoolTensorCompareRatReduced args
+  (getExpr accessCompareRatTensor -> Just (op, args)) -> case fromTCArgs args of 
+    -- pointwise, TensorOp2Args
+    Left args' -> VBoolTensorCompareRatPointwise (op, args')
+    -- reduced, TensorReduceComparisonArgs
+    Right args' -> VBoolTensorCompareRatReduced (op, args')
   (getExpr accessCompareNat -> Just args) -> VBoolTensorCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VBoolTensorCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just args) -> VBoolTensorQuantifyRat args
@@ -324,8 +309,8 @@ fromBoolTensorValue = \case
   VBoolTensorNot args -> mkExpr accessNotTensor args
   VBoolTensorCompareNat args -> mkExpr accessCompareNat args
   VBoolTensorCompareIndex args -> mkExpr accessCompareIndex args
-  VBoolTensorCompareRatPointwise args -> mkExpr accessCompareRatTensor args
-  VBoolTensorCompareRatReduced args -> mkExpr accessCompareRatTensor args
+  VBoolTensorCompareRatPointwise (op, args) -> mkExpr accessCompareRatTensor (op, toTCArgs (Left args))
+  VBoolTensorCompareRatReduced (op, args) -> mkExpr accessCompareRatTensor (op, toTCArgs (Right args))
   VBoolTensorQuantifyRat args -> mkExpr accessQuantifyRatTensor args
   VBoolTensorQuantifyRecord args -> mkExpr accessQuantifyRecord args
   VBoolTensorReduceAnd args -> mkExpr accessReduceAnd args
@@ -345,7 +330,7 @@ data MultiDimBoolTensorValue
   | VPointwiseNot (TensorOp1Args (Value Builtin))
   | VPointwiseAnd (TensorOp2Args (Value Builtin))
   | VPointwiseOr (TensorOp2Args (Value Builtin))
-  | VCompareRatTensorPointwise (ComparisonOp, TensorComparisonArgs (Value Builtin))
+  | VCompareRatTensorPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
   | VMultiDimBoolIf (IfArgs (Value Builtin))
   | VMultiDimBoolAt (AtTensorArgs (Value Builtin))
   | VBoolForeach (ForeachTensorArgs (Value Builtin))
@@ -358,10 +343,10 @@ toMultiDimBoolTensorValue expr = case expr of
   (getExpr accessNotTensor -> Just args) -> VPointwiseNot args
   (getExpr accessAndTensor -> Just args) -> VPointwiseAnd args
   (getExpr accessOrTensor -> Just args) -> VPointwiseOr args
-  (getExpr accessCompareRatTensor -> Just args) -> case args of
-    (_op, TensorComparisonArgs _pDims (toDimensionsValue -> VDimsNil) _xs _ys) -> VCompareRatTensorPointwise args
+  (getExpr accessCompareRatTensor -> Just (op, args)) -> case fromTCArgs args of
+    -- if pointwise
+    Left args' -> VCompareRatTensorPointwise (op, args')
     _ -> developerError $ "ill-typed MultiDimBoolTensor expression:" <+> prettyVerbose expr
-  -- (getExpr accessCompareRatTensorPointwise -> Just args) -> VCompareRatTensorPointwise args
   (getExpr accessIf -> Just args) -> VMultiDimBoolIf args
   (getExpr accessAtTensor -> Just args) -> VMultiDimBoolAt args
   (getExpr accessForeachTensor -> Just args) -> VBoolForeach args
@@ -375,8 +360,7 @@ fromMultiDimBoolTensorValue = \case
   VPointwiseNot args -> mkExpr accessNotTensor args
   VPointwiseAnd args -> mkExpr accessAndTensor args
   VPointwiseOr args -> mkExpr accessOrTensor args
-  VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensor args
-  -- VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
+  VCompareRatTensorPointwise (op, args) -> mkExpr accessCompareRatTensor (op, toTCArgs (Left args))
   VMultiDimBoolIf args -> mkExpr accessIf args
   VMultiDimBoolAt args -> mkExpr accessAtTensor args
   VBoolForeach args -> mkExpr accessForeachTensor args
@@ -530,3 +514,22 @@ etaReduceTensor typ dim dims tensor = do
           }
   let mkAt i = unoptimisedEvalAtTensor (mkAtArgs i)
   traverse mkAt [0 .. (dim - 1)]
+
+-- take TensorComparisonArgs and move to TensorOp2Args or TensorReduceComparisonArgs
+fromTCArgs :: TensorComparisonArgs (Value Builtin) -> Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin))
+fromTCArgs = \case
+  -- if pointwise, go to TensorOp2Args
+  TensorComparisonArgs pDims (toDimensionsValue -> VDimsNil) e1 e2 -> Left (TensorOp2Args pDims e1 e2)
+    -- VCompareRatTensor (op, TensorOp2Args pDims e1 e2)
+  -- if reduced, go to TensorReduceComparisonArgs
+  TensorComparisonArgs (toDimensionsValue -> VDimsNil) (IDimCons rDim rDims) e1 e2 -> Right (TensorReduceComparisonArgs rDim rDims e1 e2)
+  -- _ -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose ()
+  _ -> _
+
+-- take TensorOp2Args/TensorReduceComparisonArgs and move to TensorComparisonArgs
+toTCArgs :: Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin)) -> TensorComparisonArgs (Value Builtin)
+toTCArgs = \case
+  -- tensorOp2 -> pointwise
+  Left (TensorOp2Args dims e1 e2) -> TensorComparisonArgs dims IDimNil e1 e2
+  -- tensorReduceComparison -> reduced
+  Right (TensorReduceComparisonArgs d ds e1 e2) -> TensorComparisonArgs IDimNil (IDimCons d ds) e1 e2
