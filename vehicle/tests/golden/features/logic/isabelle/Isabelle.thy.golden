@@ -34,23 +34,24 @@ begin
     equals :: "R tensor \<Rightarrow> R tensor \<Rightarrow> R FlexTensor"
     notEquals :: "R tensor \<Rightarrow> R tensor \<Rightarrow> R FlexTensor"
 
-  definition myLogic  :: "  DifferentiableLogic "
-    where " myLogic   = ( \<lparr> true = ((tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((100000 :: R) )) ])))
-  , false = ((flextensor_from_vec [] [ (((100000 :: R) )) ]))
-  , conjunction = (\<lambda>  x . (\<lambda>  y . ((pointwise_max x y))))
-  , disjunction = (\<lambda>  x . (\<lambda>  y . ((pointwise_min x y))))
-  , negation = (\<lambda>  x . ((tensor_cdot (-1 :: R) x)))
-  , implication = (\<lambda>  x . (\<lambda>  y . ((pointwise_max ((tensor_cdot (-1 :: R) x)) y))))
-  , lt = (\<lambda>  x . (\<lambda>  y . ((tensor_plus x (tensor_cdot (-1 :: R) y)))))
-  , le = (\<lambda>  x . (\<lambda>  y . ((tensor_plus x (tensor_cdot (-1 :: R) y)))))
-  , gt = (\<lambda>  x . (\<lambda>  y . ((tensor_plus y (tensor_cdot (-1 :: R) x)))))
-  , ge = (\<lambda>  x . (\<lambda>  y . ((tensor_plus y (tensor_cdot (-1 :: R) x)))))
-  , equals = (\<lambda>  x . (\<lambda>  y . ((pointwise_max ((tensor_plus x (tensor_cdot (-1 :: R) y))) ((tensor_plus y (tensor_cdot (-1 :: R) x)))))))
-  , notEquals = (\<lambda>  x . (\<lambda>  y . ((tensor_cdot (-1 :: R) (pointwise_max ((tensor_plus x (tensor_cdot (-1 :: R) y))) ((tensor_plus y (tensor_cdot (-1 :: R) x)))))))) \<rparr> ) "
-
   locale  Isabelle  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
+
+    fixes  myLogic  :: " DifferentiableLogic "
+
+    defines  myLogic_def: " myLogic  \<equiv> \<lparr> true = ((tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((100000 :: R) )) ])))
+    , false = ((flextensor_from_vec [] [ (((100000 :: R) )) ]))
+    , conjunction = (\<lambda>  x . (\<lambda>  y . ((pointwise_max x y))))
+    , disjunction = (\<lambda>  x . (\<lambda>  y . ((pointwise_min x y))))
+    , negation = (\<lambda>  x . ((tensor_cdot (-1 :: R) x)))
+    , implication = (\<lambda>  x . (\<lambda>  y . ((pointwise_max ((tensor_cdot (-1 :: R) x)) y))))
+    , lt = (\<lambda>  x . (\<lambda>  y . ((tensor_plus x (tensor_cdot (-1 :: R) y)))))
+    , le = (\<lambda>  x . (\<lambda>  y . ((tensor_plus x (tensor_cdot (-1 :: R) y)))))
+    , gt = (\<lambda>  x . (\<lambda>  y . ((tensor_plus y (tensor_cdot (-1 :: R) x)))))
+    , ge = (\<lambda>  x . (\<lambda>  y . ((tensor_plus y (tensor_cdot (-1 :: R) x)))))
+    , equals = (\<lambda>  x . (\<lambda>  y . ((pointwise_max ((tensor_plus x (tensor_cdot (-1 :: R) y))) ((tensor_plus y (tensor_cdot (-1 :: R) x)))))))
+    , notEquals = (\<lambda>  x . (\<lambda>  y . ((tensor_cdot (-1 :: R) (pointwise_max ((tensor_plus x (tensor_cdot (-1 :: R) y))) ((tensor_plus y (tensor_cdot (-1 :: R) x)))))))) \<rparr> "
 
     assumes  p :  " (\<forall> x. (geqTensorReduced (f x) (true myLogic))) "
 

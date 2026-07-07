@@ -7,13 +7,10 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
-import Control.Monad.State (runStateT)
-import Control.Monad.State.Class (MonadState, gets, modify)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -63,18 +60,17 @@ compileProgToIsabelle (Main ds) options =
     -- Combine the printed documents
 
     -- Extract all locale assumptions (not as Doc annotations)
-    ((localeNets, localeAssms, programDoc), _) <-
-      runStateT
-        ( runFreshNameBoundContextT $ do
-            localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
-            programDoc <- compileProg options localeNets (Main ds)
-            localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
-            return (localeNets, localeAssms, programDoc)
-        )
-        Set.empty
+    (localeNets, localeDefs, localeAssms, programDoc) <-
+      runFreshNameBoundContextT $ do
+        localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
+        localeDefs <- fmap concat (traverse (gatherLocaleDefines localeNets) ds)
+        programDoc <- compileProg options localeNets (Main ds)
+        localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
+        return (localeNets, localeDefs, localeAssms, programDoc)
     let programDependencies =
           collectCodeDependencies programDoc
             `Set.union` collectLocaleDependencies localeNets
+            `Set.union` collectLocaleDependencies localeDefs
             `Set.union` collectLocaleDependencies localeAssms
 
     let nameOfLocale = Text.pack $ case localeName options of
@@ -86,7 +82,7 @@ compileProgToIsabelle (Main ds) options =
             ( (vsep2 :: [Code] -> Code)
                 [ preamble nameOfLocale programDependencies localeAssms,
                   indent 2 programDoc,
-                  postamble nameOfLocale (localeNets ++ localeAssms)
+                  postamble nameOfLocale (localeNets ++ localeDefs ++ localeAssms)
                 ]
             )
 
@@ -127,6 +123,9 @@ collectLocaleDependencies = Set.unions . fmap deps
       PropertyDefStatement stmt -> collectCodeDependencies stmt
       TensorTypeDefStmt _ shape body -> collectCodeDependencies shape `Set.union` collectCodeDependencies body
       IndexTypeDefStmt _ maxI body -> collectCodeDependencies maxI `Set.union` collectCodeDependencies body
+      DefinesFixesStatement name ty -> collectCodeDependencies name `Set.union` collectCodeDependencies ty
+      DefinesEqStatement name bs body ->
+        collectCodeDependencies name `Set.union` collectCodeDependencies bs `Set.union` collectCodeDependencies body
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -154,6 +153,8 @@ data LocaleDef
   | PropertyDefStatement Code
   | TensorTypeDefStmt Identifier Code Code
   | IndexTypeDefStmt Identifier Code Code
+  | DefinesFixesStatement Code Code
+  | DefinesEqStatement Code Code Code
 
 instance Pretty LocaleDef where
   pretty = \case
@@ -164,6 +165,12 @@ instance Pretty LocaleDef where
     PropertyDefStatement l -> unAnnotate l
     TensorTypeDefStmt n shape l -> unAnnotate (compileTensorTypeDef n shape l)
     IndexTypeDefStmt n maxI l -> unAnnotate (compileIndexTypeDef n maxI l)
+    DefinesFixesStatement n t -> ("fixes " <+> name <+> " :: \"" <+> tun <+> "\"")
+      where
+        name = unAnnotate n
+        tun = unAnnotate t
+    DefinesEqStatement n bs body ->
+      "defines " <+> unAnnotate n <> "_def: \"" <+> unAnnotate n <+> unAnnotate bs <+> "\\<equiv>" <+> unAnnotate body <+> "\""
 
 instance Pretty Dependency where
   pretty = \case
@@ -199,6 +206,16 @@ onlyTypeDef = \case
   IndexTypeDefStmt _ _ _ -> True
   _ -> False
 
+onlyDefinesFixes :: LocaleDef -> Bool
+onlyDefinesFixes = \case
+  DefinesFixesStatement _ _ -> True
+  _ -> False
+
+onlyDefinesEq :: LocaleDef -> Bool
+onlyDefinesEq = \case
+  DefinesEqStatement _ _ _ -> True
+  _ -> False
+
 preamble :: Text -> Set Dependency -> [LocaleDef] -> Code
 preamble locale deps localeAssms =
   (vsep2 :: [Code] -> Code)
@@ -213,14 +230,20 @@ preamble locale deps localeAssms =
 
 postamble :: Text -> [LocaleDef] -> Code
 postamble locale localeAssms =
-  (vsep2 :: [Code] -> Code)
-    [ ("  locale " <+> pretty locale <+> " = "),
-      indent 4 (vsep (map pretty (filter onlyNetworkDef localeAssms))),
-      indent 4 (vsep (map pretty (filter onlyPropertyDef localeAssms))),
-      indent 4 "begin",
-      indent 4 "end",
-      "end"
-    ]
+  (vsep2 :: [Code] -> Code) $
+    concat @[]
+      [ [("  locale " <+> pretty locale <+> " = ")],
+        section onlyNetworkDef,
+        section onlyDefinesFixes,
+        section onlyDefinesEq,
+        section onlyPropertyDef,
+        [indent 4 "begin", indent 4 "end", "end"]
+      ]
+  where
+    section :: (LocaleDef -> Bool) -> [Code]
+    section p =
+      let picked = filter p localeAssms
+       in if null picked then [] else [indent 4 (vsep (map pretty picked))]
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
@@ -318,15 +341,20 @@ binderBrackets _topLevel Instance {} = braces . braces
 
 type MonadIsabelleCompile m =
   ( MonadCompile m,
-    MonadNameContext m,
-    MonadState (Set Name) m
+    MonadNameContext m
   )
 
 --------------------------------------------------------------------------------
 -- Program Compilation
 
-compileProg :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Prog DecidabilityBuiltin -> m Code
-compileProg opts localeAssms (Main ds) = vsep2 <$> traverse (compileDecl opts localeAssms) (filter filterRelevantDecls ds)
+compileProg ::
+  (MonadIsabelleCompile m) =>
+  IsabelleOptions ->
+  [LocaleDef] ->
+  Prog DecidabilityBuiltin ->
+  m Code
+compileProg opts localeAssms (Main ds) =
+  vsep2 <$> traverse (compileDecl opts localeAssms) (filter filterRelevantDecls ds)
 
 gatherLocaleNetworks :: (MonadIsabelleCompile m) => IsabelleOptions -> Decl DecidabilityBuiltin -> m [LocaleDef]
 gatherLocaleNetworks _opts = \case
@@ -342,6 +370,34 @@ gatherLocaleStatements _opts localeNets = \case
       cExpr <- compileExpr False localeNets e
       pure [(compileProperty (compileIdentifier n) cExpr)]
     _ -> pure []
+  _ -> pure []
+
+gatherLocaleDefines ::
+  (MonadIsabelleCompile m) =>
+  [LocaleDef] ->
+  Decl DecidabilityBuiltin ->
+  m [LocaleDef]
+gatherLocaleDefines localeNets = \case
+  DefFunction _ n funSort t e -> case funSort of
+    FunctionDecl binderCount Nothing -> emit binderCount
+    TensorCoercionDecl binderCount -> emit binderCount
+    _ -> pure []
+    where
+      emit binderCount = do
+        let (binders, body) = extractDeclBinders binderCount t e
+        bindersT <- compileTopLevelBinders compileTopLevelBinderT localeNets binders
+        bindersV <- compileTopLevelBinders compileTopLevelBinderV localeNets binders
+        defType <- resolveReturnType localeNets bindersT t
+        (_, cBody) <- compileBinders localeNets binders (compileExpr False localeNets body)
+        let cType =
+              if null bindersT
+                then defType
+                else concatWith (\x y -> x <> " \\<Rightarrow> " <> y) bindersT <> " \\<Rightarrow> " <> defType
+        let name = compileIdentifier n
+        pure
+          [ DefinesFixesStatement name cType,
+            DefinesEqStatement name (hsep bindersV) cBody
+          ]
   _ -> pure []
 
 compileDecl :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Decl DecidabilityBuiltin -> m Code
@@ -361,9 +417,8 @@ filterRelevantDecls :: Decl DecidabilityBuiltin -> Bool
 filterRelevantDecls = \case
   DefAbstract _ _ _ _ -> False
   DefFunction _ _ funSort _ _ -> case funSort of
-    FunctionDecl _ (Just AnnProperty) -> False
-    ProjectionDecl {} -> False
-    _ -> True
+    TypeDecl {} -> True
+    _ -> False
   DefRecord {} -> True
 
 compileFunctionDecl ::
@@ -376,7 +431,7 @@ compileFunctionDecl ::
   m Code
 compileFunctionDecl localeAssms ident binderCount t e = do
   let (binders, body) = extractDeclBinders binderCount t e
-  compileFunDef localeAssms ident t binders body
+  compileTypeDef localeAssms ident t binders body
 
 extractDeclBinders ::
   LHSBinderCount ->
@@ -405,7 +460,6 @@ compileRecordDecl localeAssms p ident telescope fields = do
   if null telescope
     then do
       fs' <- traverseRecordFields (compileExpr False localeAssms) fields
-      modify (Set.fromList (map (nameOf . fst) fs') `Set.union`)
       return $
         "record"
           <+> compileIdentifier ident
@@ -489,40 +543,6 @@ compileProperty :: Code -> Code -> LocaleDef
 compileProperty propertyName propertyBody = (PropertyDefStatement codeSnippet)
   where
     codeSnippet = ("assumes " <+> propertyName <+> ":  \"" <+> propertyBody <+> "\"")
-
-compileTopLevelBindersV :: (MonadIsabelleCompile m) => [LocaleDef] -> [Binder DecidabilityBuiltin] -> m [Code]
-compileTopLevelBindersV = compileTopLevelBindersOuter compileLocaleBindersV compileTopLevelBinderV
-
-compileTopLevelBindersT :: (MonadIsabelleCompile m) => [LocaleDef] -> [Binder DecidabilityBuiltin] -> m [Code]
-compileTopLevelBindersT = compileTopLevelBindersOuter compileLocaleBindersT compileTopLevelBinderT
-
-compileTopLevelBindersOuter ::
-  (MonadIsabelleCompile m) =>
-  ([LocaleDef] -> [Code]) ->
-  ([LocaleDef] -> Binder DecidabilityBuiltin -> m (Maybe Code)) ->
-  [LocaleDef] ->
-  [Binder DecidabilityBuiltin] ->
-  m [Code]
-compileTopLevelBindersOuter compileLocaleBinders compileTopLevelBinder localeAssms binders = do
-  let localeResults = compileLocaleBinders localeAssms
-  funBinders <- compileTopLevelBinders compileTopLevelBinder localeAssms binders
-  if (length funBinders == 0)
-    then return []
-    else return $ localeResults ++ funBinders
-
-compileLocaleBindersT :: [LocaleDef] -> [Code]
-compileLocaleBindersT = mapMaybe compileLocaleBindersTMapper
-  where
-    compileLocaleBindersTMapper = \case
-      NetworkDefStatement _ t -> Just (parens t)
-      _ -> Nothing
-
-compileLocaleBindersV :: [LocaleDef] -> [Code]
-compileLocaleBindersV = mapMaybe compileLocaleBindersVMapper
-  where
-    compileLocaleBindersVMapper = \case
-      NetworkDefStatement n _ -> Just n
-      _ -> Nothing
 
 compileTopLevelBinders ::
   (MonadIsabelleCompile m) =>
@@ -648,64 +668,42 @@ compileTypeDefRewrites n shape =
       ]
   )
 
-compileFunDef :: (MonadIsabelleCompile m) => [LocaleDef] -> Identifier -> Expr DecidabilityBuiltin -> [Binder DecidabilityBuiltin] -> Expr DecidabilityBuiltin -> m Code
-compileFunDef localeAssms name (Universe _ _) _ body = do
-  res <- case body of
-    App (Builtin _p (StandardBuiltinType TensorType)) [tensT, maxIdx] -> do
-      cbody <-
-        annotateNotation
-          localeAssms
-          [RequireImport VehicleTensor]
-          0
-          ( "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n"
-              <> "  using dims_tensor_from_lookup by blast\n"
-          )
-          Nothing
-          [tensT, maxIdx]
-      shape <- compileExpr False localeAssms (argExpr maxIdx)
-      return $ compileTensorTypeDef name shape cbody
-    App (Builtin _p (StandardBuiltinType IndexType)) [i] -> do
-      let unfoldings = compileExprUnfoldings (argExpr i)
-      let unfoldingsText =
-            if null unfoldings
-              then ""
-              else renderStrict (layoutCompact (vsep unfoldings)) <> "\n"
-      cbody <-
-        annotateNotation
-          localeAssms
-          [RequireImport VehicleUtils]
-          0
-          ( "\"{ i :: nat. i < ($0) }\"\n"
-              <> unfoldingsText
-              <> "  by (simp, rule_tac x = \"0\" in exI, linarith)\n"
-          )
-          Nothing
-          [i]
-      maxI <- compileExpr False localeAssms (argExpr i)
-      return $ compileIndexTypeDef name maxI cbody
-    _ -> developerError $ "Only tensor and index types are currently supported for custom type definitions."
-  return res
-compileFunDef localeAssms n t binders body = do
-  bindersT <- compileTopLevelBindersT localeAssms binders
-  bindersV <- compileTopLevelBindersV localeAssms binders
-  (_, cbody) <- compileBinders localeAssms binders (compileExpr False localeAssms body)
-  defType <- resolveReturnType localeAssms bindersT t
-  name <- return $ compileIdentifier n
-  return $
-    ( "definition"
-        <+> name
-        <+> " :: \""
-        <+> (if null bindersT then mempty else (concatWith (\x y -> x <> " \\<Rightarrow> " <> y) bindersT) <> " \\<Rightarrow> ")
-        <+> align defType
-        <+> "\"\n  where \""
-        <+> name
-        <+> (if null bindersV then mempty else " ")
-        <+> hsep bindersV
-        <+> "="
-        <+> "("
-        <+> cbody
-        <+> ") \""
-    )
+compileTypeDef :: (MonadIsabelleCompile m) => [LocaleDef] -> Identifier -> Expr DecidabilityBuiltin -> [Binder DecidabilityBuiltin] -> Expr DecidabilityBuiltin -> m Code
+compileTypeDef localeAssms name (Universe _ _) _ body = case body of
+  App (Builtin _p (StandardBuiltinType TensorType)) [tensT, maxIdx] -> do
+    cbody <-
+      annotateNotation
+        localeAssms
+        [RequireImport VehicleTensor]
+        0
+        ( "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n"
+            <> "  using dims_tensor_from_lookup by blast\n"
+        )
+        Nothing
+        [tensT, maxIdx]
+    shape <- compileExpr False localeAssms (argExpr maxIdx)
+    return $ compileTensorTypeDef name shape cbody
+  App (Builtin _p (StandardBuiltinType IndexType)) [i] -> do
+    let unfoldings = compileExprUnfoldings (argExpr i)
+    let unfoldingsText =
+          if null unfoldings
+            then ""
+            else renderStrict (layoutCompact (vsep unfoldings)) <> "\n"
+    cbody <-
+      annotateNotation
+        localeAssms
+        [RequireImport VehicleUtils]
+        0
+        ( "\"{ i :: nat. i < ($0) }\"\n"
+            <> unfoldingsText
+            <> "  by (simp, rule_tac x = \"0\" in exI, linarith)\n"
+        )
+        Nothing
+        [i]
+    maxI <- compileExpr False localeAssms (argExpr i)
+    return $ compileIndexTypeDef name maxI cbody
+  _ -> developerError "Only tensor and index types are currently supported for custom type definitions."
+compileTypeDef _ n _ _ _ = developerError $ "Term-level DefFunction" <+> pretty (nameOf n :: Name) <+> "should have been routed to gatherLocaleDefines"
 
 idxBasedOp :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> [Arg DecidabilityBuiltin] -> m Code
 idxBasedOp localeAssms op args = case args of
@@ -837,19 +835,10 @@ compileApp :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> Expr Decidabili
 compileApp isOutType localeAssms fun args = do
   let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
   case fun of
-    Builtin _p b ->
-      compileBuiltin isOutType localeAssms b userArgs
+    Builtin _p b -> compileBuiltin isOutType localeAssms b userArgs
     _ -> do
       cFun <- compileExpr False localeAssms fun
-      isProjectionFn <- case fun of
-        FreeVar _ n -> gets (Set.member (nameOf n))
-        _ -> return False
-      let localeResults = compileLocaleBindersV localeAssms
-      let cFunText = renderStrict (layoutCompact cFun)
-      let localeResultsText = map (renderStrict . layoutCompact) localeResults
-      if (not (null localeResults) && (cFunText `elem` localeResultsText)) || isProjectionFn
-        then annotateApp localeAssms [] cFun userArgs
-        else annotateApp localeAssms [] (cFun <+> (hsep localeResults)) userArgs
+      annotateApp localeAssms [] cFun userArgs
 
 compileDerivedFunction :: (MonadIsabelleCompile m) => [LocaleDef] -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction localeAssms fn args = case fn of

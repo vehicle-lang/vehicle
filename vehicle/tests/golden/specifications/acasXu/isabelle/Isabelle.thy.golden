@@ -21,9 +21,6 @@ begin
 
   
 
-  definition pi  :: "  R FlexTensor "
-    where " pi   = ( (flextensor_from_vec [] [ (((392699 :: R) / 125000)) ]) ) "
-
   typedef InputVector  =  "{ a :: R tensor. (dims a) = ((5 :: nat) # []) }"
     using dims_tensor_from_lookup by blast
 
@@ -52,21 +49,6 @@ begin
         by (simp add: Abs_tensor_inverse)
     ultimately show ?thesis by simp
   qed
-
-  definition distanceToIntruder  :: "  FlexIndex "
-    where " distanceToIntruder   = ( (Abs_FlexIndex 0) ) "
-
-  definition angleToIntruder  :: "  FlexIndex "
-    where " angleToIntruder   = ( (Abs_FlexIndex 1) ) "
-
-  definition intruderHeading  :: "  FlexIndex "
-    where " intruderHeading   = ( (Abs_FlexIndex 2) ) "
-
-  definition speed  :: "  FlexIndex "
-    where " speed   = ( (Abs_FlexIndex 3) ) "
-
-  definition intruderSpeed  :: "  FlexIndex "
-    where " intruderSpeed   = ( (Abs_FlexIndex 4) ) "
 
   typedef OutputVector  =  "{ a :: R tensor. (dims a) = ((5 :: nat) # []) }"
     using dims_tensor_from_lookup by blast
@@ -97,21 +79,6 @@ begin
     ultimately show ?thesis by simp
   qed
 
-  definition clearOfConflict  :: "  FlexIndex "
-    where " clearOfConflict   = ( (Abs_FlexIndex 0) ) "
-
-  definition weakLeft  :: "  FlexIndex "
-    where " weakLeft   = ( (Abs_FlexIndex 1) ) "
-
-  definition weakRight  :: "  nat "
-    where " weakRight   = ( (2 :: nat) ) "
-
-  definition strongLeft  :: "  FlexIndex "
-    where " strongLeft   = ( (Abs_FlexIndex 3) ) "
-
-  definition strongRight  :: "  FlexIndex "
-    where " strongRight   = ( (Abs_FlexIndex 4) ) "
-
   typedef UnnormalisedInputVector  =  "{ a :: R tensor. (dims a) = ((5 :: nat) # []) }"
     using dims_tensor_from_lookup by blast
 
@@ -141,77 +108,82 @@ begin
     ultimately show ?thesis by simp
   qed
 
-  definition minimumInputValues  :: "  UnnormalisedInputVector "
-    where " minimumInputValues   = ( (combine_subtensors [(flextensor_from_vec [] [ (((0 :: R) )) ]),(tensor_cdot (-1 :: R) pi),(tensor_cdot (-1 :: R) pi),(flextensor_from_vec [] [ (((100 :: R) )) ]),(flextensor_from_vec [] [ (((0 :: R) )) ])]) ) "
-
-  definition maximumInputValues  :: "  UnnormalisedInputVector "
-    where " maximumInputValues   = ( (combine_subtensors [(flextensor_from_vec [] [ (((60261 :: R) )) ]),pi,pi,(flextensor_from_vec [] [ (((1200 :: R) )) ]),(flextensor_from_vec [] [ (((1200 :: R) )) ])]) ) "
-
-  definition validInput  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " validInput   acasXu x = ( (forallIndex (5 :: nat)  (\<lambda>  i . (((leqTensorReduced (flex_subtensor minimumInputValues i) (flex_subtensor x i))) \<and> ((leqTensorReduced (flex_subtensor x i) (flex_subtensor maximumInputValues i)))))) ) "
-
-  definition meanScalingValues  :: "  UnnormalisedInputVector "
-    where " meanScalingValues   = ( (flextensor_from_vec [5] [(((19791091 :: R) / 1000)), (((0 :: R) )), (((0 :: R) )), (((650 :: R) )), (((600 :: R) ))]) ) "
-
-  definition normalise  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  InputVector "
-    where " normalise   acasXu x = ( (foreach (5 :: nat)  (\<lambda>  i . ((pointwise_div (tensor_plus (flex_subtensor x i) (tensor_cdot (-1 :: R) (flex_subtensor meanScalingValues i))) (tensor_plus (flex_subtensor maximumInputValues i) (tensor_cdot (-1 :: R) (flex_subtensor minimumInputValues i))))))) ) "
-
-  definition normAcasXu  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  OutputVector "
-    where " normAcasXu   acasXu x = ( (acasXu ((normalise acasXu x))) ) "
-
-  definition minimalScore  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (nat) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " minimalScore   acasXu i x = ( (forallIndex (5 :: nat)  (\<lambda>  j . (i \<noteq> j \<longrightarrow> (ltTensorReduced (flex_subtensor ((normAcasXu acasXu x)) i) (flex_subtensor ((normAcasXu acasXu x)) j))))) ) "
-
-  definition maximalScore  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (nat) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " maximalScore   acasXu i x = ( (forallIndex (5 :: nat)  (\<lambda>  j . (i \<noteq> j \<longrightarrow> (gtTensorReduced (flex_subtensor ((normAcasXu acasXu x)) i) (flex_subtensor ((normAcasXu acasXu x)) j))))) ) "
-
-  definition scaleCOCOutput  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (R tensor) \<Rightarrow>  R FlexTensor "
-    where " scaleCOCOutput   acasXu x = ( (pointwise_div (tensor_plus x (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((1879721 :: R) / 250000)) ]))) (flextensor_from_vec [] [ (((2337187 :: R) / 6250)) ])) ) "
-
-  definition intruderDistantAndSlower  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " intruderDistantAndSlower   acasXu x = ( ((geqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((55947691 :: R) / 1000)) ]))) \<and> (((geqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1145 :: R) )) ]))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((60 :: R) )) ])))) ) "
-
-  definition directlyAhead  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " directlyAhead   acasXu x = ( (((leqTensorReduced (flextensor_from_vec [] [ (((1500 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((1800 :: R) )) ])))) \<and> (((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((3 :: R) / 50)) ])) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) (flextensor_from_vec [] [ (((3 :: R) / 50)) ])))) ) "
-
-  definition movingTowards  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " movingTowards   acasXu x = ( ((geqTensorReduced (flex_subtensor x intruderHeading) (flextensor_from_vec [] [ (((31 :: R) / 10)) ]))) \<and> (((geqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((980 :: R) )) ]))) \<and> ((geqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((960 :: R) )) ])))) ) "
-
-  definition movingAway  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " movingAway   acasXu x = ( ((eqTensorReduced (flex_subtensor x intruderHeading) (flextensor_from_vec [] [ (((0 :: R) )) ]))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((1000 :: R) )) ]) (flex_subtensor x speed))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((700 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((800 :: R) )) ]))))) ) "
-
-  definition nearAndApproachingFromLeft  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " nearAndApproachingFromLeft   acasXu x = ( (((leqTensorReduced (flextensor_from_vec [] [ (((250 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((400 :: R) )) ])))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((1 :: R) / 5)) ]) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) (flextensor_from_vec [] [ (((2 :: R) / 5)) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) ((tensor_plus (tensor_cdot (-1 :: R) pi) (flextensor_from_vec [] [ (((1 :: R) / 200)) ])))))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((100 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((400 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((400 :: R) )) ]))))))) ) "
-
-  definition intruderFarAway  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " intruderFarAway   acasXu x = ( (((leqTensorReduced (flextensor_from_vec [] [ (((12000 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((62000 :: R) )) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((7 :: R) / 10)) ]))))) \<or> (((leqTensorReduced (flextensor_from_vec [] [ (((7 :: R) / 10)) ]) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) pi))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) ((tensor_plus (tensor_cdot (-1 :: R) pi) (flextensor_from_vec [] [ (((1 :: R) / 200)) ])))))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((100 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1200 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((1200 :: R) )) ]))))))) ) "
-
-  definition largeVerticalSeparation  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " largeVerticalSeparation   acasXu x = ( (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((60760 :: R) )) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) pi))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) pi))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((100 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1200 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((1200 :: R) )) ]))))))) ) "
-
-  definition largeVerticalSeparationAndPreviousWeakLeft  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " largeVerticalSeparationAndPreviousWeakLeft   acasXu x = ( (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((60760 :: R) )) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) ((hadamard_prod (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((3 :: R) / 4)) ])) pi))))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((1 :: R) / 10)) ])) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) (flextensor_from_vec [] [ (((1 :: R) / 10)) ])))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((600 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1200 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((600 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((1200 :: R) )) ]))))))) ) "
-
-  definition previousWeakRightAndNearbyIntruder  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " previousWeakRightAndNearbyIntruder   acasXu x = ( (((leqTensorReduced (flextensor_from_vec [] [ (((2000 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((7000 :: R) )) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((2 :: R) / 5)) ])) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((7 :: R) / 50)) ]))))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) ((tensor_plus (tensor_cdot (-1 :: R) pi) (flextensor_from_vec [] [ (((1 :: R) / 100)) ])))))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((100 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((150 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((150 :: R) )) ]))))))) ) "
-
-  definition intruderFarAway2  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  bool "
-    where " intruderFarAway2   acasXu x = ( (((leqTensorReduced (flextensor_from_vec [] [ (((36000 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((60760 :: R) )) ])))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((7 :: R) / 10)) ]) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) pi))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) ((tensor_plus (tensor_cdot (-1 :: R) pi) (flextensor_from_vec [] [ (((1 :: R) / 100)) ])))))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((900 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1200 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((600 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((1200 :: R) )) ]))))))) ) "
-
   locale  Isabelle  = 
 
     fixes  acasXu  :: " InputVector \<Rightarrow> OutputVector "
 
-    assumes  property1 :  " (\<forall> x. (validInput acasXu x) \<and> (intruderDistantAndSlower acasXu x) \<longrightarrow> (leqTensorReduced (flex_subtensor ((normAcasXu acasXu x)) clearOfConflict) (scaleCOCOutput acasXu ((flextensor_from_vec [] [ (((1500 :: R) )) ]))))) "
-    assumes  property2 :  " (\<forall> x. (validInput acasXu x) \<and> (intruderDistantAndSlower acasXu x) \<longrightarrow> \<not> (maximalScore acasXu clearOfConflict x)) "
-    assumes  property3 :  " (\<forall> x. (validInput acasXu x) \<and> ((directlyAhead acasXu x) \<and> (movingTowards acasXu x)) \<longrightarrow> \<not> (minimalScore acasXu clearOfConflict x)) "
-    assumes  property4 :  " (\<forall> x. (validInput acasXu x) \<and> ((directlyAhead acasXu x) \<and> (movingAway acasXu x)) \<longrightarrow> \<not> (minimalScore acasXu clearOfConflict x)) "
-    assumes  property5 :  " (\<forall> x. (validInput acasXu x) \<and> (nearAndApproachingFromLeft acasXu x) \<longrightarrow> (minimalScore acasXu strongRight x)) "
-    assumes  property6 :  " (\<forall> x. (validInput acasXu x) \<and> (intruderFarAway acasXu x) \<longrightarrow> (minimalScore acasXu clearOfConflict x)) "
-    assumes  property7 :  " (\<forall> x. (validInput acasXu x) \<and> (largeVerticalSeparation acasXu x) \<longrightarrow> (\<not> (minimalScore acasXu strongLeft x)) \<and> (\<not> (minimalScore acasXu strongRight x))) "
-    assumes  property8 :  " (\<forall> x. (validInput acasXu x) \<and> (largeVerticalSeparationAndPreviousWeakLeft acasXu x) \<longrightarrow> (minimalScore acasXu clearOfConflict x) \<or> (minimalScore acasXu weakLeft x)) "
-    assumes  property9 :  " (\<forall> x. (validInput acasXu x) \<and> (previousWeakRightAndNearbyIntruder acasXu x) \<longrightarrow> (minimalScore acasXu strongLeft x)) "
-    assumes  property10 :  " (\<forall> x. (validInput acasXu x) \<and> (intruderFarAway2 acasXu x) \<longrightarrow> (minimalScore acasXu clearOfConflict x)) "
+    fixes  pi  :: " R FlexTensor "
+    fixes  distanceToIntruder  :: " FlexIndex "
+    fixes  angleToIntruder  :: " FlexIndex "
+    fixes  intruderHeading  :: " FlexIndex "
+    fixes  speed  :: " FlexIndex "
+    fixes  intruderSpeed  :: " FlexIndex "
+    fixes  clearOfConflict  :: " FlexIndex "
+    fixes  weakLeft  :: " FlexIndex "
+    fixes  weakRight  :: " nat "
+    fixes  strongLeft  :: " FlexIndex "
+    fixes  strongRight  :: " FlexIndex "
+    fixes  minimumInputValues  :: " UnnormalisedInputVector "
+    fixes  maximumInputValues  :: " UnnormalisedInputVector "
+    fixes  validInput  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  meanScalingValues  :: " UnnormalisedInputVector "
+    fixes  normalise  :: " (UnnormalisedInputVector) \<Rightarrow> InputVector "
+    fixes  normAcasXu  :: " (UnnormalisedInputVector) \<Rightarrow> OutputVector "
+    fixes  minimalScore  :: " (nat) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  maximalScore  :: " (nat) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  scaleCOCOutput  :: " (R tensor) \<Rightarrow> R FlexTensor "
+    fixes  intruderDistantAndSlower  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  directlyAhead  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  movingTowards  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  movingAway  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  nearAndApproachingFromLeft  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  intruderFarAway  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  largeVerticalSeparation  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  largeVerticalSeparationAndPreviousWeakLeft  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  previousWeakRightAndNearbyIntruder  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+    fixes  intruderFarAway2  :: " (UnnormalisedInputVector) \<Rightarrow> bool "
+
+    defines  pi_def: " pi  \<equiv> (flextensor_from_vec [] [ (((392699 :: R) / 125000)) ]) "
+    defines  distanceToIntruder_def: " distanceToIntruder  \<equiv> (Abs_FlexIndex 0) "
+    defines  angleToIntruder_def: " angleToIntruder  \<equiv> (Abs_FlexIndex 1) "
+    defines  intruderHeading_def: " intruderHeading  \<equiv> (Abs_FlexIndex 2) "
+    defines  speed_def: " speed  \<equiv> (Abs_FlexIndex 3) "
+    defines  intruderSpeed_def: " intruderSpeed  \<equiv> (Abs_FlexIndex 4) "
+    defines  clearOfConflict_def: " clearOfConflict  \<equiv> (Abs_FlexIndex 0) "
+    defines  weakLeft_def: " weakLeft  \<equiv> (Abs_FlexIndex 1) "
+    defines  weakRight_def: " weakRight  \<equiv> (2 :: nat) "
+    defines  strongLeft_def: " strongLeft  \<equiv> (Abs_FlexIndex 3) "
+    defines  strongRight_def: " strongRight  \<equiv> (Abs_FlexIndex 4) "
+    defines  minimumInputValues_def: " minimumInputValues  \<equiv> (combine_subtensors [(flextensor_from_vec [] [ (((0 :: R) )) ]),(tensor_cdot (-1 :: R) pi),(tensor_cdot (-1 :: R) pi),(flextensor_from_vec [] [ (((100 :: R) )) ]),(flextensor_from_vec [] [ (((0 :: R) )) ])]) "
+    defines  maximumInputValues_def: " maximumInputValues  \<equiv> (combine_subtensors [(flextensor_from_vec [] [ (((60261 :: R) )) ]),pi,pi,(flextensor_from_vec [] [ (((1200 :: R) )) ]),(flextensor_from_vec [] [ (((1200 :: R) )) ])]) "
+    defines  validInput_def: " validInput x \<equiv> (forallIndex (5 :: nat)  (\<lambda>  i . (((leqTensorReduced (flex_subtensor minimumInputValues i) (flex_subtensor x i))) \<and> ((leqTensorReduced (flex_subtensor x i) (flex_subtensor maximumInputValues i)))))) "
+    defines  meanScalingValues_def: " meanScalingValues  \<equiv> (flextensor_from_vec [5] [(((19791091 :: R) / 1000)), (((0 :: R) )), (((0 :: R) )), (((650 :: R) )), (((600 :: R) ))]) "
+    defines  normalise_def: " normalise x \<equiv> (foreach (5 :: nat)  (\<lambda>  i . ((pointwise_div (tensor_plus (flex_subtensor x i) (tensor_cdot (-1 :: R) (flex_subtensor meanScalingValues i))) (tensor_plus (flex_subtensor maximumInputValues i) (tensor_cdot (-1 :: R) (flex_subtensor minimumInputValues i))))))) "
+    defines  normAcasXu_def: " normAcasXu x \<equiv> (acasXu ((normalise x))) "
+    defines  minimalScore_def: " minimalScore i x \<equiv> (forallIndex (5 :: nat)  (\<lambda>  j . (i \<noteq> j \<longrightarrow> (ltTensorReduced (flex_subtensor ((normAcasXu x)) i) (flex_subtensor ((normAcasXu x)) j))))) "
+    defines  maximalScore_def: " maximalScore i x \<equiv> (forallIndex (5 :: nat)  (\<lambda>  j . (i \<noteq> j \<longrightarrow> (gtTensorReduced (flex_subtensor ((normAcasXu x)) i) (flex_subtensor ((normAcasXu x)) j))))) "
+    defines  scaleCOCOutput_def: " scaleCOCOutput x \<equiv> (pointwise_div (tensor_plus x (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((1879721 :: R) / 250000)) ]))) (flextensor_from_vec [] [ (((2337187 :: R) / 6250)) ])) "
+    defines  intruderDistantAndSlower_def: " intruderDistantAndSlower x \<equiv> ((geqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((55947691 :: R) / 1000)) ]))) \<and> (((geqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1145 :: R) )) ]))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((60 :: R) )) ])))) "
+    defines  directlyAhead_def: " directlyAhead x \<equiv> (((leqTensorReduced (flextensor_from_vec [] [ (((1500 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((1800 :: R) )) ])))) \<and> (((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((3 :: R) / 50)) ])) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) (flextensor_from_vec [] [ (((3 :: R) / 50)) ])))) "
+    defines  movingTowards_def: " movingTowards x \<equiv> ((geqTensorReduced (flex_subtensor x intruderHeading) (flextensor_from_vec [] [ (((31 :: R) / 10)) ]))) \<and> (((geqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((980 :: R) )) ]))) \<and> ((geqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((960 :: R) )) ])))) "
+    defines  movingAway_def: " movingAway x \<equiv> ((eqTensorReduced (flex_subtensor x intruderHeading) (flextensor_from_vec [] [ (((0 :: R) )) ]))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((1000 :: R) )) ]) (flex_subtensor x speed))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((700 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((800 :: R) )) ]))))) "
+    defines  nearAndApproachingFromLeft_def: " nearAndApproachingFromLeft x \<equiv> (((leqTensorReduced (flextensor_from_vec [] [ (((250 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((400 :: R) )) ])))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((1 :: R) / 5)) ]) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) (flextensor_from_vec [] [ (((2 :: R) / 5)) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) ((tensor_plus (tensor_cdot (-1 :: R) pi) (flextensor_from_vec [] [ (((1 :: R) / 200)) ])))))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((100 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((400 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((400 :: R) )) ]))))))) "
+    defines  intruderFarAway_def: " intruderFarAway x \<equiv> (((leqTensorReduced (flextensor_from_vec [] [ (((12000 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((62000 :: R) )) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((7 :: R) / 10)) ]))))) \<or> (((leqTensorReduced (flextensor_from_vec [] [ (((7 :: R) / 10)) ]) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) pi))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) ((tensor_plus (tensor_cdot (-1 :: R) pi) (flextensor_from_vec [] [ (((1 :: R) / 200)) ])))))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((100 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1200 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((1200 :: R) )) ]))))))) "
+    defines  largeVerticalSeparation_def: " largeVerticalSeparation x \<equiv> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((60760 :: R) )) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) pi))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) pi))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((100 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1200 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((1200 :: R) )) ]))))))) "
+    defines  largeVerticalSeparationAndPreviousWeakLeft_def: " largeVerticalSeparationAndPreviousWeakLeft x \<equiv> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((60760 :: R) )) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) ((hadamard_prod (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((3 :: R) / 4)) ])) pi))))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((1 :: R) / 10)) ])) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) (flextensor_from_vec [] [ (((1 :: R) / 10)) ])))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((600 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1200 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((600 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((1200 :: R) )) ]))))))) "
+    defines  previousWeakRightAndNearbyIntruder_def: " previousWeakRightAndNearbyIntruder x \<equiv> (((leqTensorReduced (flextensor_from_vec [] [ (((2000 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((7000 :: R) )) ])))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((2 :: R) / 5)) ])) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((7 :: R) / 50)) ]))))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) ((tensor_plus (tensor_cdot (-1 :: R) pi) (flextensor_from_vec [] [ (((1 :: R) / 100)) ])))))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((100 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((150 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((150 :: R) )) ]))))))) "
+    defines  intruderFarAway2_def: " intruderFarAway2 x \<equiv> (((leqTensorReduced (flextensor_from_vec [] [ (((36000 :: R) )) ]) (flex_subtensor x distanceToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x distanceToIntruder) (flextensor_from_vec [] [ (((60760 :: R) )) ])))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((7 :: R) / 10)) ]) (flex_subtensor x angleToIntruder))) \<and> ((leqTensorReduced (flex_subtensor x angleToIntruder) pi))) \<and> ((((leqTensorReduced (tensor_cdot (-1 :: R) pi) (flex_subtensor x intruderHeading))) \<and> ((leqTensorReduced (flex_subtensor x intruderHeading) ((tensor_plus (tensor_cdot (-1 :: R) pi) (flextensor_from_vec [] [ (((1 :: R) / 100)) ])))))) \<and> ((((leqTensorReduced (flextensor_from_vec [] [ (((900 :: R) )) ]) (flex_subtensor x speed))) \<and> ((leqTensorReduced (flex_subtensor x speed) (flextensor_from_vec [] [ (((1200 :: R) )) ])))) \<and> (((leqTensorReduced (flextensor_from_vec [] [ (((600 :: R) )) ]) (flex_subtensor x intruderSpeed))) \<and> ((leqTensorReduced (flex_subtensor x intruderSpeed) (flextensor_from_vec [] [ (((1200 :: R) )) ]))))))) "
+
+    assumes  property1 :  " (\<forall> x. (validInput x) \<and> (intruderDistantAndSlower x) \<longrightarrow> (leqTensorReduced (flex_subtensor ((normAcasXu x)) clearOfConflict) (scaleCOCOutput ((flextensor_from_vec [] [ (((1500 :: R) )) ]))))) "
+    assumes  property2 :  " (\<forall> x. (validInput x) \<and> (intruderDistantAndSlower x) \<longrightarrow> \<not> (maximalScore clearOfConflict x)) "
+    assumes  property3 :  " (\<forall> x. (validInput x) \<and> ((directlyAhead x) \<and> (movingTowards x)) \<longrightarrow> \<not> (minimalScore clearOfConflict x)) "
+    assumes  property4 :  " (\<forall> x. (validInput x) \<and> ((directlyAhead x) \<and> (movingAway x)) \<longrightarrow> \<not> (minimalScore clearOfConflict x)) "
+    assumes  property5 :  " (\<forall> x. (validInput x) \<and> (nearAndApproachingFromLeft x) \<longrightarrow> (minimalScore strongRight x)) "
+    assumes  property6 :  " (\<forall> x. (validInput x) \<and> (intruderFarAway x) \<longrightarrow> (minimalScore clearOfConflict x)) "
+    assumes  property7 :  " (\<forall> x. (validInput x) \<and> (largeVerticalSeparation x) \<longrightarrow> (\<not> (minimalScore strongLeft x)) \<and> (\<not> (minimalScore strongRight x))) "
+    assumes  property8 :  " (\<forall> x. (validInput x) \<and> (largeVerticalSeparationAndPreviousWeakLeft x) \<longrightarrow> (minimalScore clearOfConflict x) \<or> (minimalScore weakLeft x)) "
+    assumes  property9 :  " (\<forall> x. (validInput x) \<and> (previousWeakRightAndNearbyIntruder x) \<longrightarrow> (minimalScore strongLeft x)) "
+    assumes  property10 :  " (\<forall> x. (validInput x) \<and> (intruderFarAway2 x) \<longrightarrow> (minimalScore clearOfConflict x)) "
 
     begin
 

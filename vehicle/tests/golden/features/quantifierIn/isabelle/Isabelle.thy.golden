@@ -19,12 +19,15 @@ begin
 
   
 
-  definition dataset  :: "  (R tensor) list "
-    where " dataset   = ( (flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [] ) "
+  
 
   locale  Isabelle  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
+
+    fixes  dataset  :: " (R tensor) list "
+
+    defines  dataset_def: " dataset  \<equiv> (flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [] "
 
     assumes  empty :  " (forallInList (\<lambda>  x . (True)) dataset) "
     assumes  double :  " (forallInList (\<lambda>  x . ((forallInList (\<lambda>  y . ((eqTensorReduced x y))) dataset))) dataset) "
