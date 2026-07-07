@@ -29,8 +29,8 @@ begin
     fixes  wrapper  :: " (R tensor) \<Rightarrow> R FlexTensor "
     fixes  result  :: " R FlexTensor "
 
-    defines  wrapper_def: " wrapper x \<equiv> (f x) "
-    defines  result_def: " result  \<equiv> (wrapper ((flextensor_from_vec [1] [(((0 :: R) ))]))) "
+    defines  wrapper_def: " wrapper \<equiv> \<lambda> x . (f x) "
+    defines  result_def: " result \<equiv> (wrapper ((flextensor_from_vec [1] [(((0 :: R) ))]))) "
 
     assumes  p :  " (geqTensorReduced (flex_subtensor result (Abs_FlexIndex 0)) (flextensor_from_vec [] [ (((0 :: R) )) ])) "
 

@@ -40,7 +40,7 @@ begin
 
     fixes  myLogic  :: " DifferentiableLogic "
 
-    defines  myLogic_def: " myLogic  \<equiv> \<lparr> true = ((tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((100000 :: R) )) ])))
+    defines  myLogic_def: " myLogic \<equiv> \<lparr> true = ((tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((100000 :: R) )) ])))
     , false = ((flextensor_from_vec [] [ (((100000 :: R) )) ]))
     , conjunction = (\<lambda>  x . (\<lambda>  y . ((pointwise_max x y))))
     , disjunction = (\<lambda>  x . (\<lambda>  y . ((pointwise_min x y))))

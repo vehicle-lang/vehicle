@@ -27,7 +27,7 @@ begin
 
     fixes  dataset  :: " (R tensor) list "
 
-    defines  dataset_def: " dataset  \<equiv> (flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [] "
+    defines  dataset_def: " dataset \<equiv> (flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [] "
 
     assumes  empty :  " (forallInList (\<lambda>  x . (True)) dataset) "
     assumes  double :  " (forallInList (\<lambda>  x . ((forallInList (\<lambda>  y . ((eqTensorReduced x y))) dataset))) dataset) "

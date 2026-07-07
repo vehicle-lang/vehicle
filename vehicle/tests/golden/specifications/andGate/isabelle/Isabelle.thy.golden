@@ -31,10 +31,10 @@ begin
     fixes  validInput  :: " (R tensor) \<Rightarrow> bool "
     fixes  correctOutput  :: " (R tensor) \<Rightarrow> (R tensor) \<Rightarrow> bool "
 
-    defines  truthy_def: " truthy x \<equiv> (geqTensorReduced x (flextensor_from_vec [] [ (((1 :: R) / 2)) ])) "
-    defines  falsey_def: " falsey x \<equiv> (leqTensorReduced x (flextensor_from_vec [] [ (((1 :: R) / 2)) ])) "
-    defines  validInput_def: " validInput x \<equiv> ((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) x)) \<and> ((leqTensorReduced x (flextensor_from_vec [] [ (((1 :: R) )) ]))) "
-    defines  correctOutput_def: " correctOutput x1 x2 \<equiv> let y = (flex_subtensor ((andGate ((combine_subtensors [x1,x2])))) (Abs_FlexIndex 0)) in ((truthy x1) \<and> (truthy x2) \<longrightarrow> (truthy y)) \<and> (((truthy x1) \<and> (falsey x2) \<longrightarrow> (falsey y)) \<and> (((falsey x1) \<and> (truthy x2) \<longrightarrow> (falsey y)) \<and> ((falsey x1) \<and> (falsey x2) \<longrightarrow> (falsey y)))) "
+    defines  truthy_def: " truthy \<equiv> \<lambda> x . (geqTensorReduced x (flextensor_from_vec [] [ (((1 :: R) / 2)) ])) "
+    defines  falsey_def: " falsey \<equiv> \<lambda> x . (leqTensorReduced x (flextensor_from_vec [] [ (((1 :: R) / 2)) ])) "
+    defines  validInput_def: " validInput \<equiv> \<lambda> x . ((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) x)) \<and> ((leqTensorReduced x (flextensor_from_vec [] [ (((1 :: R) )) ]))) "
+    defines  correctOutput_def: " correctOutput \<equiv> \<lambda> x1 x2 . let y = (flex_subtensor ((andGate ((combine_subtensors [x1,x2])))) (Abs_FlexIndex 0)) in ((truthy x1) \<and> (truthy x2) \<longrightarrow> (truthy y)) \<and> (((truthy x1) \<and> (falsey x2) \<longrightarrow> (falsey y)) \<and> (((falsey x1) \<and> (truthy x2) \<longrightarrow> (falsey y)) \<and> ((falsey x1) \<and> (falsey x2) \<longrightarrow> (falsey y)))) "
 
     assumes  andGateCorrect :  " (\<forall> x1. (\<forall> x2. (validInput x1) \<and> (validInput x2) \<longrightarrow> (correctOutput x1 x2))) "
 

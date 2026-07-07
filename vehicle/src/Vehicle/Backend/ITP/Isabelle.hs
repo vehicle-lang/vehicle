@@ -59,12 +59,14 @@ compileProgToIsabelle (Main ds) options =
     logDebug MaxDetail $ prettyExternal (Main ds)
     -- Combine the printed documents
 
+    let typedefDeps = typedefDependencies ds
+
     -- Extract all locale assumptions (not as Doc annotations)
     (localeNets, localeDefs, localeAssms, programDoc) <-
       runFreshNameBoundContextT $ do
         localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
-        localeDefs <- fmap concat (traverse (gatherLocaleDefines localeNets) ds)
-        programDoc <- compileProg options localeNets (Main ds)
+        localeDefs <- fmap concat (traverse (gatherLocaleDefines typedefDeps localeNets) ds)
+        programDoc <- compileProg options typedefDeps localeNets (Main ds)
         localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
         return (localeNets, localeDefs, localeAssms, programDoc)
     let programDependencies =
@@ -124,8 +126,8 @@ collectLocaleDependencies = Set.unions . fmap deps
       TensorTypeDefStmt _ shape body -> collectCodeDependencies shape `Set.union` collectCodeDependencies body
       IndexTypeDefStmt _ maxI body -> collectCodeDependencies maxI `Set.union` collectCodeDependencies body
       DefinesFixesStatement name ty -> collectCodeDependencies name `Set.union` collectCodeDependencies ty
-      DefinesEqStatement name bs body ->
-        collectCodeDependencies name `Set.union` collectCodeDependencies bs `Set.union` collectCodeDependencies body
+      DefinesEqStatement name body ->
+        collectCodeDependencies name `Set.union` collectCodeDependencies body
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -154,7 +156,7 @@ data LocaleDef
   | TensorTypeDefStmt Identifier Code Code
   | IndexTypeDefStmt Identifier Code Code
   | DefinesFixesStatement Code Code
-  | DefinesEqStatement Code Code Code
+  | DefinesEqStatement Code Code
 
 instance Pretty LocaleDef where
   pretty = \case
@@ -169,8 +171,8 @@ instance Pretty LocaleDef where
       where
         name = unAnnotate n
         tun = unAnnotate t
-    DefinesEqStatement n bs body ->
-      "defines " <+> unAnnotate n <> "_def: \"" <+> unAnnotate n <+> unAnnotate bs <+> "\\<equiv>" <+> unAnnotate body <+> "\""
+    DefinesEqStatement n body ->
+      "defines " <+> unAnnotate n <> "_def: \"" <+> unAnnotate n <+> "\\<equiv>" <+> unAnnotate body <+> "\""
 
 instance Pretty Dependency where
   pretty = \case
@@ -213,7 +215,7 @@ onlyDefinesFixes = \case
 
 onlyDefinesEq :: LocaleDef -> Bool
 onlyDefinesEq = \case
-  DefinesEqStatement _ _ _ -> True
+  DefinesEqStatement _ _ -> True
   _ -> False
 
 preamble :: Text -> Set Dependency -> [LocaleDef] -> Code
@@ -345,16 +347,54 @@ type MonadIsabelleCompile m =
   )
 
 --------------------------------------------------------------------------------
+-- Typedef-dependency classifier
+
+freeVarRefs :: Expr DecidabilityBuiltin -> Set Identifier
+freeVarRefs = \case
+  FreeVar _ n -> Set.singleton n
+  BoundVar _ _ -> Set.empty
+  Universe _ _ -> Set.empty
+  Builtin _ _ -> Set.empty
+  Hole _ _ -> Set.empty
+  Meta _ _ -> Set.empty
+  App fun args ->
+    freeVarRefs fun
+      `Set.union` foldMap (freeVarRefs . argExpr) (NonEmpty.toList args)
+  Lam _ binder body -> freeVarRefs (typeOf binder) `Set.union` freeVarRefs body
+  Pi _ binder body -> freeVarRefs (typeOf binder) `Set.union` freeVarRefs body
+  Let _ bound binder body ->
+    freeVarRefs bound `Set.union` freeVarRefs (typeOf binder) `Set.union` freeVarRefs body
+  Record _ _ fs -> foldMap (freeVarRefs . snd) fs
+  RecordProj _ _ r _ -> freeVarRefs r
+
+typedefDependencies :: [Decl DecidabilityBuiltin] -> Set Identifier
+typedefDependencies ds = fixpoint (foldMap seedFor ds)
+  where
+    seedFor = \case
+      DefFunction _ _ (TypeDecl _) _ e -> freeVarRefs e
+      _ -> Set.empty
+    functionBodies = [(identifierOf d, e) | d@(DefFunction _ _ _ _ e) <- ds]
+    step seen =
+      seen
+        `Set.union` foldMap
+          (\(n, e) -> if n `Set.member` seen then freeVarRefs e else Set.empty)
+          functionBodies
+    fixpoint seen =
+      let seen' = step seen
+       in if seen' == seen then seen else fixpoint seen'
+
+--------------------------------------------------------------------------------
 -- Program Compilation
 
 compileProg ::
   (MonadIsabelleCompile m) =>
   IsabelleOptions ->
+  Set Identifier ->
   [LocaleDef] ->
   Prog DecidabilityBuiltin ->
   m Code
-compileProg opts localeAssms (Main ds) =
-  vsep2 <$> traverse (compileDecl opts localeAssms) (filter filterRelevantDecls ds)
+compileProg opts typedefDeps localeAssms (Main ds) =
+  vsep2 <$> traverse (compileDecl opts localeAssms) (filter (filterRelevantDecls typedefDeps) ds)
 
 gatherLocaleNetworks :: (MonadIsabelleCompile m) => IsabelleOptions -> Decl DecidabilityBuiltin -> m [LocaleDef]
 gatherLocaleNetworks _opts = \case
@@ -374,14 +414,17 @@ gatherLocaleStatements _opts localeNets = \case
 
 gatherLocaleDefines ::
   (MonadIsabelleCompile m) =>
+  Set Identifier ->
   [LocaleDef] ->
   Decl DecidabilityBuiltin ->
   m [LocaleDef]
-gatherLocaleDefines localeNets = \case
-  DefFunction _ n funSort t e -> case funSort of
-    FunctionDecl binderCount Nothing -> emit binderCount
-    TensorCoercionDecl binderCount -> emit binderCount
-    _ -> pure []
+gatherLocaleDefines typedefDeps localeNets = \case
+  DefFunction _ n funSort t e
+    | n `Set.member` typedefDeps -> pure []
+    | otherwise -> case funSort of
+        FunctionDecl binderCount Nothing -> emit binderCount
+        TensorCoercionDecl binderCount -> emit binderCount
+        _ -> pure []
     where
       emit binderCount = do
         let (binders, body) = extractDeclBinders binderCount t e
@@ -393,10 +436,17 @@ gatherLocaleDefines localeNets = \case
               if null bindersT
                 then defType
                 else concatWith (\x y -> x <> " \\<Rightarrow> " <> y) bindersT <> " \\<Rightarrow> " <> defType
+        -- Wrap the body in a lambda rather than emitting the equational
+        -- form `name x \<equiv> body`: Isabelle's coercion inserter can
+        -- rewrite the LHS `x` and produce `Bad arguments on lhs`.
+        let cRhs =
+              if null bindersV
+                then cBody
+                else "\\<lambda>" <+> hsep bindersV <+> ". " <> cBody
         let name = compileIdentifier n
         pure
           [ DefinesFixesStatement name cType,
-            DefinesEqStatement name (hsep bindersV) cBody
+            DefinesEqStatement name cRhs
           ]
   _ -> pure []
 
@@ -406,18 +456,20 @@ compileDecl _opts localeAssms = \case
     developerError "DefAbstract should have been filtered out"
   DefFunction p n funSort t e -> case funSort of
     TypeDecl binderCount -> compileFunctionDecl localeAssms n binderCount t e
-    FunctionDecl binderCount Nothing -> compileFunctionDecl localeAssms n binderCount t e
+    FunctionDecl binderCount Nothing -> compileTermDef localeAssms n binderCount t e
     FunctionDecl _ (Just AnnProperty) -> developerError "Properties should have been filtered out"
     FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Isabelle"
     ProjectionDecl {} -> developerError "ProjectionDecl should have been filtered out"
-    TensorCoercionDecl binderCount -> compileFunctionDecl localeAssms n binderCount t e
+    TensorCoercionDecl binderCount -> compileTermDef localeAssms n binderCount t e
   DefRecord p n _ telescope fields _supports -> compileRecordDecl localeAssms p n telescope fields
 
-filterRelevantDecls :: Decl DecidabilityBuiltin -> Bool
-filterRelevantDecls = \case
+filterRelevantDecls :: Set Identifier -> Decl DecidabilityBuiltin -> Bool
+filterRelevantDecls typedefDeps = \case
   DefAbstract _ _ _ _ -> False
-  DefFunction _ _ funSort _ _ -> case funSort of
+  DefFunction _ n funSort _ _ -> case funSort of
     TypeDecl {} -> True
+    FunctionDecl _ Nothing -> n `Set.member` typedefDeps
+    TensorCoercionDecl _ -> n `Set.member` typedefDeps
     _ -> False
   DefRecord {} -> True
 
@@ -703,7 +755,38 @@ compileTypeDef localeAssms name (Universe _ _) _ body = case body of
     maxI <- compileExpr False localeAssms (argExpr i)
     return $ compileIndexTypeDef name maxI cbody
   _ -> developerError "Only tensor and index types are currently supported for custom type definitions."
-compileTypeDef _ n _ _ _ = developerError $ "Term-level DefFunction" <+> pretty (nameOf n :: Name) <+> "should have been routed to gatherLocaleDefines"
+compileTypeDef _ n _ _ _ = developerError $ "compileTypeDef reached with a non-Universe body:" <+> pretty (nameOf n :: Name)
+
+compileTermDef ::
+  (MonadIsabelleCompile m) =>
+  [LocaleDef] ->
+  Identifier ->
+  LHSBinderCount ->
+  Type DecidabilityBuiltin ->
+  Expr DecidabilityBuiltin ->
+  m Code
+compileTermDef localeAssms n binderCount t e = do
+  let (binders, body) = extractDeclBinders binderCount t e
+  bindersT <- compileTopLevelBinders compileTopLevelBinderT localeAssms binders
+  bindersV <- compileTopLevelBinders compileTopLevelBinderV localeAssms binders
+  defType <- resolveReturnType localeAssms bindersT t
+  (_, cbody) <- compileBinders localeAssms binders (compileExpr False localeAssms body)
+  let name = compileIdentifier n
+  pure
+    ( "definition"
+        <+> name
+        <+> " :: \""
+        <+> (if null bindersT then mempty else concatWith (\x y -> x <> " \\<Rightarrow> " <> y) bindersT <> " \\<Rightarrow> ")
+        <+> align defType
+        <+> "\"\n  where \""
+        <+> name
+        <+> (if null bindersV then mempty else " ")
+        <+> hsep bindersV
+        <+> "="
+        <+> "("
+        <+> cbody
+        <+> ") \""
+    )
 
 idxBasedOp :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> [Arg DecidabilityBuiltin] -> m Code
 idxBasedOp localeAssms op args = case args of

@@ -90,12 +90,12 @@ begin
     fixes  safeInput  :: " (InputVector) \<Rightarrow> bool "
     fixes  safeOutput  :: " (InputVector) \<Rightarrow> bool "
 
-    defines  currentSensor_def: " currentSensor  \<equiv> (Abs_FlexIndex 0) "
-    defines  previousSensor_def: " previousSensor  \<equiv> (Abs_FlexIndex 1) "
-    defines  velocity_def: " velocity  \<equiv> (Abs_FlexIndex 0) "
-    defines  normalise_def: " normalise x \<equiv> (foreach (2 :: nat)  (\<lambda>  i . ((pointwise_div (tensor_plus (flex_subtensor x i) (flextensor_from_vec [] [ (((4 :: R) )) ])) (flextensor_from_vec [] [ (((8 :: R) )) ]))))) "
-    defines  safeInput_def: " safeInput x \<equiv> (forallIndex (2 :: nat)  (\<lambda>  i . (((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((13 :: R) / 4)) ])) (flex_subtensor x i))) \<and> ((leqTensorReduced (flex_subtensor x i) (flextensor_from_vec [] [ (((13 :: R) / 4)) ])))))) "
-    defines  safeOutput_def: " safeOutput x \<equiv> let y = (flex_subtensor ((controller ((normalise x)))) velocity) in ((ltTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((5 :: R) / 4)) ])) ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (flex_subtensor x previousSensor)))))) \<and> ((ltTensorReduced ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (flex_subtensor x previousSensor)))) (flextensor_from_vec [] [ (((5 :: R) / 4)) ]))) "
+    defines  currentSensor_def: " currentSensor \<equiv> (Abs_FlexIndex 0) "
+    defines  previousSensor_def: " previousSensor \<equiv> (Abs_FlexIndex 1) "
+    defines  velocity_def: " velocity \<equiv> (Abs_FlexIndex 0) "
+    defines  normalise_def: " normalise \<equiv> \<lambda> x . (foreach (2 :: nat)  (\<lambda>  i . ((pointwise_div (tensor_plus (flex_subtensor x i) (flextensor_from_vec [] [ (((4 :: R) )) ])) (flextensor_from_vec [] [ (((8 :: R) )) ]))))) "
+    defines  safeInput_def: " safeInput \<equiv> \<lambda> x . (forallIndex (2 :: nat)  (\<lambda>  i . (((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((13 :: R) / 4)) ])) (flex_subtensor x i))) \<and> ((leqTensorReduced (flex_subtensor x i) (flextensor_from_vec [] [ (((13 :: R) / 4)) ])))))) "
+    defines  safeOutput_def: " safeOutput \<equiv> \<lambda> x . let y = (flex_subtensor ((controller ((normalise x)))) velocity) in ((ltTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((5 :: R) / 4)) ])) ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (flex_subtensor x previousSensor)))))) \<and> ((ltTensorReduced ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (flex_subtensor x previousSensor)))) (flextensor_from_vec [] [ (((5 :: R) / 4)) ]))) "
 
     assumes  safe :  " (\<forall> x. (safeInput x) \<longrightarrow> (safeOutput x)) "
 

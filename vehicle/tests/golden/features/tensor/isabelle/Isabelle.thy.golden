@@ -34,12 +34,12 @@ begin
     fixes  addition  :: " R FlexTensor "
     fixes  subtraction  :: " R FlexTensor "
 
-    defines  zeroD_def: " zeroD  \<equiv> (flextensor_from_vec [] [ (((5 :: R) / 2)) ]) "
-    defines  oneD_def: " oneD  \<equiv> (combine_subtensors [zeroD,(flextensor_from_vec [] [ (((1 :: R) )) ])]) "
-    defines  twoD_def: " twoD  \<equiv> (combine_subtensors [oneD,(flextensor_from_vec [2] [(((2 :: R) )), (((3 :: R) ))])]) "
-    defines  lookup2D_def: " lookup2D  \<equiv> (flex_subtensor ((flex_subtensor twoD (Abs_FlexIndex 0))) (Abs_FlexIndex 1)) "
-    defines  addition_def: " addition  \<equiv> (tensor_plus twoD twoD) "
-    defines  subtraction_def: " subtraction  \<equiv> (tensor_plus twoD (tensor_cdot (-1 :: R) twoD)) "
+    defines  zeroD_def: " zeroD \<equiv> (flextensor_from_vec [] [ (((5 :: R) / 2)) ]) "
+    defines  oneD_def: " oneD \<equiv> (combine_subtensors [zeroD,(flextensor_from_vec [] [ (((1 :: R) )) ])]) "
+    defines  twoD_def: " twoD \<equiv> (combine_subtensors [oneD,(flextensor_from_vec [2] [(((2 :: R) )), (((3 :: R) ))])]) "
+    defines  lookup2D_def: " lookup2D \<equiv> (flex_subtensor ((flex_subtensor twoD (Abs_FlexIndex 0))) (Abs_FlexIndex 1)) "
+    defines  addition_def: " addition \<equiv> (tensor_plus twoD twoD) "
+    defines  subtraction_def: " subtraction \<equiv> (tensor_plus twoD (tensor_cdot (-1 :: R) twoD)) "
 
     assumes  p :  " (forallIndex (2 :: nat)  (\<lambda>  i . ((forallIndex (2 :: nat)  (\<lambda>  j . ((geqTensorReduced (flex_subtensor ((flex_subtensor ((tensor_plus (f subtraction) addition)) i)) j) (flextensor_from_vec [] [ (((0 :: R) )) ])))))))) "
 

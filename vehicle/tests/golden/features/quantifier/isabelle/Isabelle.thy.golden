@@ -27,7 +27,7 @@ begin
 
     fixes  unused  :: " bool "
 
-    defines  unused_def: " unused  \<equiv> (\<forall> (x :: R tensor). True) "
+    defines  unused_def: " unused \<equiv> (\<forall> (x :: R tensor). True) "
 
     assumes  expandedExpr :  " (\<forall> x. ((ltTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) x)) \<and> ((ltTensorReduced x (flextensor_from_vec [] [ (((1 :: R) )) ]))) \<longrightarrow> (geqTensorReduced x (f x))) "
     assumes  parallel :  " (\<forall> x. ((ltTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) x)) \<and> ((ltTensorReduced x (flextensor_from_vec [] [ (((1 :: R) )) ]))) \<longrightarrow> (geqTensorReduced (f x) (flextensor_from_vec [] [ (((0 :: R) )) ]))) \<and> (\<exists> y. (((ltTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) y)) \<and> ((ltTensorReduced y (flextensor_from_vec [] [ (((1 :: R) )) ])))) \<and> ((geqTensorReduced (f y) (flextensor_from_vec [] [ (((5 :: R) )) ])))) "

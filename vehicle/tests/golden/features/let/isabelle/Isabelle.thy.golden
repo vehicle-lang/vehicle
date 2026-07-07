@@ -28,10 +28,10 @@ begin
     fixes  letLam  :: " nat \<Rightarrow> nat "
     fixes  falsey  :: " (R tensor) \<Rightarrow> bool "
 
-    defines  e3_def: " e3  \<equiv> let y = ((1 :: nat) + (1 :: nat)) in y "
-    defines  lamLet_def: " lamLet  \<equiv> \<lambda>  (x :: nat) . (let y = x in y) "
-    defines  letLam_def: " letLam  \<equiv> let y = \<lambda>  x . (x) in y "
-    defines  falsey_def: " falsey x \<equiv> (leqTensorReduced x (flextensor_from_vec [] [ (((1 :: R) / 2)) ])) "
+    defines  e3_def: " e3 \<equiv> let y = ((1 :: nat) + (1 :: nat)) in y "
+    defines  lamLet_def: " lamLet \<equiv> \<lambda>  (x :: nat) . (let y = x in y) "
+    defines  letLam_def: " letLam \<equiv> let y = \<lambda>  x . (x) in y "
+    defines  falsey_def: " falsey \<equiv> \<lambda> x . (leqTensorReduced x (flextensor_from_vec [] [ (((1 :: R) / 2)) ])) "
 
     assumes  e1 :  " let x = True in let y = False in x \<and> y "
     assumes  e2 :  " let y = (1 :: nat) in y \<ge> (2 :: nat) "
