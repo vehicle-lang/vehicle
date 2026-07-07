@@ -520,8 +520,6 @@ compileDerivedFunction fn args = case fn of
     Exists -> annotateApp [DataList] (Just listQualifier) "any" args
     Forall -> annotateApp [DataList] (Just listQualifier) "all" args
   TypeAnn -> annotateInfixApp [FunctionBase] 0 Nothing "_∋_" args
-  CompareRatTensorReduced op ->
-    annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") args
 
 --------------------------------------------------------------------------------
 -- Compilation of builtins
@@ -591,6 +589,7 @@ compileBuiltinFunction p f args = case f of
   CompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator True op) args
   CompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator True op) args
   CompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") args
+  CompareRatTensorReduced op -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") args
   FoldList -> annotateApp [DataList] (Just listQualifier) "foldr" args
   MapList -> annotateApp [DataList] (Just listQualifier) "map" args
   ReduceAndTensor -> annotateApp [DataTensor] Nothing "reduceAnd" args
@@ -633,7 +632,7 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropImplies -> annotateInfixApp [] minPrecedence Nothing "_→_" args
   PropCompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator False op) args
   PropCompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator False op) args
-  PropCompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
+  PropCompareRatTensor op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
   PropQuantifyIndex q -> compileQuantifierFunction q args
   PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args

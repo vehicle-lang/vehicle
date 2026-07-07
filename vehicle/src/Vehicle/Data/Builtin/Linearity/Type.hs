@@ -81,7 +81,7 @@ typeOfBuiltinFunction p = \case
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxLinearity
   CompareIndex {} -> typeOfOp2 maxLinearity
-  CompareRatTensorPointwise {} -> typeOfOp2 maxLinearity
+  CompareRatTensor {} -> typeOfOp2 maxLinearity
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap

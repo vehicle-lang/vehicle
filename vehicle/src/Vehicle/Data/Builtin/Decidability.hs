@@ -33,8 +33,7 @@ data TensorTypeClassField
   | FieldReduceOr
   | FieldCompareNat ComparisonOp
   | FieldCompareIndex ComparisonOp
-  | FieldCompareRatTensorPointwise ComparisonOp
-  | FieldCompareRatTensorReduced ComparisonOp
+  | FieldCompareRatTensor ComparisonOp
   | FieldQuantifyIndex Quantifier
   | FieldQuantifyInList Quantifier
   | FieldForeachTensor
@@ -84,7 +83,7 @@ data DecidabilityBuiltinFunction
   | PropImplies
   | PropCompareNat ComparisonOp
   | PropCompareIndex ComparisonOp
-  | PropCompareRatTensorPointwise ComparisonOp
+  | PropCompareRatTensor ComparisonOp
   | PropNaryProduct
   | PropNaryProductAt
   | PropNaryProductForeach
@@ -231,7 +230,7 @@ instance Pretty DecidabilityBuiltinFunction where
     PropImplies -> pretty Implies <> symbol
     PropCompareNat op -> pretty (CompareNat op) <> symbol
     PropCompareIndex op -> pretty (CompareIndex op) <> symbol
-    PropCompareRatTensorPointwise op -> pretty (CompareRatTensorPointwise op) <> symbol
+    PropCompareRatTensor op -> pretty (CompareRatTensor op) <> symbol
     PropQuantifyIndex q -> pretty (QuantifyIndex q) <> symbol
     PropQuantifyInList q -> pretty (QuantifyInList q) <> symbol
     PropNaryProduct -> pretty VectorType <> symbol

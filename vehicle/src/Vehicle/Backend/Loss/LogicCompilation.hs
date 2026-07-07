@@ -19,7 +19,7 @@ import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
-import Vehicle.Data.Builtin.Interface.Normalise (evalCompareRatTensorPointwise)
+import Vehicle.Data.Builtin.Interface.Normalise (evalCompareRatTensor)
 import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LogicDirection, LossBuiltin)
 import Vehicle.Data.Builtin.Standard (Builtin)
 import Vehicle.Data.Code.Interface
@@ -139,7 +139,7 @@ calculateLogicDirection ::
 calculateLogicDirection decl fields = do
   let trueValue = lookupLogicField TruthityElement fields
   let falseValue = lookupLogicField FalsityElement fields
-  result <- evalCompareRatTensorPointwise Le $ TensorOp2Args IDimNil trueValue falseValue
+  result <- evalCompareRatTensor Le $ TensorComparisonArgs IDimNil IDimNil trueValue falseValue
   case result of
     IBoolLiteral b -> return b
     _ -> do

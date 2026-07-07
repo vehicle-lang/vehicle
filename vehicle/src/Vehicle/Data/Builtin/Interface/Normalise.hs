@@ -19,8 +19,6 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor (Tensor, TensorShape, at, extendTensor, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Code.Interface.Operations (accessCompareRatTensor, accessRatTensorLiteral, accessBoolTensorLiteral)
-import System.Console.ANSI (xtermSystem)
 
 -- Okay so the important thing to remember about this module is that we have
 -- a variety of different typing schemes for builtins (standard, polarity,
@@ -481,7 +479,8 @@ evalReduceMaxRatTensor = evalReduceTensor accessReduceMaxRatBuiltin accessRatTen
 evalCompareRatTensor :: forall builtin m. (MonadNormBuiltin m, HasBoolExpr Value builtin, BuiltinHasBoolType builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) => ComparisonOp -> EvalSimple TensorComparisonArgs Value builtin m
 evalCompareRatTensor op = \case
   -- base case where we are up to pointwise comparison (dims1/pDims = [])
-  TensorComparisonArgs IDimNil rDims xs ys -> -- xs and ys passed on to evalHeteteroTensorOp2 to handle
+  TensorComparisonArgs IDimNil rDims xs ys ->
+    -- xs and ys passed on to evalHeteteroTensorOp2 to handle
     evalHeteroTensorOp2 (mkExpr accessCompareRatTensorBuiltin op) accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing (TensorOp2Args rDims xs ys)
   -- reduction cases (two consts) should just be result of one element vs other element, in the shape of pDims
   TensorComparisonArgs pDims _rDims (getExpr accessConstTensor -> Just xs) (getExpr accessConstTensor -> Just ys) ->
@@ -507,7 +506,6 @@ evalCompareRatTensor op = \case
       newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (stackElements xs) (stackElements ys)
       evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
   args -> return $ mkExpr accessCompareRatTensor (op, args)
-
   where
     unstackExpr :: Tensor ExtendedRational -> [Value builtin]
     unstackExpr xs = mkExpr accessRatTensorLiteral <$> unstack xs

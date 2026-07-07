@@ -36,7 +36,6 @@ import Vehicle.Data.Builtin.Core.BasicOperations (ComparisonOp (..))
 import Vehicle.Libraries
 import Vehicle.Libraries.Core (LibraryContent)
 import Vehicle.Prelude
-import Data.ByteString.Builder (standard)
 
 standardLibIdent :: Name -> Identifier
 standardLibIdent = Identifier standardLibraryDefinitionsModulePath

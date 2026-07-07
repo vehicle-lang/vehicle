@@ -32,18 +32,15 @@ module Vehicle.Data.Code.TypedView
 where
 
 import GHC.Stack (HasCallStack)
-import Vehicle.Compile.Normalise.NBE (evalBuiltin)
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..), BuiltinHasIndexLiterals, BuiltinHasListLiterals, BuiltinHasNatLiterals, BuiltinHasNatType, BuiltinHasTensors)
-import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, HasTensorLiterals, MonadNormBuiltin, unoptimisedEvalAtTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (HasTensorLiterals, MonadNormBuiltin, unoptimisedEvalAtTensor)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Standard.Normalise (foldReduceAndComparison)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (ExtendedRatTensor, Tensor, pattern ZeroDimTensor)
-import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude
 
 -------------------------------------------------------------------------------
@@ -279,7 +276,7 @@ toBoolTensorValue expr = case expr of
   (getExpr accessAndTensor -> Just args) -> VBoolTensorAnd args
   (getExpr accessOrTensor -> Just args) -> VBoolTensorOr args
   (getExpr accessNotTensor -> Just args) -> VBoolTensorNot args
-  (getExpr accessCompareRatTensor -> Just (op, args)) -> case fromTCArgs args of 
+  (getExpr accessCompareRatTensor -> Just (op, args)) -> case fromTCArgs args of
     -- pointwise, TensorOp2Args
     Left args' -> VBoolTensorCompareRatPointwise (op, args')
     -- reduced, TensorReduceComparisonArgs
@@ -519,7 +516,7 @@ fromTCArgs :: TensorComparisonArgs (Value Builtin) -> Either (TensorOp2Args (Val
 fromTCArgs args = case args of
   -- if pointwise, go to TensorOp2Args
   TensorComparisonArgs pDims (toDimensionsValue -> VDimsNil) e1 e2 -> Left (TensorOp2Args pDims e1 e2)
-    -- VCompareRatTensor (op, TensorOp2Args pDims e1 e2)
+  -- VCompareRatTensor (op, TensorOp2Args pDims e1 e2)
   -- if reduced, go to TensorReduceComparisonArgs
   TensorComparisonArgs (toDimensionsValue -> VDimsNil) (IDimCons rDim rDims) e1 e2 -> Right (TensorReduceComparisonArgs rDim rDims e1 e2)
   _ -> developerError $ "Unable to move to TensorOp2Args or TensorReduceComparisonArgs:" <+> prettyVerbose ()

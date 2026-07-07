@@ -31,7 +31,6 @@ import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Prelude
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Token
-import qualified Vehicle.Data.DSL as V
 
 --------------------------------------------------------------------------------
 -- Monad

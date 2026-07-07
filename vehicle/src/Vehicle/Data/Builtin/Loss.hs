@@ -295,6 +295,8 @@ instance HasLiftableTensorOperations LossBuiltin where
       (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType)
     ]
 
+  liftableTensorComparisons = []
+
 instance NormalisableBuiltin LossBuiltin where
   evalScheme = \case
     LossBuiltinFunction f -> case f of
