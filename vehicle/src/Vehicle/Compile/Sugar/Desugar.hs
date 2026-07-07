@@ -401,12 +401,13 @@ elabExpr expr = case expr of
   B.Lt e1 tk e2 -> standardLibComparison V.Lt tk e1 e2
   B.Ge e1 tk e2 -> standardLibComparison V.Ge tk e1 e2
   B.Gt e1 tk e2 -> standardLibComparison V.Gt tk e1 e2
-  B.EqPoint e1 tk e2 -> builtinFunction (V.CompareRatTensor V.Eq) tk [e1, e2, B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.NePoint e1 tk e2 -> builtinFunction (V.CompareRatTensor V.Ne) tk [e1, e2, B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.LePoint e1 tk e2 -> builtinFunction (V.CompareRatTensor V.Le) tk [e1, e2, B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.LtPoint e1 tk e2 -> builtinFunction (V.CompareRatTensor V.Lt) tk [e1, e2, B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.GePoint e1 tk e2 -> builtinFunction (V.CompareRatTensor V.Ge) tk [e1, e2, B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.GtPoint e1 tk e2 -> builtinFunction (V.CompareRatTensor V.Gt) tk [e1, e2, B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
+  -- need to work out best way to allow for +e1, e2 into the list from function
+  B.EqPoint e1 _ e2 -> elabComparePointwise expr
+  B.NePoint e1 _ e2 -> elabComparePointwise expr
+  B.LePoint e1 _ e2 -> elabComparePointwise expr
+  B.LtPoint e1 _ e2 -> elabComparePointwise expr
+  B.GePoint e1 _ e2 -> elabComparePointwise expr
+  B.GtPoint e1 _ e2 -> elabComparePointwise expr
   B.Add e1 tk e2 -> standardLibFunction "addTC" tk [e1, e2]
   B.Sub e1 tk e2 -> standardLibFunction "subTC" tk [e1, e2]
   B.Mul e1 tk e2 -> standardLibFunction "mulTC" tk [e1, e2]
@@ -441,18 +442,18 @@ elabExpr expr = case expr of
   B.CompareNatLt tk -> builtinFunction (V.CompareNat V.Lt) tk []
   B.CompareNatGe tk -> builtinFunction (V.CompareNat V.Ge) tk []
   B.CompareNatGt tk -> builtinFunction (V.CompareNat V.Gt) tk []
-  B.CompareRatTensorPointwiseEq tk -> builtinFunction (V.CompareRatTensor V.Eq) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.CompareRatTensorPointwiseNe tk -> builtinFunction (V.CompareRatTensor V.Ne) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.CompareRatTensorPointwiseLe tk -> builtinFunction (V.CompareRatTensor V.Le) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.CompareRatTensorPointwiseLt tk -> builtinFunction (V.CompareRatTensor V.Lt) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.CompareRatTensorPointwiseGe tk -> builtinFunction (V.CompareRatTensor V.Ge) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.CompareRatTensorPointwiseGt tk -> builtinFunction (V.CompareRatTensor V.Gt) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
-  B.CompareRatTensorReducedEq tk -> builtinFunction (V.CompareRatTensor V.Eq) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
-  B.CompareRatTensorReducedNe tk -> builtinFunction (V.CompareRatTensor V.Ne) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
-  B.CompareRatTensorReducedLe tk -> builtinFunction (V.CompareRatTensor V.Le) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
-  B.CompareRatTensorReducedLt tk -> builtinFunction (V.CompareRatTensor V.Lt) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
-  B.CompareRatTensorReducedGe tk -> builtinFunction (V.CompareRatTensor V.Ge) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
-  B.CompareRatTensorReducedGt tk -> builtinFunction (V.CompareRatTensor V.Gt) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
+  B.CompareRatTensorPointwiseEq _ -> elabComparePointwise expr
+  B.CompareRatTensorPointwiseNe _ -> elabComparePointwise expr
+  B.CompareRatTensorPointwiseLe _ -> elabComparePointwise expr
+  B.CompareRatTensorPointwiseLt _ -> elabComparePointwise expr
+  B.CompareRatTensorPointwiseGe _ -> elabComparePointwise expr
+  B.CompareRatTensorPointwiseGt _ -> elabComparePointwise expr
+  B.CompareRatTensorReducedEq _ -> elabCompareReduced expr
+  B.CompareRatTensorReducedNe _ -> elabCompareReduced expr
+  B.CompareRatTensorReducedLe _ -> elabCompareReduced expr
+  B.CompareRatTensorReducedLt _ -> elabCompareReduced expr
+  B.CompareRatTensorReducedGe _ -> elabCompareReduced expr
+  B.CompareRatTensorReducedGt _ -> elabCompareReduced expr
   B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
@@ -551,6 +552,26 @@ elabTypeBinder elab folded = \case
   B.ImplicitTypeBinder modalities t -> mkBinder elab folded modalities (V.Implicit False) $ That t
   B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ That t
   B.BasicTypeBinder b -> elabBasicBinder elab folded b
+
+elabCompareReduced :: (MonadElab m) => B.Expr -> m (V.Expr Builtin)
+elabCompareReduced = \case
+  B.CompareRatTensorReducedEq tk -> builtinFunction (V.CompareRatTensor V.Eq) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
+  B.CompareRatTensorReducedNe tk -> builtinFunction (V.CompareRatTensor V.Ne) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
+  B.CompareRatTensorReducedLe tk -> builtinFunction (V.CompareRatTensor V.Le) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
+  B.CompareRatTensorReducedLt tk -> builtinFunction (V.CompareRatTensor V.Lt) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
+  B.CompareRatTensorReducedGe tk -> builtinFunction (V.CompareRatTensor V.Ge) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
+  B.CompareRatTensorReducedGt tk -> builtinFunction (V.CompareRatTensor V.Gt) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
+  expr -> elabExpr expr
+
+elabComparePointwise :: (MonadElab m) => B.Expr -> m (V.Expr Builtin)
+elabComparePointwise = \case
+  B.CompareRatTensorPointwiseEq tk -> builtinFunction (V.CompareRatTensor V.Eq) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
+  B.CompareRatTensorPointwiseNe tk -> builtinFunction (V.CompareRatTensor V.Ne) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
+  B.CompareRatTensorPointwiseLe tk -> builtinFunction (V.CompareRatTensor V.Le) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
+  B.CompareRatTensorPointwiseLt tk -> builtinFunction (V.CompareRatTensor V.Lt) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
+  B.CompareRatTensorPointwiseGe tk -> builtinFunction (V.CompareRatTensor V.Ge) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
+  B.CompareRatTensorPointwiseGt tk -> builtinFunction (V.CompareRatTensor V.Gt) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
+  expr -> elabExpr expr
 
 findRelevance :: [B.Modality] -> V.Relevance
 findRelevance ms
