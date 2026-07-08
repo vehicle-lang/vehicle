@@ -16,7 +16,7 @@ import Vehicle.Data.Code.Interface (getDims)
 import Vehicle.Data.Code.TypedView (TypeValue (VRatTensorType), toTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (TensorShape, Tensor (ConstantTensor))
+import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Libraries.StandardLibrary
 import Prelude hiding (pi)
 
@@ -189,7 +189,7 @@ createRecordComparisonInstance p recordIdent telescope fields = do
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasComparison"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  let mkConstraint (FieldName _ n, fieldType) k = instanceBinder mempty n $ normAppList target [argument, argument]
+  let mkConstraint (FieldName _ n, fieldType) k = instanceBinder mempty (n <> "Comparison") $ normAppList target [argument, argument]
         where target = FreeVar mempty hasComparisonIdent
               argument = explicit (liftDBIndices (Lv k) fieldType)
 
@@ -204,25 +204,42 @@ createRecordComparisonInstance p recordIdent telescope fields = do
   let parameterisedRecordType = toDSL $ normAppList (FreeVar p recordIdent) args
   let resultType = fromDSL mempty $ freeVar hasComparisonIdent @@ [parameterisedRecordType, parameterisedRecordType]
 
-  let instanceMethods = flip map ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"] $ \methodName -> do
-        let mkComparisonInstance (_, ty) ix = recordProj targetInstanceTy targetInstanceVal targetMethod
-              where targetInstanceTy = freeVar hasComparisonIdent @@ [toDSL ty, toDSL ty] -- We want comparison for the field
-                    targetInstanceVal = toDSL (BoundVar mempty ix) -- We've been givent an instance of comparison at this ix
-                    targetMethod = FieldName mempty methodName -- Find the correct op under this method name
+  let for = flip map
+  let for2 a b f = zipWith f a b
+  let finalRecordType = fromDSL mempty parameterisedRecordType
 
-        let reduceFields leftRec rightRec (field, compInst) acc = and' @@ [comparisonResult, acc]
-              where getFieldOf r = recordProj parameterisedRecordType r field
-                    comparisonResult = compInst @@ [getFieldOf leftRec, getFieldOf rightRec]
-                    and' = toDSL . Builtin p . BuiltinFunction $ And
+  let instanceMethods = for ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"] $ \methodName -> do
+        -- Create two new binders, for the records that we are testing
+        let lhsRecord = mkExplicitBinder (liftDBIndices (Lv 0) finalRecordType) (Just (mempty, "r1"))
+        let rhsRecord = mkExplicitBinder (liftDBIndices (Lv 1) finalRecordType) (Just (mempty, "r2"))
 
-        let comparisonInstances = zipWith mkComparisonInstance fields (drop (length telescope) binderIndices)
+        -- Add them to the list, and recalculate our indices
+        let newBinderList = binderList ++ [lhsRecord, rhsRecord]
+        let newBinderIndicies = reverse $ fmap Ix [0 .. length newBinderList - 1]
 
-        let methodFn = explLam "r1" parameterisedRecordType $ \l -> explLam "r2" parameterisedRecordType $ \r -> body l r
-              where body l r = foldr (reduceFields l r) true (zipWith pairFieldsAndInstance fields comparisonInstances)
-                    true = toDSL . Builtin p . BuiltinConstructor . BoolTensorLiteral $ ConstantTensor [] True
-                    pairFieldsAndInstance (name, _) inst = (name, inst)
+        -- The comparison indicies come after the telescope
+        let comparisonIndicies = take (length fields) $ drop (length telescope) newBinderIndicies
 
-        (FieldName mempty methodName, fromDSL mempty methodFn)
+        -- Generate a comparison per field in the record
+        let individualComparisons = for2 fields comparisonIndicies $ \(fieldName, fieldTy) ix -> do
+              -- Project out the comparison method from the instance
+              let liftedFieldType = liftDBIndices (Lv $ length newBinderList - length telescope) fieldTy
+              let comparisonInstanceType = normAppList (FreeVar mempty hasComparisonIdent) [explicit liftedFieldType, explicit liftedFieldType]
+              let comparisonMethod = RecordProj mempty comparisonInstanceType (BoundVar mempty ix) (FieldName mempty methodName)
+
+              -- Project out the fields from the records
+              let liftedRecordType = liftDBIndices (Lv 2) finalRecordType
+              let lhsRecordField = RecordProj mempty liftedRecordType (BoundVar mempty 1) fieldName
+              let rhsRecordField = RecordProj mempty liftedRecordType (BoundVar mempty 0) fieldName
+              
+              -- Apply the method to the fields
+              normAppList comparisonMethod [explicit lhsRecordField, explicit rhsRecordField]
+
+        -- 'And' all our comparisons together and stick them under the record binders
+        let and' l r = normAppList (Builtin mempty . BuiltinFunction $ And) [explicit l, explicit r]
+        let methodFn = Lam mempty lhsRecord $ Lam mempty rhsRecord $ foldr1 and' individualComparisons
+        
+        (FieldName mempty methodName, methodFn)
 
   let functionType = foldr (Pi p) resultType binderList
   let functionBody = foldr (Lam p) (Record p resultType instanceMethods) binderList
