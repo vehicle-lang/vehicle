@@ -26,7 +26,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Sugar.Binders
-import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -349,39 +348,29 @@ type MonadIsabelleCompile m =
 --------------------------------------------------------------------------------
 -- Typedef-dependency classifier
 
-freeVarRefs :: Expr DecidabilityBuiltin -> Set Identifier
-freeVarRefs = \case
-  FreeVar _ n -> Set.singleton n
-  BoundVar _ _ -> Set.empty
-  Universe _ _ -> Set.empty
-  Builtin _ _ -> Set.empty
-  Hole _ _ -> Set.empty
-  Meta _ _ -> Set.empty
-  App fun args ->
-    freeVarRefs fun
-      `Set.union` foldMap (freeVarRefs . argExpr) (NonEmpty.toList args)
-  Lam _ binder body -> freeVarRefs (typeOf binder) `Set.union` freeVarRefs body
-  Pi _ binder body -> freeVarRefs (typeOf binder) `Set.union` freeVarRefs body
-  Let _ bound binder body ->
-    freeVarRefs bound `Set.union` freeVarRefs (typeOf binder) `Set.union` freeVarRefs body
-  Record _ _ fs -> foldMap (freeVarRefs . snd) fs
-  RecordProj _ _ r _ -> freeVarRefs r
-
 typedefDependencies :: [Decl DecidabilityBuiltin] -> Set Identifier
 typedefDependencies ds = fixpoint (foldMap seedFor ds)
   where
+    seedFor :: Decl DecidabilityBuiltin -> Set Identifier
     seedFor = \case
-      DefFunction _ _ (TypeDecl _) _ e -> freeVarRefs e
+      DefFunction _ _ (TypeDecl _) _ e -> freeVarsIn e
       _ -> Set.empty
+
+    functionBodies :: [(Identifier, Expr DecidabilityBuiltin)]
     functionBodies = [(identifierOf d, e) | d@(DefFunction _ _ _ _ e) <- ds]
-    step seen =
-      seen
-        `Set.union` foldMap
-          (\(n, e) -> if n `Set.member` seen then freeVarRefs e else Set.empty)
-          functionBodies
-    fixpoint seen =
+
+    reachable :: Set Identifier -> (Identifier, Expr DecidabilityBuiltin) -> Set Identifier
+    reachable seen (n, e)
+      | n `Set.member` seen = freeVarsIn e
+      | otherwise = Set.empty
+
+    step :: Set Identifier -> Set Identifier
+    step seen = seen `Set.union` foldMap (reachable seen) functionBodies
+
+    fixpoint :: Set Identifier -> Set Identifier
+    fixpoint seen = do
       let seen' = step seen
-       in if seen' == seen then seen else fixpoint seen'
+      if seen' == seen then seen else fixpoint seen'
 
 --------------------------------------------------------------------------------
 -- Program Compilation
@@ -413,6 +402,7 @@ gatherLocaleStatements _opts localeNets = \case
   _ -> pure []
 
 gatherLocaleDefines ::
+  forall m.
   (MonadIsabelleCompile m) =>
   Set Identifier ->
   [LocaleDef] ->
@@ -426,23 +416,22 @@ gatherLocaleDefines typedefDeps localeNets = \case
         TensorCoercionDecl binderCount -> emit binderCount
         _ -> pure []
     where
+      emit :: LHSBinderCount -> m [LocaleDef]
       emit binderCount = do
         let (binders, body) = extractDeclBinders binderCount t e
         bindersT <- compileTopLevelBinders compileTopLevelBinderT localeNets binders
         bindersV <- compileTopLevelBinders compileTopLevelBinderV localeNets binders
         defType <- resolveReturnType localeNets bindersT t
         (_, cBody) <- compileBinders localeNets binders (compileExpr False localeNets body)
-        let cType =
-              if null bindersT
-                then defType
-                else concatWith (\x y -> x <> " \\<Rightarrow> " <> y) bindersT <> " \\<Rightarrow> " <> defType
+        let cType
+              | null bindersT = defType
+              | otherwise = concatWith (\x y -> x <> " \\<Rightarrow> " <> y) bindersT <> " \\<Rightarrow> " <> defType
         -- Wrap the body in a lambda rather than emitting the equational
         -- form `name x \<equiv> body`: Isabelle's coercion inserter can
         -- rewrite the LHS `x` and produce `Bad arguments on lhs`.
-        let cRhs =
-              if null bindersV
-                then cBody
-                else "\\<lambda>" <+> hsep bindersV <+> ". " <> cBody
+        let cRhs
+              | null bindersV = cBody
+              | otherwise = "\\<lambda>" <+> hsep bindersV <+> ". " <> cBody
         let name = compileIdentifier n
         pure
           [ DefinesFixesStatement name cType,
@@ -737,10 +726,9 @@ compileTypeDef localeAssms name (Universe _ _) _ body = case body of
     return $ compileTensorTypeDef name shape cbody
   App (Builtin _p (StandardBuiltinType IndexType)) [i] -> do
     let unfoldings = compileExprUnfoldings (argExpr i)
-    let unfoldingsText =
-          if null unfoldings
-            then ""
-            else renderStrict (layoutCompact (vsep unfoldings)) <> "\n"
+    let unfoldingsText
+          | null unfoldings = ""
+          | otherwise = renderStrict (layoutCompact (vsep unfoldings)) <> "\n"
     cbody <-
       annotateNotation
         localeAssms
