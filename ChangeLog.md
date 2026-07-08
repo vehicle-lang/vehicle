@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## Next release
+## v0.26.1
 
 ### General
 
