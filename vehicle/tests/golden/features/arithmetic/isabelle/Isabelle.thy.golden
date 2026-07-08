@@ -21,15 +21,17 @@ begin
 
   
 
-  definition precedence  :: " (R tensor \<Rightarrow> R FlexTensor) \<Rightarrow> (R tensor) \<Rightarrow> (R tensor) \<Rightarrow> (R tensor) \<Rightarrow>  R FlexTensor "
-    where " precedence   f x y z = ( (tensor_plus ((tensor_plus x ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) y)))) (tensor_cdot (-1 :: R) ((pointwise_div z y)))) ) "
-
-  definition natLitNatLitDiv  :: "  R FlexTensor "
-    where " natLitNatLitDiv   = ( (pointwise_div (flextensor_from_vec [] [ (((1 :: R) )) ]) (flextensor_from_vec [] [ (((2 :: R) )) ])) ) "
+  
 
   locale  Isabelle  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
+
+    fixes  precedence  :: " (R tensor) \<Rightarrow> (R tensor) \<Rightarrow> (R tensor) \<Rightarrow> R FlexTensor "
+    fixes  natLitNatLitDiv  :: " R FlexTensor "
+
+    defines  precedence_def: " precedence \<equiv> \<lambda> x y z . (tensor_plus ((tensor_plus x ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) y)))) (tensor_cdot (-1 :: R) ((pointwise_div z y)))) "
+    defines  natLitNatLitDiv_def: " natLitNatLitDiv \<equiv> (pointwise_div (flextensor_from_vec [] [ (((1 :: R) )) ]) (flextensor_from_vec [] [ (((2 :: R) )) ])) "
 
     assumes  property :  " (geqTensorReduced (flex_subtensor ((f ((combine_subtensors [natLitNatLitDiv])))) (Abs_FlexIndex 0)) (flextensor_from_vec [] [ (((0 :: R) )) ])) "
 

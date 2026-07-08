@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### ITP backends
+
+* Fixed bug where the Isabelle backend mis-compiled declarations referencing `@network`, `@dataset`, or `@parameter` resources (#1195).
+
 ## v0.26.1
 
 ### General

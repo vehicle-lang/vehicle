@@ -18,7 +18,7 @@ definition maxSensorError :: real
 record state =
   windSpeed :: real
   position :: real
-  velocity :: real
+  carVelocity :: real
   sensor :: real
 
 record observation =
@@ -26,11 +26,11 @@ record observation =
   sensorError :: real
 
 definition initialState :: "state"
-  where "initialState = \<lparr> windSpeed = 0, position=0, velocity=0, sensor=0 \<rparr>"
+  where "initialState = \<lparr> windSpeed = 0, position=0, carVelocity=0, sensor=0 \<rparr>"
 
 
 definition nextPosition_windShift :: "state \<Rightarrow> real"
-  where "nextPosition_windShift s = ((position s) + (velocity s) + (windSpeed s))"
+  where "nextPosition_windShift s = ((position s) + (carVelocity s) + (windSpeed s))"
 
 definition onRoad :: "state \<Rightarrow> bool"
   where "onRoad s = ((abs (position s)) \<le> roadWidth)"
@@ -57,22 +57,22 @@ context WindControllerSpec
 begin
 
 definition controllerFun :: "real \<Rightarrow> real \<Rightarrow> real"
-  where "controllerFun p1 p2 = (lookup (Rep_OutputVector (controller (normalise controller (Abs_InputVector (tensor_from_vec [2] [p1, p2]))))) [WindControllerSpec.velocity])"
+  where "controllerFun p1 p2 = (lookup (Rep_OutputVector (controller (normalise (Abs_InputVector (tensor_from_vec [2] [p1, p2]))))) [velocity])"
 
 definition nextState :: "observation \<Rightarrow> state \<Rightarrow> state"
   where "nextState obs s = (
       let
         newWindSpeed = ((windSpeed s) + (windShift obs)) in
       let
-        newPosition = ((position s) + (velocity s) + newWindSpeed) in
+        newPosition = ((position s) + (carVelocity s) + newWindSpeed) in
       let
         newSensor = (newPosition + (sensorError obs)) in
       let
-        newVelocity = ((velocity s) + controllerFun newSensor (sensor s)) in
+        newVelocity = ((carVelocity s) + controllerFun newSensor (sensor s)) in
         \<lparr>
         windSpeed = newWindSpeed,
         position = newPosition,
-        velocity = newVelocity,
+        carVelocity = newVelocity,
         sensor=newSensor
         \<rparr>)"
 
@@ -155,13 +155,13 @@ proof -
     apply (simp add: tensor_arithmetic tensor_ops lookup_def lookup_base.simps)
     apply (simp add: subtensor_combine_def tensor_ops lookup_base.simps)
     by linarith
-  then have outputSafe: "safeOutput controller X"
+  then have outputSafe: "safeOutput X"
     using safe
     unfolding safeInput_def
     apply (erule_tac x="X" in allE)
     by simp
 
-  have dimFact: "order (Rep_OutputVector (controller (normalise controller (Abs_InputVector (tensor_from_vec [2] [x, y]))))) = 1"
+  have dimFact: "order (Rep_OutputVector (controller (normalise (Abs_InputVector (tensor_from_vec [2] [x, y]))))) = 1"
     using Rep_OutputVector by force
 
   have dimFact2: "\<And> x. (fst (Rep_tensor (Rep_InputVector x))) = [2]"
@@ -190,12 +190,12 @@ proof -
 
   obtain vel where vel_def: "
       (controller
-      (normalise controller (Abs_InputVector (Abs_tensor ([2], [x, y]))))) =
+      (normalise (Abs_InputVector (Abs_tensor ([2], [x, y]))))) =
       (Abs_OutputVector (Abs_tensor ([1], [vel])))"
     using Rep_OutputVector[of "(controller
-      (normalise controller (Abs_InputVector (Abs_tensor ([2], [x, y])))))"]
+      (normalise (Abs_InputVector (Abs_tensor ([2], [x, y])))))"]
     using Rep_tensor[of "Rep_OutputVector (controller
-      (normalise controller (Abs_InputVector (Abs_tensor ([2], [x, y])))))"]
+      (normalise (Abs_InputVector (Abs_tensor ([2], [x, y])))))"]
     apply simp
     by (smt (verit, best) One_nat_def Rep_OutputVector_inverse Rep_tensor_inverse dimsFact5 length_0_conv length_Suc_conv mult.right_neutral prod.collapse prod_list.Cons prod_list.Nil)
 
@@ -205,7 +205,7 @@ proof -
     unfolding controllerFun_def
     apply (simp add: Let_def tensor_ops vel_def)
     unfolding currentSensor_def previousSensor_def
-    unfolding WindControllerSpec.velocity_def
+    unfolding velocity_def
     apply (simp add: dimFact dimFact2 dimsFact3 dimsFact4 dimsFact5 tensor_ops tensor_0dim_arithmetic)
     by (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps tensor_ops lookup_def lookup_base.simps)
 
@@ -216,7 +216,7 @@ proof -
     unfolding controllerFun_def
     apply (simp add: Let_def tensor_ops vel_def)
     unfolding currentSensor_def previousSensor_def
-    unfolding WindControllerSpec.velocity_def
+    unfolding velocity_def
     apply (simp add: dimFact dimFact2 dimsFact3 dimsFact4 dimsFact5 tensor_ops tensor_0dim_arithmetic)
     by (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps tensor_ops lookup_def lookup_base.simps)
 

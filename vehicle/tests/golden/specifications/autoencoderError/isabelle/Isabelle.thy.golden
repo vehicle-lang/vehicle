@@ -20,13 +20,16 @@ begin
 
   
 
-  definition epsilon  :: "  R FlexTensor "
-    where " epsilon   = ( (foreach (5 :: nat)  (\<lambda>  i . ((flextensor_from_vec [] [ (((1 :: R) / 10)) ])))) ) "
+  
 
   locale  Isabelle  = 
 
     fixes  encode  :: " R tensor \<Rightarrow> R FlexTensor "
     fixes  decode  :: " R tensor \<Rightarrow> R FlexTensor "
+
+    fixes  epsilon  :: " R FlexTensor "
+
+    defines  epsilon_def: " epsilon \<equiv> (foreach (5 :: nat)  (\<lambda>  i . ((flextensor_from_vec [] [ (((1 :: R) / 10)) ])))) "
 
     assumes  identity :  " (\<forall> x. ((leqTensorReduced ((tensor_plus x (tensor_cdot (-1 :: R) epsilon))) (decode ((encode x))))) \<and> ((leqTensorReduced (decode ((encode x))) ((tensor_plus x epsilon))))) "
 

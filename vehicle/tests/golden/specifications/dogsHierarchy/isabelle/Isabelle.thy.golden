@@ -35,24 +35,6 @@ begin
       in (if i < numberOfDogs then Abs_Dog i else undefined))"
   declare [[coercion to_Dog]]
 
-  definition greatDane  :: "  FlexIndex "
-    where " greatDane   = ( (Abs_FlexIndex 1) ) "
-
-  definition germanShepherd  :: "  FlexIndex "
-    where " germanShepherd   = ( (Abs_FlexIndex 2) ) "
-
-  definition chihuahua  :: "  FlexIndex "
-    where " chihuahua   = ( (Abs_FlexIndex 4) ) "
-
-  definition pekinese  :: "  FlexIndex "
-    where " pekinese   = ( (Abs_FlexIndex 5) ) "
-
-  definition smallDogs  :: "  Dog list "
-    where " smallDogs   = ( chihuahua # (pekinese # []) ) "
-
-  definition bigDogs  :: "  Dog list "
-    where " bigDogs   = ( greatDane # (germanShepherd # []) ) "
-
   typedef Image  =  "{ a :: R tensor. (dims a) = ((4 :: nat) # ((4 :: nat) # [])) }"
     using dims_tensor_from_lookup by blast
 
@@ -111,26 +93,35 @@ begin
     ultimately show ?thesis by simp
   qed
 
-  definition validPixel  :: " (Image \<Rightarrow> R FlexTensor) \<Rightarrow> (R tensor) \<Rightarrow>  bool "
-    where " validPixel   score p = ( ((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) p)) \<and> ((leqTensorReduced p (flextensor_from_vec [] [ (((1 :: R) )) ]))) ) "
-
-  definition validImage  :: " (Image \<Rightarrow> R FlexTensor) \<Rightarrow> (Image) \<Rightarrow>  bool "
-    where " validImage   score x = ( (forallIndex (4 :: nat)  (\<lambda>  i . ((forallIndex (4 :: nat)  (\<lambda>  j . ((validPixel score (flex_subtensor ((flex_subtensor x i)) j)))))))) ) "
-
-  definition isFirstChoice  :: " (Image \<Rightarrow> R FlexTensor) \<Rightarrow> (Image) \<Rightarrow> (Dog) \<Rightarrow>  bool "
-    where " isFirstChoice   score x dog1 = ( let scores = (score x) in (forallIndex (6 :: nat)  (\<lambda>  d . (d \<noteq> dog1 \<longrightarrow> (gtTensorReduced (flex_subtensor scores dog1) (flex_subtensor scores d))))) ) "
-
-  definition isSecondChoice  :: " (Image \<Rightarrow> R FlexTensor) \<Rightarrow> (Image) \<Rightarrow> (Dog) \<Rightarrow>  bool "
-    where " isSecondChoice   score x dog2 = ( let scores = (score x) in (existsIndex (6 :: nat)  (\<lambda>  dog1 . ((isFirstChoice score x dog1) \<and> (forallIndex (6 :: nat)  (\<lambda>  d . ((d \<noteq> dog1) \<and> (d \<noteq> dog2) \<longrightarrow> (gtTensorReduced (flex_subtensor scores dog2) (flex_subtensor scores d)))))))) ) "
-
-  definition noConfusionWith  :: " (Image \<Rightarrow> R FlexTensor) \<Rightarrow> (Image) \<Rightarrow> (Dog list) \<Rightarrow> (Dog list) \<Rightarrow>  bool "
-    where " noConfusionWith   score x dogs1 dogs2 = ( (forallInList (\<lambda>  dog1 . ((forallInList (\<lambda>  dog2 . (\<not> (isFirstChoice score x dog1) \<and> (isSecondChoice score x dog2))) dogs2))) dogs1) ) "
-
   locale  Isabelle  = 
 
     fixes  score  :: " Image \<Rightarrow> R FlexTensor "
 
-    assumes  doesNotConfuseBigAndSmall :  " (\<forall> x. (validImage score x) \<longrightarrow> (noConfusionWith score x bigDogs smallDogs)) "
+    fixes  greatDane  :: " FlexIndex "
+    fixes  germanShepherd  :: " FlexIndex "
+    fixes  chihuahua  :: " FlexIndex "
+    fixes  pekinese  :: " FlexIndex "
+    fixes  smallDogs  :: " Dog list "
+    fixes  bigDogs  :: " Dog list "
+    fixes  validPixel  :: " (R tensor) \<Rightarrow> bool "
+    fixes  validImage  :: " (Image) \<Rightarrow> bool "
+    fixes  isFirstChoice  :: " (Image) \<Rightarrow> (Dog) \<Rightarrow> bool "
+    fixes  isSecondChoice  :: " (Image) \<Rightarrow> (Dog) \<Rightarrow> bool "
+    fixes  noConfusionWith  :: " (Image) \<Rightarrow> (Dog list) \<Rightarrow> (Dog list) \<Rightarrow> bool "
+
+    defines  greatDane_def: " greatDane \<equiv> (Abs_FlexIndex 1) "
+    defines  germanShepherd_def: " germanShepherd \<equiv> (Abs_FlexIndex 2) "
+    defines  chihuahua_def: " chihuahua \<equiv> (Abs_FlexIndex 4) "
+    defines  pekinese_def: " pekinese \<equiv> (Abs_FlexIndex 5) "
+    defines  smallDogs_def: " smallDogs \<equiv> chihuahua # (pekinese # []) "
+    defines  bigDogs_def: " bigDogs \<equiv> greatDane # (germanShepherd # []) "
+    defines  validPixel_def: " validPixel \<equiv> \<lambda> p . ((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) p)) \<and> ((leqTensorReduced p (flextensor_from_vec [] [ (((1 :: R) )) ]))) "
+    defines  validImage_def: " validImage \<equiv> \<lambda> x . (forallIndex (4 :: nat)  (\<lambda>  i . ((forallIndex (4 :: nat)  (\<lambda>  j . ((validPixel (flex_subtensor ((flex_subtensor x i)) j)))))))) "
+    defines  isFirstChoice_def: " isFirstChoice \<equiv> \<lambda> x dog1 . let scores = (score x) in (forallIndex (6 :: nat)  (\<lambda>  d . (d \<noteq> dog1 \<longrightarrow> (gtTensorReduced (flex_subtensor scores dog1) (flex_subtensor scores d))))) "
+    defines  isSecondChoice_def: " isSecondChoice \<equiv> \<lambda> x dog2 . let scores = (score x) in (existsIndex (6 :: nat)  (\<lambda>  dog1 . ((isFirstChoice x dog1) \<and> (forallIndex (6 :: nat)  (\<lambda>  d . ((d \<noteq> dog1) \<and> (d \<noteq> dog2) \<longrightarrow> (gtTensorReduced (flex_subtensor scores dog2) (flex_subtensor scores d)))))))) "
+    defines  noConfusionWith_def: " noConfusionWith \<equiv> \<lambda> x dogs1 dogs2 . (forallInList (\<lambda>  dog1 . ((forallInList (\<lambda>  dog2 . (\<not> (isFirstChoice x dog1) \<and> (isSecondChoice x dog2))) dogs2))) dogs1) "
+
+    assumes  doesNotConfuseBigAndSmall :  " (\<forall> x. (validImage x) \<longrightarrow> (noConfusionWith x bigDogs smallDogs)) "
 
     begin
 
