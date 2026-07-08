@@ -39,17 +39,20 @@ instance HasLiftableTensorOperations Builtin where
       (getExpr accessMinRatTensor, evalMinRatTensor, IRatType),
       (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType),
       (getExpr accessAndTensor, evalAnd, IBoolType),
-      (getExpr accessOrTensor, evalOr, IBoolType),      
-      compPointwise Eq,
-      -- compPointwise Ne,
-      -- compPointwise Le,
-      -- compPointwise Lt,
-      -- compPointwise Ge,
-      _
+      (getExpr accessOrTensor, evalOr, IBoolType)
     ]
+
+  liftableTensorComparisons = 
+    [
+      comparison Eq,
+      comparison Ne,
+      comparison Le,
+      comparison Lt,
+      comparison Ge
+    ]
+
     where
-      compPointwise op = (getExpr (accessArgsForOp accessCompareRatTensor op), evalCompareRatTensor op, IBoolType)
-      -- compPointwise op = (getExpr (accessArgsForOp accessCompareRatTensorPointwise op), evalCompareRatTensorPointwise op, IBoolType)
+      comparison op = (getExpr (accessArgsForOp accessCompareRatTensor op), evalCompareRatTensor op, IBoolType)
 
 instance NormalisableBuiltin Builtin where
   evalScheme = \case
@@ -146,12 +149,19 @@ evalVectorToList args@(VectorToListArgs t d xs) =
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
 
+
+-- when going into the TensorReductionArgs expression, looking at what it is performing on
+-- if it is a tensor comparison, then we can just reduce it
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->
   Maybe (Value Builtin)
 foldReduceAndComparison (TensorReductionArgs _ unit tensor) =
-  case (unit, getExpr accessCompareRatTensorPointwise tensor) of
-    (IBoolLiteral True, Just (op, TensorOp2Args (IDimCons d ds) xs ys)) | op /= Ne -> do
-      let compareArgs = TensorReduceComparisonArgs d ds xs ys
-      Just $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
+-- foldReduceAndComparison (TensorComparisonArgs _ unit tensor) =
+  -- case (unit, getExpr accessCompareRatTensorPointwise tensor) of
+    -- (IBoolLiteral True, Just (op, TensorOp2Args (IDimCons d ds) xs ys)) | op /= Ne -> do
+
+  case (unit, getExpr accessCompareRatTensor tensor) of
+    (IBoolLiteral True, Just (op, TensorComparisonArgs dims IDimNil xs ys)) | op /= Ne -> do
+      let compareArgs = TensorComparisonArgs IDimNil dims xs ys
+      Just $ mkExpr accessCompareRatTensor (op, compareArgs)
     _ -> Nothing

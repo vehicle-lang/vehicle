@@ -237,7 +237,6 @@ fromComparison (op, args) = case args of
   TensorComparisonArgs (toDimensionsValue -> VDimsNil) rDims e1 e2 -> VCompareRatTensor (op, TensorOp2Args rDims e1 e2)
   _ -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose (mkExpr accessCompareRatTensor (op, args))
 
-
 -- is defined in normalise so doesnt need to be handled here?
 -- evalCompareRatTensor :: (MonadNormBuiltin m, MonadFreeContext Builtin m, MonadReadableNameContext m) => ComparisonOp -> EvalSimple TensorComparisonArgs Value Builtin m
 -- evalCompareRatTensor = evalCompareRatTensor
