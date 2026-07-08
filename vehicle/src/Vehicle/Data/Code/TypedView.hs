@@ -516,14 +516,13 @@ etaReduceTensor typ dim dims tensor = do
 
 -- take TensorComparisonArgs and move to TensorOp2Args or TensorReduceComparisonArgs
 fromTCArgs :: TensorComparisonArgs (Value Builtin) -> Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin))
-fromTCArgs = \case
+fromTCArgs args = case args of
   -- if pointwise, go to TensorOp2Args
   TensorComparisonArgs pDims (toDimensionsValue -> VDimsNil) e1 e2 -> Left (TensorOp2Args pDims e1 e2)
     -- VCompareRatTensor (op, TensorOp2Args pDims e1 e2)
   -- if reduced, go to TensorReduceComparisonArgs
   TensorComparisonArgs (toDimensionsValue -> VDimsNil) (IDimCons rDim rDims) e1 e2 -> Right (TensorReduceComparisonArgs rDim rDims e1 e2)
-  -- _ -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose ()
-  _ -> _
+  _ -> developerError $ "Unable to move to TensorOp2Args or TensorReduceComparisonArgs:" <+> prettyVerbose ()
 
 -- take TensorOp2Args/TensorReduceComparisonArgs and move to TensorComparisonArgs
 toTCArgs :: Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin)) -> TensorComparisonArgs (Value Builtin)
