@@ -32,6 +32,7 @@ import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor, TensorShape, foldMapTensor)
 import Vehicle.Data.Universe (UniverseLevel (..))
@@ -588,8 +589,9 @@ compileBuiltinFunction p f args = case f of
   Max MaxRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_⊔_" args
   CompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator True op) args
   CompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator True op) args
-  CompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") args
-  CompareRatTensorReduced op -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") args
+  CompareRatTensor op -> case decideIfPointwiseOrReductionComparison args of
+    Pointwise as -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") as
+    Reduced as -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") as
   FoldList -> annotateApp [DataList] (Just listQualifier) "foldr" args
   MapList -> annotateApp [DataList] (Just listQualifier) "map" args
   ReduceAndTensor -> annotateApp [DataTensor] Nothing "reduceAnd" args

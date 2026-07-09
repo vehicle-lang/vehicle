@@ -24,22 +24,26 @@ module Vehicle.Data.Code.TypedView
     DimensionsValue (..),
     toDimensionsValue,
     fromDimensionsValue,
-    -- evalCompareRatTensor,
+    evalCompareRatPointwise,
+    evalCompareRatReduced,
     etaReduceTensor,
     toRecordValue,
     RecordValue (..),
+    decideIfPointwiseOrReductionComparison,
+    ComparisonType (..),
   )
 where
 
 import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..), BuiltinHasIndexLiterals, BuiltinHasListLiterals, BuiltinHasNatLiterals, BuiltinHasNatType, BuiltinHasTensors)
-import Vehicle.Data.Builtin.Interface.Normalise (HasTensorLiterals, MonadNormBuiltin, unoptimisedEvalAtTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, HasTensorLiterals, MonadNormBuiltin, evalCompareRatTensor, unoptimisedEvalAtTensor)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Standard.Normalise (foldReduceAndComparison)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (ExtendedRatTensor, Tensor, pattern ZeroDimTensor)
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
 
@@ -234,16 +238,13 @@ fromComparison (op, args) = case args of
   TensorComparisonArgs (toDimensionsValue -> VDimsNil) rDims e1 e2 -> VCompareRatTensor (op, TensorOp2Args rDims e1 e2)
   _ -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose (mkExpr accessCompareRatTensor (op, args))
 
--- is defined in normalise so doesnt need to be handled here?
--- evalCompareRatTensor :: (MonadNormBuiltin m, MonadFreeContext Builtin m, MonadReadableNameContext m) => ComparisonOp -> EvalSimple TensorComparisonArgs Value Builtin m
--- evalCompareRatTensor = evalCompareRatTensor
--- evalCompareRatTensor op args@(TensorOp2Args dims e1 e2) = case toDimensionsValue dims of
---   VDimsNil -> evalCompareRatTensorPointwise op args
---   VDimsCons d ds -> do
---     let reduceArgs = TensorReduceComparisonArgs d ds e1 e2
---     namedCtx <- getNameContext
---     evalBuiltin namedCtx (DerivedFunction (CompareRatTensorReduced op)) (mkExpr accessSpine reduceArgs)
---   _ -> developerError "Unexpected tensorOp2Args for comparison"
+evalCompareRatPointwise :: (MonadNormBuiltin m, MonadReadableNameContext m) => ComparisonOp -> EvalSimple TensorOp2Args Value Builtin m
+evalCompareRatPointwise op (TensorOp2Args dims e1 e2) =
+  evalCompareRatTensor op $ TensorComparisonArgs dims IDimNil e1 e2
+
+evalCompareRatReduced :: (MonadNormBuiltin m, MonadReadableNameContext m) => ComparisonOp -> EvalSimple TensorOp2Args Value Builtin m
+evalCompareRatReduced op (TensorOp2Args dims e1 e2) =
+  evalCompareRatTensor op $ TensorComparisonArgs IDimNil dims e1 e2
 
 -------------------------------------------------------------------------------
 -- Bool
@@ -510,6 +511,19 @@ etaReduceTensor typ dim dims tensor = do
           }
   let mkAt i = unoptimisedEvalAtTensor (mkAtArgs i)
   traverse mkAt [0 .. (dim - 1)]
+
+data ComparisonType expr
+  = Pointwise [GenericArg expr]
+  | Reduced [GenericArg expr]
+
+decideIfPointwiseOrReductionComparison ::
+  (HasListExpr expr builtin, BuiltinHasNatType builtin) =>
+  [GenericArg (expr builtin)] ->
+  ComparisonType (expr builtin)
+decideIfPointwiseOrReductionComparison = \case
+  ds : (argExpr -> IDimNil) : as -> Pointwise (ds : as)
+  (argExpr -> IDimNil) : ds : as -> Reduced (ds : as)
+  _ -> developerError "Unexpected comparison arguments"
 
 -- take TensorComparisonArgs and move to TensorOp2Args or TensorReduceComparisonArgs
 fromTCArgs :: TensorComparisonArgs (Value Builtin) -> Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin))
