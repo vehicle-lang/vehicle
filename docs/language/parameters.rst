@@ -16,6 +16,8 @@ for epsilon in a robustness specification.
 Explicit Parameters
 -------------------
 
+|backendall_full| 
+
 Parameters can be declared using the ``@parameter`` annotation as follows:
 
 .. code-block:: agda
@@ -32,6 +34,13 @@ the value :code:`0.1` can be achieved using :code:`--parameter epsilon:0.1`.
 
 Inferable Parameters
 --------------------
+
+|backendloss_part| (:ref:`⤴ <inferable-parameters>`)
+|backendverification_full| 
+|backendagda_full|
+|backendrocq_full|
+|backendimandra_full|
+|backendisabelle_full|
 
 Sometimes the value of the parameter can be inferred from other parts of the
 specification, but is still inconvenient to pass in at compile time.
