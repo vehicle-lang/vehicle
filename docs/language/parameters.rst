@@ -33,7 +33,7 @@ the value :code:`0.1` can be achieved using :code:`--parameter epsilon:0.1`.
 Inferable Parameters
 --------------------
 
-|backendloss_part| (:ref:`⤴ <inferable-parameters>`)
+|backendloss_part|
 |backendverification_full| 
 |backendagda_full|
 |backendrocq_full|
