@@ -4,6 +4,7 @@ module Vehicle.Data.Code.TypedView
     fromTypeValue,
     IndexValue (..),
     toIndexValue,
+    fromIndexValue,
     NatValue (..),
     toNatValue,
     fromNatValue,
@@ -125,6 +126,14 @@ toIndexValue e = case e of
   (getExpr accessIf -> Just args) -> VIndexIf args
   (getExpr accessAtVector -> Just args) -> VIndexAtVector args
   _ -> developerError $ "ill-typed index expression" <+> pretty (show e)
+
+fromIndexValue :: IndexValue -> Value Builtin
+fromIndexValue = \case
+  VIndexBoundVar v spine -> VBoundVar v spine
+  VIndexParameter ident -> VFreeVar ident []
+  VIndexLiteral i args -> mkExpr accessIndexLiteral (i, IndexLiteralArgs args)
+  VIndexIf args -> mkExpr accessIf args
+  VIndexAtVector args -> mkExpr accessAtVector args 
 
 -------------------------------------------------------------------------------
 -- Nat

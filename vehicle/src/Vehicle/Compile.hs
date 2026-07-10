@@ -22,7 +22,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Prelude as CompilePrelude
-import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
@@ -162,7 +162,10 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    typedProg' <- if lossFunctionMode == CounterExample then liftQuantifiers typedProg else pure typedProg
+    (progData, typedProg') <- if lossFunctionMode == CounterExample 
+      then liftQuantifiers typedProg
+      else return ([], typedProg)
+    logDebug MinDetail $ prettyVerbose progData
     lossTensorProg <- convertToLossTensors differentiableLogicID typedProg'
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg

@@ -20,8 +20,7 @@ import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
 import Control.Monad.RWS (MonadReader, ask)
 import Control.Monad.Reader (runReaderT)
-import Vehicle.Compile.Print (prettyVerbose, prettyFriendlyEmptyCtx)
-import Vehicle.Data.Variable.Bound.Context.Name (prettyFriendlyInCtx)
+import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 
 type MonadLiftQuantifiers m = 
   ( MonadCompile m,
@@ -30,90 +29,102 @@ type MonadLiftQuantifiers m =
     MonadReader DeclProvenance m
   )
 
+type OldContextValue = Value Builtin
+type NewContextValue = Value Builtin
+type QuantifierData = (Quantifier, Either (VDims Builtin) (VType Builtin), VBinder Builtin)
+
 -- I think this should return the Prog containing the list of reconstructed decls plus [(propertyName, Bool)]
 liftQuantifiers ::
   (MonadCompile m) =>
   Prog Builtin ->
-  m(Prog Builtin)
+  m([(Identifier, Bool)], Prog Builtin)
 liftQuantifiers (Main ds) = 
-  runFreshFreeContextT (Proxy @Builtin) $ do 
-    Main <$> liftQuantifierDecls ds
+  runFreshFreeContextT (Proxy @Builtin) $ do
+    (declsData, ds') <- liftQuantifierDecls ds
+    return (declsData, Main ds')
 
 -- Possibly return [(propertyName, Bool)] in addition to the list of reconstructed decls
 liftQuantifierDecls :: 
   (MonadCompile m, MonadFreeContext Builtin m) => 
   [Decl Builtin] ->
-  m[Decl Builtin]
+  m([(Identifier, Bool)],[Decl Builtin])
 liftQuantifierDecls = \case
-  [] -> return []
+  [] -> return ([],[])
   decl : decls -> do
     normDecl <- evalDecl decl
-    normDecl' <- liftQuantifierDecl normDecl
+    (declData, normDecl') <- liftQuantifierDecl normDecl
     let decl' = fmap (unnormalise 0) normDecl'
-    decls' <- addDeclEntryToContext normDecl $ liftQuantifierDecls decls 
-    return (decl':decls')
+    (declsData', decls') <- addDeclEntryToContext normDecl $ liftQuantifierDecls decls 
+    return (declData : declsData', decl' : decls')
 
 -- accepts and returns normalised decl
--- Possibly return (propertyName, Bool) in addition to the reconstructed decl representing whether it contains all forall or all exists
 liftQuantifierDecl ::
   (MonadCompile m, MonadFreeContext Builtin m) => 
   VDecl Builtin ->
-  m(VDecl Builtin)
+  m((Identifier, Bool), VDecl Builtin)
 liftQuantifierDecl decl = case decl of
-  DefAbstract {} -> return decl
+  DefAbstract _ ident _ _ -> return ((ident, False), decl)
   DefFunction p ident ann typ expr -> 
     if isAnnotatedAsProperty ann
       then do
-        ((quantifiers, newValue), _) <- runFreshBoundContextT (Proxy @(Value Builtin)) $ runReaderT (liftQuantifierProperty (expr, 0)) (ident, p)
-        -- call flipUniversal here
-        liftedValue <- runFreshBoundContextT (Proxy @(Value Builtin)) $ reconstructExpr quantifiers newValue
+        ((quantifiers, value), _) <- runFreshBoundContextT (Proxy @(Value Builtin)) $ runReaderT (liftQuantifierProperty (expr, 0)) (ident, p)
+        printValue <- runFreshBoundContextT (Proxy @(Value Builtin)) $ reconstructProperty quantifiers value
+        logDebug MinDetail $ prettyFriendlyEmptyCtx  printValue
+        ((newQuantifiers, newValue), findCounterExample) <- runReaderT (flipForall (quantifiers, value)) (ident, p)
+        liftedValue <- runFreshBoundContextT (Proxy @(Value Builtin)) $ reconstructProperty newQuantifiers newValue
         logDebug MinDetail $ prettyFriendlyEmptyCtx liftedValue
-        -- _ <- developerError "hi"
-        return $ DefFunction p ident ann typ liftedValue
-      else return decl
-  DefRecord {} -> return decl
+        return ((ident, findCounterExample), DefFunction p ident ann typ liftedValue)
+      else return ((ident, False), decl)
+  DefRecord _ ident _ _ _ -> return ((ident, False), decl)
 
-type OldContextValue = Value Builtin
-type NewContextValue = Value Builtin
-type QuantifierData = (Quantifier, Either (VDims (Builtin)) (VType (Builtin)), VBinder (Builtin))
-
-{- 
-This function should translate forall x. forall y. P(x, y) to ---> not (exists x. exists y. not P(x, y))
-While doing this, also check whether the property has alternating quantifiers and throw an error if this is the case
-i.e. this function takes the last quantifier that we have seen, and the output of liftQuantifierProperty
-We need to traverse the list of quantifier data outputted by liftQuantifierProperty and remember the last quantifier that we have seen
-If the next quantifier is different, that means we have alternating quantifiers so throw an error!
-If we get to the end of the list and there are no alternating quantifiers, check if the last quantifier seen is a forall, 
-  if so put a negation in front of NewContextValue
-When we encounter a forall in the list, we need to replace it with an exists in the list but keep the forall as the last quantifier that we have seen
-This returns the same type as liftQuantifierProperty (except NewContextValue may have a negation in front of it) plus a Bool representing whether the 
-property contains all forall or exists
-
-flipUniversal ::
-  (MonadCompile m) =>
-  (Maybe Quantifier) ->
+-- Returns a Bool representing whether performing a search on the property would produce a counter-example
+-- True = example input found will be a counter-example to the property
+-- False = example input found will not be a counter-example
+flipForall ::
+  (MonadCompile m,
+   MonadReader DeclProvenance m) =>
   ([QuantifierData], NewContextValue) ->
   m(([QuantifierData], NewContextValue), Bool)
-flipUniversal = _
--}
+flipForall (quantifierData, value) = case quantifierData of
+  [] -> return ((quantifierData, value), True) -- is True here ok?
+  (firstQuantifier, _, _) : _ -> do
+    newQuantifierData <- flipForallHelper firstQuantifier quantifierData
+    if firstQuantifier == Forall
+      then return ((newQuantifierData, fromBoolValue $ VNot (TensorOp1Args IDimNil value)), True) -- not sure what dims to use here
+      else return ((newQuantifierData, value), False)
 
-reconstructExpr ::
+flipForallHelper ::
+  (MonadCompile m,
+   MonadReader DeclProvenance m) =>
+  Quantifier ->
+  [QuantifierData] ->
+  m[QuantifierData]
+flipForallHelper prevQuantifier quantifierData = case quantifierData of
+  [] -> return []
+  (quantifier, dimsOrTyp, binder) : quantifiers -> 
+    if prevQuantifier /= quantifier
+      then do
+        declProv <- ask
+        throwError $ UnableToLiftQuantifiersInProperty declProv
+      else do
+        newData <- flipForallHelper quantifier quantifiers
+        return ((Exists, dimsOrTyp, binder) : newData)
+
+reconstructProperty ::
   (MonadCompile m,
   MonadFreeContext Builtin m,
   MonadBoundContext (Value Builtin) m)  =>
   [QuantifierData] -> 
   NewContextValue -> 
   m(Value Builtin)
-reconstructExpr quantifiers value = case quantifiers of
+reconstructProperty quantifiers value = case quantifiers of
   [] -> return value
-  (quantifier, dimsOrType, binder) : qs -> do 
+  (quantifier, dimsOrType, binder) : qs -> do  
     newBody <- addBinderToContext binder $ do
-      reconstructed <- reconstructExpr qs value
+      reconstructed <- reconstructProperty qs value
       ctx <- getBoundCtx (Proxy @(Value Builtin))
       let lv = boundCtxLv ctx
       let newBody = unnormalise lv reconstructed
-      logDebug MinDetail $ "newBody" <+> prettyVerbose newBody
-      logDebugM MinDetail $ prettyFriendlyInCtx newBody
       return newBody
     ctx <- getBoundCtx (Proxy @(Value Builtin))
     let newEnv = boundContextToEnv ctx
@@ -126,7 +137,7 @@ liftQuantifierProperty ::
   (MonadLiftQuantifiers m) =>
   (OldContextValue, Lv) -> 
   m(([QuantifierData], NewContextValue), Lv)
-liftQuantifierProperty (value, ctxDelta) = showValue (value, ctxDelta) $ case toBoolValue value of
+liftQuantifierProperty (value, ctxDelta) = case toBoolValue value of
   VBoolLiteral _ -> return (([], value), 0)
   VAnd (TensorOp2Args dims arg1 arg2) -> do
     ((quantifiers1, arg1'), ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
@@ -185,8 +196,9 @@ updateIndexBoundVar lv value = case toIndexValue value of
   VIndexIf _  -> do
     declProv <- ask
     throwError $ UnableToLiftQuantifiersInProperty declProv
-  -- how to convert back to Value Builtin for VIndexAtVector
-  VIndexAtVector _ -> return value
+  VIndexAtVector (AtVectorArgs typ dim vector idx) -> do
+    vector' <- updateIndexBoundVar lv vector
+    return (fromIndexValue $ VIndexAtVector (AtVectorArgs typ dim vector' idx))
   VIndexParameter _ -> return value
 
 updateNatBoundVar ::
@@ -313,7 +325,7 @@ unblockingActions =
       throwError $ UnableToLiftQuantifiersInProperty declProv
   }
 
-showValue :: (MonadLogger m, MonadBoundContext (Value Builtin) m) => (OldContextValue, Lv) -> m(([QuantifierData], NewContextValue), Lv) -> m(([QuantifierData], NewContextValue), Lv)
+{-showValue :: (MonadLogger m, MonadBoundContext (Value Builtin) m) => (OldContextValue, Lv) -> m(([QuantifierData], NewContextValue), Lv) -> m(([QuantifierData], NewContextValue), Lv)
 showValue (value, lv) resultFunction = do
   ctx <- getBoundCtx (Proxy @(Value Builtin))
   logDebug MinDetail $ "lift-enter" <+> prettyVerbose value <+> pretty lv <+> prettyVerbose ctx
@@ -321,4 +333,4 @@ showValue (value, lv) resultFunction = do
   ((quantifiers, newValue), newLv) <- resultFunction
   decrCallDepth
   logDebug MinDetail $ "lift-exit" <+> prettyVerbose newValue <+> pretty newLv <+> prettyVerbose ctx
-  return ((quantifiers, newValue), newLv)
+  return ((quantifiers, newValue), newLv)-}
