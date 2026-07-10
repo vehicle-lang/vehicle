@@ -14,7 +14,7 @@ for epsilon in a robustness specification.
 Explicit Parameters
 -------------------
 
-|backendall_full| 
+|backendall_full|
 
 Parameters can be declared using the ``@parameter`` annotation as follows:
 
@@ -34,7 +34,7 @@ Inferable Parameters
 --------------------
 
 |backendloss_part|
-|backendverification_full| 
+|backendverification_full|
 |backendagda_full|
 |backendrocq_full|
 |backendimandra_full|
