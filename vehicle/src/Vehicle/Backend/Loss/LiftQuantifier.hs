@@ -33,7 +33,6 @@ type OldContextValue = Value Builtin
 type NewContextValue = Value Builtin
 type QuantifierData = (Quantifier, Either (VDims Builtin) (VType Builtin), VBinder Builtin)
 
--- I think this should return the Prog containing the list of reconstructed decls plus [(propertyName, Bool)]
 liftQuantifiers ::
   (MonadCompile m) =>
   Prog Builtin ->
@@ -43,7 +42,6 @@ liftQuantifiers (Main ds) =
     (declsData, ds') <- liftQuantifierDecls ds
     return (declsData, Main ds')
 
--- Possibly return [(propertyName, Bool)] in addition to the list of reconstructed decls
 liftQuantifierDecls :: 
   (MonadCompile m, MonadFreeContext Builtin m) => 
   [Decl Builtin] ->
@@ -75,7 +73,7 @@ liftQuantifierDecl decl = case decl of
         logDebug MinDetail $ prettyFriendlyEmptyCtx liftedValue
         return ((ident, findCounterExample), DefFunction p ident ann typ liftedValue)
       else return ((ident, False), decl)
-  DefRecord _ ident _ _ _ -> return ((ident, False), decl)
+  DefRecord _ ident _ _ _ _ -> return ((ident, False), decl)
 
 -- Returns a Bool representing whether performing a search on the property would produce a counter-example
 -- True = example input found will be a counter-example to the property
@@ -88,26 +86,27 @@ flipForall ::
 flipForall (quantifierData, value) = case quantifierData of
   [] -> return ((quantifierData, value), True) -- is True here ok?
   (firstQuantifier, _, _) : _ -> do
-    newQuantifierData <- flipForallHelper firstQuantifier quantifierData
+    newQuantifierData <- checkAlternatingQuantifiers firstQuantifier quantifierData
     if firstQuantifier == Forall
       then return ((newQuantifierData, fromBoolValue $ VNot (TensorOp1Args IDimNil value)), True) -- not sure what dims to use here
       else return ((newQuantifierData, value), False)
 
-flipForallHelper ::
+-- Throws an error if there are alternating quantifiers in the property and makes all quantifiers existential
+checkAlternatingQuantifiers ::
   (MonadCompile m,
    MonadReader DeclProvenance m) =>
   Quantifier ->
   [QuantifierData] ->
   m[QuantifierData]
-flipForallHelper prevQuantifier quantifierData = case quantifierData of
+checkAlternatingQuantifiers prevQuantifier quantifierData = case quantifierData of
   [] -> return []
-  (quantifier, dimsOrTyp, binder) : quantifiers -> 
+  (quantifier, dimsOrTyp, binder) : qs -> 
     if prevQuantifier /= quantifier
       then do
         declProv <- ask
         throwError $ UnableToLiftQuantifiersInProperty declProv
       else do
-        newData <- flipForallHelper quantifier quantifiers
+        newData <- checkAlternatingQuantifiers quantifier qs
         return ((Exists, dimsOrTyp, binder) : newData)
 
 reconstructProperty ::
@@ -132,7 +131,6 @@ reconstructProperty quantifiers value = case quantifiers of
       Left dims -> return (fromBoolValue $ VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs dims binder (Closure newEnv newBody)))
       Right typ -> return (fromBoolValue $ VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder (Closure newEnv newBody)))
     
--- Takes (expression, contextDelta) and returns (expression with quantifiers lifted, number of quantifiers in the expression)
 liftQuantifierProperty :: 
   (MonadLiftQuantifiers m) =>
   (OldContextValue, Lv) -> 
@@ -174,14 +172,12 @@ liftQuantifierProperty (value, ctxDelta) = case toBoolValue value of
     arg1' <- updateIndexBoundVar ctxDelta arg1
     arg2' <- updateIndexBoundVar ctxDelta arg2
     return (([], fromBoolValue $ VCompareIndex (op, IndexComparisonArgs size1 size2 arg1' arg2')), 0)
-  VCompareNat (op, Op2Args arg1 arg2) -> do
-    arg1' <- updateNatBoundVar ctxDelta arg1
-    arg2' <- updateNatBoundVar ctxDelta arg2
-    return (([], fromBoolValue $ VCompareNat (op, Op2Args arg1' arg2')), 0)
-  VCompareRatTensor (op, TensorOp2Args dims arg1 arg2) -> do
-    arg1' <- updateRatTensorBoundVar ctxDelta arg1
-    arg2' <- updateRatTensorBoundVar ctxDelta arg2
-    return (([], fromBoolValue $ VCompareRatTensor (op, TensorOp2Args dims arg1' arg2')), 0)
+  VCompareNat (op, args) -> do
+    args' <- traverseOp2Args (updateNatBoundVar ctxDelta) args
+    return (([], fromBoolValue $ VCompareNat (op, args')), 0)
+  VCompareRatTensor (op, args) -> do
+    args' <- traverseTensorOp2Args (updateRatTensorBoundVar ctxDelta) args
+    return (([], fromBoolValue $ VCompareRatTensor (op, args')), 0)
 
 updateIndexBoundVar :: 
   (MonadLiftQuantifiers m) =>
@@ -214,14 +210,12 @@ updateNatBoundVar lv value = case toNatValue value of
   VNatIf _ -> do
     declProv <- ask
     throwError $ UnableToLiftQuantifiersInProperty declProv
-  VNatAdd (Op2Args arg1 arg2) -> do
-    arg1' <- updateNatBoundVar lv arg1
-    arg2' <- updateNatBoundVar lv arg2
-    return (fromNatValue $ VNatAdd (Op2Args arg1' arg2')) 
-  VNatMul (Op2Args arg1 arg2) -> do
-    arg1' <- updateNatBoundVar lv arg1
-    arg2' <- updateNatBoundVar lv arg2
-    return (fromNatValue $ VNatMul (Op2Args arg1' arg2')) 
+  VNatAdd args -> do
+    args' <- traverseOp2Args (updateNatBoundVar lv) args
+    return (fromNatValue $ VNatAdd args') 
+  VNatMul args -> do
+    args' <- traverseOp2Args (updateNatBoundVar lv) args
+    return (fromNatValue $ VNatMul args') 
   VNatParameter _ -> return value
 
 updateRatTensorBoundVar ::
@@ -240,46 +234,39 @@ updateRatTensorBoundVar lv value = case toRatTensorValue value of
   VExpRatTensor (TensorOp1Args dims arg) -> do
     arg' <- updateRatTensorBoundVar lv arg
     return (fromRatTensorValue $ VExpRatTensor (TensorOp1Args dims arg'))
-  VAddRatTensor (TensorOp2Args dims arg1 arg2) -> do
-    arg1' <- updateRatTensorBoundVar lv arg1
-    arg2' <- updateRatTensorBoundVar lv arg2
-    return (fromRatTensorValue $ VAddRatTensor (TensorOp2Args dims arg1' arg2'))
-  VSubRatTensor (TensorOp2Args dims arg1 arg2) -> do
-    arg1' <- updateRatTensorBoundVar lv arg1
-    arg2' <- updateRatTensorBoundVar lv arg2
-    return (fromRatTensorValue $ VAddRatTensor (TensorOp2Args dims arg1' arg2'))
-  VMulRatTensor (TensorOp2Args dims arg1 arg2) -> do
-    arg1' <- updateRatTensorBoundVar lv arg1
-    arg2' <- updateRatTensorBoundVar lv arg2
-    return (fromRatTensorValue $ VMulRatTensor (TensorOp2Args dims arg1' arg2'))
-  VDivRatTensor (TensorOp2Args dims arg1 arg2) -> do
-    arg1' <- updateRatTensorBoundVar lv arg1
-    arg2' <- updateRatTensorBoundVar lv arg2
-    return (fromRatTensorValue $ VDivRatTensor (TensorOp2Args dims arg1' arg2'))
-  VMinRatTensor (TensorOp2Args dims arg1 arg2) -> do
-    arg1' <- updateRatTensorBoundVar lv arg1
-    arg2' <- updateRatTensorBoundVar lv arg2
-    return (fromRatTensorValue $ VMinRatTensor (TensorOp2Args dims arg1' arg2'))
-  VMaxRatTensor (TensorOp2Args dims arg1 arg2) -> do
-    arg1' <- updateRatTensorBoundVar lv arg1
-    arg2' <- updateRatTensorBoundVar lv arg2
-    return (fromRatTensorValue $ VMaxRatTensor (TensorOp2Args dims arg1' arg2'))
-  VPowRatTensor (TensorOp2Args dims arg1 arg2) -> do
-    arg1' <- updateRatTensorBoundVar lv arg1
-    arg2' <- updateRatTensorBoundVar lv arg2
-    return (fromRatTensorValue $ VPowRatTensor (TensorOp2Args dims arg1' arg2'))
-  VReduceAddRatTensor (TensorReductionArgs dims tensor) -> do
-    tensor' <- updateRatTensorBoundVar lv tensor
-    return (fromRatTensorValue $ VReduceAddRatTensor (TensorReductionArgs dims tensor'))
-  VReduceMulRatTensor (TensorReductionArgs dims tensor) -> do
-    tensor' <- updateRatTensorBoundVar lv tensor
-    return (fromRatTensorValue $ VReduceMulRatTensor (TensorReductionArgs dims tensor'))
-  VReduceMinRatTensor (TensorReductionArgs dims tensor) -> do
-    tensor' <- updateRatTensorBoundVar lv tensor
-    return (fromRatTensorValue $ VReduceMinRatTensor (TensorReductionArgs dims tensor'))
-  VReduceMaxRatTensor (TensorReductionArgs dims tensor) -> do
-    tensor' <- updateRatTensorBoundVar lv tensor
-    return (fromRatTensorValue $ VReduceMaxRatTensor (TensorReductionArgs dims tensor'))
+  VAddRatTensor args -> do
+    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VAddRatTensor args')
+  VSubRatTensor args -> do
+    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VSubRatTensor args')
+  VMulRatTensor args -> do
+    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VMulRatTensor args')
+  VDivRatTensor args -> do
+    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VDivRatTensor args')
+  VMinRatTensor args -> do
+    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VMinRatTensor args')
+  VMaxRatTensor args -> do
+    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VMaxRatTensor args')
+  VPowRatTensor args -> do
+    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VPowRatTensor args')
+  VReduceAddRatTensor args -> do
+    args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VReduceAddRatTensor args')
+  VReduceMulRatTensor args -> do
+    args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VReduceMulRatTensor args')
+  VReduceMinRatTensor args -> do
+    args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VReduceMinRatTensor args')
+  VReduceMaxRatTensor args -> do
+    args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VReduceMaxRatTensor args')
   VIfRatTensor _ -> do
     declProv <- ask
     throwError $ UnableToLiftQuantifiersInProperty declProv
@@ -287,18 +274,18 @@ updateRatTensorBoundVar lv value = case toRatTensorValue value of
   VRatTensorNetworkApp ident (NetworkAppArgs arg) -> do
     arg' <- updateRatTensorBoundVar lv arg
     return (fromRatTensorValue $ VRatTensorNetworkApp ident (NetworkAppArgs arg'))
-  VRatConstTensor (ConstTensorArgs typ val dims) -> do
-    val' <- updateRatTensorBoundVar lv val
-    return (fromRatTensorValue $ VRatConstTensor (ConstTensorArgs typ val' dims))
-  VRatStackTensor (StackTensorArgs typ firstDim restDims elems) -> do
-    elems' <-  traverse (updateRatTensorBoundVar lv) elems
-    return (fromRatTensorValue $ VRatStackTensor (StackTensorArgs typ firstDim restDims elems'))
-  VRatAtTensor (AtTensorArgs typ firstDim restDims tensor idx) -> do
-    tensor' <- updateRatTensorBoundVar lv tensor
-    return (fromRatTensorValue $ VRatAtTensor (AtTensorArgs typ firstDim restDims tensor' idx))
-  VRatForeach (ForeachTensorArgs typ firstDim restDims fn) -> do
+  VRatConstTensor args -> do
+    args' <- traverseConstTensorValue (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VRatConstTensor args')
+  VRatStackTensor args -> do
+    args' <-  traverseStackTensorElements (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VRatStackTensor args')
+  VRatAtTensor args -> do
+    args' <- traverseAtTensorArg (updateRatTensorBoundVar lv) args
+    return (fromRatTensorValue $ VRatAtTensor args')
+  VRatForeach (ForeachTensorArgs typ d ds fn) -> do
     fn' <- updateRatTensorBoundVar lv fn
-    return (fromRatTensorValue $ VRatForeach (ForeachTensorArgs typ firstDim restDims fn'))
+    return (fromRatTensorValue $ VRatForeach (ForeachTensorArgs typ d ds fn'))
   VRatRecordAcc typ val fieldName spine -> do
     val' <- updateRatTensorBoundVar lv val
     spine' <- traverseArgs (updateRatTensorBoundVar lv) spine
