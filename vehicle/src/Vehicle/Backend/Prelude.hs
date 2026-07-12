@@ -14,7 +14,7 @@ import Vehicle.Prelude.Logging
 
 data LossFunctionMode
   = Training
-  | CounterExample
+  | Search
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty LossFunctionMode where

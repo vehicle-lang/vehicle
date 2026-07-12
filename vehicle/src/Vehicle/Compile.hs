@@ -162,7 +162,7 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    (progData, typedProg') <- if lossFunctionMode == CounterExample 
+    (progData, typedProg') <- if lossFunctionMode == Search 
       then liftQuantifiers typedProg
       else return ([], typedProg)
     logDebug MinDetail $ prettyVerbose progData
