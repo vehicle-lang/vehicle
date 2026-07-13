@@ -1,6 +1,7 @@
 module Vehicle.Compile.LowerNot
   ( lowerNot,
     negateRatTensorQuantifierBody,
+    negateRecordQuantifierBody,
   )
 where
 
@@ -46,7 +47,10 @@ lowerNot (TensorOp1Args _ arg) = do
       VBoolTensorCompareIndex (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareIndex (neg op, args)
       VBoolTensorCompareNat (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareNat (neg op, args)
       VBoolTensorCompareRatPointwise (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareRatPointwise (neg op, args)
-      VBoolTensorCompareRatReduced (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareRatReduced (neg op, args)
+      VBoolTensorCompareRatReduced (op, TensorReduceComparisonArgs d ds xs ys) -> do
+        let dims = IDimCons d ds
+        let pointwiseComparison = fromBoolTensorValue $ VBoolTensorCompareRatPointwise (neg op, TensorOp2Args dims xs ys)
+        return $ fromBoolTensorValue $ VBoolTensorReduceOr $ TensorReductionArgs dims pointwiseComparison
       -- We can't actually lower the `not` through the body of the quantifier as
       -- it is not yet unnormalised. However, it's fine to stop here as we'll
       -- simply continue to normalise it once we re-encounter it again after

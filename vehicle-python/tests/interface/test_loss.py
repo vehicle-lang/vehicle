@@ -1,14 +1,24 @@
-from pathlib import Path
-from typing import Any, Callable, Sequence
-
 import pytest
-import vehicle_lang as vcl
 
 tf = pytest.importorskip(
     "tensorflow",
     reason="TensorFlow extra is required for loss execution tests",
 )
+
+from typing import Any, Callable
+
+import vehicle_lang as vcl
 from vehicle_lang.loss import tensorflow as loss_tf
+from vehicle_lang.loss._tensorflow.samplers import (
+    ConstantTensorFlowSampler,
+    TensorFlowSampler,
+)
+
+from ..config import PYTHON_TEST_SPECS_PATH
+
+###########
+## Setup ##
+###########
 
 
 def network_validate_output(output: dict[str, Any]) -> None:
@@ -37,32 +47,9 @@ def validate_loss_function_output(
         assert loss_value.shape == ()
 
 
-class DummySampler(loss_tf.TensorFlowSampler):
-    def get_loss(
-        self,
-        dims: Sequence[int],
-        lower_bound: Any,
-        upper_bound: Any,
-        search_lambda: Callable[[Any], Any],
-        minimise: bool,
-    ) -> Any:
-        """Sample at a few test points in the bounded range."""
-        # Sample at some test points
-        test_points = [
-            tf.constant([-10.0]),
-            tf.constant([-1.0]),
-            tf.constant([1.0]),
-            tf.constant([10.0]),
-        ]
-        # Evaluate the search lambda at each test point
-        results = []
-        for point in test_points:
-            result = search_lambda(point)
-            results.append(tf.convert_to_tensor(result))
-        return tf.stack(results)
-
-
-dummy_sampler = DummySampler()
+###################
+## Execute tests ##
+###################
 
 
 @pytest.mark.parametrize(  # type: ignore[untyped-decorator]
@@ -70,52 +57,52 @@ dummy_sampler = DummySampler()
     [
         (
             "test_addition.vcl",
-            {},
+            None,
             {"prop": 0.0},
         ),
         (
             "test_at.vcl",
-            {},
+            None,
             {"prop": float("inf")},
         ),
         (
             "test_constant.vcl",
-            {},
+            None,
             {"prop": 0.0},
         ),
         (
             "test_division.vcl",
-            {},
+            None,
             {"prop": 0.0},
         ),
         (
             "test_indicator.vcl",
-            {},
+            None,
             {"prop": float("inf")},
         ),
         (
             "test_maximum.vcl",
-            {},
+            None,
             {"prop": float("inf")},
         ),
         (
             "test_minimum.vcl",
-            {},
+            None,
             {"prop": 0.0},
         ),
         (
             "test_multiplication.vcl",
-            {},
+            None,
             {"prop": 0.0},
         ),
         (
             "test_negation.vcl",
-            {},
+            None,
             {"prop": 0.0},
         ),
         (
             "test_network.vcl",
-            {},
+            None,
             network_validate_output,
         ),
         # (
@@ -130,36 +117,36 @@ dummy_sampler = DummySampler()
         # ),
         (
             "test_bounded.vcl",
-            {"x": dummy_sampler.get_loss},
+            {"x": ConstantTensorFlowSampler(tf.constant([0.0]))},
             validate_loss_function_output,
         ),
         (
             "test_subtraction.vcl",
-            {},
+            None,
             {"prop": 0.0},
         ),
         (
             "test_tensor.vcl",
-            {},
+            None,
             {"prop": 0.0},
         ),
         (
             "test_variable.vcl",
-            {},
+            None,
             {"prop": 0.0},
         ),
     ],
 )
 def test_loss_function_exec(
     specification_filename: str,
-    samplers: dict[str, Any],
+    samplers: dict[str, TensorFlowSampler],
     validate_output: dict[str, Any] | Callable[[dict[str, Any]], None],
 ) -> None:
     print(f"Exec {specification_filename}")
-    specification_path = Path(__file__).parent / "data" / specification_filename
+    specification_path = PYTHON_TEST_SPECS_PATH / specification_filename
     actual_declarations = loss_tf.load_specification(
         specification_path,
-        logic=vcl.DifferentiableLogic.DL2,
+        logic=vcl.DL2DifferentiableLogic(),
         samplers=samplers,
     )
     if isinstance(validate_output, dict):

@@ -36,7 +36,7 @@ if False:
                 vcl.load_loss_function(
                     specification_path,
                     property_name="bounded",
-                    target=vcl.DifferentiableLogic.DL2,
+                    target=vcl.DL2DifferentiableLogic(),
                     optimisers={"x": optimiser_for_x},
                 )
             )

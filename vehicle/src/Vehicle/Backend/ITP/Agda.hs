@@ -346,7 +346,8 @@ compileDecl opts = \case
     FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty opts n e
     FunctionDecl binderCount (Just AnnInstance {}) -> Just <$> compileFunctionDecl n binderCount t e
     ProjectionDecl _ -> return Nothing
-  DefRecord p n _sort telescope fields ->
+    TensorCoercionDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
+  DefRecord p n _sort telescope fields _supports ->
     Just <$> compileRecordDecl p n telescope fields
 
 compileRecordDecl ::
@@ -702,7 +703,7 @@ toVec = foldr (\v vs -> annotate ([], 5) (v <> "∷ᵥ" <> vs)) "[]ᵥ"
 
 compileVecLiteral :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
+  Just (VectorLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
   Nothing -> developerError "Malformed type-checked vector literal"
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code

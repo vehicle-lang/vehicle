@@ -347,7 +347,7 @@ type HasVectorExpr expr builtin =
 accessVectorType :: (HasVectorType expr builtin) => Accessor (expr builtin) (VectorTypeArgs (expr builtin))
 accessVectorType = accessArgs accessVectorTypeBuiltin
 
-accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (VecLitArgs (expr builtin))
+accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (VectorLitArgs (expr builtin))
 accessVecLit = accessArgs accessVecLitBuiltin
 
 accessAtVector :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (AtVectorArgs (expr builtin))

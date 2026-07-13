@@ -25,7 +25,7 @@ import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial (MaybeTrivial)
 import Vehicle.Data.Real (ExtendedRational (..))
-import Vehicle.Data.Tensor (ExtendedRatTensor, Tensor (..))
+import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
@@ -50,9 +50,8 @@ tryPurifyAssertion ::
   TensorOp2Args (Value Builtin) ->
   m (IfTree (Value Builtin) (Value Builtin, Maybe (MaybeTrivial (Assertion (TensorValueLinearExpr Builtin)))))
 tryPurifyAssertion op (TensorOp2Args dims e1 e2) = do
-  let purifyFn = compileLinearExpr dims
-  e1' <- purifyFn e1
-  e2' <- purifyFn e2
+  e1' <- compileLinearExpr dims e1
+  e2' <- compileLinearExpr dims e2
   forIfTreeM e1' $ \e1'' ->
     forIfTreeM e2' $ \e2'' -> do
       IfLeaf <$> do
@@ -68,9 +67,6 @@ data Result = Result
     valueAsLinearExpr :: Maybe (TensorValueLinearExpr Builtin)
   }
 
-blockedResult :: Value Builtin -> Result
-blockedResult value = Result value Nothing
-
 type BranchingResult = IfTree (Value Builtin) Result
 
 compileLinearExpr ::
@@ -84,7 +80,8 @@ compileLinearExpr dims expr =
     ---------------------
     -- Handlable cases --
     ---------------------
-    VRatTensorLiteral t -> compileTensorLiteral dims t
+    VRatTensorLiteral {} -> compileAsConstantExpr dims expr
+    VDatasetOrParameter {} -> compileAsConstantExpr dims expr
     VRatTensorBoundVar var -> compileRatTensorVar dims var
     VNegRatTensor args -> compileNegRatTensor recCompile args
     VAddRatTensor args -> compileAddRatTensor recCompile args
@@ -92,7 +89,6 @@ compileLinearExpr dims expr =
     VMulRatTensor args -> compileMulRatTensor recCompile args
     VDivRatTensor args -> compileDivRatTensor recCompile args
     VIfRatTensor args -> compileIf recCompile args
-    VDatasetOrParameter ident -> compileDatasetOrParameter dims ident
     -----------------------------
     -- Potentially unblockable --
     -----------------------------
@@ -105,15 +101,21 @@ compileLinearExpr dims expr =
     VReduceMulRatTensor {} -> tryUnblock
     VReduceMinRatTensor {} -> tryUnblock
     VReduceMaxRatTensor {} -> tryUnblock
-    VRatConstTensor {} -> tryUnblock
-    VRatStackTensor {} -> tryUnblock
-    VRatAt {} -> tryUnblock
+    VRatAtTensor {} -> tryUnblock
     VRatForeach {} -> tryUnblock
     VRatRecordAcc {} -> tryUnblock
+    VRatAtVector {} -> tryUnblock
     ------------------------
     -- Definitely blocked --
     ------------------------
     VRatTensorNetworkApp {} -> blocked
+    --------------------
+    -- Unsure blocked --
+    --------------------
+    -- Very unsure about these two. We could try to use `unblockRatTensor`
+    -- but that at the moment returns `VRatStackTensor` as is...
+    VRatConstTensor {} -> compileAsConstantExpr dims expr
+    VRatStackTensor {} -> compileAsConstantExpr dims expr
   where
     ------------------------
     -- Helper definitions --
@@ -123,22 +125,22 @@ compileLinearExpr dims expr =
     tryUnblock = tryAndUnblock dims expr
 
     blocked :: m BranchingResult
-    blocked = return $ IfLeaf $ blockedResult expr
+    blocked = return $ IfLeaf $ Result expr Nothing
 
     recCompile :: Value Builtin -> m BranchingResult
     recCompile = compileLinearExpr dims
 
-compileTensorLiteral ::
+compileAsConstantExpr ::
   (MonadPurifyAssertion m) =>
   VDims Builtin ->
-  ExtendedRatTensor ->
+  Value Builtin ->
   m BranchingResult
-compileTensorLiteral dims t = do
+compileAsConstantExpr dims value = do
   return $
     IfLeaf $
       Result
-        { value = IRatTensor t,
-          valueAsLinearExpr = Just $ constantExpr $ TensorValue dims (IRatTensor t)
+        { value = value,
+          valueAsLinearExpr = Just $ constantExpr $ TensorValue dims value
         }
 
 compileRatTensorVar ::
@@ -160,19 +162,6 @@ compileRatTensorVar dims lv = do
       Result
         { value = VBoundVar lv [],
           valueAsLinearExpr = valueAsLinearExpr
-        }
-
-compileDatasetOrParameter ::
-  (MonadPurifyAssertion m) =>
-  VDims Builtin ->
-  Identifier ->
-  m BranchingResult
-compileDatasetOrParameter dims ident = do
-  return $
-    IfLeaf $
-      Result
-        { value = VFreeVar ident [],
-          valueAsLinearExpr = Just $ constantExpr $ TensorValue dims (VFreeVar ident [])
         }
 
 compileNegRatTensor ::
@@ -273,22 +262,27 @@ tryAndUnblock dims expr = do
   callDepth <- getCallDepth
   errorOrResult <- runExceptT $ unblockRatTensorValue unblockingActions expr
   case errorOrResult of
-    Left resource -> do
-      logDebug MaxDetail $ "cannot unblock resource" <+> pretty resource
+    Left (BlockingNetwork ident) -> do
       setCallDepth callDepth
-      return $ IfLeaf $ blockedResult expr
+      logDebug MaxDetail $ "contains network" <+> quotePretty ident <+> "so cannot be constraint"
+      return $ IfLeaf $ Result expr Nothing
+    Left BlockingDatasetOrParameter {} -> compileAsConstantExpr dims expr
     Right unblocked -> forIfTreeM unblocked $ \unblockedExpr ->
       compileLinearExpr dims unblockedExpr
 
+data BlockingReason
+  = BlockingNetwork Identifier
+  | BlockingDatasetOrParameter Identifier
+
 unblockingActions ::
-  (MonadPurifyAssertion m, MonadError Identifier m) =>
+  (MonadPurifyAssertion m, MonadError BlockingReason m) =>
   UnblockingActions m
 unblockingActions =
   UnblockingActions
     { unblockRatTensorBoundVar = purifyBoundVar,
       unblockRecordBoundVar = purifyBoundVar,
-      unblockNetworkApp = \_ _ ident _ -> throwError ident,
-      unblockDatasetOrParameter = \ident -> throwError ident
+      unblockNetworkApp = \_ _ ident _ -> throwError $ BlockingNetwork ident,
+      unblockDatasetOrParameter = \ident -> throwError $ BlockingDatasetOrParameter ident
     }
 
 purifyBoundVar ::

@@ -19,7 +19,7 @@ import Data.Bitraversable
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
-import Data.List (sortOn)
+import Data.List (find, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -237,6 +237,11 @@ xor p q = p /= q
 
 enumerate :: (Bounded a, Enum a) => [a]
 enumerate = [minBound .. maxBound]
+
+lookupEnumerable :: forall a b. (Bounded a, Enum a, Eq b) => (a -> b) -> b -> Maybe a
+lookupEnumerable toKey target = do
+  let values = enumerate @a
+  find (\e -> toKey e == target) values
 
 whenM :: (Monad m) => m Bool -> m () -> m ()
 whenM cond action = do

@@ -17,6 +17,7 @@ import Vehicle.Backend.Loss.Core hiding (lookupLogicField)
 import Vehicle.Backend.Loss.LossCompilation (convertFunction, convertRatTensor)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Data.Builtin.Interface.Normalise (evalCompareRatTensor)
@@ -35,14 +36,15 @@ findAndCompileLogic ::
   DifferentiableLogicID ->
   Prog Builtin ->
   m DifferentiableLogicImplementation
-findAndCompileLogic logicID prog = do
-  MonadLossState {..} <-
-    runMonadLossT $ traverseNormalisedDecls_ (convertLogicDecl logicID) prog
-  case maybeImplementation of
-    Just definition -> return definition
-    Nothing -> do
-      let names = fmap nameOf foundLogics
-      missingLogicError names logicID
+findAndCompileLogic logicID prog =
+  logCompilerSection2 MidDetail ("search for logic" <+> quotePretty logicID) $ do
+    MonadLossState {..} <-
+      runMonadLossT $ traverseNormalisedDecls_ (convertLogicDecl logicID) prog
+    case maybeImplementation of
+      Just definition -> return definition
+      Nothing -> do
+        let names = fmap nameOf foundLogics
+        missingLogicError names logicID
 
 --------------------------------------------------------------------------------
 -- Monad
@@ -151,9 +153,9 @@ compileLogicField ::
   DifferentiableLogicID ->
   VDecl Builtin ->
   OMap FieldName (Value Builtin) ->
-  Map TensorDifferentiableLogicField (Value LossBuiltin) ->
+  Map TensorDifferentiableLogicField (Expr LossBuiltin) ->
   TensorDifferentiableLogicField ->
-  m (Map TensorDifferentiableLogicField (Value LossBuiltin))
+  m (Map TensorDifferentiableLogicField (Expr LossBuiltin))
 compileLogicField logicID decl fields impl field =
   logCompilerSection2 MidDetail ("compiling tensor-field" <+> quotePretty field) $ do
     let tensorValue = lookupLogicField field fields
@@ -161,10 +163,11 @@ compileLogicField logicID decl fields impl field =
     logDebug MaxDetail $ "tensor-result:" <+> prettyVerbose tensorValue <> line
 
     lossTensorExpr <-
-      runMonadLogicT logicID (mempty, True) decl $ do
-        convertFunction convertRatTensor tensorValue
+      runFreshFreeContextT (Proxy @LossBuiltin) $ do
+        runMonadLogicT logicID (mempty, True) decl $ do
+          convertFunction convertRatTensor tensorValue
     logDebug MaxDetail $ "loss-tensor-result:" <+> prettyFriendlyEmptyCtx lossTensorExpr
-    return $ Map.insert field lossTensorExpr impl
+    return $ Map.insert field (unnormalise 0 lossTensorExpr) impl
 
 lookupLogicField :: TensorDifferentiableLogicField -> OMap FieldName value -> value
 lookupLogicField field logicFields = do

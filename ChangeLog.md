@@ -2,7 +2,31 @@
 
 ## Next release
 
+### ITP backends
+
+* Fixed bug where the Isabelle backend mis-compiled declarations referencing `@network`, `@dataset`, or `@parameter` resources (#1195).
+
+## v0.26.1
+
+### General
+
+* Fixed bug where comparisons of tensor inequalities underneath `exists` was being compiled incorrectly in both solver and loss backends.
+
+## v0.26.0
+
 ### Language
+
+* BREAKING: with the introduction of `infinity` to the language in `v0.25` all reduction operations have
+  sensible zero-dimensional values. Therefore the following operations no longer take the identity element
+  as an argument, i.e.:
+  ```
+  reduceAdd e xs -> reduceAdd xs   (if 0D returns 0)
+  reduceMul e xs -> reduceMul xs   (if 0D returns 1)
+  reduceMin e xs -> reduceMin xs   (if 0D returns infinity)
+  reduceMax e xs -> reduceMax xs   (if 0D returns -infinity)
+  reduceAnd e xs -> reduceAnd xs   (if 0D returns True)
+  reduceOr  e xs -> reduceOr  xs   (if 0D returns False)
+  ```
 
 * Added the operators:
   ```
@@ -11,6 +35,21 @@
   exp : Tensor Real ds -> Tensor Real ds
   ```
   Note that these operators are currently only supported by the loss backend.
+
+### Loss
+
+* BREAKING: Differentiable logics are now referenced in the Python bindings via: `VehicleDifferentiableLogic()` instead of `DifferentiableLogic.Vehicle`.
+
+* Added the ability to call a custom differentiable logic via the new class `CustomDifferentiableLogic(name)`.
+
+* Fixed bugs where:
+  - specs with multiple quantified values would sometimes have the variables switched around in the generated code.
+  - negations were occasionally being translated with the wrong dimensions.
+  - `const` wasn't being correctly translated.
+  - Tensorflow and PyTorch code was occasionally being generated with invalid `-1` dimensions.
+  - logics that depended on `@parameter` were not supported.
+
+* Added better support for `Vector` operations, e.g. the `mnist-robustness` specification.
 
 ### Verification
 

@@ -46,7 +46,7 @@ instance Delaborate (V.Decl V.Builtin) B.Decl where
     V.DefAbstract _ n s t -> do
       constructor <- delabM s
       constructor (delabIdentifier n) <$> delabM t
-    V.DefRecord _ n _ t f -> do
+    V.DefRecord _ n _ t f _ -> do
       B.DefRecord (delabIdentifier n) <$> traverse delabM t <*> traverse delabM f
 
 instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where

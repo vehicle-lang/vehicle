@@ -18,9 +18,15 @@ module Vehicle.Libraries.StandardLibrary
     hasSubIdent,
     hasMulIdent,
     hasDivIdent,
+    addTCProj,
+    subTCProj,
+    mulTCProj,
+    divTCProj,
     hasComparisonIdent,
     append,
     standardLibraryCompareRatTensorReduced,
+    validDatasetTypeIdent,
+    validDatasetListElementTypeIdent,
   )
 where
 
@@ -49,10 +55,10 @@ standardLibraryDefinitionsModulePath = ModulePath ["Definitions"]
 standardLibraryInstanceOps :: Set Identifier
 standardLibraryInstanceOps =
   Set.fromList
-    [ standardLibIdent "addTC",
-      standardLibIdent "subTC",
-      standardLibIdent "mulTC",
-      standardLibIdent "divTC",
+    [ addTCProj,
+      subTCProj,
+      mulTCProj,
+      divTCProj,
       standardLibIdent "forallTC",
       standardLibIdent "existsTC",
       -- standardLibIdent "foldTC",
@@ -80,20 +86,38 @@ validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
 validNetworkFieldTypeIdent :: Identifier
 validNetworkFieldTypeIdent = standardLibIdent "HasValidNetworkFieldType"
 
+validDatasetTypeIdent :: Identifier
+validDatasetTypeIdent = standardLibIdent "HasValidDatasetType"
+
+validDatasetListElementTypeIdent :: Identifier
+validDatasetListElementTypeIdent = standardLibIdent "HasValidDatasetListElementType"
+
 hasQuantifierIdent :: Identifier
 hasQuantifierIdent = standardLibIdent "HasQuantifier"
 
 hasAddIdent :: Identifier
 hasAddIdent = standardLibIdent "HasAdd"
 
+addTCProj :: Identifier
+addTCProj = standardLibIdent "addTC"
+
 hasSubIdent :: Identifier
 hasSubIdent = standardLibIdent "HasSub"
+
+subTCProj :: Identifier
+subTCProj = standardLibIdent "subTC"
 
 hasMulIdent :: Identifier
 hasMulIdent = standardLibIdent "HasMul"
 
+mulTCProj :: Identifier
+mulTCProj = standardLibIdent "mulTC"
+
 hasDivIdent :: Identifier
 hasDivIdent = standardLibIdent "HasDiv"
+
+divTCProj :: Identifier
+divTCProj = standardLibIdent "divTC"
 
 hasComparisonIdent :: Identifier
 hasComparisonIdent = standardLibIdent "HasComparison"

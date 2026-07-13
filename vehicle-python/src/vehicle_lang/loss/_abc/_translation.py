@@ -82,8 +82,6 @@ class ABCTranslation(
                 return self.translate_SearchRatTensor(expression)
             case vcl_ast.Dimension():
                 return self.translate_Dimension(expression)
-            case vcl_ast.DimensionLookup():
-                return self.translate_DimensionLookup(expression)
             case vcl_ast.DimensionCons():
                 return self.translate_DimensionCons(expression)
             case vcl_ast.DimensionIndex():
@@ -94,6 +92,16 @@ class ABCTranslation(
                 return self.translate_ConstTensor(expression)
             case vcl_ast.StackTensor():
                 return self.translate_StackTensor(expression)
+            case vcl_ast.AtTensor():
+                return self.translate_AtTensor(expression)
+            case vcl_ast.ForeachTensor():
+                return self.translate_ForeachTensor(expression)
+            case vcl_ast.VectorLiteral():
+                return self.translate_VectorLiteral(expression)
+            case vcl_ast.AtVector():
+                return self.translate_AtVector(expression)
+            case vcl_ast.ForeachVector():
+                return self.translate_ForeachVector(expression)
             case _:
                 raise NotImplementedError(type(expression).__name__)
 
@@ -200,11 +208,6 @@ class ABCTranslation(
     ) -> vcl_var.Expression: ...
 
     @abstractmethod
-    def translate_DimensionLookup(
-        self, expression: vcl_ast.DimensionLookup
-    ) -> vcl_var.Expression: ...
-
-    @abstractmethod
     def translate_DimensionCons(
         self, expression: vcl_ast.DimensionCons
     ) -> vcl_var.Expression: ...
@@ -222,4 +225,29 @@ class ABCTranslation(
     @abstractmethod
     def translate_StackTensor(
         self, expression: vcl_ast.StackTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_AtTensor(
+        self, expression: vcl_ast.AtTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_ForeachTensor(
+        self, expression: vcl_ast.ForeachTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_VectorLiteral(
+        self, expression: vcl_ast.VectorLiteral
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_AtVector(
+        self, expression: vcl_ast.AtVector
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_ForeachVector(
+        self, expression: vcl_ast.ForeachVector
     ) -> vcl_var.Expression: ...

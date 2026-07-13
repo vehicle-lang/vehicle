@@ -3,6 +3,7 @@ module Vehicle.Data.DifferentiableLogic where
 import Data.Map (Map)
 import GHC.Generics (Generic)
 import Prettyprinter
+import Vehicle.Data.AST.Expr.Scoped (Expr)
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Value
@@ -83,7 +84,7 @@ comparisonOpToField = \case
 -- Tensor implementation
 
 type DifferentiableLogicImplementation =
-  ( Map TensorDifferentiableLogicField (Value LossBuiltin),
+  ( Map TensorDifferentiableLogicField (Expr LossBuiltin),
     LogicDirection
   )
 
