@@ -29,7 +29,7 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VecLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
+import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VectorLitArgs (..),pattern ICons, pattern INatLiteral, pattern INil)
 import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
