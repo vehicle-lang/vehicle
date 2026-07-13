@@ -59,7 +59,7 @@ jobs:
           cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
 
       - name: 💾 Restore Cabal dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         if: ${{ !env.ACT }}
         id: cache-haskell
         env:
@@ -74,7 +74,7 @@ jobs:
         run: cabal build all --only-dependencies
 
       - name: 💾 Save Cabal dependencies
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: ${{ !env.ACT && steps.cache-haskell.outputs.cache-hit != 'true' }}
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store }}
@@ -89,7 +89,7 @@ jobs:
         run: opam repo add rocq-released https://rocq-prover.org/opam/released
 
       - name: 💾 Restore opam cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         if: ${{ !env.ACT }}
         id: cache-opam
         env:
@@ -106,7 +106,7 @@ jobs:
           opam install -y --deps-only ./vehicle-rocq
 
       - name: 💾 Save opam cache
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: ${{ !env.ACT && steps.cache-opam.outputs.cache-hit != 'true' }}
         with:
           path: ~/.opam

@@ -57,7 +57,7 @@ jobs:
           cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
 
       - name: 💾 Restore Cabal dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         if: ${{ !env.ACT }}
         id: cache-haskell
         env:
@@ -72,14 +72,14 @@ jobs:
         run: cabal build all --only-dependencies
 
       - name: 💾 Save Cabal dependencies
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: ${{ !env.ACT && steps.cache-haskell.outputs.cache-hit != 'true' }}
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store }}
           key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
 
       - name: 💾 Restore Isabelle dependencies
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         id: cache-isabelle
         env:
           key: v3-Isabelle-${{ matrix.os.name }}-2024
@@ -113,7 +113,7 @@ jobs:
           export PATH=$PATH:~/Isabelle/bin
 
       - name: 💾 Save Isabelle dependencies
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: ${{ !env.ACT && steps.cache-isabelle.outputs.cache-hit != 'true' }}
         env:
           key: v3-Isabelle-${{ matrix.os.name }}-2024
