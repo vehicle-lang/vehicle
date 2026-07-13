@@ -571,12 +571,28 @@ elabTypeBinder elab folded = \case
 -- re: elabCompareReduced and elabComparePointwise, even though Pointwise and Reduced Tensor Comparisons are distinct in the frontend/user syntax,
 -- the compiler moves them to a single representation, V. CompareRatTensor, that is able to handle both pointwise and reduced comparisons
 elabCompareReduced :: (MonadElab m, IsToken token) => V.ComparisonOp -> token -> [B.Expr] -> m (V.Expr Builtin)
-elabCompareReduced op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims", e1, e2]
-elabCompareReduced op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
+elabCompareReduced op tk args = do
+  p <- mkProvenance tk
+  let fn = V.Builtin p (V.BuiltinFunction (V.CompareRatTensor op))
+  pDims <- elabExpr $ B.Nil $ mkToken B.TokNil "nil"
+  rDims <- elabExpr $ B.Hole $ mkToken B.HoleToken "_rDims"
+  let implArgs = [V.implicitIrrelevant pDims, V.implicit rDims]
+  explicitArgs <- fmap V.explicit <$> traverse elabExpr args
+  return $ V.normAppList fn (implArgs ++ explicitArgs)
+-- elabCompareReduced op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims", e1, e2]
+-- elabCompareReduced op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
 
 elabComparePointwise :: (MonadElab m, IsToken token) => V.ComparisonOp -> token -> [B.Expr] -> m (V.Expr Builtin)
-elabComparePointwise op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil", e1, e2]
-elabComparePointwise op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
+elabComparePointwise op tk args = do
+  p <- mkProvenance tk
+  let fn = V.Builtin p (V.BuiltinFunction (V.CompareRatTensor op))
+  pDims <- elabExpr $ B.Hole $ mkToken B.HoleToken "_pDims"
+  rDims <- elabExpr $ B.Nil $ mkToken B.TokNil "nil"
+  let implArgs = [V.implicitIrrelevant pDims, V.implicit rDims]
+  explicitArgs <- fmap V.explicit <$> traverse elabExpr args
+  return $ V.normAppList fn (implArgs ++ explicitArgs)
+-- elabComparePointwise op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil", e1, e2]
+-- elabComparePointwise op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
 
 findRelevance :: [B.Modality] -> V.Relevance
 findRelevance ms

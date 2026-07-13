@@ -262,9 +262,9 @@ delabBuiltinFunction fun args = case fun of
     -- if dims2 (reduceDims) is Nil, call delabComparePointwise
     [_pDims, argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), xs, ys] -> delabComparePointwise op [xs, ys]
     -- otherwise, call cheatDelabPretty
-    _ -> cheatDelabPretty (V.CompareTC op) args
-  V.CompareIndex op -> delabTypeClassOp (V.CompareTC op) args
-  V.CompareNat op -> delabTypeClassOp (V.CompareTC op) args
+    _ -> cheatDelabPretty op args
+  V.CompareIndex op -> delabComparison op args
+  V.CompareNat op -> delabComparison op args
   V.FoldList -> delabTypeClassOp V.FoldTC args
   V.MapList -> delabTypeClassOp V.MapTC args
   V.AtTensor -> delabInfixOp2 B.At tokAt args
