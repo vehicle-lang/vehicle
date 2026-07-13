@@ -155,13 +155,9 @@ evalVectorToList args@(VectorToListArgs t d xs) =
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->
   Maybe (Value Builtin)
-foldReduceAndComparison (TensorReductionArgs _ unit tensor) =
--- foldReduceAndComparison (TensorComparisonArgs _ unit tensor) =
-  -- case (unit, getExpr accessCompareRatTensorPointwise tensor) of
-    -- (IBoolLiteral True, Just (op, TensorOp2Args (IDimCons d ds) xs ys)) | op /= Ne -> do
-
-  case (unit, getExpr accessCompareRatTensor tensor) of
-    (IBoolLiteral True, Just (op, TensorComparisonArgs dims IDimNil xs ys)) | op /= Ne -> do
+foldReduceAndComparison (TensorReductionArgs _ tensor) =
+  case getExpr accessCompareRatTensor tensor of
+    Just (op, TensorComparisonArgs dims IDimNil xs ys) | op /= Ne -> do
       let compareArgs = TensorComparisonArgs IDimNil dims xs ys
       Just $ mkExpr accessCompareRatTensor (op, compareArgs)
     _ -> Nothing

@@ -22,7 +22,7 @@ existsInList f xs = fold (\x y -> x or y) False (map f xs)
 -------
 
 append : List A -> List A -> List A
-append xs ys = fold (\y x -> x :: y) ys xs
+append xs ys = fold (\x y -> x :: y) ys xs
 
 --------------------------------------------------------------------------------
 -- Tensor
