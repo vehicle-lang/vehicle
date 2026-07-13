@@ -41,10 +41,10 @@ generateBuiltinAuxiliaryRecordDefinitions p ident sort telescope fields derivedO
   -- so generate the marker instances that allow them to pass type-checking.
   let validNetworkIOInstances
         | isStandardLibIdent ident = []
-        | otherwise = [createRecordHasValidIOTypeInstance p ident telescope fields]
-
-  -- Generate the instances to support comparison between records
-  let recordComparisonInstances = [createRecordComparisonInstance p ident telescope fields]
+        | otherwise =
+            [ createRecordHasValidIOTypeInstance p ident telescope fields,
+              createRecordComparisonInstance p ident telescope fields
+            ]
 
   -- Generate the conversion  tensor conversion functions
   tensorConversionFunctionsAndInstances <-
@@ -58,7 +58,6 @@ generateBuiltinAuxiliaryRecordDefinitions p ident sort telescope fields derivedO
   return $
     recordProjectionFunctions
       <> validNetworkIOInstances
-      <> recordComparisonInstances
       <> tensorConversionFunctionsAndInstances
       <> derivedInstances
 
