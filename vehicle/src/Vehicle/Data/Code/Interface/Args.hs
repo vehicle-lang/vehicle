@@ -169,7 +169,7 @@ data TensorComparisonArgs expr = TensorComparisonArgs
   }
 
 instance IsArgs TensorComparisonArgs where
-  accessSpine = 
+  accessSpine =
     Access
       {
         getExpr = \case

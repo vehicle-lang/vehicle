@@ -230,4 +230,4 @@ iterate t f n e = do
   builtinFunction Iterate @@@ [t] @@ [fn, n, e]
 
 append :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-append t xs ys = standardLib "append" @@@ [t] @@ [xs, ys] 
+append t xs ys = standardLib "append" @@@ [t] @@ [xs, ys]

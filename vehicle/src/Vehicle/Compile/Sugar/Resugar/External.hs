@@ -493,7 +493,7 @@ delabCompareReduced op args = case op of
   V.Lt -> delabInfixOp2 B.Lt tokLt args
   V.Ge -> delabInfixOp2 B.Ge tokGe args
   V.Gt -> delabInfixOp2 B.Gt tokGt args
-  
+
 delabComparePointwise :: (MonadDelab m) => V.ComparisonOp -> [V.Arg V.Builtin] -> m B.Expr
 delabComparePointwise op args = case op of
   V.Eq -> delabInfixOp2 B.EqPoint tokEqPoint args

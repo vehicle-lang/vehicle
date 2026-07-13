@@ -42,7 +42,7 @@ instance HasLiftableTensorOperations Builtin where
       (getExpr accessOrTensor, evalOr, IBoolType)
     ]
 
-  liftableTensorComparisons = 
+  liftableTensorComparisons =
     [
       comparison Eq,
       comparison Ne,

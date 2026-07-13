@@ -83,7 +83,7 @@ typeOfBuiltinFunction = \case
   CompareNat {} ->
     tNat ~> tNat ~> tBoolTensor dimNil
   CompareRatTensor {} ->
-    forAllDims $ \pointwiseDims -> 
+    forAllDims $ \pointwiseDims ->
       forAllDims $ \reduceDims ->
         tRatTensor (append tNat pointwiseDims reduceDims) ~> tRatTensor (append tNat pointwiseDims reduceDims) ~> tBoolTensor pointwiseDims
   -- Container functions
