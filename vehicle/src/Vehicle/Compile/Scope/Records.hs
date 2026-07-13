@@ -43,12 +43,14 @@ generateBuiltinAuxiliaryRecordDefinitions p ident sort telescope fields derivedO
         | isStandardLibIdent ident = []
         | otherwise = [createRecordHasValidIOTypeInstance p ident telescope fields]
 
+  -- Generate the instances to support comparison between records
+  let recordComparisonInstances = [createRecordComparisonInstance p ident telescope fields]
+
   -- Generate the conversion  tensor conversion functions
   tensorConversionFunctionsAndInstances <-
     if isAnnotatedAsTensor sort
       then createTensorRecordConversionFunctions p ident telescope fields
-      else return [createRecordComparisonInstance p ident telescope fields]
-
+      else return []
 
   -- Generate the instances for the supports
   derivedInstances <- generateDerivedInstances p ident telescope fields derivedOps
@@ -56,6 +58,7 @@ generateBuiltinAuxiliaryRecordDefinitions p ident sort telescope fields derivedO
   return $
     recordProjectionFunctions
       <> validNetworkIOInstances
+      <> recordComparisonInstances
       <> tensorConversionFunctionsAndInstances
       <> derivedInstances
 
@@ -178,7 +181,6 @@ createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
 
   DefFunction p instanceIdent functionSort functionType functionBody
 
-
 createRecordComparisonInstance ::
   Provenance ->
   Identifier ->
@@ -186,12 +188,36 @@ createRecordComparisonInstance ::
   RecordFields Builtin ->
   Decl Builtin
 createRecordComparisonInstance p recordIdent telescope fields = do
+  --
+  -- For a record like:
+  --
+  --    record Pair t1 t2
+  --      { f1 : t1
+  --      , f2 : t2
+  --      }
+  --
+  -- We need to generate methods of the form:
+  --
+  --    @instance
+  --    recordPairHasComparisonInstance :
+  --      T1 -> T2 ->
+  --      HasComparisonInstance T1 T1 -> HasComparisonInstance T2 T2 ->
+  --      HasComparison (Pair T1 T2) (Pair T2 T1)
+  --    recordPairHasComparisonInstance T1 T2 compT1 compT2 =
+  --      { method = \r1 r2 -> (compT1.method r1.f1 r2.f1) and (compT2.method r1.f2 r2.f2)
+  --      , ...
+  --      }
+  --
+  -- ... with methods for each comparison op (<, <=, >, >=, ==, !=)
+  --
+
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasComparison"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
   let mkConstraint (FieldName _ n, fieldType) k = instanceBinder mempty (n <> "Comparison") $ normAppList target [argument, argument]
-        where target = FreeVar mempty hasComparisonIdent
-              argument = explicit (liftDBIndices (Lv k) fieldType)
+        where
+          target = FreeVar mempty hasComparisonIdent
+          argument = explicit (liftDBIndices (Lv k) fieldType)
 
   let implicitTelescope = fmap (flip setBinderVisibility $ Implicit True) telescope
   let constraintBinders = zipWith mkConstraint fields [0 .. length fields]
@@ -209,18 +235,18 @@ createRecordComparisonInstance p recordIdent telescope fields = do
   let finalRecordType = fromDSL mempty parameterisedRecordType
 
   let instanceMethods = for ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"] $ \methodName -> do
-        -- Create two new binders, for the records that we are testing
+        -- Create two new binders, for the records that we are testing and use them to recalculate our indices:
+        --    \(r1 : Pair T1 T2) (r2 : Pair T1 T2) -> <body>
         let lhsRecord = mkExplicitBinder (liftDBIndices (Lv 0) finalRecordType) (Just (mempty, "r1"))
         let rhsRecord = mkExplicitBinder (liftDBIndices (Lv 1) finalRecordType) (Just (mempty, "r2"))
-
-        -- Add them to the list, and recalculate our indices
         let newBinderList = binderList ++ [lhsRecord, rhsRecord]
         let newBinderIndicies = reverse $ fmap Ix [0 .. length newBinderList - 1]
 
-        -- The comparison indicies come after the telescope
+        -- Generate all the comparions operations that need to take place for our method:
+        --    [ compT1.method r1.f1 r2.f2
+        --    , compT2.method r1.f2 r2.f2
+        --    ]
         let comparisonIndicies = take (length fields) $ drop (length telescope) newBinderIndicies
-
-        -- Generate a comparison per field in the record
         let individualComparisons = for2 fields comparisonIndicies $ \(fieldName, fieldTy) ix -> do
               -- Project out the comparison method from the instance
               let liftedFieldType = liftDBIndices (Lv $ length newBinderList - length telescope) fieldTy
@@ -231,20 +257,19 @@ createRecordComparisonInstance p recordIdent telescope fields = do
               let liftedRecordType = liftDBIndices (Lv 2) finalRecordType
               let lhsRecordField = RecordProj mempty liftedRecordType (BoundVar mempty 1) fieldName
               let rhsRecordField = RecordProj mempty liftedRecordType (BoundVar mempty 0) fieldName
-              
+
               -- Apply the method to the fields
               normAppList comparisonMethod [explicit lhsRecordField, explicit rhsRecordField]
 
-        -- 'And' all our comparisons together and stick them under the record binders
-        let and' l r = normAppList (Builtin mempty . BuiltinFunction $ And) [explicit l, explicit r]
+        -- Join all of our comparisons together with logical 'and' then use the resulting expression as our method body:
+        --    \(r1 : Pair T1 T2) (r2 : Pair T1 T2) -> (compT1.method r1.f1 r2.f1) and (compT2.method r1.f2 r2.f2)
+        let and' l r = normAppList (Builtin mempty $ BuiltinFunction And) [explicit l, explicit r]
         let methodFn = Lam mempty lhsRecord $ Lam mempty rhsRecord $ foldr1 and' individualComparisons
-        
         (FieldName mempty methodName, methodFn)
 
   let functionType = foldr (Pi p) resultType binderList
   let functionBody = foldr (Lam p) (Record p resultType instanceMethods) binderList
   let functionSort = FunctionDecl 1 (Just (AnnInstance Nothing))
-  
   DefFunction p instanceIdent functionSort functionType functionBody
 
 --------------------------------------------------------------------------------
@@ -290,7 +315,6 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let validDatasetTypeInstance = createValidDatasetTypeInstance p ident
   let validDatasetListElementTypeInstance = createValidDatasetListElementTypeInstance p ident
   let quantInstance = createTensorLikeHasQuantifierInstance p ident
-  let comparisonInstance = createTensorLikeComparisonInstance p ident
 
   let instances =
         [ recordToTensorDecl,
@@ -298,7 +322,6 @@ createTensorRecordConversionFunctions p ident telescope fields = do
           validNetworkFieldInstance,
           validDatasetTypeInstance,
           validDatasetListElementTypeInstance,
-          comparisonInstance,
           quantInstance
         ]
 
@@ -419,38 +442,6 @@ createTensorLikeHasQuantifierInstance p recordIdent = do
           ]
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
-
-createTensorLikeComparisonInstance ::
-  Provenance ->
-  Identifier ->
-  Decl Builtin
-createTensorLikeComparisonInstance p recordIdent = do
-  let recordType = freeVar recordIdent
-
-  let toTensor = toDSL $ constructToTensorFreeVar recordIdent p
-
-  let typeclass = fromDSL mempty $ freeVar hasComparisonIdent @@ [recordType, recordType]
-  let instanceName = Text.pack "_" <> nameOf recordIdent <> "HasComparison"
-
-  let instanceIdent = Identifier (modulePath recordIdent) instanceName
-
-  let fieldText = ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"]
-  let fieldIdents = map (freeVar . standardLibIdent) fieldText
-  let fieldValues = map (createComparisonField (freeVar recordIdent) toTensor) fieldIdents
-  let fieldNames = map (FieldName p) fieldText
-  let fields = zip fieldNames fieldValues
-
-  let body = Record p typeclass fields
-  DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) typeclass body
-
-createComparisonField ::
-  DSLExpr Builtin ->
-  DSLExpr Builtin ->
-  DSLExpr Builtin ->
-  Expr Builtin
-createComparisonField recordType toTensor fieldIdent = do
-  fromDSL mempty $ explLam "r1" recordType $ \r1 ->
-    explLam "r2" recordType $ \r2 -> fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
 
 --------------------------------------------------------------------------------
 -- Derivable operations
