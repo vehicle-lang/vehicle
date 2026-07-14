@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, MutableMapping, Protocol, cast
 
 from ..loss import load_ast
-from ..typing import DeclarationName, DifferentiableLogic
+from ..typing import DeclarationName, DifferentiableLogic, LossMode
 
+from .attack import extract_quantifiers
 
 class _SamplerProtocol(Protocol):
     def get_loss(self, *args: Any, **kwargs: Any) -> Any: ...
@@ -41,6 +42,7 @@ def load_loss_specification(
 
     program = load_ast(
         path,
+        mode=LossMode.Training,
         target=logic,
         declarations=declarations,
     )
@@ -53,3 +55,44 @@ def load_loss_specification(
         samplers=samplers,
     )
     return cast(dict[str, Any], compiled)
+
+
+def load_loss_specification_quantifiers(
+    path: str | Path,
+    *,
+    logic: DifferentiableLogic,
+    samplers: Mapping[str, Any] | None,
+    declarations: Iterable[DeclarationName],
+    declaration_context: MutableMapping[str, Any] | None,
+    translation_factory: TranslationFactory,
+    default_sampler_factory: SamplerFactory,  
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """
+    Load a specification and extract quantifiers for search
+    """
+    if declaration_context is None:
+        declaration_context = {}
+
+    if samplers is None:
+        default_sampler = default_sampler_factory()
+        samplers = defaultdict(lambda: default_sampler.get_loss)
+    else:
+        samplers = {k: s.get_loss for k, s in samplers.items()}
+
+    program = load_ast(
+        path,
+        mode=LossMode.Search,
+        target=logic,
+        declarations=declarations,
+    )
+
+    quantifiers = extract_quantifiers(program)
+
+    translation = translation_factory()
+    compiled = translation.compile(
+        program=program,
+        path=path,
+        declaration_context=declaration_context,
+        samplers=samplers,
+    )
+    return cast(dict[str, Any], compiled), quantifiers

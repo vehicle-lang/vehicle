@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping
 
 from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
-from ._common import load_loss_specification
+from ._common import load_loss_specification, load_loss_specification_quantifiers
 from ._pytorch._translation import PyTorchTranslation
 from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler
 
@@ -28,6 +28,25 @@ def load_specification(
     """Load a loss function compiled for PyTorch."""
 
     return load_loss_specification(
+        path,
+        logic=logic,
+        samplers=samplers,
+        declarations=declarations,
+        declaration_context=declaration_context,
+        translation_factory=PyTorchTranslation,
+        default_sampler_factory=DefaultPyTorchSampler,
+    )
+
+def search(
+    path: str | Path,
+    *,
+    logic: DifferentiableLogic = DL2DifferentiableLogic(),
+    samplers: Mapping[str, Any] | None = None,
+    declarations: Iterable[DeclarationName] = (),
+    declaration_context: MutableMapping[str, Any] | None = None,
+):
+    # Probably will call gradient based attacks here?
+    return load_loss_specification_quantifiers(
         path,
         logic=logic,
         samplers=samplers,
