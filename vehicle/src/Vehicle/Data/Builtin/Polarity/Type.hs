@@ -83,6 +83,7 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
+  AppendList -> typeOfOp2 maxPolarity
   AtVector -> typeOfAt
   AtTensor -> typeOfAt
   StackTensor -> typeOfStack

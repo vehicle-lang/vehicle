@@ -595,6 +595,7 @@ compileBuiltinFunction p f args = case f of
     Reduced as -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") as
   FoldList -> annotateApp [DataList] (Just listQualifier) "foldr" args
   MapList -> annotateApp [DataList] (Just listQualifier) "map" args
+  AppendList -> annotateInfixApp [DataList] 5 (Just listQualifier) "_++_" args
   ReduceAndTensor -> annotateApp [DataTensor] Nothing "reduceAnd" args
   ReduceOrTensor -> annotateApp [DataTensor] Nothing "reduceOr" args
   ReduceAddRatTensor -> annotateApp [DataTensor] Nothing "reduceAdd" args

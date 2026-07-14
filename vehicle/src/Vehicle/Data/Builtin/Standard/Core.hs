@@ -264,6 +264,7 @@ instance BuiltinHasListLiterals Builtin where
         mkExpr = \() -> BuiltinConstructor Cons
       }
 
+  accessAppendListBuiltin = functionAccessor AppendList
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
 

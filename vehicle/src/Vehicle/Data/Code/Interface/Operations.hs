@@ -330,6 +330,9 @@ accessMapList = accessArgs accessMapListBuiltin
 accessFoldList :: (HasListExpr expr builtin) => Accessor (expr builtin) (FoldListArgs (expr builtin))
 accessFoldList = accessArgs accessFoldListBuiltin
 
+accessAppendList :: (HasListExpr expr builtin) => Accessor (expr builtin) (AppendListArgs (expr builtin))
+accessAppendList = accessArgs accessAppendListBuiltin
+
 --------------------------------------------------------------------------------
 -- Vector
 

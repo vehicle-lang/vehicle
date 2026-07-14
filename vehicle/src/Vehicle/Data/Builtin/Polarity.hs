@@ -185,6 +185,7 @@ instance BuiltinHasListLiterals PolarityBuiltin where
 
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessAppendListBuiltin = functionAccessor AppendList
 
 instance BuiltinHasIterate PolarityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate

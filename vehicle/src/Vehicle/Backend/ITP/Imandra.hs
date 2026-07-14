@@ -678,6 +678,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
           as
     FoldList -> annotateApp moduleDefs [] "List.fold_right" args
     MapList -> annotateApp moduleDefs [] "List.map" args
+    AppendList {} -> unsupportedError
     ReduceAndTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_and" args
     ReduceOrTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_or" args
     ReduceAddRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_sum" args

@@ -848,6 +848,7 @@ compileBuiltin isOutType localeAssms b args = case b of
           as
     FoldList -> annotateApp localeAssms [] "foldr" args
     MapList -> annotateApp localeAssms [] "map" args
+    AppendList {} -> unsupportedError
     ReduceAndTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> annotateApp localeAssms [] "reduceAdd" args

@@ -12,9 +12,11 @@ import Prettyprinter (Pretty (..))
 import Vehicle.Data.Builtin.Core.BasicOperations as X
 import Vehicle.Data.Builtin.Core.Derived as X
 import Vehicle.Data.Builtin.Core.TypeClass as X
-    ( TypeClassOp(..), TypeClass(..) )
-import Vehicle.Data.Tensor
+  ( TypeClass (..),
+    TypeClassOp (..),
+  )
 import Vehicle.Data.Real
+import Vehicle.Data.Tensor
 
 --------------------------------------------------------------------------------
 -- Types
@@ -99,8 +101,8 @@ data BuiltinFunction
   | CompareIndex ComparisonOp
   | CompareNat ComparisonOp
   | CompareRatTensor ComparisonOp
-  -- | CompareRatTensorPointwise ComparisonOp
-  | ReduceAndTensor
+  | -- | CompareRatTensorPointwise ComparisonOp
+    ReduceAndTensor
   | ReduceOrTensor
   | -- Rat operations
     Add AddDomain
@@ -129,6 +131,7 @@ data BuiltinFunction
   | -- List operations
     FoldList
   | MapList
+  | AppendList
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -170,6 +173,7 @@ instance Pretty BuiltinFunction where
     -- CompareRatTensorPointwise op -> comparisonOpName op <> "RatTensorPointwise"
     FoldList -> "foldList"
     MapList -> "mapList"
+    AppendList -> "appendList"
     ForeachTensor -> "foreachTensor"
     ForeachVector -> "foreachVector"
     Iterate -> "iterate"

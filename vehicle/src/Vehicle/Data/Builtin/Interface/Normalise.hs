@@ -147,8 +147,8 @@ evalTensorOp2 ::
   Maybe a ->
   Maybe a ->
   EvalSimple TensorOp2Args Value builtin m
-evalTensorOp2 accessBuiltin accessLit =
-  evalHeteroTensorOp2 (mkExpr accessBuiltin ()) accessLit accessLit
+evalTensorOp2 accessBuiltin accessLit op leftUnit rightUnit leftZero rightZero args =
+  evalHeteroTensorOp2 (mkExpr accessBuiltin ()) accessLit accessLit op leftUnit rightUnit leftZero rightZero (mkExpr accessSpine args) args
 
 evalHeteroTensorOp2 ::
   forall builtin a b m.
@@ -161,9 +161,12 @@ evalHeteroTensorOp2 ::
   Maybe a ->
   Maybe a ->
   Maybe a ->
+  Spine builtin ->
   EvalSimple TensorOp2Args Value builtin m
-evalHeteroTensorOp2 b inputLit outputLit op leftUnit rightUnit leftZero rightZero args =
-  evalSimple b eval args
+evalHeteroTensorOp2 b inputLit outputLit op leftUnit rightUnit leftZero rightZero defaultArgs args =
+  case eval args of
+    Just result -> result
+    Nothing -> return $ VBuiltin b defaultArgs
   where
     eval :: EvalSimplePartial TensorOp2Args builtin m
     eval = \case
@@ -427,6 +430,18 @@ evalFoldList ctx evalApp eval (FoldListArgs a b f e xs) = evalList xs
     recArgs :: Value builtin -> FoldListArgs (Value builtin)
     recArgs = FoldListArgs a b f e
 
+evalAppendList ::
+  forall builtin m.
+  (MonadLogger m, BuiltinHasListLiterals builtin) =>
+  AppendListArgs (Value builtin) ->
+  m (Value builtin)
+evalAppendList args@(AppendListArgs t xs ys) =
+  case (xs, ys) of
+    (_, INil _) -> return xs
+    (INil _, _) -> return ys
+    (ICons _ x xs', _) -> ICons t x <$> evalAppendList (AppendListArgs t xs' ys)
+    _ -> return $ mkExpr accessAppendList args
+
 -----------------------------------------------------------------------------
 -- Rational tensors
 
@@ -481,11 +496,11 @@ evalCompareRatTensor op = \case
   -- base case where we are up to pointwise comparison (dims1/pDims = [])
   TensorComparisonArgs IDimNil rDims xs ys ->
     -- xs and ys passed on to evalHeteteroTensorOp2 to handle
-    evalHeteroTensorOp2 (mkExpr accessCompareRatTensorBuiltin op) accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing (TensorOp2Args rDims xs ys)
+    evalPointwise IDimNil rDims xs ys
   -- reduction cases (two consts) should just be result of one element vs other element, in the shape of pDims
   TensorComparisonArgs pDims _rDims (getExpr accessConstTensor -> Just xs) (getExpr accessConstTensor -> Just ys) ->
     do
-      newConstValue <- evalHeteroTensorOp2 (mkExpr accessCompareRatTensorBuiltin op) accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing (TensorOp2Args IDimNil (constValue xs) (constValue ys))
+      newConstValue <- evalPointwise IDimNil IDimNil (constValue xs) (constValue ys)
       return $ mkExpr accessConstTensor $ ConstTensorArgs {constType = IBoolType, constValue = newConstValue, constDims = pDims}
   -- reduction cases (literal/stack cases)
   -- for tensorLiterals: use unstackExpr, for stackTensors: use stackElements
@@ -509,6 +524,13 @@ evalCompareRatTensor op = \case
   where
     unstackExpr :: Tensor ExtendedRational -> [Value builtin]
     unstackExpr xs = mkExpr accessRatTensorLiteral <$> unstack xs
+
+    evalPointwise :: Value builtin -> Value builtin -> Value builtin -> Value builtin -> m (Value builtin)
+    evalPointwise pDims rDims xs ys = do
+      let builtin = mkExpr accessCompareRatTensorBuiltin op
+      let defaultArgs = mkExpr accessSpine $ TensorComparisonArgs pDims rDims xs ys
+      let pointwiseArgs = TensorOp2Args rDims xs ys
+      evalHeteroTensorOp2 builtin accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing defaultArgs pointwiseArgs
 
 -----------------------------------------------------------------------------
 -- Generic vector operations
@@ -681,6 +703,7 @@ liftForeach ctx evalForeach lv d = go
       let maybeResult =
             goOp1 body liftableTensorOp1s
               <|> goOp2 body liftableTensorOp2s
+              <|> goComparisons body liftableTensorComparisons
               <|> goAt body
               <|> goConst body
               <|> goLiterals body tensorLiterals
@@ -709,6 +732,19 @@ liftForeach ctx evalForeach lv d = go
           let newSpine = TensorOp2Args (IDimCons d ds) e1' e2'
           evalOp newSpine
         _ -> goOp2 body remainingOps
+      [] -> Nothing
+
+    -- Distribute the `forallIndex` across comparisons operation (e.g. `<=`).
+    -- e.g. `foreach i . x(i) op y(i)` -> `(foreach i . x(i)) op (forall i . y(i))`
+    goComparisons :: Value builtin -> [TensorOpEvalData TensorComparisonArgs builtin m] -> Maybe (m (Value builtin))
+    goComparisons body = \case
+      (accessOp, evalOp, typ) : remainingOps -> case accessOp body of
+        Just (TensorComparisonArgs pDims rDims e1 e2) -> Just $ do
+          e1' <- go typ e1
+          e2' <- go typ e2
+          let newSpine = TensorComparisonArgs (IDimCons d pDims) rDims e1' e2'
+          evalOp newSpine
+        _ -> goComparisons body remainingOps
       [] -> Nothing
 
     -- Eliminate `forall i . xs ! i` into `xs`
@@ -760,6 +796,8 @@ evalStackTensorWithPrimitives tensorLits args@(StackTensorArgs _t d ds xs) = do
   return $
     fromMaybe (mkExpr accessStackTensor args) $
       -- If we know that all the tensors being stacked are concrete tensors, then
+      -- If we know that all the tensors being stacked are concrete tensors, then
+      -- we must know the dimensions as well.
       -- we must know the dimensions as well.
       case (d, getDims ds) of
         (INatLiteral n, Just ns) | length xs == n -> go ns xs tensorLits

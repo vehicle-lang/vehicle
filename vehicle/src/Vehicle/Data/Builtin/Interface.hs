@@ -1,8 +1,8 @@
 module Vehicle.Data.Builtin.Interface where
 
+import Control.Monad ((<=<))
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Tensor (BoolTensor, ExtendedRatTensor, NatTensor)
-import Control.Monad ((<=<))
 
 --------------------------------------------------------------------------------
 -- Interface to standard builtins
@@ -122,6 +122,7 @@ class BuiltinHasListLiterals builtin where
 
   accessMapListBuiltin :: Accessor builtin ()
   accessFoldListBuiltin :: Accessor builtin ()
+  accessAppendListBuiltin :: Accessor builtin ()
 
 --------------------------------------------------------------------------------
 -- Vector

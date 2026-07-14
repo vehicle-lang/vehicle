@@ -475,6 +475,7 @@ elabExpr expr = case expr of
   B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
+  B.Append tk -> builtinFunction V.AppendList tk []
   B.Const tk -> builtinFunction V.ConstTensor tk []
   B.ReduceOr tk -> builtinFunction V.ReduceOrTensor tk []
   B.ReduceAnd tk -> builtinFunction V.ReduceAndTensor tk []
@@ -579,6 +580,7 @@ elabCompareReduced op tk args = do
   let implArgs = [V.implicitIrrelevant pDims, V.implicit rDims]
   explicitArgs <- fmap V.explicit <$> traverse elabExpr args
   return $ V.normAppList fn (implArgs ++ explicitArgs)
+
 -- elabCompareReduced op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims", e1, e2]
 -- elabCompareReduced op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
 
@@ -591,6 +593,7 @@ elabComparePointwise op tk args = do
   let implArgs = [V.implicitIrrelevant pDims, V.implicit rDims]
   explicitArgs <- fmap V.explicit <$> traverse elabExpr args
   return $ V.normAppList fn (implArgs ++ explicitArgs)
+
 -- elabComparePointwise op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil", e1, e2]
 -- elabComparePointwise op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
 

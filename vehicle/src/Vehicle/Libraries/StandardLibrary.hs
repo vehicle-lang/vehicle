@@ -23,7 +23,6 @@ module Vehicle.Libraries.StandardLibrary
     mulTCProj,
     divTCProj,
     hasComparisonIdent,
-    append,
     standardLibraryCompareRatTensorReduced,
     validDatasetTypeIdent,
     validDatasetListElementTypeIdent,
@@ -121,9 +120,6 @@ divTCProj = standardLibIdent "divTC"
 
 hasComparisonIdent :: Identifier
 hasComparisonIdent = standardLibIdent "HasComparison"
-
-append :: Identifier
-append = standardLibIdent "append"
 
 isBuiltinModule :: ModulePath -> Bool
 isBuiltinModule = \case

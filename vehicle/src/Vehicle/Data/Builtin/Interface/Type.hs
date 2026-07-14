@@ -89,6 +89,7 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold tListRaw
   MapList -> typeOfMap tListRaw
+  AppendList -> forAllTypes $ \t -> tList t ~> tList t ~> tList t
   AtVector -> typeOfAtVector
   AtTensor -> typeOfAtTensor
   StackTensor -> typeOfStackTensor

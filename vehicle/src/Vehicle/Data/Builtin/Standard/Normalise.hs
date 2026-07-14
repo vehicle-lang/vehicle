@@ -43,14 +43,12 @@ instance HasLiftableTensorOperations Builtin where
     ]
 
   liftableTensorComparisons =
-    [
-      comparison Eq,
+    [ comparison Eq,
       comparison Ne,
       comparison Le,
       comparison Lt,
       comparison Ge
     ]
-
     where
       comparison op = (getExpr (accessArgsForOp accessCompareRatTensor op), evalCompareRatTensor op, IBoolType)
 
@@ -90,6 +88,7 @@ instance NormalisableBuiltin Builtin where
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
+      AppendList -> Simple evalAppendList
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
@@ -148,7 +147,6 @@ evalVectorToList args@(VectorToListArgs t d xs) =
   return $ case argExpr d of
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
-
 
 -- when going into the TensorReductionArgs expression, looking at what it is performing on
 -- if it is a tensor comparison, then we can just reduce it

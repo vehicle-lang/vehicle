@@ -29,7 +29,7 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VectorLitArgs (..),pattern ICons, pattern INatLiteral, pattern INil)
+import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VectorLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
 import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
@@ -559,6 +559,7 @@ compileBuiltin b args = case b of
           as
     FoldList -> compileApplication [MathcompImport Boot] "foldr" args
     MapList -> compileApplication [MathcompImport Boot] "map" args
+    AppendList {} -> unsupportedError
     ReduceAndTensor -> compileApplication [VehicleImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> compileApplication [VehicleImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> compileApplication [] "reduceAdd" args
