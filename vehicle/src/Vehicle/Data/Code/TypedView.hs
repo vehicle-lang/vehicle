@@ -214,6 +214,7 @@ toBoolValue expr = case expr of
   (getExpr accessReduceOr -> Just args) -> VReduceOrTensor args
   (getExpr accessAtTensor -> Just args) -> VBoolAt args
   (getExpr accessIf -> Just args) -> VBoolIf args
+  VBuiltin b args -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose expr <+> pretty (length args) <+> pretty b
   _ -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose expr
 
 fromBoolValue :: BoolValue -> Value Builtin
@@ -524,7 +525,7 @@ data ComparisonType expr
   | Reduced [GenericArg expr]
 
 decideIfPointwiseOrReductionComparison ::
-  (HasListExpr expr builtin, BuiltinHasNatType builtin) =>
+  (HasListExpr expr builtin, BuiltinHasNatType builtin, HasCallStack) =>
   [GenericArg (expr builtin)] ->
   ComparisonType (expr builtin)
 decideIfPointwiseOrReductionComparison = \case
@@ -549,3 +550,25 @@ toTCArgs = \case
   Left (TensorOp2Args dims e1 e2) -> TensorComparisonArgs dims IDimNil e1 e2
   -- tensorReduceComparison -> reduced
   Right (TensorReduceComparisonArgs d ds e1 e2) -> TensorComparisonArgs IDimNil (IDimCons d ds) e1 e2
+
+{-
+(
+  (
+    (
+      ( stack {Rat}
+      ) {2}
+    )
+    {@0 nil {Nat} }
+  )
+  (
+    ((leRatTensor {@0 nil {Nat} } ) 0.0)
+    (((((atTensor {Rat} ) {@0 2} ) {@0 nil {Nat} } ) 𝓵0) (0 {@0 2} ))
+  )
+)
+(
+  (
+    (leRatTensor {@0 nil {Nat} } ) 0.0)
+    (((((atTensor {Rat} ) {@0 2} ) {@0 nil {Nat} } ) 𝓵0) (1 {@0 2} )
+  )
+)
+-}

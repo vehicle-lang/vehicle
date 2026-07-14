@@ -286,17 +286,22 @@ evalReduceAndTensor ::
 evalReduceAndTensor ctx evalApp eval (TensorReductionArgs dims tensor) = go tensor
   where
     go :: Value builtin -> m (Value builtin)
-    go = \case
-      (getExpr accessAndTensor -> Just (TensorOp2Args ds xs ys)) -> do
-        xs' <- go xs
-        ys' <- go ys
-        evalAnd (TensorOp2Args ds xs' ys')
-      vs -> do
-        result <- fuseReduceAndForeachTensor ctx evalApp eval tensor
-        case result of
-          Nothing -> unoptimisedEvalReduceAndTensor (TensorReductionArgs dims vs)
-          Just (newDims, fusedTensor) ->
-            return $ mkExpr accessReduceAnd (TensorReductionArgs newDims fusedTensor)
+    go value = do
+      fusionEnter ctx value
+      fusionExit ctx $ case value of
+        (getExpr accessAndTensor -> Just (TensorOp2Args ds xs ys)) -> do
+          xs' <- go xs
+          ys' <- go ys
+          evalAnd (TensorOp2Args ds xs' ys')
+        (getExpr accessCompareRatTensor -> Just (op, TensorComparisonArgs pDims rDims xs ys)) | op /= Ne -> do
+          mergedDims <- evalAppendList $ AppendListArgs INatType pDims rDims
+          return $ mkExpr accessCompareRatTensor (op, TensorComparisonArgs IDimNil mergedDims xs ys)
+        vs -> do
+          result <- fuseReduceAndForeachTensor ctx evalApp eval tensor
+          case result of
+            Nothing -> unoptimisedEvalReduceAndTensor (TensorReductionArgs dims vs)
+            Just (newDims, fusedTensor) ->
+              return $ mkExpr accessReduceAnd (TensorReductionArgs newDims fusedTensor)
 
 -- | An optimised evaluation procedure for `Foreach` that attempts to minimise the
 -- amount of work needed by lifting operations to higher-tensor levels.
@@ -309,8 +314,7 @@ fuseReduceAndForeachTensor ::
   Value builtin ->
   m (Maybe (VDims builtin, Value builtin))
 fuseReduceAndForeachTensor ctx evalApp eval value = do
-  fusionEnter ctx value
-  fusionExit ctx =<< case getExpr accessForeachTensor value of
+  case getExpr accessForeachTensor value of
     Just (ForeachTensorArgs typ d _ (VLam binder (Closure env body))) -> do
       let lv = boundCtxLv ctx
       let newEnv = extendEnvWithBound lv binder env
@@ -875,7 +879,7 @@ showFusionExit _ctx result = return result
 {-
 showFusionEntry :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Value builtin -> m ()
 showFusionEntry ctx expr = do
-  logDebug MidDetail $ "fusion-entry" <+> prettyFriendly (WithContext expr ctx)
+  logDebug MidDetail $ "fusion-entry" <+> pretty (head ctx) <+> prettyFriendly (WithContext expr ctx)
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) <+> "   { boundEnv =" <+> prettyFriendly boundEnv <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
   incrCallDepth
@@ -885,9 +889,8 @@ showFusionExit :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> 
 showFusionExit ctx result = do
   decrCallDepth
   -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
-  logDebug MidDetail $ "fusion-exit" <+> prettyFriendly (WithContext result ctx)
-  return result
--}
+  logDebug MidDetail $ "fusion-exit" <+> pretty (head ctx) <+> prettyFriendly (WithContext result ctx)
+  return result-}
 
 fusionEnter ::
   (MonadLogger m, PrintableBuiltin builtin) =>
@@ -899,21 +902,22 @@ fusionEnter _ctx _value = return ()
 fusionExit ::
   (MonadLogger m, PrintableBuiltin builtin) =>
   NamedBoundCtx ->
-  Maybe (VDims builtin, Value builtin) ->
-  m (Maybe (VDims builtin, Value builtin))
-fusionExit _ctx result = return result
+  m (Value builtin) ->
+  m (Value builtin)
+fusionExit _ctx result = result
 
 {-
+
 fusionEnter :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Value builtin -> m ()
 fusionEnter ctx value = do
-  logDebug MaxDetail $ "fusion-enter" <+> prettyFriendly (WithContext value ctx)
+  logDebug MaxDetail $ "fusion-r-enter" <+> prettyFriendly (WithContext value ctx)
   incrCallDepth
 
-fusionExit :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Maybe (VArg builtin, Value builtin) -> m (Maybe (VArg builtin, Value builtin))
-fusionExit ctx result = do
+fusionExit :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> m (Value builtin) -> m (Value builtin)
+fusionExit ctx resultFn = do
+  value <- resultFn
   decrCallDepth
   logDebug MaxDetail $
-    "fusion-exit" <+> case result of
-      Nothing -> ""
-      Just (dims, value) -> prettyFriendly (WithContext value ctx) <+> parens (prettyFriendly (WithContext (argExpr dims) ctx))
-  return result-}
+    "fusion-r-exit" <+> prettyFriendly (WithContext value ctx)
+  return value
+-}

@@ -18,6 +18,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Version (makeVersion)
 import GHC.Real (denominator, numerator)
+import GHC.Stack (HasCallStack)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
 import Vehicle.Backend.Prelude
@@ -569,7 +570,7 @@ compileBuiltinConstructor c args = case c of
 
 compileBuiltinFunction ::
   forall m.
-  (MonadAgdaCompile m) =>
+  (MonadAgdaCompile m, HasCallStack) =>
   Provenance ->
   BuiltinFunction ->
   [Arg DecidabilityBuiltin] ->
@@ -590,9 +591,10 @@ compileBuiltinFunction p f args = case f of
   Max MaxRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_⊔_" args
   CompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator True op) args
   CompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator True op) args
-  CompareRatTensor op -> case decideIfPointwiseOrReductionComparison args of
-    Pointwise as -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") as
-    Reduced as -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") as
+  CompareRatTensor op -> do
+    case decideIfPointwiseOrReductionComparison args of
+      Pointwise as -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") as
+      Reduced as -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") as
   FoldList -> annotateApp [DataList] (Just listQualifier) "foldr" args
   MapList -> annotateApp [DataList] (Just listQualifier) "map" args
   AppendList -> annotateInfixApp [DataList] 5 (Just listQualifier) "_++_" args
