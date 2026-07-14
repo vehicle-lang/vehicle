@@ -800,8 +800,6 @@ evalStackTensorWithPrimitives tensorLits args@(StackTensorArgs _t d ds xs) = do
   return $
     fromMaybe (mkExpr accessStackTensor args) $
       -- If we know that all the tensors being stacked are concrete tensors, then
-      -- If we know that all the tensors being stacked are concrete tensors, then
-      -- we must know the dimensions as well.
       -- we must know the dimensions as well.
       case (d, getDims ds) of
         (INatLiteral n, Just ns) | length xs == n -> go ns xs tensorLits

@@ -60,7 +60,6 @@ standardLibraryInstanceOps =
       divTCProj,
       standardLibIdent "forallTC",
       standardLibIdent "existsTC",
-      -- standardLibIdent "foldTC",
       standardLibIdent "leTC",
       standardLibIdent "ltTC",
       standardLibIdent "geTC",

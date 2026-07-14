@@ -236,8 +236,6 @@ delabDerivedFunction fun args = case fun of
   V.QuantifyIndex q -> delabQuantifier q args
   V.QuantifyInList q -> delabQuantifierIn q args
 
--- V.CompareRatTensorReduced op -> delabTypeClassOp (V.CompareTC op) args --TODO: remove once sure CompareRatTensor is implemented correctly
-
 delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg V.Builtin] -> m B.Expr
 delabBuiltinFunction fun args = case fun of
   V.Not -> delabOp1 B.Not tokNot args
@@ -258,12 +256,9 @@ delabBuiltinFunction fun args = case fun of
   V.QuantifyRatTensor q -> delabQuantifier q args
   V.QuantifyRecord q -> delabQuantifier q args
   V.CompareRatTensor op -> case args of
-    -- if dims1 (pointwiseDims) is Nil, call delabCompareReduced
     [argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), _rDims, xs, ys] -> delabCompareReduced op [xs, ys]
-    -- if dims2 (reduceDims) is Nil, call delabComparePointwise
     [_pDims, argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), xs, ys] -> delabComparePointwise op [xs, ys]
     [xs, ys] -> delabCompareReduced op [xs, ys]
-    -- otherwise, call cheatDelabPretty
     _ -> cheatDelabPretty op args
   V.CompareIndex op -> delabComparison op args
   V.CompareNat op -> delabComparison op args
