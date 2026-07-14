@@ -1,7 +1,0 @@
-[
-  {
-    "name": "quantifier-leftMoreNested",
-    "run": "vehicle compile loss --lossMode CounterExample --logic DL2Loss --specification spec.vcl --logging MaxDetail --loggingPass Loss",
-    "needs": ["spec.vcl"]
-  }
-]

@@ -1,0 +1,7 @@
+[
+  {
+    "name": "Search",
+    "run": "vehicle compile loss --lossMode Search --logic DL2Loss --specification spec.vcl",
+    "needs": ["spec.vcl"]
+  }
+]
