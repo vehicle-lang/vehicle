@@ -82,12 +82,14 @@ typeOfBuiltinFunction = \case
         tIndex n1 ~> tIndex n2 ~> tBoolTensor dimNil
   CompareNat {} ->
     tNat ~> tNat ~> tBoolTensor dimNil
-  CompareRatTensorPointwise {} ->
-    forAllDims $ \dims ->
-      tRatTensor dims ~> tRatTensor dims ~> tBoolTensor dims
+  CompareRatTensor {} ->
+    forAllDims $ \pointwiseDims ->
+      forAllDims $ \reduceDims ->
+        tRatTensor (append tNat pointwiseDims reduceDims) ~> tRatTensor (append tNat pointwiseDims reduceDims) ~> tBoolTensor pointwiseDims
   -- Container functions
   FoldList -> typeOfFold tListRaw
   MapList -> typeOfMap tListRaw
+  AppendList -> forAllTypes $ \t -> tList t ~> tList t ~> tList t
   AtVector -> typeOfAtVector
   AtTensor -> typeOfAtTensor
   StackTensor -> typeOfStackTensor

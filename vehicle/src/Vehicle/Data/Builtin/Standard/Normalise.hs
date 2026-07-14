@@ -39,23 +39,26 @@ instance HasLiftableTensorOperations Builtin where
       (getExpr accessMinRatTensor, evalMinRatTensor, IRatType),
       (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType),
       (getExpr accessAndTensor, evalAnd, IBoolType),
-      (getExpr accessOrTensor, evalOr, IBoolType),
-      compPointwise Eq,
-      compPointwise Ne,
-      compPointwise Le,
-      compPointwise Lt,
-      compPointwise Ge,
-      compPointwise Gt
+      (getExpr accessOrTensor, evalOr, IBoolType)
+    ]
+
+  liftableTensorComparisons =
+    [ comparison Eq,
+      comparison Ne,
+      comparison Le,
+      comparison Lt,
+      comparison Ge
     ]
     where
-      compPointwise op = (getExpr (accessArgsForOp accessCompareRatTensorPointwise op), evalCompareRatTensorPointwise op, IBoolType)
+      comparison op = (getExpr (accessArgsForOp accessCompareRatTensor op), evalCompareRatTensor op, IBoolType)
 
 instance NormalisableBuiltin Builtin where
   evalScheme = \case
     BuiltinFunction f -> case f of
       CompareIndex op -> Simple (evalCompareIndex op)
       CompareNat op -> Simple (evalCompareNat op)
-      CompareRatTensorPointwise op -> Simple (evalCompareRatTensorPointwise op)
+      CompareRatTensor op -> Simple (evalCompareRatTensor op)
+      -- CompareRatTensorPointwise op -> Simple (evalCompareRatTensorPointwise op)
       Not -> Simple evalNot
       And -> Simple evalAnd
       Or -> Simple evalOr
@@ -85,6 +88,7 @@ instance NormalisableBuiltin Builtin where
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
+      AppendList -> Simple evalAppendList
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
@@ -144,12 +148,14 @@ evalVectorToList args@(VectorToListArgs t d xs) =
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
 
+-- when going into the TensorReductionArgs expression, looking at what it is performing on
+-- if it is a tensor comparison, then we can just reduce it
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->
   Maybe (Value Builtin)
 foldReduceAndComparison (TensorReductionArgs _ tensor) =
-  case getExpr accessCompareRatTensorPointwise tensor of
-    (Just (op, TensorOp2Args (IDimCons d ds) xs ys)) | op /= Ne -> do
-      let compareArgs = TensorReduceComparisonArgs d ds xs ys
-      Just $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
+  case getExpr accessCompareRatTensor tensor of
+    Just (op, TensorComparisonArgs dims IDimNil xs ys) | op /= Ne -> do
+      let compareArgs = TensorComparisonArgs IDimNil dims xs ys
+      Just $ mkExpr accessCompareRatTensor (op, compareArgs)
     _ -> Nothing

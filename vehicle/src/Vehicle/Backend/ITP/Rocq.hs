@@ -30,6 +30,7 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VectorLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
+import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -542,9 +543,23 @@ compileBuiltin b args = case b of
     Max MaxRatTensor -> compileApplication [MathcompImport Algebra, Import OrderDef] "max" args
     CompareIndex op -> compileComparison CIndex op args
     CompareNat op -> compileComparison CNat op args
-    CompareRatTensorPointwise op -> compileComparison CRatTensor op args
+    CompareRatTensor op -> case decideIfPointwiseOrReductionComparison args of
+      Pointwise as -> compileComparison CRatTensor op as
+      Reduced as ->
+        compileApplication
+          [VehicleImport VehicleUtils]
+          ( case op of
+              Le -> "leRatTensorReduced"
+              Lt -> "ltRatTensorReduced"
+              Ge -> "geRatTensorReduced"
+              Gt -> "gtRatTensorReduced"
+              Eq -> "eqRatTensorReduced"
+              Ne -> "neRatTensorReduced"
+          )
+          as
     FoldList -> compileApplication [MathcompImport Boot] "foldr" args
     MapList -> compileApplication [MathcompImport Boot] "map" args
+    AppendList {} -> unsupportedError
     ReduceAndTensor -> compileApplication [VehicleImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> compileApplication [VehicleImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> compileApplication [] "reduceAdd" args
@@ -574,7 +589,7 @@ compileBuiltin b args = case b of
     PropImplies -> compileFunctionType args
     PropCompareIndex op -> compileComparison CIndex op args
     PropCompareNat op -> compileComparison CNat op args
-    PropCompareRatTensorPointwise op -> compileComparison CRatTensor op args
+    PropCompareRatTensor op -> compileComparison CRatTensor op args
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
@@ -627,18 +642,6 @@ compileDerivedFunction fn args = case fn of
           return $ compileNatLiteral n
     _ ->
       compileNotationAndArgs [] NotAssociative (Just 99) "$1 : $0" Nothing args
-  CompareRatTensorReduced op ->
-    compileApplication
-      [VehicleImport VehicleUtils]
-      ( case op of
-          Le -> "leRatTensorReduced"
-          Lt -> "ltRatTensorReduced"
-          Ge -> "geRatTensorReduced"
-          Gt -> "gtRatTensorReduced"
-          Eq -> "eqRatTensorReduced"
-          Ne -> "neRatTensorReduced"
-      )
-      args
   where
     unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
     isIndexTypeExpr :: Expr DecidabilityBuiltin -> Bool

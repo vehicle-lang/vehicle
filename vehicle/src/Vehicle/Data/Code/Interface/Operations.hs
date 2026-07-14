@@ -93,9 +93,7 @@ type NatComparisonAccessor expr op = Accessor expr (op, Op2Args expr)
 
 type IndexComparisonAccessor expr op = Accessor expr (op, IndexComparisonArgs expr)
 
-type RatTensorPointwiseComparisonAccessor expr op = Accessor expr (op, TensorOp2Args expr)
-
-type RatTensorReducedComparisonAccessor expr op = Accessor expr (op, TensorReduceComparisonArgs expr)
+type RatTensorComparisonAccessor expr op = Accessor expr (op, TensorComparisonArgs expr)
 
 type Op1Accessor expr = Accessor expr (Op1Args expr)
 
@@ -155,11 +153,8 @@ accessCompareIndex = accessOpAndArgs accessCompareIndexBuiltin
 accessCompareNat :: (HasBoolExpr expr builtin) => NatComparisonAccessor (expr builtin) ComparisonOp
 accessCompareNat = accessOpAndArgs accessCompareNatBuiltin
 
-accessCompareRatTensorPointwise :: (HasBoolExpr expr builtin) => RatTensorPointwiseComparisonAccessor (expr builtin) ComparisonOp
-accessCompareRatTensorPointwise = accessOpAndArgs accessCompareRatTensorPointwiseBuiltin
-
-accessCompareRatTensorReduced :: (HasBoolExpr expr builtin) => RatTensorReducedComparisonAccessor (expr builtin) ComparisonOp
-accessCompareRatTensorReduced = accessOpAndArgs accessCompareRatTensorReducedBuiltin
+accessCompareRatTensor :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensor = accessOpAndArgs accessCompareRatTensorBuiltin
 
 accessQuantifyRatTensor ::
   (HasBoolExpr expr builtin, HasLambdaConstructor expr body) =>
@@ -324,6 +319,9 @@ accessMapList = accessArgs accessMapListBuiltin
 
 accessFoldList :: (HasListExpr expr builtin) => Accessor (expr builtin) (FoldListArgs (expr builtin))
 accessFoldList = accessArgs accessFoldListBuiltin
+
+accessAppendList :: (HasListExpr expr builtin) => Accessor (expr builtin) (AppendListArgs (expr builtin))
+accessAppendList = accessArgs accessAppendListBuiltin
 
 --------------------------------------------------------------------------------
 -- Vector

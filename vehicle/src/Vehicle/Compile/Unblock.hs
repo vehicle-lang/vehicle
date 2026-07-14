@@ -93,7 +93,7 @@ unblockBoolTensorValue actions expr = showEntry expr $
     VBoolTensorOr args -> unblockTensorOp2 unblock evalOr args
     VBoolTensorNot args -> unblockTensorOp1 unblock evalNot args
     VBoolTensorCompareRatReduced {} -> return $ IfLeaf expr
-    VBoolTensorCompareRatPointwise (op, args) -> unblockTensorOp2 (unblockRatTensorValue actions) (evalCompareRatTensorPointwise op) args
+    VBoolTensorCompareRatPointwise (op, args) -> unblockTensorOp2 (unblockRatTensorValue actions) (evalCompareRatPointwise op) args
     -- Recursively unblock
     VBoolTensorIf args -> unblockIf unblock args
     VBoolTensorReduceAnd args -> unblockReduceTensor unblock unoptimisedEvalReduceAndTensor args

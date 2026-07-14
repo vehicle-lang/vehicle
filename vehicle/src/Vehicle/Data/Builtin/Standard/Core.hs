@@ -118,22 +118,13 @@ compareNatAccessor =
       mkExpr = \op -> BuiltinFunction (CompareNat op)
     }
 
-compareRatTensorPointwiseAccessor :: Accessor Builtin ComparisonOp
-compareRatTensorPointwiseAccessor =
+compareRatTensorAccessor :: Accessor Builtin ComparisonOp
+compareRatTensorAccessor =
   Access
     { getExpr = \case
-        BuiltinFunction (CompareRatTensorPointwise op) -> Just op
+        BuiltinFunction (CompareRatTensor op) -> Just op
         _ -> Nothing,
-      mkExpr = \op -> BuiltinFunction (CompareRatTensorPointwise op)
-    }
-
-compareRatTensorReducedAccessor :: Accessor Builtin ComparisonOp
-compareRatTensorReducedAccessor =
-  Access
-    { getExpr = \case
-        DerivedFunction (CompareRatTensorReduced op) -> Just op
-        _ -> Nothing,
-      mkExpr = \op -> DerivedFunction (CompareRatTensorReduced op)
+      mkExpr = \op -> BuiltinFunction (CompareRatTensor op)
     }
 
 --------------------------------------------------------------------------------
@@ -161,8 +152,7 @@ instance BuiltinHasBoolLiterals Builtin where
 
   accessCompareIndexBuiltin = compareIndexAccessor
   accessCompareNatBuiltin = compareNatAccessor
-  accessCompareRatTensorPointwiseBuiltin = compareRatTensorPointwiseAccessor
-  accessCompareRatTensorReducedBuiltin = compareRatTensorReducedAccessor
+  accessCompareRatTensorBuiltin = compareRatTensorAccessor
 
   accessQuantifyRatTensorBuiltin =
     Access
@@ -274,6 +264,7 @@ instance BuiltinHasListLiterals Builtin where
         mkExpr = \() -> BuiltinConstructor Cons
       }
 
+  accessAppendListBuiltin = functionAccessor AppendList
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
 

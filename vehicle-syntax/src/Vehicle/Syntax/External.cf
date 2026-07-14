@@ -115,8 +115,9 @@ position token TokSeqClose   {"]"};
 position token TokAt         {"!"};
 position token TokMap        {"map"};
 position token TokFold       {"fold"};
-position token TokConst      {"const"};
+position token TokAppend     {"append"};
 
+position token TokConst     {"const"};
 position token TokReduceOr  {"reduceOr"};
 position token TokReduceAnd {"reduceAnd"};
 position token TokReduceAdd {"reduceAdd"};
@@ -311,6 +312,7 @@ CompareRatTensorReducedGe.    Expr16 ::= TokCompareRatTensorReducedGe;
 CompareRatTensorReducedGt.    Expr16 ::= TokCompareRatTensorReducedGt;
 
 Nil.           Expr16 ::= TokNil;
+Append.        Expr16 ::= TokAppend;
 Const.         Expr16 ::= TokConst;
 Map.           Expr16 ::= TokMap;
 Fold.          Expr16 ::= TokFold;

@@ -33,8 +33,7 @@ data TensorTypeClassField
   | FieldReduceOr
   | FieldCompareNat ComparisonOp
   | FieldCompareIndex ComparisonOp
-  | FieldCompareRatTensorPointwise ComparisonOp
-  | FieldCompareRatTensorReduced ComparisonOp
+  | FieldCompareRatTensor ComparisonOp
   | FieldQuantifyIndex Quantifier
   | FieldQuantifyInList Quantifier
   | FieldForeachTensor
@@ -84,7 +83,7 @@ data DecidabilityBuiltinFunction
   | PropImplies
   | PropCompareNat ComparisonOp
   | PropCompareIndex ComparisonOp
-  | PropCompareRatTensorPointwise ComparisonOp
+  | PropCompareRatTensor ComparisonOp
   | PropNaryProduct
   | PropNaryProductAt
   | PropNaryProductForeach
@@ -127,6 +126,24 @@ functionAccessor b =
       mkExpr = \() -> StandardBuiltinFunction b
     }
 
+constructorAccessor :: BuiltinConstructor -> Accessor DecidabilityBuiltin ()
+constructorAccessor b =
+  Access
+    { getExpr = \case
+        StandardBuiltinConstructor b1 | b == b1 -> Just ()
+        _ -> Nothing,
+      mkExpr = \() -> StandardBuiltinConstructor b
+    }
+
+typeAccessor :: BuiltinType -> Accessor DecidabilityBuiltin ()
+typeAccessor b =
+  Access
+    { getExpr = \case
+        StandardBuiltinType b1 | b == b1 -> Just ()
+        _ -> Nothing,
+      mkExpr = \() -> StandardBuiltinType b
+    }
+
 instance BuiltinHasStandardTypes DecidabilityBuiltin where
   accessBuiltinType =
     Access
@@ -164,6 +181,9 @@ instance BuiltinHasStandardData DecidabilityBuiltin where
           _ -> Nothing
       }
 
+instance BuiltinHasNatType DecidabilityBuiltin where
+  accessNatTypeBuiltin = typeAccessor NatType
+
 instance BuiltinHasNatLiterals DecidabilityBuiltin where
   accessNatLitBuiltin =
     Access
@@ -185,24 +205,11 @@ instance BuiltinHasNatLiterals DecidabilityBuiltin where
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
 
 instance BuiltinHasListLiterals DecidabilityBuiltin where
-  accessNilBuiltin =
-    Access
-      { getExpr = \case
-          StandardBuiltinConstructor Nil -> Just ()
-          _ -> Nothing,
-        mkExpr = \() -> StandardBuiltinConstructor Nil
-      }
-
-  accessConsBuiltin =
-    Access
-      { getExpr = \case
-          StandardBuiltinConstructor Cons -> Just ()
-          _ -> Nothing,
-        mkExpr = \() -> StandardBuiltinConstructor Cons
-      }
-
+  accessNilBuiltin = constructorAccessor Nil
+  accessConsBuiltin = constructorAccessor Cons
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessAppendListBuiltin = functionAccessor AppendList
 
 instance BuiltinHasIterate DecidabilityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate
@@ -231,7 +238,7 @@ instance Pretty DecidabilityBuiltinFunction where
     PropImplies -> pretty Implies <> symbol
     PropCompareNat op -> pretty (CompareNat op) <> symbol
     PropCompareIndex op -> pretty (CompareIndex op) <> symbol
-    PropCompareRatTensorPointwise op -> pretty (CompareRatTensorPointwise op) <> symbol
+    PropCompareRatTensor op -> pretty (CompareRatTensor op) <> symbol
     PropQuantifyIndex q -> pretty (QuantifyIndex q) <> symbol
     PropQuantifyInList q -> pretty (QuantifyInList q) <> symbol
     PropNaryProduct -> pretty VectorType <> symbol
@@ -282,10 +289,13 @@ instance NormalisableBuiltin DecidabilityBuiltin where
   evalScheme = \case
     StandardBuiltinFunction Iterate -> NonSimple evalIterate
     StandardBuiltinFunction FoldList -> NonSimple evalFoldList
+    StandardBuiltinFunction AppendList -> Simple evalAppendList
     _ -> None
 
   blockingStatus b spine = case b of
     StandardBuiltinFunction Iterate -> functionBlockingStatus Iterate spine
+    StandardBuiltinFunction FoldList -> functionBlockingStatus FoldList spine
+    StandardBuiltinFunction AppendList -> functionBlockingStatus AppendList spine
     _ -> DoesNotReduce
 
   isTypeClassOp = \case

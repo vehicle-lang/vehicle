@@ -235,7 +235,6 @@ delabDerivedFunction fun args = case fun of
   V.TypeAnn -> delabInfixOp2 B.Ann tokElemOf (reverse args)
   V.QuantifyIndex q -> delabQuantifier q args
   V.QuantifyInList q -> delabQuantifierIn q args
-  V.CompareRatTensorReduced op -> delabComparison op args
 
 delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg V.Builtin] -> m B.Expr
 delabBuiltinFunction fun args = case fun of
@@ -256,16 +255,16 @@ delabBuiltinFunction fun args = case fun of
   V.Exp _dom -> delabApp (B.Exp tokExp) args
   V.QuantifyRatTensor q -> delabQuantifier q args
   V.QuantifyRecord q -> delabQuantifier q args
-  V.CompareRatTensorPointwise V.Eq -> delabInfixOp2 B.EqPoint tokEqPoint args
-  V.CompareRatTensorPointwise V.Ne -> delabInfixOp2 B.NePoint tokNePoint args
-  V.CompareRatTensorPointwise V.Le -> delabInfixOp2 B.LePoint tokLePoint args
-  V.CompareRatTensorPointwise V.Lt -> delabInfixOp2 B.LtPoint tokLtPoint args
-  V.CompareRatTensorPointwise V.Ge -> delabInfixOp2 B.GePoint tokGePoint args
-  V.CompareRatTensorPointwise V.Gt -> delabInfixOp2 B.GtPoint tokGtPoint args
+  V.CompareRatTensor op -> case args of
+    [argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), _rDims, xs, ys] -> delabCompareReduced op [xs, ys]
+    [_pDims, argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), xs, ys] -> delabComparePointwise op [xs, ys]
+    [xs, ys] -> delabCompareReduced op [xs, ys]
+    _ -> cheatDelabPretty op args
   V.CompareIndex op -> delabComparison op args
   V.CompareNat op -> delabComparison op args
   V.FoldList -> delabTypeClassOp V.FoldTC args
   V.MapList -> delabTypeClassOp V.MapTC args
+  V.AppendList -> delabApp (B.Append tokAppend) args
   V.AtTensor -> delabInfixOp2 B.At tokAt args
   V.AtVector -> delabInfixOp2 B.At tokAt args
   V.ForeachTensor -> delabForeach args
@@ -483,6 +482,24 @@ delabRecord :: (MonadDelab m) => V.RecordFields V.Builtin -> m B.Expr
 delabRecord fields = do
   fields' <- traverse (bitraverse delabM delabM) fields
   return $ B.Record (fmap (uncurry B.FieldAssign) fields')
+
+delabCompareReduced :: (MonadDelab m) => V.ComparisonOp -> [V.Arg V.Builtin] -> m B.Expr
+delabCompareReduced op args = case op of
+  V.Eq -> delabInfixOp2 B.Eq tokEq args
+  V.Ne -> delabInfixOp2 B.Ne tokNe args
+  V.Le -> delabInfixOp2 B.Le tokLe args
+  V.Lt -> delabInfixOp2 B.Lt tokLt args
+  V.Ge -> delabInfixOp2 B.Ge tokGe args
+  V.Gt -> delabInfixOp2 B.Gt tokGt args
+
+delabComparePointwise :: (MonadDelab m) => V.ComparisonOp -> [V.Arg V.Builtin] -> m B.Expr
+delabComparePointwise op args = case op of
+  V.Eq -> delabInfixOp2 B.EqPoint tokEqPoint args
+  V.Ne -> delabInfixOp2 B.NePoint tokNePoint args
+  V.Le -> delabInfixOp2 B.LePoint tokLePoint args
+  V.Lt -> delabInfixOp2 B.LtPoint tokLtPoint args
+  V.Ge -> delabInfixOp2 B.GePoint tokGePoint args
+  V.Gt -> delabInfixOp2 B.GtPoint tokGtPoint args
 
 delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts

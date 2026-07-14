@@ -30,6 +30,7 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
+import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -830,9 +831,24 @@ compileBuiltin isOutType localeAssms b args = case b of
     Max MaxRatTensor -> annotateApp localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] "pointwise_max" args
     CompareIndex op -> compileComparison localeAssms CIndex op args
     CompareNat op -> compileComparison localeAssms CNat op args
-    CompareRatTensorPointwise op -> compileTensorComparison localeAssms CRatTensor op args
+    CompareRatTensor op -> case decideIfPointwiseOrReductionComparison args of
+      Pointwise as -> compileTensorComparison localeAssms CRatTensor op as
+      Reduced as ->
+        annotateApp
+          localeAssms
+          [RequireImport VehicleUtils]
+          ( case op of
+              Le -> "leRatTensorReduced"
+              Lt -> "ltRatTensorReduced"
+              Ge -> "geRatTensorReduced"
+              Gt -> "gtRatTensorReduced"
+              Eq -> "eqRatTensorReduced"
+              Ne -> "neRatTensorReduced"
+          )
+          as
     FoldList -> annotateApp localeAssms [] "foldr" args
     MapList -> annotateApp localeAssms [] "map" args
+    AppendList {} -> unsupportedError
     ReduceAndTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> annotateApp localeAssms [] "reduceAdd" args
@@ -866,7 +882,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     PropImplies -> annotateNotation localeAssms [] minPrecedence "$0 \\<longrightarrow> $1" (Just "implies") args
     PropCompareIndex op -> compileComparison localeAssms CIndex op args
     PropCompareNat op -> compileComparison localeAssms CNat op args
-    PropCompareRatTensorPointwise op -> compileTensorComparison localeAssms CRatTensor op args
+    PropCompareRatTensor op -> compileTensorComparison localeAssms CRatTensor op args
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
@@ -918,19 +934,6 @@ compileDerivedFunction localeAssms fn args = case fn of
     Forall -> annotateApp localeAssms [RequireImport VehicleUtils] "forallIndex" args
   QuantifyInList {} -> unsupported
   TypeAnn -> annotateNotation localeAssms [] minPrecedence "$1 :: $0" Nothing args
-  CompareRatTensorReduced op ->
-    annotateApp
-      localeAssms
-      [RequireImport VehicleUtils]
-      ( case op of
-          Le -> "leRatTensorReduced"
-          Lt -> "ltRatTensorReduced"
-          Ge -> "geRatTensorReduced"
-          Gt -> "gtRatTensorReduced"
-          Eq -> "eqRatTensorReduced"
-          Ne -> "neRatTensorReduced"
-      )
-      args
   where
     unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
 
