@@ -143,7 +143,7 @@ liftQuantifierProperty (value, ctxDelta) = case toBoolValue value of
     return ((quantifiers1 ++ quantifiers2, fromBoolValue $ VAnd (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2)
   VOr (TensorOp2Args dims arg1 arg2) -> do
     ((quantifiers1, arg1'), ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
-    ((quantifiers2, arg2'), ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta)
+    ((quantifiers2, arg2'), ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
     return ((quantifiers1 ++ quantifiers2, fromBoolValue $ VOr (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2) 
   VNot (TensorOp1Args dims arg) -> do
     ((quantifiers, arg'), ctxSize) <- liftQuantifierProperty (arg, ctxDelta)
