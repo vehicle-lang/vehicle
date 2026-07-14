@@ -3,6 +3,8 @@ Training with a specification
 Vehicle compiles each ``@property`` in your specification into a callable loss function. Use one of the backend modules (PyTorch or TensorFlow) to load the compiled declarations into Python.
 
 
+.. _loading-declarations:
+
 Loading declarations
 --------------------
 
