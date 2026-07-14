@@ -122,9 +122,6 @@ createRecordProjectionFn p ident telescope visibility (field, fieldType) = do
 -- ValidNetworkIOType instance generation
 --------------------------------------------------------------------------------
 
-instanceBinder :: Provenance -> Name -> Expr Builtin -> GenericBinder (Expr Builtin)
-instanceBinder p name = Binder (BinderDisplayForm (NameAndType name p) True) (Instance True) Relevant
-
 createRecordHasValidIOTypeInstance ::
   Provenance ->
   Identifier ->
@@ -152,7 +149,7 @@ createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  let mkConstraint (FieldName pf n, fieldType) k = instanceBinder pf n $ normAppList target [argument]
+  let mkConstraint (FieldName pf n, fieldType) k = flip mkInstanceBinder (Just (pf, n)) $ normAppList target [argument]
         where
           target = FreeVar mempty validNetworkFieldTypeIdent
           argument = explicit (liftDBIndices (Lv k) fieldType)
@@ -199,8 +196,10 @@ createRecordComparisonInstance p recordIdent telescope fields = do
   --
   --    @instance
   --    recordPairHasComparisonInstance :
-  --      T1 -> T2 ->
-  --      HasComparisonInstance T1 T1 -> HasComparisonInstance T2 T2 ->
+  --      T1 ->
+  --      T2 ->
+  --      HasComparisonInstance T1 T1 ->
+  --      HasComparisonInstance T2 T2 ->
   --      HasComparison (Pair T1 T2) (Pair T2 T1)
   --    recordPairHasComparisonInstance T1 T2 compT1 compT2 =
   --      { method = \r1 r2 -> (compT1.method r1.f1 r2.f1) and (compT2.method r1.f2 r2.f2)
@@ -213,7 +212,7 @@ createRecordComparisonInstance p recordIdent telescope fields = do
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasComparison"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  let mkConstraint (FieldName _ n, fieldType) k = instanceBinder mempty (n <> "Comparison") $ normAppList target [argument, argument]
+  let mkConstraint (FieldName pf n, fieldType) k = flip mkInstanceBinder (Just (pf, n)) $ normAppList target [argument, argument]
         where
           target = FreeVar mempty hasComparisonIdent
           argument = explicit (liftDBIndices (Lv k) fieldType)
