@@ -440,3 +440,10 @@ class Program(AST):
 @dataclass(frozen=True)
 class Main(Program):
     declarations: Sequence[Declaration]
+
+
+@dataclass(frozen=True)
+class SearchProgram(Program):
+    """Wrapper to store declarations and a map for property metadata"""
+    map: dict[str, bool]
+    program: Main

@@ -162,16 +162,17 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    (progData, typedProg') <- if lossFunctionMode == Search 
+    (propertyData, typedProg') <- if lossFunctionMode == Search 
       then liftQuantifiers typedProg
       else return ([], typedProg)
-    logDebug MinDetail $ prettyVerbose progData
     lossTensorProg <- convertToLossTensors differentiableLogicID typedProg'
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg
     jsonProg <- convertToJSONProg functionalisedProg
     let outputText
-          | outputAsJSON = prettyAsJSON jsonProg
+          | outputAsJSON = if lossFunctionMode == Search
+            then prettyAsJSON $ SearchProgram propertyData jsonProg
+            else prettyAsJSON jsonProg
           | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
     writeResultToFile Nothing outputFile outputText
 

@@ -3,10 +3,12 @@
 module Vehicle.Backend.Loss.JSON
   ( convertToJSONProg,
     convertFromJSONProg,
+    SearchProg (..),
   )
 where
 
 import Data.Aeson (ToJSON (..), genericToJSON)
+import Data.Map (Map)
 import Data.List (elemIndex)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
@@ -52,6 +54,13 @@ convertFromJSONProg = fromJProg
 
 newtype JProg
   = Main [JDecl]
+  deriving (Generic)
+
+data SearchProg 
+  = SearchProgram
+  { map :: Map Name Bool,
+    program :: JProg
+  }
   deriving (Generic)
 
 data JDecl
@@ -110,6 +119,9 @@ data JExpr
   deriving (Show, Generic)
 
 instance ToJSON JProg where
+  toJSON = genericToJSON jsonOptions
+
+instance ToJSON SearchProg where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JDecl where

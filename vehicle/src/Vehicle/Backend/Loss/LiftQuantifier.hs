@@ -4,6 +4,8 @@ module Vehicle.Backend.Loss.LiftQuantifier
 where
 
 import Data.Proxy (Proxy (..))
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Prelude
 import Vehicle.Data.Variable.Bound.Context.Generic (MonadBoundContext (addBinderToContext, getBoundCtx), runFreshBoundContextT, addBinderToContext)
@@ -20,6 +22,7 @@ import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
 import Control.Monad.RWS (MonadReader, ask)
 import Control.Monad.Reader (runReaderT)
+import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 
 type MonadLiftQuantifiers m = 
@@ -32,36 +35,41 @@ type MonadLiftQuantifiers m =
 type OldContextValue = Value Builtin
 type NewContextValue = Value Builtin
 type QuantifierData = (Quantifier, Either (VDims Builtin) (VType Builtin), VBinder Builtin)
+type PropertyData = Map Name Bool
 
 liftQuantifiers ::
   (MonadCompile m) =>
   Prog Builtin ->
-  m([(Identifier, Bool)], Prog Builtin)
+  m(PropertyData, Prog Builtin)
 liftQuantifiers (Main ds) = 
   runFreshFreeContextT (Proxy @Builtin) $ do
-    (declsData, ds') <- liftQuantifierDecls ds
-    return (declsData, Main ds')
+    (ds', propertyData) <- runWriterT (liftQuantifierDecls ds)
+    return (propertyData, Main ds')
 
 liftQuantifierDecls :: 
-  (MonadCompile m, MonadFreeContext Builtin m) => 
+  (MonadCompile m, 
+   MonadFreeContext Builtin m,
+   MonadWriter PropertyData m) => 
   [Decl Builtin] ->
-  m([(Identifier, Bool)],[Decl Builtin])
+  m[Decl Builtin]
 liftQuantifierDecls = \case
-  [] -> return ([],[])
+  [] -> return []
   decl : decls -> do
     normDecl <- evalDecl decl
-    (declData, normDecl') <- liftQuantifierDecl normDecl
+    normDecl' <-  liftQuantifierDecl normDecl
     let decl' = fmap (unnormalise 0) normDecl'
-    (declsData', decls') <- addDeclEntryToContext normDecl $ liftQuantifierDecls decls 
-    return (declData : declsData', decl' : decls')
+    decls' <- addDeclEntryToContext normDecl $ liftQuantifierDecls decls 
+    return (decl' : decls')
 
 -- accepts and returns normalised decl
 liftQuantifierDecl ::
-  (MonadCompile m, MonadFreeContext Builtin m) => 
+  (MonadCompile m,
+   MonadFreeContext Builtin m,
+   MonadWriter PropertyData m) => 
   VDecl Builtin ->
-  m((Identifier, Bool), VDecl Builtin)
+  m(VDecl Builtin)
 liftQuantifierDecl decl = case decl of
-  DefAbstract _ ident _ _ -> return ((ident, False), decl)
+  DefAbstract {} -> return decl
   DefFunction p ident ann typ expr -> 
     if isAnnotatedAsProperty ann
       then do
@@ -71,9 +79,10 @@ liftQuantifierDecl decl = case decl of
         ((newQuantifiers, newValue), findCounterExample) <- runReaderT (flipForall (quantifiers, value)) (ident, p)
         liftedValue <- runFreshBoundContextT (Proxy @(Value Builtin)) $ reconstructProperty newQuantifiers newValue
         logDebug MinDetail $ prettyFriendlyEmptyCtx liftedValue
-        return ((ident, findCounterExample), DefFunction p ident ann typ liftedValue)
-      else return ((ident, False), decl)
-  DefRecord _ ident _ _ _ _ -> return ((ident, False), decl)
+        tell (Map.singleton (identifierName ident) findCounterExample)
+        return $ DefFunction p ident ann typ liftedValue
+      else return decl
+  DefRecord {} -> return decl
 
 -- Returns a Bool representing whether performing a search on the property would produce a counter-example
 -- True = example input found will be a counter-example to the property
@@ -84,7 +93,7 @@ flipForall ::
   ([QuantifierData], NewContextValue) ->
   m(([QuantifierData], NewContextValue), Bool)
 flipForall (quantifierData, value) = case quantifierData of
-  [] -> return ((quantifierData, value), True) -- is True here ok?
+  [] -> return ((quantifierData, value), True)
   (firstQuantifier, _, _) : _ -> do
     newQuantifierData <- checkAlternatingQuantifiers firstQuantifier quantifierData
     if firstQuantifier == Forall

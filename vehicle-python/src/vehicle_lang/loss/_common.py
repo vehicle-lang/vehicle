@@ -66,7 +66,7 @@ def load_loss_specification_quantifiers(
     declaration_context: MutableMapping[str, Any] | None,
     translation_factory: TranslationFactory,
     default_sampler_factory: SamplerFactory,  
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """
     Load a specification and extract quantifiers for search
     """
@@ -79,20 +79,23 @@ def load_loss_specification_quantifiers(
     else:
         samplers = {k: s.get_loss for k, s in samplers.items()}
 
-    program = load_ast(
+    search_program = load_ast(
         path,
         mode=LossMode.Search,
         target=logic,
         declarations=declarations,
     )
 
-    quantifiers = extract_quantifiers(program)
+    quantifiers = extract_quantifiers(search_program.program)
 
     translation = translation_factory()
     compiled = translation.compile(
-        program=program,
+        program=search_program.program,
         path=path,
         declaration_context=declaration_context,
         samplers=samplers,
     )
-    return cast(dict[str, Any], compiled), quantifiers
+
+    print(search_program.map)
+
+    return cast(dict[str, Any], compiled), quantifiers, search_program.map
