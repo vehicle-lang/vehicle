@@ -18,7 +18,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView (DimensionsValue (..), TypeValue (..), toDimensionsValue, toTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
-import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields)
+import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields, getRecordSort)
 import Vehicle.Verify.Core (NetworkContextInfo (..))
 
 --------------------------------------------------------------------------------
@@ -47,24 +47,42 @@ getNetworkType decl networkType = case normalised networkType of
   VPi binder closure
     | visibilityOf binder /= Explicit -> typingError
     | otherwise -> do
-        inputDetails <- tensorType Input (typeOf binder)
+        inputDetails <- mkNetworkIoType Input (typeOf binder)
         resultType <- normaliseClosureInCtx mempty binder closure
-        outputDetails <- tensorType Output resultType
+        outputDetails <- mkNetworkIoType Output resultType
         let networkDetails = NetworkType inputDetails outputDetails
         return networkDetails
   _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
   where
-    tensorType :: InputOrOutput -> VType Builtin -> m NetworkIOType
-    tensorType io t = case toTypeValue t of
+    mkNetworkIoType :: InputOrOutput -> VType Builtin -> m NetworkIOType
+    mkNetworkIoType io t = case toTypeValue t of
       VRatTensorType dims -> do
         shape <- tensorDimensions io dims
         return $ UniModal (TensorIOType $ NetworkTensorType NetworkRatType shape)
       VFreeTypeVar ident _spine -> do
-        fieldNames <- getRecordFieldNames ident
         fields <- getRecordFields ident
-        let shape = constructTensorisableDims fields
-        return $ UniModal (RecordIOType $ NetworkRecordType NetworkRatType ident shape $ NonEmpty.toList fieldNames)
+        sort <- getRecordSort ident
+        case sort of
+          Just AnnTensor -> mkUniModalNetwork ident fields
+          _ -> mkMultiModalNetwork io fields
       _ -> typingError
+
+    mkUniModalNetwork :: Identifier -> GenericRecordFields (Value Builtin) -> m NetworkIOType
+    mkUniModalNetwork ident fields = do
+      fieldNames <- getRecordFieldNames ident
+      let shape = constructTensorisableDims fields
+      let recordTyp = NetworkRecordType NetworkRatType ident shape (NonEmpty.toList fieldNames)
+      return . UniModal . RecordIOType $ recordTyp
+
+    mkMultiModalNetwork :: InputOrOutput -> GenericRecordFields (Value Builtin) -> m NetworkIOType
+    mkMultiModalNetwork io fields = do
+      let mkShape (FieldName _ name, typ) = do
+            shape <- mkNetworkIoType io typ
+            case shape of
+              UniModal v -> return (name, v)
+              MultiModal {} -> error "Impossible: Non-tensorisable records should never appear inside another record."
+      shapes <- mapM mkShape fields
+      return . MultiModal $ shapes
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
     tensorDimensions io dims = case toDimensionsValue dims of

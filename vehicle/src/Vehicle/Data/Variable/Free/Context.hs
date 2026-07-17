@@ -5,6 +5,7 @@ module Vehicle.Data.Variable.Free.Context
     getRecordFields,
     getRecordProvenance,
     getRecordFieldNames,
+    getRecordSort,
   )
 where
 
@@ -80,4 +81,14 @@ getRecordProvenance ident = do
   decl <- getDeclEntry (Proxy @Builtin) ident
   case decl of
     (DefRecord p _ _ _ _ _) -> return p
+    _ -> developerError "Record declaration is not of expected format."
+
+getRecordSort ::
+  (MonadFreeContext Builtin m) =>
+  Identifier ->
+  m (Maybe DefRecordSort)
+getRecordSort ident = do
+  decl <- getDeclEntry (Proxy @Builtin) ident
+  case decl of
+    DefRecord _ _ sort _ _ _ -> return sort
     _ -> developerError "Record declaration is not of expected format."
