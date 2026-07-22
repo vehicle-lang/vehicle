@@ -76,6 +76,7 @@ functionBlockingStatus b spine = case b of
   AtVector -> fixedStatus [2, 3] spine
   FoldList -> fixedStatus [4] spine
   MapList -> fixedStatus [3] spine
+  ReverseList -> fixedStatus [1] spine
   ConstTensor -> fixedStatus [0, 1] spine
   ReduceAddRatTensor -> fixedStatus [1] spine
   ReduceMulRatTensor -> fixedStatus [1] spine

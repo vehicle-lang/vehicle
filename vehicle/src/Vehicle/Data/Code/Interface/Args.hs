@@ -458,6 +458,24 @@ instance IsArgs MapListArgs where
       }
 
 --------------------------------------------------------------------------------
+-- ReverseList
+
+-- | Arguments for `ReverseList`
+data ReverseListArgs expr = ReverseListArgs
+  { reverseListElemType :: expr,
+    reverseListList :: expr
+  }
+
+instance IsArgs ReverseListArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, xs]) -> Just $ ReverseListArgs t xs
+          _ -> Nothing,
+        mkExpr = \(ReverseListArgs t xs) -> [implicit t, explicit xs]
+      }
+
+--------------------------------------------------------------------------------
 -- FoldList
 
 -- | Arguments for `MapList`

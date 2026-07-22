@@ -128,6 +128,7 @@ data BuiltinFunction
   | -- List operations
     FoldList
   | MapList
+  | ReverseList
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -168,6 +169,7 @@ instance Pretty BuiltinFunction where
     CompareRatTensorPointwise op -> comparisonOpName op <> "RatTensorPointwise"
     FoldList -> "foldList"
     MapList -> "mapList"
+    ReverseList -> "reverseList"
     ForeachTensor -> "foreachTensor"
     ForeachVector -> "foreachVector"
     Iterate -> "iterate"

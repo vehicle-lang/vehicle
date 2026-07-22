@@ -663,6 +663,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     CompareRatTensorPointwise op -> compileTensorComparison moduleDefs CRatTensor op args
     FoldList -> annotateApp moduleDefs [] "List.fold_right" args
     MapList -> annotateApp moduleDefs [] "List.map" args
+    ReverseList -> annotateApp moduleDefs [] "List.rev" args
     ReduceAndTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_and" args
     ReduceOrTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_or" args
     ReduceAddRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_sum" args

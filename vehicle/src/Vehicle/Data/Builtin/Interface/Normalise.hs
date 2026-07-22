@@ -429,6 +429,18 @@ evalFoldList ctx evalApp eval (FoldListArgs a b f e xs) = evalList xs
     recArgs :: Value builtin -> FoldListArgs (Value builtin)
     recArgs = FoldListArgs a b f e
 
+evalReverseList ::
+  forall m builtin.
+  (MonadNormBuiltin m, BuiltinHasListLiterals builtin) =>
+  EvalSimple ReverseListArgs Value builtin m
+evalReverseList args@(ReverseListArgs t xs) = go xs (INil t)
+  where
+    go :: Value builtin -> Value builtin -> m (Value builtin)
+    go curr acc = case curr of
+      INil _ -> return acc
+      ICons _ v vs -> go vs (ICons t v acc)
+      _ -> return $ mkExpr accessReverseList args
+
 -----------------------------------------------------------------------------
 -- Rational tensors
 

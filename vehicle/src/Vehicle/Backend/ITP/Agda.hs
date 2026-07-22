@@ -594,6 +594,7 @@ compileBuiltinFunction p f args = case f of
   CompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") args
   FoldList -> annotateApp [DataList] (Just listQualifier) "foldr" args
   MapList -> annotateApp [DataList] (Just listQualifier) "map" args
+  ReverseList -> annotateApp [DataList] (Just listQualifier) "reverse" args
   ReduceAndTensor -> annotateApp [DataTensor] Nothing "reduceAnd" args
   ReduceOrTensor -> annotateApp [DataTensor] Nothing "reduceOr" args
   ReduceAddRatTensor -> annotateApp [DataTensor] Nothing "reduceAdd" args

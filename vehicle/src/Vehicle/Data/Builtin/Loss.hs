@@ -108,6 +108,7 @@ data LossBuiltinFunction
   | -- List
     MapList
   | FoldList
+  | ReverseList
   | -- Vector
     ForeachVector
   | AtVector
@@ -136,6 +137,7 @@ lossToStandardBuiltinFunction = \case
   Transpose -> S.Transpose
   MapList -> S.MapList
   FoldList -> S.FoldList
+  ReverseList -> S.ReverseList
   ForeachVector -> S.ForeachVector
   AtVector -> S.AtVector
 
@@ -282,6 +284,7 @@ instance BuiltinHasListLiterals LossBuiltin where
   accessConsBuiltin = zeroArityConstructorAccessor Cons
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -356,6 +359,7 @@ instance NormalisableBuiltin LossBuiltin where
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
+      ReverseList -> Simple evalReverseList
       Transpose -> Simple evalTranspose
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector

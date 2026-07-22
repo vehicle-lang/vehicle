@@ -26,10 +26,6 @@ existsInList f xs = fold (\x y -> x or y) False (map f xs)
 append : List A -> List A -> List A
 append xs ys = fold (\x acc -> x :: acc) ys xs
 
--- Used by `transpose`'s type signature via `reverseDims`.
-reverse : List A -> List A
-reverse xs = fold (\x acc -> append acc (x :: [])) [] xs
-
 --------------------------------------------------------------------------------
 -- Tensor
 --------------------------------------------------------------------------------

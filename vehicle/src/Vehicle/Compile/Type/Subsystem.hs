@@ -33,7 +33,6 @@ import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface (BuiltinHasListLiterals)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin (..))
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Builtin.Interface.Type (standardBuiltinTypeDeps)
 import Vehicle.Data.Builtin.Linearity (LinearityBuiltin)
 import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
@@ -74,7 +73,11 @@ decidabilityTypeCheck ::
   Prog Builtin ->
   m (Prog DecidabilityBuiltin)
 decidabilityTypeCheck prog = do
-  prunedProg <- pruneUnusedDeclarations standardBuiltinTypeDeps prog
+  prunedProg <- pruneUnusedDeclarations prog
+  -- Two 'resolveInstanceArgumentsAndCasts' calls: the first turns
+  -- standard 'Builtin' TypeClassOps into concrete builtins so
+  -- 'convertToDecidabilityBuiltins' can remap them; the second
+  -- clears 'DecidabilityBuiltinTypeClassOp' heads it minted.
   castFreeProg <- resolveInstanceArgumentsAndCasts prunedProg
   errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances castFreeProg
   decProg <- case errorOrDecProg of

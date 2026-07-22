@@ -203,6 +203,7 @@ instance BuiltinHasListLiterals DecidabilityBuiltin where
 
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
 
 instance BuiltinHasIterate DecidabilityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate
@@ -282,10 +283,12 @@ instance NormalisableBuiltin DecidabilityBuiltin where
   evalScheme = \case
     StandardBuiltinFunction Iterate -> NonSimple evalIterate
     StandardBuiltinFunction FoldList -> NonSimple evalFoldList
+    StandardBuiltinFunction ReverseList -> Simple evalReverseList
     _ -> None
 
   blockingStatus b spine = case b of
     StandardBuiltinFunction Iterate -> functionBlockingStatus Iterate spine
+    StandardBuiltinFunction ReverseList -> functionBlockingStatus ReverseList spine
     _ -> DoesNotReduce
 
   isTypeClassOp = \case

@@ -834,6 +834,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     CompareRatTensorPointwise op -> compileTensorComparison localeAssms CRatTensor op args
     FoldList -> annotateApp localeAssms [] "foldr" args
     MapList -> annotateApp localeAssms [] "map" args
+    ReverseList -> annotateApp localeAssms [] "rev" args
     ReduceAndTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> annotateApp localeAssms [] "reduceAdd" args

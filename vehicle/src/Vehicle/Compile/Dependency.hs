@@ -85,10 +85,9 @@ fromEdges (AdjacencyGraph outEdges) = do
 
 createDependencyGraph ::
   forall builtin.
-  (builtin -> Set Identifier) ->
   [Decl builtin] ->
   DependencyGraph Identifier
-createDependencyGraph builtinTypeDeps ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDecl ds
+createDependencyGraph ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDecl ds
   where
     goDecl :: Decl builtin -> (Identifier, Set Identifier)
     goDecl d = (identifierOf d, execWriter (traverse_ go d))
@@ -99,7 +98,7 @@ createDependencyGraph builtinTypeDeps ds = fromEdges $ AdjacencyGraph $ Map.from
       Universe {} -> return ()
       Meta {} -> return ()
       Hole {} -> return ()
-      Builtin _ b -> tell (builtinTypeDeps b)
+      Builtin {} -> return ()
       FreeVar _ v -> do
         tell [v]
         return ()
@@ -114,11 +113,10 @@ createDependencyGraph builtinTypeDeps ds = fromEdges $ AdjacencyGraph $ Map.from
 -- Completely unused declarations
 
 completelyUnusedDeclarations ::
-  (builtin -> Set Identifier) ->
   [Decl builtin] ->
   Set Identifier
-completelyUnusedDeclarations builtinTypeDeps decls = do
-  let DependencyGraph {..} = createDependencyGraph builtinTypeDeps decls
+completelyUnusedDeclarations decls = do
+  let DependencyGraph {..} = createDependencyGraph decls
   let indegrees = indegree graph
   let unusedVertices = filter (\v -> indegrees ! v == 0) (vertices graph)
   Set.fromList $ fmap identFromVertex unusedVertices
@@ -128,17 +126,16 @@ completelyUnusedDeclarations builtinTypeDeps decls = do
 
 pruneUnusedDeclarations ::
   (MonadCompile m) =>
-  (builtin -> Set Identifier) ->
   Prog builtin ->
   m (Prog builtin)
-pruneUnusedDeclarations builtinTypeDeps prog@(Main decls) = do
+pruneUnusedDeclarations prog@(Main decls) = do
   logCompilerSection2 MinDetail "pruning unused declarations" $ do
     -- Prune all standard-library declarations that aren't used.
     let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) decls
     if null declsToCompile
       then return prog
       else do
-        let dependencyGraph = createDependencyGraph builtinTypeDeps decls
+        let dependencyGraph = createDependencyGraph decls
 
         let startingVertices = flip fmap declsToCompile $ \name -> do
               let ident = Identifier userModulePath name

@@ -115,6 +115,7 @@ class BuiltinHasListLiterals builtin where
 
   accessMapListBuiltin :: Accessor builtin ()
   accessFoldListBuiltin :: Accessor builtin ()
+  accessReverseListBuiltin :: Accessor builtin ()
 
 --------------------------------------------------------------------------------
 -- Vector

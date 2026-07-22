@@ -545,6 +545,7 @@ compileBuiltin b args = case b of
     CompareRatTensorPointwise op -> compileComparison CRatTensor op args
     FoldList -> compileApplication [MathcompImport Boot] "foldr" args
     MapList -> compileApplication [MathcompImport Boot] "map" args
+    ReverseList -> compileApplication [MathcompImport Boot] "rev" args
     ReduceAndTensor -> compileApplication [VehicleImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> compileApplication [VehicleImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> compileApplication [] "reduceAdd" args

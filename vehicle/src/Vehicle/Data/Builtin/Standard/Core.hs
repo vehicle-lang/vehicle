@@ -276,6 +276,7 @@ instance BuiltinHasListLiterals Builtin where
 
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
 
 --------------------------------------------------------------------------------
 -- Vector

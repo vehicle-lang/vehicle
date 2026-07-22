@@ -1,12 +1,9 @@
 module Vehicle.Data.Builtin.Interface.Type where
 
 import Data.Proxy (Proxy)
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Vehicle.Compile.Type.Core (InstanceHead)
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Data.AST.Expr.Scoped (Type)
-import Vehicle.Data.AST.Name (Identifier, stdlibIdentifier)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core
@@ -91,6 +88,7 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold tListRaw
   MapList -> typeOfMap tListRaw
+  ReverseList -> typeOfReverseList
   AtVector -> typeOfAtVector
   AtTensor -> typeOfAtTensor
   StackTensor -> typeOfStackTensor
@@ -99,16 +97,6 @@ typeOfBuiltinFunction = \case
   ForeachVector -> typeOfForeachVector
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
   Transpose -> typeOfTranspose
-
-typeBuiltinTypeLevelDeps :: BuiltinFunction -> Set Identifier
-typeBuiltinTypeLevelDeps = \case
-  Transpose -> Set.singleton (stdlibIdentifier "reverse")
-  _ -> Set.empty
-
-standardBuiltinTypeDeps :: Builtin -> Set Identifier
-standardBuiltinTypeDeps = \case
-  BuiltinFunction f -> typeBuiltinTypeLevelDeps f
-  _ -> mempty
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case
@@ -173,6 +161,11 @@ typeOfCons :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfCons =
   forAll "A" type0 $ \tElem ->
     tElem ~> tList tElem ~> tList tElem
+
+typeOfReverseList :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfReverseList =
+  forAll "A" type0 $ \tElem ->
+    tList tElem ~> tList tElem
 
 typeOfAtVector :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfAtVector =

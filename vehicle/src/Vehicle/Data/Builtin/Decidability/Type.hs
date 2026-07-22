@@ -254,6 +254,7 @@ convertToDecidabilityBuiltins p b args = return $
         ReduceMaxRatTensor -> sameFunction f
         FoldList -> sameFunction f
         MapList -> sameFunction f
+        ReverseList -> sameFunction f
         Iterate -> sameFunction f
         Transpose -> sameFunction f
         StackTensor -> sameFunction f
