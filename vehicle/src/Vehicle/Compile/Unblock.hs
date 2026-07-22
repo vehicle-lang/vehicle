@@ -25,7 +25,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Normalise (evalTranspose)
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), elimIfTree, forIfTreeM)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView

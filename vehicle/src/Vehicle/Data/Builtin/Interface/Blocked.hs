@@ -86,7 +86,7 @@ functionBlockingStatus b spine = case b of
   ForeachTensor -> fixedStatus [1] spine
   ForeachVector -> fixedStatus [1] spine
   Iterate -> fixedStatus [2] spine
-  Transpose -> DoesNotReduce
+  Transpose -> fixedStatus [1, 2] spine
   StackTensor -> stackBlockingStatus spine
 
 derivedFunctionBlockingStatus :: DerivedFunction -> Spine builtin -> BlockingStatus builtin

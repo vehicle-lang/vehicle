@@ -285,6 +285,12 @@ traverseConstTensorValue f ConstTensorArgs {..} = do
   constValue' <- f constValue
   return $ ConstTensorArgs {constValue = constValue', ..}
 
+-- The trailing dims (@ds@) on 'StackTensorArgs', 'ForeachTensorArgs'
+-- and 'TransposeArgs' below are 'implicit' rather than
+-- 'implicitIrrelevant': unification needs to solve the output shape
+-- from the input shape (e.g. reversing @ds@ for 'Transpose'), which
+-- requires the argument to participate in relevant elaboration.
+
 -- | Arguments for `StackTensor`
 data StackTensorArgs expr = StackTensorArgs
   { stackType :: expr,
@@ -299,7 +305,7 @@ instance IsArgs StackTensorArgs where
       { getExpr = \case
           (fmap argExpr -> t : d : ds : xs) -> Just $ StackTensorArgs t d ds xs
           _ -> Nothing,
-        mkExpr = \(StackTensorArgs t d ds xs) -> implicit t : implicit d : implicitIrrelevant ds : fmap explicit xs
+        mkExpr = \(StackTensorArgs t d ds xs) -> implicit t : implicit d : implicit ds : fmap explicit xs
       }
 
 mapStackTensorElements :: (expr -> expr) -> StackTensorArgs expr -> StackTensorArgs expr
@@ -324,7 +330,7 @@ instance IsArgs ForeachTensorArgs where
       { getExpr = \case
           (fmap argExpr -> [t, d, ds, fn]) -> Just $ ForeachTensorArgs t d ds fn
           _ -> Nothing,
-        mkExpr = \(ForeachTensorArgs t d ds fn) -> [implicit t, implicit d, implicitIrrelevant ds, explicit fn]
+        mkExpr = \(ForeachTensorArgs t d ds fn) -> [implicit t, implicit d, implicit ds, explicit fn]
       }
 
 -- | Arguments for `Transpose`
@@ -340,7 +346,7 @@ instance IsArgs TransposeArgs where
       { getExpr = \case
           (fmap argExpr -> [t, ds, xs]) -> Just $ TransposeArgs t ds xs
           _ -> Nothing,
-        mkExpr = \(TransposeArgs t ds xs) -> [implicit t, implicitIrrelevant ds, explicit xs]
+        mkExpr = \(TransposeArgs t ds xs) -> [implicit t, implicit ds, explicit xs]
       }
 
 traverseTransposeTensor :: (Applicative f) => (t -> f t) -> TransposeArgs t -> f (TransposeArgs t)

@@ -356,7 +356,7 @@ instance NormalisableBuiltin LossBuiltin where
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
-      Transpose -> None
+      Transpose -> Simple evalTranspose
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       AtVector -> Simple evalAtVector

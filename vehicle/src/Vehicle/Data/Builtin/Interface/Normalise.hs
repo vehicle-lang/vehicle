@@ -5,6 +5,7 @@ module Vehicle.Data.Builtin.Interface.Normalise where
 
 import Control.Applicative ((<|>))
 import Control.Monad (foldM, zipWithM)
+import Data.List.Split (chunksOf)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Ratio (denominator, numerator)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
@@ -17,7 +18,8 @@ import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Real (ExtendedRational (..))
-import Vehicle.Data.Tensor (Tensor, TensorShape, at, extendTensor, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor, TensorShape, at, extendTensor, flattenIndices, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor qualified as Tensor
 import Vehicle.Data.Variable.Bound.Context.Name
 
 -- Okay so the important thing to remember about this module is that we have
@@ -572,7 +574,9 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
         evalApp ctx fn [explicit index]
       _ -> Nothing
 
-    -- `(transpose t) ! i1 ! ... ! in` (scalar result) = `t ! in ! ... ! i1`.
+    -- `(transpose t) ! i1 ! ... ! in` down to a scalar rewrites to
+    -- `t ! in ! ... ! i1`. Fires only when the result is scalar
+    -- (`ds = IDimNil`), so the whole chain is inside `tensor`.
     goTranspose :: Maybe (m (Value builtin))
     goTranspose = case ds of
       IDimNil -> case collect tensor [(d, index)] of
@@ -772,6 +776,76 @@ evalStackTensorWithPrimitives tensorLits args@(StackTensorArgs _t d ds xs) = do
           Just xss -> Just $ mkExpr $ stack elemDims xss
           Nothing -> go elemDims elements prims
       [] -> Nothing
+
+-----------------------------------------------------------------------------
+-- Transpose
+
+evalTranspose ::
+  forall builtin m.
+  (MonadNormBuiltin m, HasTensorLiterals Value builtin, BuiltinHasNatLiterals builtin, HasTensorExpr Value builtin) =>
+  EvalSimple TransposeArgs Value builtin m
+evalTranspose args@(TransposeArgs _ inputDims tensor) =
+  return $
+    fromMaybe (mkExpr accessTranspose args) $
+      goLiteral tensorLiterals <|> goConst <|> goStack
+  where
+    revDims :: Maybe (Value builtin)
+    revDims = mkDims . reverse <$> getDims inputDims
+
+    goLiteral :: [TensorLiteralAccessor Value builtin] -> Maybe (Value builtin)
+    goLiteral = \case
+      [] -> Nothing
+      Wrapper Access {getExpr = getLit, mkExpr = mkLit} : prims ->
+        (mkLit . Tensor.transposeTensor <$> getLit tensor) <|> goLiteral prims
+
+    goConst :: Maybe (Value builtin)
+    goConst = do
+      ConstTensorArgs t v _ <- getExpr accessConstTensor tensor
+      rds <- revDims
+      pure $ mkExpr accessConstTensor (ConstTensorArgs t v rds)
+
+    goStack :: Maybe (Value builtin)
+    goStack = do
+      shape <- getDims inputDims
+      leaves <- gatherStack shape tensor
+      pure $ buildStack (reverse shape) (permuteFlat shape leaves)
+
+    gatherStack :: TensorShape -> Value builtin -> Maybe [Value builtin]
+    gatherStack [] v = Just [v]
+    gatherStack (d : ds) v = do
+      StackTensorArgs _ _ _ rows <- getExpr accessStackTensor v
+      if length rows /= d
+        then Nothing
+        else concat <$> traverse (gatherStack ds) rows
+
+    permuteFlat :: TensorShape -> [a] -> [a]
+    permuteFlat shape leaves =
+      [ leaves !! flattenIndices shape (reverse revIs)
+        | revIs <- allMultiIndices (reverse shape)
+      ]
+
+    allMultiIndices :: TensorShape -> [[Int]]
+    allMultiIndices = \case
+      [] -> [[]]
+      d : ds -> [i : rest | i <- [0 .. d - 1], rest <- allMultiIndices ds]
+
+    buildStack :: TensorShape -> [Value builtin] -> Value builtin
+    buildStack [] [v] = v
+    buildStack [] _ = mkExpr accessTranspose args
+    buildStack (d : ds) vs =
+      let chunkSize = product ds
+          rows = chunksOf chunkSize vs
+          subStacks = map (buildStack ds) rows
+       in mkExpr
+            accessStackTensor
+            ( StackTensorArgs
+                (tNat :: Value builtin)
+                (INatLiteral d)
+                (foldr (IDimCons . INatLiteral) IDimNil ds)
+                subStacks
+            )
+      where
+        tNat = INatType
 
 -----------------------------------------------------------------------------
 -- Const

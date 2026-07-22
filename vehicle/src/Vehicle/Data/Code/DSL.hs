@@ -228,7 +228,7 @@ reverseDims :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr b
 reverseDims ds = standardLib "reverse" @@@ [tNat] @@ [ds]
 
 transpose :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-transpose tElem ds xs = builtinFunction Transpose @@@ [tElem] .@@@ [ds] @@ [xs]
+transpose tElem ds xs = builtinFunction Transpose @@@ [tElem, ds] @@ [xs]
 
 iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 iterate t f n e = do
