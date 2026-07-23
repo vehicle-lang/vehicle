@@ -167,7 +167,8 @@ compileBoolExpr expr = do
     -- Base cases --
     ----------------
     VBoolLiteral b -> return $ Trivial b
-    VCompareRatTensor (op, args) -> purifyAndCompileAssertion op args
+    VBoolCompareRatPointwise (op, args) -> purifyAndCompileAssertion op (Left args)
+    VBoolCompareRatReduced (op, args) -> purifyAndCompileAssertion op (Right args)
     VQuantifyRatTensor (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
     VQuantifyRecord (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
@@ -190,7 +191,7 @@ compileBoolExpr expr = do
 purifyAndCompileAssertion ::
   (MonadQuantifierBody m) =>
   ComparisonOp ->
-  TensorOp2Args (Value Builtin) ->
+  Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin)) ->
   m (MaybeTrivial Partitions)
 purifyAndCompileAssertion op args
   | op == Ne =
@@ -198,7 +199,10 @@ purifyAndCompileAssertion op args
       compileBoolExpr =<< eliminateNotEqualRatTensor args
   | otherwise = do
       logCompilerSection2 MaxDetail "assertion compilation" $ do
-        maybePurifiedValue <- purifyAssertion unblockingActions op args
+        let flat = case args of
+              Left ptArgs -> ptArgs
+              Right (TensorReduceComparisonArgs d ds x y) -> TensorOp2Args (IDimCons d ds) x y
+        maybePurifiedValue <- purifyAssertion unblockingActions op flat
         elimIfTree elimBranch elimLeaf maybePurifiedValue
   where
     elimLeaf :: (MonadQuantifierBody m) => (ComparisonOp, TensorOp2Args (Value Builtin)) -> m (MaybeTrivial Partitions)
@@ -309,16 +313,12 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
 
   let inputEquality = case inputShape networkInfo of
         MultiModal _ -> error "MultiModal IO is not implemented yet"
-        UniModal shape ->
-          fromBoolValue $
-            VCompareRatTensor
-              ( Eq,
-                TensorOp2Args
-                  { tensorOp2Dims = mkDims shape,
-                    tensorOp2Arg1 = inputVarExpr,
-                    tensorOp2Arg2 = transformedArg
-                  }
-              )
+        UniModal shape -> case shape of
+          [] -> mkPointwiseCompare Eq (TensorOp2Args IDimNil inputVarExpr transformedArg)
+          d : ds ->
+            mkReducedCompare
+              Eq
+              (TensorReduceComparisonArgs (INatLiteral d) (mkDims ds) inputVarExpr transformedArg)
 
   tell [inputEquality]
 
@@ -341,15 +341,18 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
 
 eliminateNotEqualRatTensor ::
   (MonadQueryStructure m) =>
-  TensorOp2Args (Value Builtin) ->
+  Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin)) ->
   m (Value Builtin)
-eliminateNotEqualRatTensor args@(TensorOp2Args dims _ _) = do
+eliminateNotEqualRatTensor args = do
   PropertyMetaData {..} <- ask
   if supportsStrictInequalities queryFormat
     then throwError $ UnsupportedInequality (queryFormatID queryFormat) propertyProvenance
     else do
-      let leq = fromBoolValue $ VCompareRatTensor (Le, args)
-      let geq = fromBoolValue $ VCompareRatTensor (Ge, args)
+      let (dims, leq, geq) = case args of
+            Left ptArgs@(TensorOp2Args ds _ _) ->
+              (ds, mkPointwiseCompare Le ptArgs, mkPointwiseCompare Ge ptArgs)
+            Right rdArgs@(TensorReduceComparisonArgs d ds _ _) ->
+              (IDimCons d ds, mkReducedCompare Le rdArgs, mkReducedCompare Ge rdArgs)
       return $ fromBoolValue $ VOr (TensorOp2Args dims leq geq)
 
 eliminateTensorAssertion ::

@@ -233,7 +233,8 @@ compileQueries expr = do
     --
     -- When we have the ability to evaluate networks then this case can be turned to a
     -- call to purify.
-    VCompareRatTensor {} -> compileUnquantifiedQuerySet expr
+    VBoolCompareRatPointwise {} -> compileUnquantifiedQuerySet expr
+    VBoolCompareRatReduced {} -> compileUnquantifiedQuerySet expr
   where
     unblock = unblockBoolExpr topLevelUnblockingActions
 

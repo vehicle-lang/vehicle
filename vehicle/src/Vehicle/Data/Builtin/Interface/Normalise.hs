@@ -511,10 +511,8 @@ evalReduceMaxRatTensor = evalReduceTensor accessReduceMaxRatBuiltin accessRatTen
 
 evalCompareRatTensor :: forall builtin m. (MonadNormBuiltin m, HasBoolExpr Value builtin, BuiltinHasBoolType builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) => ComparisonOp -> EvalSimple TensorComparisonArgs Value builtin m
 evalCompareRatTensor op = \case
-  -- base case where we are up to pointwise comparison (dims1/pDims = [])
-  TensorComparisonArgs IDimNil rDims xs ys ->
-    -- xs and ys passed on to evalHeteteroTensorOp2 to handle
-    evalPointwise IDimNil rDims xs ys
+  TensorComparisonArgs IDimNil IDimNil xs ys ->
+    evalPointwise IDimNil IDimNil xs ys
   -- reduction cases (two consts) should just be result of one element vs other element, in the shape of pDims
   TensorComparisonArgs pDims _rDims (getExpr accessConstTensor -> Just xs) (getExpr accessConstTensor -> Just ys) ->
     do

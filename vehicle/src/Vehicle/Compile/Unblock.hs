@@ -315,7 +315,7 @@ unblockRatTensorExtrema op unblock (TensorOp2Args ds x y) = do
   forIfTreeM x' $ \x'' ->
     forIfTreeM y' $ \y'' -> do
       let cArgs = TensorOp2Args ds x'' y''
-      let c = fromBoolValue $ VCompareRatTensor (op, cArgs)
+      let c = mkPointwiseCompare op cArgs
       return $ IfTree c (IfLeaf x'') (IfLeaf y'')
 
 unblockMinRatTensor ::

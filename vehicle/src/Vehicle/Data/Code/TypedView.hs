@@ -31,6 +31,8 @@ module Vehicle.Data.Code.TypedView
     RecordValue (..),
     decideIfPointwiseOrReductionComparison,
     ComparisonType (..),
+    mkPointwiseCompare,
+    mkReducedCompare,
   )
 where
 
@@ -188,7 +190,8 @@ data BoolValue
   | VOr (TensorOp2Args (Value Builtin))
   | VCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
   | VCompareNat (ComparisonOp, Op2Args (Value Builtin))
-  | VCompareRatTensor (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VBoolCompareRatPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VBoolCompareRatReduced (ComparisonOp, TensorReduceComparisonArgs (Value Builtin))
   | VReduceAndTensor (TensorReductionArgs (Value Builtin))
   | VReduceOrTensor (TensorReductionArgs (Value Builtin))
   | VQuantifyRatTensor (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
@@ -202,7 +205,9 @@ toBoolValue expr = case expr of
   (getExpr accessAndTensor -> Just args) -> VAnd args
   (getExpr accessOrTensor -> Just args) -> VOr args
   (getExpr accessNotTensor -> Just args) -> VNot args
-  (getExpr accessCompareRatTensor -> Just args) -> fromComparison args
+  (getExpr accessCompareRatTensor -> Just (op, args)) -> case fromTCArgs args of
+    Left args' -> VBoolCompareRatPointwise (op, args')
+    Right args' -> VBoolCompareRatReduced (op, args')
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just args) -> VQuantifyRatTensor args
@@ -224,20 +229,14 @@ fromBoolValue = \case
   VNot args -> mkExpr accessNotTensor args
   VCompareNat args -> mkExpr accessCompareNat args
   VCompareIndex args -> mkExpr accessCompareIndex args
-  VCompareRatTensor (op, args) -> mkExpr accessCompareRatTensor (op, toTCArgs (Left args))
+  VBoolCompareRatPointwise (op, args) -> mkExpr accessCompareRatTensor (op, toTCArgs (Left args))
+  VBoolCompareRatReduced (op, args) -> mkExpr accessCompareRatTensor (op, toTCArgs (Right args))
   VQuantifyRatTensor args -> mkExpr accessQuantifyRatTensor args
   VQuantifyRecord _args -> undefined
   VReduceAndTensor args -> mkExpr accessReduceAnd args
   VReduceOrTensor args -> mkExpr accessReduceOr args
   VBoolIf args -> mkExpr accessIf args
   VBoolAt args -> mkExpr accessAtTensor args
-
--- take TensorComparisonArgs and move to BoolValue with TensorOp2Args
-fromComparison :: (ComparisonOp, TensorComparisonArgs (Value Builtin)) -> BoolValue
-fromComparison (op, args) = case args of
-  TensorComparisonArgs pDims (toDimensionsValue -> VDimsNil) e1 e2 -> VCompareRatTensor (op, TensorOp2Args pDims e1 e2)
-  TensorComparisonArgs (toDimensionsValue -> VDimsNil) rDims e1 e2 -> VCompareRatTensor (op, TensorOp2Args rDims e1 e2)
-  _ -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose (mkExpr accessCompareRatTensor (op, args))
 
 evalCompareRatPointwise :: (MonadNormBuiltin m, MonadReadableNameContext m) => ComparisonOp -> EvalSimple TensorOp2Args Value Builtin m
 evalCompareRatPointwise op (TensorOp2Args dims e1 e2) =
@@ -534,6 +533,12 @@ decideIfPointwiseOrReductionComparison = \case
   ds : (argExpr -> IDimNil) : as -> Pointwise (ds : as)
   (argExpr -> IDimNil) : ds : as -> Reduced (ds : as)
   _ -> developerError "Unexpected comparison arguments"
+
+mkPointwiseCompare :: ComparisonOp -> TensorOp2Args (Value Builtin) -> Value Builtin
+mkPointwiseCompare op args = fromBoolValue (VBoolCompareRatPointwise (op, args))
+
+mkReducedCompare :: ComparisonOp -> TensorReduceComparisonArgs (Value Builtin) -> Value Builtin
+mkReducedCompare op args = fromBoolValue (VBoolCompareRatReduced (op, args))
 
 -- take TensorComparisonArgs and move to TensorOp2Args or TensorReduceComparisonArgs
 fromTCArgs :: TensorComparisonArgs (Value Builtin) -> Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin))

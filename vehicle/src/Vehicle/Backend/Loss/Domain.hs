@@ -386,7 +386,8 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   -----------------------
   -- Useful base cases --
   -----------------------
-  VCompareRatTensor args -> compileComparison args
+  VBoolCompareRatPointwise (op, args) -> compileComparison op (Left args)
+  VBoolCompareRatReduced (op, args) -> compileComparison op (Right args)
   --------------------------
   -- Un-useful base cases --
   --------------------------
@@ -434,12 +435,15 @@ compileOr (TensorOp2Args _ e1 e2) = do
 compileComparison ::
   forall m.
   (MonadDomain m) =>
-  (ComparisonOp, TensorOp2Args (Value Builtin)) ->
+  ComparisonOp ->
+  Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin)) ->
   m (MaybeTrivial Partitions)
-compileComparison (op, args) = do
+compileComparison op args = do
   logCompilerSection2 MaxDetail "assertion compilation" $ do
     if op == Ne
-      then singletonUnconstrainedPartition $ fromBoolValue $ VCompareRatTensor (op, args)
+      then singletonUnconstrainedPartition $ case args of
+        Left ptArgs -> mkPointwiseCompare op ptArgs
+        Right rdArgs -> mkReducedCompare op rdArgs
       else do
         blockedValueOrResult <- tryPurifyAssertion op args
         elimIfTree compileBranch compileLeaf blockedValueOrResult

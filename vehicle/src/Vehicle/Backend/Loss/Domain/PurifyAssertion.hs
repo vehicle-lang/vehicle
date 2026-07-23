@@ -47,15 +47,21 @@ type MonadPurifyAssertion m =
 tryPurifyAssertion ::
   (MonadPurifyAssertion m) =>
   ComparisonOp ->
-  TensorOp2Args (Value Builtin) ->
+  Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin)) ->
   m (IfTree (Value Builtin) (Value Builtin, Maybe (MaybeTrivial (Assertion (TensorValueLinearExpr Builtin)))))
-tryPurifyAssertion op (TensorOp2Args dims e1 e2) = do
+tryPurifyAssertion op args = do
+  let (dims, e1, e2) = case args of
+        Left (TensorOp2Args ds x y) -> (ds, x, y)
+        Right (TensorReduceComparisonArgs d ds x y) -> (IDimCons d ds, x, y)
   e1' <- compileLinearExpr dims e1
   e2' <- compileLinearExpr dims e2
   forIfTreeM e1' $ \e1'' ->
     forIfTreeM e2' $ \e2'' -> do
       IfLeaf <$> do
-        let val = fromBoolValue (VCompareRatTensor (op, TensorOp2Args dims (value e1'') (value e2'')))
+        let val = case args of
+              Left _ -> mkPointwiseCompare op (TensorOp2Args dims (value e1'') (value e2''))
+              Right (TensorReduceComparisonArgs d ds _ _) ->
+                mkReducedCompare op (TensorReduceComparisonArgs d ds (value e1'') (value e2''))
         solvedVal <- sequence $ liftA2 (comparisonToAssertion op) (valueAsLinearExpr e1'') (valueAsLinearExpr e2'')
         return (val, solvedVal)
 
