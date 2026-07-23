@@ -3,6 +3,8 @@ Training with a specification
 Vehicle compiles each ``@property`` in your specification into a callable loss function. Use one of the backend modules (PyTorch or TensorFlow) to load the compiled declarations into Python.
 
 
+.. _loading-declarations:
+
 Loading declarations
 --------------------
 
@@ -77,6 +79,7 @@ TensorFlow works the same way—load the declarations through ``vehicle_lang.los
 
 By combining your usual task loss with the constraint losses returned by Vehicle, you ensure the optimiser simultaneously keeps the model on task and enforces the specification.
 
+Note that calling ``constraint_loss_fn()`` will require passing the relevant parameters, datasets, and networks that are mentioned in the specification. This includes inferred parameters. For example, the size of a dataset can be inferred by the specification at compile time, and therefore may be tagged with ``infer=True``. However, since the dataset is passed to the loss backend at runtime, this value cannot currently be inferred. Therefore, it must still be passed explicitly as a parameter.
 
 Logic selection
 ---------------

@@ -70,13 +70,14 @@ functionBlockingStatus b spine = case b of
   Exp ExpRatTensor -> DoesNotReduce
   CompareIndex _op -> fixedStatus [2, 3] spine
   CompareNat _op -> fixedStatus [0, 1] spine
-  CompareRatTensorPointwise _op -> fixedStatus [1, 2] spine
+  CompareRatTensor _op -> fixedStatus [1, 2] spine
   If -> fixedStatus [1] spine
   AtTensor -> fixedStatus [3, 4] spine
   AtVector -> fixedStatus [2, 3] spine
   FoldList -> fixedStatus [4] spine
   MapList -> fixedStatus [3] spine
   ReverseList -> fixedStatus [1] spine
+  AppendList -> fixedStatus [1, 2] spine
   ConstTensor -> fixedStatus [0, 1] spine
   ReduceAddRatTensor -> fixedStatus [1] spine
   ReduceMulRatTensor -> fixedStatus [1] spine
@@ -95,7 +96,6 @@ derivedFunctionBlockingStatus f spine = case f of
   TypeAnn -> AlwaysReduces
   QuantifyIndex {} -> fixedStatus [0] spine
   QuantifyInList {} -> fixedStatus [2] spine
-  CompareRatTensorReduced {} -> fixedStatus [1, 2] spine
 
 castBlockingStatus :: BuiltinCast -> Spine builtin -> BlockingStatus builtin
 castBlockingStatus f spine = case f of

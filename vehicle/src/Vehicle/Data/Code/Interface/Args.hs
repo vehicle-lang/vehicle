@@ -159,10 +159,24 @@ instance IsArgs IndexComparisonArgs where
         mkExpr = \(IndexComparisonArgs n1 n2 x y) -> [implicitIrrelevant n1, implicitIrrelevant n2, explicit x, explicit y]
       }
 
---------------------------------------------------------------------------------
--- ComparisonArgs
+-- | Arguments for comparisons (e.g. ==, <= etc. ) over tensors
+data TensorComparisonArgs expr = TensorComparisonArgs
+  { tensorPointwiseDims :: expr, -- implicit irrelevant, shape of tensor at the end
+    tensorReduceDims :: expr, -- implicit relevant, dimensions reduction is performed on.
+    tensorOp2Arg1 :: expr, -- explicit, tensor
+    tensorOp2Arg2 :: expr -- explicit, tensor
+  }
 
--- | Arguments for binary tensor operations (e.g. +, -)
+instance IsArgs TensorComparisonArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [dims1, dims2, x, y]) -> Just $ TensorComparisonArgs dims1 dims2 x y
+          _ -> Nothing,
+        mkExpr = \(TensorComparisonArgs dims1 dims2 x y) -> [implicitIrrelevant dims1, implicit dims2, explicit x, explicit y]
+      }
+
+-- -- | Arguments for binary tensor operations (e.g. +, -)
 data TensorReduceComparisonArgs expr = TensorReduceComparisonArgs
   { tensorReduceOp2Dim :: expr,
     tensorReduceOp2Dims :: expr,
@@ -473,6 +487,25 @@ instance IsArgs ReverseListArgs where
           (fmap argExpr -> [t, xs]) -> Just $ ReverseListArgs t xs
           _ -> Nothing,
         mkExpr = \(ReverseListArgs t xs) -> [implicit t, explicit xs]
+      }
+
+--------------------------------------------------------------------------------
+-- AppendList
+
+-- | Arguments for `AppendList`
+data AppendListArgs expr = AppendListArgs
+  { appendListType :: expr,
+    appendListOp1 :: expr,
+    appendListOp2 :: expr
+  }
+
+instance IsArgs AppendListArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, xs, ys]) -> Just $ AppendListArgs t xs ys
+          _ -> Nothing,
+        mkExpr = \(AppendListArgs t xs ys) -> [implicit t, explicit xs, explicit ys]
       }
 
 --------------------------------------------------------------------------------

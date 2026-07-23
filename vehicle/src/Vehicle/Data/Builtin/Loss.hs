@@ -109,6 +109,7 @@ data LossBuiltinFunction
     MapList
   | FoldList
   | ReverseList
+  | AppendList
   | -- Vector
     ForeachVector
   | AtVector
@@ -138,6 +139,7 @@ lossToStandardBuiltinFunction = \case
   MapList -> S.MapList
   FoldList -> S.FoldList
   ReverseList -> S.ReverseList
+  AppendList -> S.AppendList
   ForeachVector -> S.ForeachVector
   AtVector -> S.AtVector
 
@@ -285,6 +287,7 @@ instance BuiltinHasListLiterals LossBuiltin where
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
   accessReverseListBuiltin = functionAccessor ReverseList
+  accessAppendListBuiltin = functionAccessor AppendList
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -335,6 +338,8 @@ instance HasLiftableTensorOperations LossBuiltin where
       (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType)
     ]
 
+  liftableTensorComparisons = []
+
 instance NormalisableBuiltin LossBuiltin where
   evalScheme = \case
     LossBuiltinFunction f -> case f of
@@ -361,6 +366,7 @@ instance NormalisableBuiltin LossBuiltin where
       MapList -> NonSimple evalMapList
       ReverseList -> Simple evalReverseList
       Transpose -> Simple evalTranspose
+      AppendList -> Simple evalAppendList
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       AtVector -> Simple evalAtVector

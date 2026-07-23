@@ -177,19 +177,26 @@ mapBinderNamingForm f Binder {..} =
       ..
     }
 
-mkDefaultBinderDisplayForm :: Maybe (Provenance, Name) -> BinderDisplayForm
-mkDefaultBinderDisplayForm = \case
-  Just (p, name) -> BinderDisplayForm (OnlyName name p) True
-  Nothing -> BinderDisplayForm OnlyType True
-
 mkExplicitBinder :: expr -> Maybe (Provenance, Name) -> GenericBinder expr
-mkExplicitBinder typ name = Binder (mkDefaultBinderDisplayForm name) Explicit Relevant typ
+mkExplicitBinder typ maybeName = do
+  let displayForm = case maybeName of
+        Just (p, name) -> BinderDisplayForm (OnlyName name p) True
+        Nothing -> BinderDisplayForm OnlyType True
 
+  Binder displayForm Explicit Relevant typ
+
+{-
 mkImplicitBinder :: expr -> Maybe (Provenance, Name) -> GenericBinder expr
 mkImplicitBinder typ name = Binder (mkDefaultBinderDisplayForm name) (Implicit True) Relevant typ
+-}
 
 mkInstanceBinder :: expr -> Maybe (Provenance, Name) -> GenericBinder expr
-mkInstanceBinder typ name = Binder (mkDefaultBinderDisplayForm name) (Instance True) Relevant typ
+mkInstanceBinder typ maybeName = do
+  let displayForm = case maybeName of
+        Just (p, name) -> BinderDisplayForm (NameAndType name p) False
+        Nothing -> BinderDisplayForm OnlyType False
+
+  Binder displayForm (Instance True) Relevant typ
 
 --------------------------------------------------------------------------------
 -- Telescope

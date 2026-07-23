@@ -20,7 +20,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
-import Vehicle.Data.Builtin.Interface.Normalise (evalCompareRatTensorPointwise)
+import Vehicle.Data.Builtin.Interface.Normalise (evalCompareRatTensor)
 import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LogicDirection, LossBuiltin)
 import Vehicle.Data.Builtin.Standard (Builtin)
 import Vehicle.Data.Code.Interface
@@ -141,7 +141,7 @@ calculateLogicDirection ::
 calculateLogicDirection decl fields = do
   let trueValue = lookupLogicField TruthityElement fields
   let falseValue = lookupLogicField FalsityElement fields
-  result <- evalCompareRatTensorPointwise Le $ TensorOp2Args IDimNil trueValue falseValue
+  result <- evalCompareRatTensor Le $ TensorComparisonArgs IDimNil IDimNil trueValue falseValue
   case result of
     IBoolLiteral b -> return b
     _ -> do
@@ -321,19 +321,24 @@ isLiftableOp = \case
   Div DivRatTensor -> True
   Min MinRatTensor -> True
   Max MaxRatTensor -> True
-  CompareRatTensorPointwise _ -> True
+  CompareRatTensor _ -> True
   Implies -> False
+  QuantifyRecord {} -> False
   QuantifyRatTensor {} -> False
   If -> False
   Add {} -> False
   Mul {} -> False
-  PowRat -> False
+  Pow {} -> False
+  Log {} -> False
+  Exp {} -> False
   CompareNat {} -> False
   CompareIndex {} -> False
   AtTensor -> False
   AtVector -> False
   FoldList -> False
   MapList -> False
+  ReverseList -> False
+  AppendList -> False
   ReduceAndTensor -> False
   ReduceOrTensor -> False
   ReduceAddRatTensor -> False
@@ -356,7 +361,7 @@ reduceOp = \case
   Min MinRatTensor -> Just ReduceMinRatTensor
   Max MaxRatTensor -> Just ReduceMaxRatTensor
   Not -> Nothing
-  CompareRatTensorPointwise {} -> Nothing
+  CompareRatTensor {} -> Nothing
   CompareNat {} -> Nothing
   CompareIndex {} -> Nothing
   Neg NegRatTensor -> Nothing
@@ -364,14 +369,19 @@ reduceOp = \case
   Div DivRatTensor -> Nothing
   Implies -> Nothing
   QuantifyRatTensor {} -> Nothing
+  QuantifyRecord {} -> Nothing
   If -> Nothing
   Add _ -> Nothing
   Mul _ -> Nothing
-  PowRat -> Nothing
+  Pow {} -> Nothing
+  Log {} -> Nothing
+  Exp {} -> Nothing
   AtVector -> Nothing
   AtTensor -> Nothing
   FoldList -> Nothing
   MapList -> Nothing
+  ReverseList -> Nothing
+  AppendList -> Nothing
   ReduceAndTensor -> Nothing
   ReduceOrTensor -> Nothing
   ReduceAddRatTensor -> Nothing

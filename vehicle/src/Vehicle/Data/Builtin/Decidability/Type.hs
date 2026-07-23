@@ -66,10 +66,6 @@ typeOfDerivedFunction = \case
   TypeAnn -> forAllExpl "t" type0 $ \t -> t ~> t
   QuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tBool) ~> tBool
   QuantifyInList {} -> forAllTypes $ \t -> (t ~> tBool) ~> tList t ~> tBool
-  CompareRatTensorReduced {} ->
-    forAllDim Irrelevant $ \d ->
-      forAllDims $ \ds ->
-        tRatTensor (dimCons d ds) ~> tRatTensor (dimCons d ds) ~> tBoolTensor dimNil
 
 typeDecidableTypeClass :: DecidabilityBuiltinTypeClass -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClass = \case
@@ -118,8 +114,12 @@ typeDecidableTypeClassOp = \case
               FieldAtTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> tensor tElem (dimCons d ds) ~> (tIndex d ~> tensor tElem ds)
               FieldCompareIndex {} -> typeOfCompareIndex (tensor tBool dimNil)
               FieldCompareNat {} -> typeOfCompareNat (tensor tBool dimNil)
-              FieldCompareRatTensorPointwise {} -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tensor tBool ds
-              FieldCompareRatTensorReduced {} -> forAllDim Irrelevant $ \d -> forAllDims $ \ds -> tTensor tRat (dimCons d ds) ~> tTensor tRat (dimCons d ds) ~> tensor tBool dimNil
+              FieldCompareRatTensor {} ->
+                forAllDims $ \pointwiseDims ->
+                  forAllDims $ \reducedDims ->
+                    tTensor tRat (append tDims pointwiseDims reducedDims)
+                      ~> tTensor tRat (append tDims pointwiseDims reducedDims)
+                      ~> tensor tBool pointwiseDims
               FieldQuantifyInList {} -> typeOfQuantifyInList tensorSol
               FieldQuantifyIndex {} -> typeOfQuantifyIndex tensorSol
 
@@ -142,7 +142,12 @@ typeDecidableFunction = \case
   PropImplies -> typeOp2 tProp
   PropCompareIndex _op -> typeOfCompareIndex tProp
   PropCompareNat _op -> typeOfCompareNat tProp
-  PropCompareRatTensorPointwise _op -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tProp
+  PropCompareRatTensor _op ->
+    forAllDims $ \pointwiseDims ->
+      forAllDims $ \reducedDims ->
+        tTensor tRat (append tDims pointwiseDims reducedDims)
+          ~> tTensor tRat (append tDims pointwiseDims reducedDims)
+          ~> tProp
   PropQuantifyIndex _q -> typeOfQuantifyIndex propTensor
   PropQuantifyInList _q -> typeOfQuantifyInList propTensor
   PropNaryProduct -> developerError "PropNaryProduct not supported"
@@ -225,7 +230,7 @@ convertToDecidabilityBuiltins p b args = return $
         And -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldAnd)
         Or -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldOr)
         Implies -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldImplies)
-        CompareRatTensorPointwise op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareRatTensorPointwise op)
+        CompareRatTensor op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareRatTensor op)
         ForeachTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldForeachTensor)
         ReduceAndTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldReduceAnd)
         ReduceOrTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldReduceOr)
@@ -255,6 +260,7 @@ convertToDecidabilityBuiltins p b args = return $
         FoldList -> sameFunction f
         MapList -> sameFunction f
         ReverseList -> sameFunction f
+        AppendList -> sameFunction f
         Iterate -> sameFunction f
         Transpose -> sameFunction f
         StackTensor -> sameFunction f
@@ -275,7 +281,6 @@ convertToDecidabilityBuiltins p b args = return $
       TypeAnn -> sameDerivedFunction f
       QuantifyIndex q -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldQuantifyIndex q)
       QuantifyInList q -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldQuantifyInList q)
-      CompareRatTensorReduced op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareRatTensorReduced op)
     _ -> monomorphisationError b args
   where
     -- Nothing changes

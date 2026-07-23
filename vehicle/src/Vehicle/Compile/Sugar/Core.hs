@@ -232,6 +232,8 @@ tokAt = mkToken B.TokAt "!"
 
 tokConst = mkToken B.TokConst "const"
 
+tokAppend = mkToken B.TokAppend "append"
+
 tokMap = mkToken B.TokMap "map"
 
 tokFold = mkToken B.TokFold "fold"

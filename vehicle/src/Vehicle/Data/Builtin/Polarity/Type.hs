@@ -64,7 +64,7 @@ typeOfBuiltinFunction = \case
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxPolarity
   CompareIndex {} -> typeOfOp2 maxPolarity
-  CompareRatTensorPointwise {} -> typeOfOp2 maxPolarity
+  CompareRatTensor {} -> typeOfOp2 maxPolarity
   -- Arithmetic operations
   Add {} -> typeOfUnquantifiedOp2
   Mul {} -> typeOfUnquantifiedOp2
@@ -84,6 +84,7 @@ typeOfBuiltinFunction = \case
   FoldList -> typeOfFold
   MapList -> typeOfMap
   ReverseList -> forAllPolarities $ \pol -> pol ~> pol
+  AppendList -> typeOfOp2 maxPolarity
   AtVector -> typeOfAt
   AtTensor -> typeOfAt
   StackTensor -> typeOfStack

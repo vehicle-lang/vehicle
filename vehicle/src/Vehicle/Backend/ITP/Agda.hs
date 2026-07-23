@@ -18,6 +18,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Version (makeVersion)
 import GHC.Real (denominator, numerator)
+import GHC.Stack (HasCallStack)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
 import Vehicle.Backend.Prelude
@@ -32,6 +33,7 @@ import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
+import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor, TensorShape, foldMapTensor)
 import Vehicle.Data.Universe (UniverseLevel (..))
@@ -521,8 +523,6 @@ compileDerivedFunction fn args = case fn of
     Exists -> annotateApp [DataList] (Just listQualifier) "any" args
     Forall -> annotateApp [DataList] (Just listQualifier) "all" args
   TypeAnn -> annotateInfixApp [FunctionBase] 0 Nothing "_∋_" args
-  CompareRatTensorReduced op ->
-    annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") args
 
 --------------------------------------------------------------------------------
 -- Compilation of builtins
@@ -570,7 +570,7 @@ compileBuiltinConstructor c args = case c of
 
 compileBuiltinFunction ::
   forall m.
-  (MonadAgdaCompile m) =>
+  (MonadAgdaCompile m, HasCallStack) =>
   Provenance ->
   BuiltinFunction ->
   [Arg DecidabilityBuiltin] ->
@@ -591,10 +591,14 @@ compileBuiltinFunction p f args = case f of
   Max MaxRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_⊔_" args
   CompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator True op) args
   CompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator True op) args
-  CompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") args
+  CompareRatTensor op -> do
+    case decideIfPointwiseOrReductionComparison args of
+      Pointwise as -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") as
+      Reduced as -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") as
   FoldList -> annotateApp [DataList] (Just listQualifier) "foldr" args
   MapList -> annotateApp [DataList] (Just listQualifier) "map" args
   ReverseList -> annotateApp [DataList] (Just listQualifier) "reverse" args
+  AppendList -> annotateInfixApp [DataList] 5 (Just listQualifier) "_++_" args
   ReduceAndTensor -> annotateApp [DataTensor] Nothing "reduceAnd" args
   ReduceOrTensor -> annotateApp [DataTensor] Nothing "reduceOr" args
   ReduceAddRatTensor -> annotateApp [DataTensor] Nothing "reduceAdd" args
@@ -636,7 +640,7 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropImplies -> annotateInfixApp [] minPrecedence Nothing "_→_" args
   PropCompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator False op) args
   PropCompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator False op) args
-  PropCompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
+  PropCompareRatTensor op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
   PropQuantifyIndex q -> compileQuantifierFunction q args
   PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args

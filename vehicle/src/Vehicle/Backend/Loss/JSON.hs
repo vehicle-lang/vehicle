@@ -308,6 +308,7 @@ convertBuiltin b spine = case b of
     L.MapList -> unsupportedError b
     L.FoldList -> unsupportedError b
     L.ReverseList -> unsupportedError b
+    L.AppendList -> unsupportedError b
   L.LossBuiltinExtraFunction f -> case f of
     L.SearchRatTensor name minimise -> convertSearch name minimise spine
 

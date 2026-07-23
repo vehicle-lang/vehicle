@@ -30,6 +30,7 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VectorLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
+import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -542,10 +543,24 @@ compileBuiltin b args = case b of
     Max MaxRatTensor -> compileApplication [MathcompImport Algebra, Import OrderDef] "max" args
     CompareIndex op -> compileComparison CIndex op args
     CompareNat op -> compileComparison CNat op args
-    CompareRatTensorPointwise op -> compileComparison CRatTensor op args
+    CompareRatTensor op -> case decideIfPointwiseOrReductionComparison args of
+      Pointwise as -> compileComparison CRatTensor op as
+      Reduced as ->
+        compileApplication
+          [VehicleImport VehicleUtils]
+          ( case op of
+              Le -> "leRatTensorReduced"
+              Lt -> "ltRatTensorReduced"
+              Ge -> "geRatTensorReduced"
+              Gt -> "gtRatTensorReduced"
+              Eq -> "eqRatTensorReduced"
+              Ne -> "neRatTensorReduced"
+          )
+          as
     FoldList -> compileApplication [MathcompImport Boot] "foldr" args
     MapList -> compileApplication [MathcompImport Boot] "map" args
     ReverseList -> compileApplication [MathcompImport Boot] "rev" args
+    AppendList {} -> unsupportedError
     ReduceAndTensor -> compileApplication [VehicleImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> compileApplication [VehicleImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> compileApplication [] "reduceAdd" args
@@ -553,9 +568,7 @@ compileBuiltin b args = case b of
     ReduceMaxRatTensor -> unsupportedError
     ReduceMulRatTensor -> compileApplication [] "reduceMul" args
     ConstTensor -> compileApplication [MathcompImport Algebra] "const_t" args
-    QuantifyRatTensor q -> case reverse args of
-      (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
-      _ -> unsupportedArgsError
+    QuantifyRatTensor q -> compileQuantifierFunction q args
     AtTensor -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] NotAssociative (Just 30) "$0 ^^ $1" (Just "nindex") args
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 200) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
@@ -563,7 +576,7 @@ compileBuiltin b args = case b of
     Transpose -> compileApplication [VehicleImport VehicleUtils] "transpose_t" args
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
-    QuantifyRecord _ -> unsupportedTensorLikeQuantifier
+    QuantifyRecord q -> compileQuantifierFunction q args
     Iterate -> unsupportedError
     Pow {} -> unsupportedError
     Log {} -> unsupportedError
@@ -578,7 +591,7 @@ compileBuiltin b args = case b of
     PropImplies -> compileFunctionType args
     PropCompareIndex op -> compileComparison CIndex op args
     PropCompareNat op -> compileComparison CNat op args
-    PropCompareRatTensorPointwise op -> compileComparison CRatTensor op args
+    PropCompareRatTensor op -> compileComparison CRatTensor op args
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
@@ -598,15 +611,6 @@ compileBuiltin b args = case b of
     unsupportedError =
       developerError $
         "compilation of builtin" <+> quotePretty b <+> "to Rocq unsupported"
-
-    unsupportedArgsError :: (MonadRocqCompile m) => m a
-    unsupportedArgsError = do
-      compilerDeveloperError $
-        "compilation of"
-          <+> quotePretty b
-          <+> "with args"
-          <+> prettyVerbose args
-          <+> "to Rocq unsupported"
 
     monoError :: a
     monoError =
@@ -640,18 +644,6 @@ compileDerivedFunction fn args = case fn of
           return $ compileNatLiteral n
     _ ->
       compileNotationAndArgs [] NotAssociative (Just 99) "$1 : $0" Nothing args
-  CompareRatTensorReduced op ->
-    compileApplication
-      [VehicleImport VehicleUtils]
-      ( case op of
-          Le -> "leRatTensorReduced"
-          Lt -> "ltRatTensorReduced"
-          Ge -> "geRatTensorReduced"
-          Gt -> "gtRatTensorReduced"
-          Eq -> "eqRatTensorReduced"
-          Ne -> "neRatTensorReduced"
-      )
-      args
   where
     unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
     isIndexTypeExpr :: Expr DecidabilityBuiltin -> Bool
@@ -664,6 +656,13 @@ compileDerivedFunction fn args = case fn of
       Builtin _ (StandardBuiltinConstructor (IndexLiteral n)) -> Just n
       App (Builtin _ (StandardBuiltinConstructor (IndexLiteral n))) _ -> Just n
       _ -> Nothing
+
+compileQuantifierFunction :: (MonadRocqCompile m) => Quantifier -> [Arg DecidabilityBuiltin] -> m Code
+compileQuantifierFunction q args = case reverse args of
+  (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
+  _ ->
+    compilerDeveloperError $
+      "compilation of quantifier" <+> quotePretty q <+> "with args" <+> prettyVerbose args <+> "to Rocq unsupported"
 
 compileTypeLevelQuantifier ::
   (MonadRocqCompile m) =>

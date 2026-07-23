@@ -149,8 +149,8 @@ evalTensorOp2 ::
   Maybe a ->
   Maybe a ->
   EvalSimple TensorOp2Args Value builtin m
-evalTensorOp2 accessBuiltin accessLit =
-  evalHeteroTensorOp2 (mkExpr accessBuiltin ()) accessLit accessLit
+evalTensorOp2 accessBuiltin accessLit op leftUnit rightUnit leftZero rightZero args =
+  evalHeteroTensorOp2 (mkExpr accessBuiltin ()) accessLit accessLit op leftUnit rightUnit leftZero rightZero (mkExpr accessSpine args) args
 
 evalHeteroTensorOp2 ::
   forall builtin a b m.
@@ -163,9 +163,12 @@ evalHeteroTensorOp2 ::
   Maybe a ->
   Maybe a ->
   Maybe a ->
+  Spine builtin ->
   EvalSimple TensorOp2Args Value builtin m
-evalHeteroTensorOp2 b inputLit outputLit op leftUnit rightUnit leftZero rightZero args =
-  evalSimple b eval args
+evalHeteroTensorOp2 b inputLit outputLit op leftUnit rightUnit leftZero rightZero defaultArgs args =
+  case eval args of
+    Just result -> result
+    Nothing -> return $ VBuiltin b defaultArgs
   where
     eval :: EvalSimplePartial TensorOp2Args builtin m
     eval = \case
@@ -285,17 +288,22 @@ evalReduceAndTensor ::
 evalReduceAndTensor ctx evalApp eval (TensorReductionArgs dims tensor) = go tensor
   where
     go :: Value builtin -> m (Value builtin)
-    go = \case
-      (getExpr accessAndTensor -> Just (TensorOp2Args ds xs ys)) -> do
-        xs' <- go xs
-        ys' <- go ys
-        evalAnd (TensorOp2Args ds xs' ys')
-      vs -> do
-        result <- fuseReduceAndForeachTensor ctx evalApp eval tensor
-        case result of
-          Nothing -> unoptimisedEvalReduceAndTensor (TensorReductionArgs dims vs)
-          Just (newDims, fusedTensor) ->
-            return $ mkExpr accessReduceAnd (TensorReductionArgs newDims fusedTensor)
+    go value = do
+      fusionEnter ctx value
+      fusionExit ctx $ case value of
+        (getExpr accessAndTensor -> Just (TensorOp2Args ds xs ys)) -> do
+          xs' <- go xs
+          ys' <- go ys
+          evalAnd (TensorOp2Args ds xs' ys')
+        (getExpr accessCompareRatTensor -> Just (op, TensorComparisonArgs pDims rDims xs ys)) | op /= Ne -> do
+          mergedDims <- evalAppendList $ AppendListArgs INatType pDims rDims
+          return $ mkExpr accessCompareRatTensor (op, TensorComparisonArgs IDimNil mergedDims xs ys)
+        vs -> do
+          result <- fuseReduceAndForeachTensor ctx evalApp eval tensor
+          case result of
+            Nothing -> unoptimisedEvalReduceAndTensor (TensorReductionArgs dims vs)
+            Just (newDims, fusedTensor) ->
+              return $ mkExpr accessReduceAnd (TensorReductionArgs newDims fusedTensor)
 
 -- | An optimised evaluation procedure for `Foreach` that attempts to minimise the
 -- amount of work needed by lifting operations to higher-tensor levels.
@@ -308,8 +316,7 @@ fuseReduceAndForeachTensor ::
   Value builtin ->
   m (Maybe (VDims builtin, Value builtin))
 fuseReduceAndForeachTensor ctx evalApp eval value = do
-  fusionEnter ctx value
-  fusionExit ctx =<< case getExpr accessForeachTensor value of
+  case getExpr accessForeachTensor value of
     Just (ForeachTensorArgs typ d _ (VLam binder (Closure env body))) -> do
       let lv = boundCtxLv ctx
       let newEnv = extendEnvWithBound lv binder env
@@ -441,6 +448,18 @@ evalReverseList args@(ReverseListArgs t xs) = go xs (INil t)
       ICons _ v vs -> go vs (ICons t v acc)
       _ -> return $ mkExpr accessReverseList args
 
+evalAppendList ::
+  forall builtin m.
+  (MonadLogger m, BuiltinHasListLiterals builtin) =>
+  AppendListArgs (Value builtin) ->
+  m (Value builtin)
+evalAppendList args@(AppendListArgs t xs ys) =
+  case (xs, ys) of
+    (_, INil _) -> return xs
+    (INil _, _) -> return ys
+    (ICons _ x xs', _) -> ICons t x <$> evalAppendList (AppendListArgs t xs' ys)
+    _ -> return $ mkExpr accessAppendList args
+
 -----------------------------------------------------------------------------
 -- Rational tensors
 
@@ -490,20 +509,46 @@ evalReduceMinRatTensor = evalReduceTensor accessReduceMinRatBuiltin accessRatTen
 evalReduceMaxRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
 evalReduceMaxRatTensor = evalReduceTensor accessReduceMaxRatBuiltin accessRatTensorLiteral evalMaxRatTensor max NegInfinity
 
-evalCompareRatTensorPointwise ::
-  (MonadNormBuiltin m, HasBoolExpr Value builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) =>
-  ComparisonOp ->
-  EvalSimple TensorOp2Args Value builtin m
-evalCompareRatTensorPointwise op =
-  evalHeteroTensorOp2
-    (mkExpr accessCompareRatTensorPointwiseBuiltin op)
-    accessRatTensorLiteral
-    accessBoolTensorLiteral
-    (comparisonOp op)
-    Nothing
-    Nothing
-    Nothing
-    Nothing
+evalCompareRatTensor :: forall builtin m. (MonadNormBuiltin m, HasBoolExpr Value builtin, BuiltinHasBoolType builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) => ComparisonOp -> EvalSimple TensorComparisonArgs Value builtin m
+evalCompareRatTensor op = \case
+  -- base case where we are up to pointwise comparison (dims1/pDims = [])
+  TensorComparisonArgs IDimNil rDims xs ys ->
+    -- xs and ys passed on to evalHeteteroTensorOp2 to handle
+    evalPointwise IDimNil rDims xs ys
+  -- reduction cases (two consts) should just be result of one element vs other element, in the shape of pDims
+  TensorComparisonArgs pDims _rDims (getExpr accessConstTensor -> Just xs) (getExpr accessConstTensor -> Just ys) ->
+    do
+      newConstValue <- evalPointwise IDimNil IDimNil (constValue xs) (constValue ys)
+      return $ mkExpr accessConstTensor $ ConstTensorArgs {constType = IBoolType, constValue = newConstValue, constDims = pDims}
+  -- reduction cases (literal/stack cases)
+  -- for tensorLiterals: use unstackExpr, for stackTensors: use stackElements
+  TensorComparisonArgs (IDimCons pDim pDims) _rDims (getExpr accessRatTensorLiteral -> Just xs) (getExpr accessRatTensorLiteral -> Just ys) ->
+    do
+      newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (unstackExpr xs) (unstackExpr ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
+  TensorComparisonArgs (IDimCons pDim pDims) _rDims (getExpr accessStackTensor -> Just xs) (getExpr accessRatTensorLiteral -> Just ys) ->
+    do
+      newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (stackElements xs) (unstackExpr ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
+  TensorComparisonArgs (IDimCons pDim pDims) _rDims (getExpr accessRatTensorLiteral -> Just xs) (getExpr accessStackTensor -> Just ys) ->
+    do
+      newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (unstackExpr xs) (stackElements ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
+  TensorComparisonArgs (IDimCons pDim pDims) _rDims (getExpr accessStackTensor -> Just xs) (getExpr accessStackTensor -> Just ys) ->
+    do
+      newElements <- zipWithM (\x y -> evalCompareRatTensor op (TensorComparisonArgs pDims _rDims x y)) (stackElements xs) (stackElements ys)
+      evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral] (StackTensorArgs IBoolType pDim pDims newElements)
+  args -> return $ mkExpr accessCompareRatTensor (op, args)
+  where
+    unstackExpr :: Tensor ExtendedRational -> [Value builtin]
+    unstackExpr xs = mkExpr accessRatTensorLiteral <$> unstack xs
+
+    evalPointwise :: Value builtin -> Value builtin -> Value builtin -> Value builtin -> m (Value builtin)
+    evalPointwise pDims rDims xs ys = do
+      let builtin = mkExpr accessCompareRatTensorBuiltin op
+      let defaultArgs = mkExpr accessSpine $ TensorComparisonArgs pDims rDims xs ys
+      let pointwiseArgs = TensorOp2Args rDims xs ys
+      evalHeteroTensorOp2 builtin accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing defaultArgs pointwiseArgs
 
 -----------------------------------------------------------------------------
 -- Generic vector operations
@@ -531,6 +576,7 @@ type TensorOpEvalData args builtin m =
 class HasLiftableTensorOperations builtin where
   liftableTensorOp1s :: (MonadNormBuiltin m) => [TensorOpEvalData TensorOp1Args builtin m]
   liftableTensorOp2s :: (MonadNormBuiltin m) => [TensorOpEvalData TensorOp2Args builtin m]
+  liftableTensorComparisons :: (MonadNormBuiltin m) => [TensorOpEvalData TensorComparisonArgs builtin m]
 
 data TensorLiteralAccessor expr builtin
   = forall a. (Eq a) => Wrapper (Accessor (expr builtin) (Tensor a))
@@ -555,6 +601,7 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
   fromMaybe (unoptimisedEvalAtTensor args) $
     goOp1 liftableTensorOp1s
       <|> goOp2 liftableTensorOp2s
+      <|> goComparisons liftableTensorComparisons
       <|> goForeach
       <|> goTranspose
   where
@@ -579,6 +626,16 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
           evalOp2 $ TensorOp2Args ds xsi ysi
         _ -> goOp2 remainingOps2
       _ -> Nothing
+
+    goComparisons :: [TensorOpEvalData TensorComparisonArgs builtin m] -> Maybe (m (Value builtin))
+    goComparisons = \case
+      (accessOpC, evalOpC, _) : remainingOpsComparison -> case accessOpC tensor of
+        Just (TensorComparisonArgs (IDimCons _pDim pDims) rDims xs ys) -> Just $ do
+          xsi <- recEvalAt xs
+          ysi <- recEvalAt ys
+          evalOpC $ TensorComparisonArgs pDims rDims xsi ysi
+        _ -> goComparisons remainingOpsComparison
+      [] -> Nothing
 
     goForeach :: Maybe (m (Value builtin))
     goForeach = case getExpr accessForeachTensor tensor of
@@ -697,6 +754,7 @@ liftForeach ctx evalForeach lv d = go
       let maybeResult =
             goOp1 body liftableTensorOp1s
               <|> goOp2 body liftableTensorOp2s
+              <|> goComparisons body liftableTensorComparisons
               <|> goAt body
               <|> goConst body
               <|> goLiterals body tensorLiterals
@@ -725,6 +783,19 @@ liftForeach ctx evalForeach lv d = go
           let newSpine = TensorOp2Args (IDimCons d ds) e1' e2'
           evalOp newSpine
         _ -> goOp2 body remainingOps
+      [] -> Nothing
+
+    -- Distribute the `forallIndex` across comparisons operation (e.g. `<=`).
+    -- e.g. `foreach i . x(i) op y(i)` -> `(foreach i . x(i)) op (forall i . y(i))`
+    goComparisons :: Value builtin -> [TensorOpEvalData TensorComparisonArgs builtin m] -> Maybe (m (Value builtin))
+    goComparisons body = \case
+      (accessOp, evalOp, typ) : remainingOps -> case accessOp body of
+        Just (TensorComparisonArgs pDims rDims e1 e2) -> Just $ do
+          e1' <- go typ e1
+          e2' <- go typ e2
+          let newSpine = TensorComparisonArgs (IDimCons d pDims) rDims e1' e2'
+          evalOp newSpine
+        _ -> goComparisons body remainingOps
       [] -> Nothing
 
     -- Eliminate `forall i . xs ! i` into `xs`
@@ -923,7 +994,7 @@ showFusionExit _ctx result = return result
 {-
 showFusionEntry :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Value builtin -> m ()
 showFusionEntry ctx expr = do
-  logDebug MidDetail $ "fusion-entry" <+> prettyFriendly (WithContext expr ctx)
+  logDebug MidDetail $ "fusion-entry" <+> pretty (head ctx) <+> prettyFriendly (WithContext expr ctx)
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) <+> "   { boundEnv =" <+> prettyFriendly boundEnv <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
   incrCallDepth
@@ -933,9 +1004,8 @@ showFusionExit :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> 
 showFusionExit ctx result = do
   decrCallDepth
   -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
-  logDebug MidDetail $ "fusion-exit" <+> prettyFriendly (WithContext result ctx)
-  return result
--}
+  logDebug MidDetail $ "fusion-exit" <+> pretty (head ctx) <+> prettyFriendly (WithContext result ctx)
+  return result-}
 
 fusionEnter ::
   (MonadLogger m, PrintableBuiltin builtin) =>
@@ -947,21 +1017,22 @@ fusionEnter _ctx _value = return ()
 fusionExit ::
   (MonadLogger m, PrintableBuiltin builtin) =>
   NamedBoundCtx ->
-  Maybe (VDims builtin, Value builtin) ->
-  m (Maybe (VDims builtin, Value builtin))
-fusionExit _ctx result = return result
+  m (Value builtin) ->
+  m (Value builtin)
+fusionExit _ctx result = result
 
 {-
+
 fusionEnter :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Value builtin -> m ()
 fusionEnter ctx value = do
-  logDebug MaxDetail $ "fusion-enter" <+> prettyFriendly (WithContext value ctx)
+  logDebug MaxDetail $ "fusion-r-enter" <+> prettyFriendly (WithContext value ctx)
   incrCallDepth
 
-fusionExit :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Maybe (VArg builtin, Value builtin) -> m (Maybe (VArg builtin, Value builtin))
-fusionExit ctx result = do
+fusionExit :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> m (Value builtin) -> m (Value builtin)
+fusionExit ctx resultFn = do
+  value <- resultFn
   decrCallDepth
   logDebug MaxDetail $
-    "fusion-exit" <+> case result of
-      Nothing -> ""
-      Just (dims, value) -> prettyFriendly (WithContext value ctx) <+> parens (prettyFriendly (WithContext (argExpr dims) ctx))
-  return result-}
+    "fusion-r-exit" <+> prettyFriendly (WithContext value ctx)
+  return value
+-}
