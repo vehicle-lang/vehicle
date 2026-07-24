@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Vehicle.Compile
   ( CompileOptions (..),
     LossOptions (..),
@@ -22,7 +24,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Prelude as CompilePrelude
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
@@ -161,18 +163,45 @@ compileToLossFunction ::
   OutputAsJSON ->
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
+  if lossFunctionMode == Training
+    then compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON
+    else compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON
+
+compileToTrainingLoss ::
+  forall m.
+  (MonadCompile m, MonadStdIO m) =>
+  DifferentiableLogicID ->
+  Maybe FilePath ->
+  Prog Builtin ->
+  OutputAsJSON ->
+  m ()
+compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    (propertyData, typedProg') <- if lossFunctionMode == Search 
-      then liftQuantifiers typedProg
-      else return ([], typedProg)
-    lossTensorProg <- convertToLossTensors differentiableLogicID typedProg'
+    lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg
     jsonProg <- convertToJSONProg functionalisedProg
     let outputText
-          | outputAsJSON = if lossFunctionMode == Search
-            then prettyAsJSON $ SearchProgram propertyData jsonProg
-            else prettyAsJSON jsonProg
+          | outputAsJSON = prettyAsJSON jsonProg
+          | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
+    writeResultToFile Nothing outputFile outputText
+  
+compileToSearchLoss ::
+  forall m.
+  (MonadCompile m, MonadStdIO m) =>
+  DifferentiableLogicID ->
+  Maybe FilePath ->
+  Prog Builtin ->
+  OutputAsJSON ->
+  m ()
+compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON =
+  logCompilerPass Loss $ do
+    (propertyData, liftedProg) <- liftQuantifiers typedProg
+    lossTensorProg <- convertToLossTensors differentiableLogicID liftedProg
+    functionalisedProg <- functionaliseResources lossTensorProg
+    jsonProg <- convertToJSONProg functionalisedProg
+    let outputText
+          | outputAsJSON = prettyAsJSON $ SearchProgram propertyData jsonProg
           | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
     writeResultToFile Nothing outputFile outputText
 
