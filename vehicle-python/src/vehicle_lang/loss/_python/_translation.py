@@ -44,17 +44,37 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
 
     def compile(
         self,
+        py_ast: py.expr,
+        path: str | Path,
+        mode: str
+    ) -> dict[str, Any]:
+        try:
+            py_bytecode = compile(py_ast, filename=str(path), mode=mode)
+            return py_bytecode
+        except TypeError as e:
+            py_ast_str: str
+            try:
+                py_ast_str = py.unparse(py_ast)
+            except Exception:
+                py_ast_str = py.dump(py_ast)
+            raise TypeError(f"{e}\n{py_ast_str}")
+        
+    def compile_program(
+        self,
         program: vcl.Program,
         path: str | Path,
         declaration_context: dict[str, Any],
         samplers: Mapping[str, ABCSampler[Index, Tensor]],
     ) -> dict[str, Any]:
         py_ast = self.translate_program(program)
+
+        declaration_context["__vehicle__"] = self.builtins
+        declaration_context["__vehicle_user_samplers__"] = samplers
+        before_exec = dict(declaration_context)
+
+        py_bytecode = self.compile(py_ast, path, mode="exec")
+
         try:
-            declaration_context["__vehicle__"] = self.builtins
-            declaration_context["__vehicle_user_samplers__"] = samplers
-            before_exec = dict(declaration_context)
-            py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
             return {
                 key: value
@@ -70,6 +90,30 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 py_ast_str = py.dump(py_ast)
             raise TypeError(f"{e}\n{py_ast_str}")
 
+    def compile_expression(
+        self,
+        expression: vcl.Expression,
+        path: str | Path,
+        declaration_context: dict[str, Any],
+    ) -> Any:
+        expr = self.translate_expression(expression)
+        py_ast = py.Expression(body=expr)
+
+        declaration_context["__vehicle__"] = self.builtins
+
+        py_bytecode = self.compile(py_ast, path, mode="eval")
+        
+        try:
+            result = eval(py_bytecode, declaration_context)
+            return result
+        except TypeError as e:
+            py_ast_str: str # put this into function
+            try:
+                py_ast_str = py.unparse(py_ast)
+            except Exception:
+                py_ast_str = py.dump(py_ast)
+            raise TypeError(f"{e}\n{py_ast_str}")
+        
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
