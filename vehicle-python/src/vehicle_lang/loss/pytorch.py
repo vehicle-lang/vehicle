@@ -1,17 +1,16 @@
 """PyTorch-specific loss helpers."""
 
 from __future__ import annotations
-from dataclasses import dataclass
 
 from pathlib import Path
-from typing import Any, Iterable, Mapping, MutableMapping, List
+from dataclasses import dataclass
+from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 
 from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
-from .._ast._nodes import SearchRatTensor
-from ._common import load_training_loss, load_search_loss, TrainingSpec, SearchSpec
+from ._common import load_training_loss, load_search_loss
 from ._pytorch._translation import PyTorchTranslation
-from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler
-from ._pytorch.search import pgd, Sample
+from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler, Sample
+
 import torch
 
 __all__ = [
@@ -19,6 +18,12 @@ __all__ = [
     "PyTorchSampler",
     "DefaultPyTorchSampler",
 ]
+
+@dataclass
+class SearchResult:
+    property: str
+    witnesses: Sequence[Sample]
+    adversarial_examples: Sequence[Sample]
 
 
 def load_specification(
@@ -31,7 +36,7 @@ def load_specification(
 ) -> dict[str, Any]:
     """Load a loss function compiled for PyTorch."""
 
-    training_spec = load_training_loss(
+    return load_training_loss(
         path,
         logic=logic,
         samplers=samplers,
@@ -40,10 +45,9 @@ def load_specification(
         translation_factory=PyTorchTranslation,
         default_sampler_factory=DefaultPyTorchSampler,
     )
-    return training_spec.declarations
 
 
-def load_search_specification(
+def search(
     path: str | Path,
     *,
     logic: DifferentiableLogic = DL2DifferentiableLogic(),
@@ -51,10 +55,22 @@ def load_search_specification(
     declaration_context: MutableMapping[str, Any] | None = None,
     networks: dict[DeclarationName, Any] = {},
     datasets: dict[DeclarationName, Any] = {},
-    parameters: dict[DeclarationName, Any] = {}
-) -> SearchSpec:
+    parameters: dict[DeclarationName, Any] = {},
+    num_samples: int = 10,
+    num_steps: int = 5,
+    seed: int | None = None
+) -> Sequence[SearchResult]:
+    """
+    Generates samples for each property in a specification.
 
-    return load_search_loss(
+    If the property contains only universal quantifiers, the samples generated
+    are adversarial examples to the property.
+
+    If the property contains only existential quantifiers, the samples generated
+    are witnesses to the property.
+    """
+
+    search_spec = load_search_loss(
         path,
         logic=logic,
         declarations=declarations,
@@ -65,20 +81,21 @@ def load_search_specification(
         translation_factory=PyTorchTranslation
     )
 
+    declarations = search_spec.declarations
+    property_data = search_spec.property_data
+    search_bounds = search_spec.search_bounds
 
-def search(
-    quantifier_data: List[Any],
-    loss_fn: Any,
-    num_samples: int = 10,
-    num_steps: int = 5, # number of steps per quantified variable
-    seed: int | None = None
-) -> List[Sample]:
-    
-    if seed is not None:
-        torch.manual_seed(seed)
-    
-    samples = []
-    for _ in range(num_samples):
-        sample = pgd(quantifier_data, loss_fn, num_steps)
-        samples.append(sample)
-    return samples
+    sampler = DefaultPyTorchSampler(num_samples=num_samples, num_steps=num_steps, seed=seed)
+
+    search_results = []
+    for property, contains_forall in property_data.items():
+        samples = sampler.get_samples(bound_vars=search_bounds[property], loss_fn=declarations[property])
+
+        if contains_forall:
+            result = SearchResult(property=property, witnesses=[], adversarial_examples=samples)
+        else:
+            result = SearchResult(property=property, witnesses=samples, adversarial_examples=[])
+
+        search_results.append(result)
+
+    return search_results

@@ -17,6 +17,14 @@ def py_provenance(provenance: vcl.Provenance) -> dict[str, Any]:
         "col_offset": provenance.col_offset or 0,
     }
 
+# Helper to raise a TypeError while compiling
+def invalid_type(py_ast: py.expr, error: TypeError):
+    py_ast_str: str
+    try:
+        py_ast_str = py.unparse(py_ast)
+    except Exception:
+        py_ast_str = py.dump(py_ast)
+    raise TypeError(f"{error}\n{py_ast_str}")
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST
@@ -52,12 +60,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             py_bytecode = compile(py_ast, filename=str(path), mode=mode)
             return py_bytecode
         except TypeError as e:
-            py_ast_str: str
-            try:
-                py_ast_str = py.unparse(py_ast)
-            except Exception:
-                py_ast_str = py.dump(py_ast)
-            raise TypeError(f"{e}\n{py_ast_str}")
+            invalid_type(py_ast, e)
         
     def compile_program(
         self,
@@ -83,12 +86,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 and (key not in before_exec or before_exec[key] is not value)
             }
         except TypeError as e:
-            py_ast_str: str
-            try:
-                py_ast_str = py.unparse(py_ast)
-            except Exception:
-                py_ast_str = py.dump(py_ast)
-            raise TypeError(f"{e}\n{py_ast_str}")
+            invalid_type(py_ast, e)
 
     def compile_expression(
         self,
@@ -107,12 +105,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             result = eval(py_bytecode, declaration_context)
             return result
         except TypeError as e:
-            py_ast_str: str # put this into function
-            try:
-                py_ast_str = py.unparse(py_ast)
-            except Exception:
-                py_ast_str = py.dump(py_ast)
-            raise TypeError(f"{e}\n{py_ast_str}")
+            invalid_type(py_ast, e)
         
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(

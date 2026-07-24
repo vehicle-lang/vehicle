@@ -15,7 +15,7 @@ def restructure_search_loss(
     parameters: dict[DeclarationName, Any]
 ) -> tuple[dict[str, Quantifiers], Main]:
     """
-    Restructures loss functions for search to allow them to be evaluated at inputs.
+    Restructures loss ASTs for search to allow them to be evaluated at inputs.
     Adds implementations of networks, datasets and parameters to the declaration context.
     """
     quantifiers_dict = {}
@@ -43,16 +43,16 @@ def restructure_search_loss(
     return quantifiers_dict, Main(new_decls)
 
 
-def separate_quantifiers_binders(property: DefFunction) -> tuple[Quantifiers, Binders, Expression]:
+def separate_quantifiers_binders(decl: DefFunction) -> tuple[Quantifiers, Binders, Expression]:
     """
     Traverses a loss AST and separates its quantifiers, binders, and body (underneath all quantifiers).
     """
-    all_nodes = []
+    all_nodes_traversed = []
     quantifiers = []
     binders = []
 
     def traverse(node):
-        all_nodes.append(node)
+        all_nodes_traversed.append(node)
         if isinstance(node, SearchRatTensor):
             quantifiers.append(node)
             binders.append(node.search_lambda.binder)
@@ -60,16 +60,16 @@ def separate_quantifiers_binders(property: DefFunction) -> tuple[Quantifiers, Bi
         else:
             return
     
-    # If the property contains a neural network, the top node will always be a Lam, not a SearchRatTensor
-    if isinstance(property.body, Lam):
-        traverse(property.body.body)
+    # If the loss contains a neural network, the top node will always be a Lam, not a SearchRatTensor
+    if isinstance(decl.body, Lam):
+        traverse(decl.body.body)
     else:
-        traverse(property.body)
+        traverse(decl.body)
 
-    if len(all_nodes) == 0:
-        raise TypeError("There should be at least one node in the property.")
+    if len(all_nodes_traversed) == 0:
+        raise TypeError("There should be at least one node in the loss AST.")
     
-    return quantifiers, binders, all_nodes[-1]
+    return quantifiers, binders, all_nodes_traversed[-1]
 
 
 def reform_lambdas(
@@ -77,14 +77,14 @@ def reform_lambdas(
     body: Expression
 ) -> Expression:
     """
-    Reforms lambdas around the body of a loss function.
+    Reforms lambdas around the body of a loss AST.
     """
     # Reverse the order of binders as the lambdas are reformed from inside out
     binders_copy = binders.copy()
     binders_copy.reverse()
-    new_expression = body
+    new_body = body
 
     for binder in binders_copy:
-        new_expression = Lam(binder, body=new_expression)
+        new_body = Lam(binder, body=new_body)
     
-    return new_expression
+    return new_body
