@@ -198,8 +198,7 @@ compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON =
   logCompilerPass Loss $ do
     (propertyData, liftedProg) <- liftQuantifiers typedProg
     lossTensorProg <- convertToLossTensors differentiableLogicID liftedProg
-    functionalisedProg <- functionaliseResources lossTensorProg
-    jsonProg <- convertToJSONProg functionalisedProg
+    jsonProg <- convertToJSONProg lossTensorProg
     let outputText
           | outputAsJSON = prettyAsJSON $ SearchProgram propertyData jsonProg
           | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
