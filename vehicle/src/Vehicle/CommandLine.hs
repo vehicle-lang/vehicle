@@ -17,7 +17,7 @@ import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Options.Applicative
-import Vehicle.Backend.Prelude (LossFunctionMode, BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..))
+import Vehicle.Backend.Prelude (LossFunctionMode (Training), BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..))
 import Vehicle.Compile (CompileOptions (..), ITPOptions (..), LossOptions (..), QueryOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.List (ListOptions (..))
@@ -249,7 +249,9 @@ lossModeParser =
     long "lossMode"
       <> short 'm'
       <> metavar "MODE"
-      <> helpDoc (Just ("Sets the loss function for training or counter-example generation." <+> supportedOptions allLossModes))
+      <> value Training
+      <> showDefault
+      <> helpDoc (Just ("Sets the loss function for training or search." <+> supportedOptions allLossModes))
 
 --------------------------------------------------------------------------------
 -- Compile query mode
