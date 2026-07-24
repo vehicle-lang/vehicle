@@ -25,7 +25,7 @@ import Control.Monad.Reader (runReaderT)
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 
-type MonadLiftQuantifiers m = 
+type MonadLiftQuantifiers m =
   ( MonadCompile m,
     MonadFreeContext Builtin m,
     MonadBoundContext (Value Builtin) m,
@@ -41,15 +41,15 @@ liftQuantifiers ::
   (MonadCompile m) =>
   Prog Builtin ->
   m(PropertyData, Prog Builtin)
-liftQuantifiers (Main ds) = 
+liftQuantifiers (Main ds) =
   runFreshFreeContextT (Proxy @Builtin) $ do
     (ds', propertyData) <- runWriterT (liftQuantifierDecls ds)
     return (propertyData, Main ds')
 
-liftQuantifierDecls :: 
-  (MonadCompile m, 
+liftQuantifierDecls ::
+  (MonadCompile m,
    MonadFreeContext Builtin m,
-   MonadWriter PropertyData m) => 
+   MonadWriter PropertyData m) =>
   [Decl Builtin] ->
   m[Decl Builtin]
 liftQuantifierDecls = \case
@@ -58,19 +58,19 @@ liftQuantifierDecls = \case
     normDecl <- evalDecl decl
     normDecl' <-  liftQuantifierDecl normDecl
     let decl' = fmap (unnormalise 0) normDecl'
-    decls' <- addDeclEntryToContext normDecl $ liftQuantifierDecls decls 
+    decls' <- addDeclEntryToContext normDecl $ liftQuantifierDecls decls
     return (decl' : decls')
 
 -- accepts and returns normalised decl
 liftQuantifierDecl ::
   (MonadCompile m,
    MonadFreeContext Builtin m,
-   MonadWriter PropertyData m) => 
+   MonadWriter PropertyData m) =>
   VDecl Builtin ->
   m(VDecl Builtin)
 liftQuantifierDecl decl = case decl of
   DefAbstract {} -> return decl
-  DefFunction p ident ann typ expr -> 
+  DefFunction p ident ann typ expr ->
     if isAnnotatedAsProperty ann
       then do
         ((quantifiers, value), _) <- runFreshBoundContextT (Proxy @(Value Builtin)) $ runReaderT (liftQuantifierProperty (expr, 0)) (ident, p)
@@ -109,7 +109,7 @@ checkAlternatingQuantifiers ::
   m[QuantifierData]
 checkAlternatingQuantifiers prevQuantifier quantifierData = case quantifierData of
   [] -> return []
-  (quantifier, dimsOrTyp, binder) : qs -> 
+  (quantifier, dimsOrTyp, binder) : qs ->
     if prevQuantifier /= quantifier
       then do
         declProv <- ask
@@ -122,12 +122,12 @@ reconstructProperty ::
   (MonadCompile m,
   MonadFreeContext Builtin m,
   MonadBoundContext (Value Builtin) m)  =>
-  [QuantifierData] -> 
-  NewContextValue -> 
+  [QuantifierData] ->
+  NewContextValue ->
   m(Value Builtin)
 reconstructProperty quantifiers value = case quantifiers of
   [] -> return value
-  (quantifier, dimsOrType, binder) : qs -> do  
+  (quantifier, dimsOrType, binder) : qs -> do
     newBody <- addBinderToContext binder $ do
       reconstructed <- reconstructProperty qs value
       ctx <- getBoundCtx (Proxy @(Value Builtin))
@@ -139,10 +139,10 @@ reconstructProperty quantifiers value = case quantifiers of
     case dimsOrType of
       Left dims -> return (fromBoolValue $ VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs dims binder (Closure newEnv newBody)))
       Right typ -> return (fromBoolValue $ VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder (Closure newEnv newBody)))
-    
-liftQuantifierProperty :: 
+
+liftQuantifierProperty ::
   (MonadLiftQuantifiers m) =>
-  (OldContextValue, Lv) -> 
+  (OldContextValue, Lv) ->
   m(([QuantifierData], NewContextValue), Lv)
 liftQuantifierProperty (value, ctxDelta) = case toBoolValue value of
   VBoolLiteral _ -> return (([], value), 0)
@@ -153,7 +153,7 @@ liftQuantifierProperty (value, ctxDelta) = case toBoolValue value of
   VOr (TensorOp2Args dims arg1 arg2) -> do
     ((quantifiers1, arg1'), ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
     ((quantifiers2, arg2'), ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
-    return ((quantifiers1 ++ quantifiers2, fromBoolValue $ VOr (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2) 
+    return ((quantifiers1 ++ quantifiers2, fromBoolValue $ VOr (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2)
   VNot (TensorOp1Args dims arg) -> do
     ((quantifiers, arg'), ctxSize) <- liftQuantifierProperty (arg, ctxDelta)
     return ((quantifiers, fromBoolValue $ VNot (TensorOp1Args dims arg')), ctxSize)
@@ -173,7 +173,7 @@ liftQuantifierProperty (value, ctxDelta) = case toBoolValue value of
     liftQuantifierProperty (unblocked, ctxDelta)
   VReduceOrTensor _ -> do
     unblocked <- unblockBoolExpr unblockingActions value
-    liftQuantifierProperty (unblocked, ctxDelta) 
+    liftQuantifierProperty (unblocked, ctxDelta)
   VBoolAt _ -> do
     unblocked <- unblockBoolExpr unblockingActions value
     liftQuantifierProperty (unblocked, ctxDelta)
@@ -188,10 +188,10 @@ liftQuantifierProperty (value, ctxDelta) = case toBoolValue value of
     args' <- traverseTensorOp2Args (updateRatTensorBoundVar ctxDelta) args
     return (([], fromBoolValue $ VCompareRatTensor (op, args')), 0)
 
-updateIndexBoundVar :: 
+updateIndexBoundVar ::
   (MonadLiftQuantifiers m) =>
-  Lv -> 
-  Value Builtin -> 
+  Lv ->
+  Value Builtin ->
   m(Value Builtin)
 updateIndexBoundVar lv value = case toIndexValue value of
   VIndexLiteral _ _ -> return value
@@ -208,8 +208,8 @@ updateIndexBoundVar lv value = case toIndexValue value of
 
 updateNatBoundVar ::
   (MonadLiftQuantifiers m) =>
-  Lv -> 
-  Value Builtin -> 
+  Lv ->
+  Value Builtin ->
   m(Value Builtin)
 updateNatBoundVar lv value = case toNatValue value of
   VNatLiteral _ -> return value
@@ -221,16 +221,16 @@ updateNatBoundVar lv value = case toNatValue value of
     throwError $ UnableToLiftQuantifiersInProperty declProv
   VNatAdd args -> do
     args' <- traverseOp2Args (updateNatBoundVar lv) args
-    return (fromNatValue $ VNatAdd args') 
+    return (fromNatValue $ VNatAdd args')
   VNatMul args -> do
     args' <- traverseOp2Args (updateNatBoundVar lv) args
-    return (fromNatValue $ VNatMul args') 
+    return (fromNatValue $ VNatMul args')
   VNatParameter _ -> return value
 
 updateRatTensorBoundVar ::
   (MonadLiftQuantifiers m) =>
-  Lv -> 
-  Value Builtin -> 
+  Lv ->
+  Value Builtin ->
   m(Value Builtin)
 updateRatTensorBoundVar lv value = case toRatTensorValue value of
   VRatTensorLiteral _ -> return value
@@ -303,7 +303,7 @@ updateRatTensorBoundVar lv value = case toRatTensorValue value of
   VRatAtVector (AtVectorArgs typ dim vector idx) -> do
     vector' <- updateRatTensorBoundVar lv vector
     return (fromRatTensorValue $ VRatAtVector (AtVectorArgs typ dim vector' idx))
-  
+
 unblockingActions :: (MonadLiftQuantifiers m) => UnblockingActions m
 unblockingActions =
   UnblockingActions {

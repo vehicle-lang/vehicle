@@ -185,7 +185,7 @@ compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON =
           | outputAsJSON = prettyAsJSON jsonProg
           | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
     writeResultToFile Nothing outputFile outputText
-  
+
 compileToSearchLoss ::
   forall m.
   (MonadCompile m, MonadStdIO m) =>

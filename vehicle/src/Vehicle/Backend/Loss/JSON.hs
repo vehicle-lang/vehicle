@@ -57,7 +57,7 @@ newtype JProg
   = Main [JDecl]
   deriving (Generic)
 
-data SearchProg 
+data SearchProg
   = SearchProgram
   { map :: Map Name Bool,
     program :: JProg

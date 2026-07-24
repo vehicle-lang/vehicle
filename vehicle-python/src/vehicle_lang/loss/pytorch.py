@@ -2,22 +2,23 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 
+import torch
+
 from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
-from ._common import load_training_loss, load_search_loss
+from ._common import load_search_loss, load_training_loss
 from ._pytorch._translation import PyTorchTranslation
 from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler, Sample
-
-import torch
 
 __all__ = [
     "load_specification",
     "PyTorchSampler",
     "DefaultPyTorchSampler",
 ]
+
 
 @dataclass
 class SearchResult:
@@ -58,7 +59,7 @@ def search(
     parameters: dict[DeclarationName, Any] = {},
     num_samples: int = 10,
     num_steps: int = 5,
-    seed: int | None = None
+    seed: int | None = None,
 ) -> Sequence[SearchResult]:
     """
     Generates samples for each property in a specification.
@@ -78,23 +79,31 @@ def search(
         networks=networks,
         datasets=datasets,
         parameters=parameters,
-        translation_factory=PyTorchTranslation
+        translation_factory=PyTorchTranslation,
     )
 
     declarations = search_spec.declarations
     property_data = search_spec.property_data
     search_bounds = search_spec.search_bounds
 
-    sampler = DefaultPyTorchSampler(num_samples=num_samples, num_steps=num_steps, seed=seed)
+    sampler = DefaultPyTorchSampler(
+        num_samples=num_samples, num_steps=num_steps, seed=seed
+    )
 
     search_results = []
     for property, contains_forall in property_data.items():
-        samples = sampler.get_samples(bound_vars=search_bounds[property], loss_fn=declarations[property])
+        samples = sampler.get_samples(
+            bound_vars=search_bounds[property], loss_fn=declarations[property]
+        )
 
         if contains_forall:
-            result = SearchResult(property=property, witnesses=[], adversarial_examples=samples)
+            result = SearchResult(
+                property=property, witnesses=[], adversarial_examples=samples
+            )
         else:
-            result = SearchResult(property=property, witnesses=samples, adversarial_examples=[])
+            result = SearchResult(
+                property=property, witnesses=samples, adversarial_examples=[]
+            )
 
         search_results.append(result)
 

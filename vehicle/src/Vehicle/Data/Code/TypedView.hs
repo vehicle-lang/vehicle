@@ -133,7 +133,7 @@ fromIndexValue = \case
   VIndexParameter ident -> VFreeVar ident []
   VIndexLiteral i args -> mkExpr accessIndexLiteral (i, IndexLiteralArgs args)
   VIndexIf args -> mkExpr accessIf args
-  VIndexAtVector args -> mkExpr accessAtVector args 
+  VIndexAtVector args -> mkExpr accessAtVector args
 
 -------------------------------------------------------------------------------
 -- Nat

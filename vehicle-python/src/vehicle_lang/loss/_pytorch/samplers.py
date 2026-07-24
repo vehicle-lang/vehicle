@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Sequence, List
+from typing import TYPE_CHECKING, Callable, List, Sequence
 
 from jaxtyping import Float
 
@@ -16,6 +16,7 @@ else:  # pragma: no cover - exercised implicitly
         extra="pytorch",
         feature="The PyTorch loss backend",
     )
+
 
 @dataclass
 class Sample:
@@ -41,7 +42,7 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         bound_vars: Sequence[BoundVar],
         loss_fn: Callable[..., torch.Tensor],
         num_samples: int,
-        num_steps: int, # number of steps per bound variable
+        num_steps: int,  # number of steps per bound variable
     ) -> Sequence[Sample]: ...
 
 
@@ -180,12 +181,12 @@ class DefaultPyTorchSampler(PyTorchSampler):
         Generates a sequence of samples. Each sample is a witness obtained using PGD.
 
         Args:
-            bound_vars: Contains the name, lower bound and upper bound of each bound 
+            bound_vars: Contains the name, lower bound and upper bound of each bound
                 variable to search
             loss_fn: A callable representing the loss function to minimise
             num_samples: The number of witnesses to generate
             num_steps: The number of steps to take when searching each bound variable
-        
+
         Returns:
         A sequence of Sample objects representing witnesses.
         """
@@ -205,14 +206,14 @@ class DefaultPyTorchSampler(PyTorchSampler):
         loss_fn: Callable[..., torch.Tensor],
     ) -> Sample:
         """
-        Uses PGD to generate a single witness. A round-robin approach is used to find 
+        Uses PGD to generate a single witness. A round-robin approach is used to find
         an optimal input for each bound variable in turn.
 
         Uses a similar algorithm as `get_loss` except each step minimises the loss
         function. (can be unified/improved in future)
 
         Args:
-            bound_vars: Contains the name, lower bound and upper bound of each bound 
+            bound_vars: Contains the name, lower bound and upper bound of each bound
                 variable to search
             loss_fn: A callable representing the loss function to minimise
             num_steps: The number of steps to take when searching each bound variable
@@ -243,9 +244,11 @@ class DefaultPyTorchSampler(PyTorchSampler):
             epsilon = (upper_bound - lower_bound) / self.num_steps
 
             for _ in range(self.num_steps):
-                current_point = current_inputs[bound_var.name].detach().clone().requires_grad_(True)
+                current_point = (
+                    current_inputs[bound_var.name].detach().clone().requires_grad_(True)
+                )
                 current_inputs[bound_var.name] = current_point
-                
+
                 loss = loss_fn(**current_inputs)
                 loss_history.append(loss.item())
 
@@ -255,7 +258,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
                         current_point,
                         create_graph=False,
                         retain_graph=False,
-                        only_inputs=True
+                        only_inputs=True,
                     )[0]
 
                     if gradient is not None:
@@ -266,7 +269,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
                         gradient = torch.zeros_like(current_point)
                 else:
                     gradient = torch.zeros_like(current_point)
-                
+
                 sign_grad = torch.sign(gradient)
                 # -epsilon * sign_grad because to search for witnesses, the loss must be minimised
                 perturbation = -epsilon * sign_grad
@@ -275,6 +278,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     current_point + perturbation.detach(), lower_bound, upper_bound
                 ).detach()
                 current_inputs[bound_var.name] = perturbed_point
-            
+
         final_loss = loss_fn(**current_inputs)
-        return Sample(inputs=current_inputs, loss=final_loss.item(), loss_history=loss_history)
+        return Sample(
+            inputs=current_inputs, loss=final_loss.item(), loss_history=loss_history
+        )
