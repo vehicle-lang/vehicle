@@ -5,17 +5,27 @@ from __future__ import annotations
 from collections import defaultdict, namedtuple
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable, Sequence, Mapping, MutableMapping, Protocol, cast
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    cast,
+)
 
+from .._ast._nodes import Program
 from ..loss import load_ast
 from ..loss._python._translation import PythonTranslation
 from ..typing import DeclarationName, DifferentiableLogic, LossMode
-from .._ast._nodes import Program
-
 from ._search import Quantifiers, restructure_search_loss
+
 
 class _SamplerProtocol(Protocol):
     def get_loss(self, *args: Any, **kwargs: Any) -> Any: ...
+
 
 @dataclass
 class SearchSpec:
@@ -29,15 +39,15 @@ SamplerFactory = Callable[[], _SamplerProtocol]
 
 BoundVar = namedtuple("BoundVar", ["name", "lower_bound", "upper_bound"])
 
-    
+
 def load_loss_ast(
     path: str | Path,
     mode: LossMode,
     logic: DifferentiableLogic,
-    declarations: Iterable[DeclarationName]
+    declarations: Iterable[DeclarationName],
 ) -> Program:
     """Load a loss AST for training or search."""
-    
+
     program = load_ast(
         path,
         mode=mode,
@@ -52,7 +62,7 @@ def translate_loss(
     program: Program,
     samplers: Mapping[str, Any] | None,
     declaration_context: MutableMapping[str, Any] | None,
-    translator: PythonTranslation  
+    translator: PythonTranslation,
 ) -> dict[str, Any]:
     """Translate a loss function using a provided backend factory."""
 
@@ -69,7 +79,7 @@ def translate_search_bounds(
     path: str | Path,
     quantifiers: dict[str, Quantifiers],
     declaration_context: MutableMapping[str, Any] | None,
-    translator: PythonTranslation  
+    translator: PythonTranslation,
 ) -> dict[str, Sequence[BoundVar]]:
     """Translate quantifier bounds for search using a backend factory."""
 
@@ -80,17 +90,19 @@ def translate_search_bounds(
             lower_bound = translator.compile_expression(
                 expression=q.lower_bound,
                 path=path,
-                declaration_context=declaration_context
+                declaration_context=declaration_context,
             )
             upper_bound = translator.compile_expression(
                 expression=q.upper_bound,
                 path=path,
-                declaration_context=declaration_context
+                declaration_context=declaration_context,
             )
-            bound_var = BoundVar(name=q.name, lower_bound=lower_bound, upper_bound=upper_bound)
+            bound_var = BoundVar(
+                name=q.name, lower_bound=lower_bound, upper_bound=upper_bound
+            )
             bound_vars.append(bound_var)
         bound_var_data[property_name] = bound_vars
-    
+
     return bound_var_data
 
 
@@ -102,7 +114,7 @@ def load_training_loss(
     declarations: Iterable[DeclarationName],
     declaration_context: MutableMapping[str, Any] | None,
     translation_factory: TranslationFactory,
-    default_sampler_factory: SamplerFactory
+    default_sampler_factory: SamplerFactory,
 ) -> dict[str, Any]:
     """Load a specification for training."""
 
@@ -116,10 +128,7 @@ def load_training_loss(
         samplers = {k: s.get_loss for k, s in samplers.items()}
 
     program = load_loss_ast(
-        path,
-        mode=LossMode.Training,
-        logic=logic,
-        declarations=declarations
+        path, mode=LossMode.Training, logic=logic, declarations=declarations
     )
 
     translator = translation_factory()
@@ -128,7 +137,7 @@ def load_training_loss(
         program=program,
         samplers=samplers,
         declaration_context=declaration_context,
-        translator=translator
+        translator=translator,
     )
 
     return compiled_declarations
@@ -143,7 +152,7 @@ def load_search_loss(
     networks: dict[DeclarationName, Any] = {},
     datasets: dict[DeclarationName, Any] = {},
     parameters: dict[DeclarationName, Any] = {},
-    translation_factory: TranslationFactory
+    translation_factory: TranslationFactory,
 ) -> SearchSpec:
     """Load a specification for search."""
 
@@ -151,10 +160,7 @@ def load_search_loss(
         declaration_context = {}
 
     search_program = load_loss_ast(
-        path,
-        mode=LossMode.Search,
-        logic=logic,
-        declarations=declarations
+        path, mode=LossMode.Search, logic=logic, declarations=declarations
     )
 
     quantifiers, restructured_program = restructure_search_loss(
@@ -162,7 +168,7 @@ def load_search_loss(
         declaration_context=declaration_context,
         networks=networks,
         datasets=datasets,
-        parameters=parameters
+        parameters=parameters,
     )
 
     translator = translation_factory()
@@ -171,16 +177,18 @@ def load_search_loss(
         program=restructured_program,
         samplers={},
         declaration_context=declaration_context,
-        translator=translator
+        translator=translator,
     )
 
     search_bounds = translate_search_bounds(
-        path, 
-        quantifiers=quantifiers, 
-        declaration_context=declaration_context, 
-        translator=translator
+        path,
+        quantifiers=quantifiers,
+        declaration_context=declaration_context,
+        translator=translator,
     )
 
-    return SearchSpec(declarations=compiled_declarations,
-                      property_data=search_program.map,
-                      search_bounds=search_bounds)
+    return SearchSpec(
+        declarations=compiled_declarations,
+        property_data=search_program.map,
+        search_bounds=search_bounds,
+    )

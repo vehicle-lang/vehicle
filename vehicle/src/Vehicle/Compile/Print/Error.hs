@@ -909,7 +909,7 @@ formatCompileError = \case
             <> indent 2 (prettyFriendly (WithContext problematicValue ctx)),
         fix = Nothing
       }
-  UnableToLiftQuantifiersInProperty (ident, p) -> 
+  UnableToLiftQuantifiersInProperty (ident, p) ->
     VehicleUserError
       { provenance = Just p,
         problem =

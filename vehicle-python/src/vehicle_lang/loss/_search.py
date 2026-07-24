@@ -1,7 +1,16 @@
 from dataclasses import dataclass
 from typing import Any, List, MutableMapping
+
+from .._ast._nodes import (
+    Binder,
+    DefAbstract,
+    DefFunction,
+    Expression,
+    Lam,
+    Main,
+    SearchRatTensor,
+)
 from ..typing import DeclarationName
-from .._ast._nodes import Main, Expression, Lam, Binder, SearchRatTensor, DefAbstract, DefFunction
 
 Quantifiers = List[SearchRatTensor]
 Binders = List[Binder]
@@ -12,7 +21,7 @@ def restructure_search_loss(
     declaration_context: MutableMapping[str, Any],
     networks: dict[DeclarationName, Any],
     datasets: dict[DeclarationName, Any],
-    parameters: dict[DeclarationName, Any]
+    parameters: dict[DeclarationName, Any],
 ) -> tuple[dict[str, Quantifiers], Main]:
     """
     Restructures loss ASTs for search to allow them to be evaluated at inputs.
@@ -43,7 +52,9 @@ def restructure_search_loss(
     return quantifiers_dict, Main(new_decls)
 
 
-def separate_quantifiers_binders(decl: DefFunction) -> tuple[Quantifiers, Binders, Expression]:
+def separate_quantifiers_binders(
+    decl: DefFunction,
+) -> tuple[Quantifiers, Binders, Expression]:
     """
     Traverses a loss AST and separates its quantifiers, binders, and body (underneath all quantifiers).
     """
@@ -59,7 +70,7 @@ def separate_quantifiers_binders(decl: DefFunction) -> tuple[Quantifiers, Binder
             traverse(node.search_lambda.body)
         else:
             return
-    
+
     # If the loss contains a neural network, the top node will always be a Lam, not a SearchRatTensor
     if isinstance(decl.body, Lam):
         traverse(decl.body.body)
@@ -68,14 +79,11 @@ def separate_quantifiers_binders(decl: DefFunction) -> tuple[Quantifiers, Binder
 
     if len(all_nodes_traversed) == 0:
         raise TypeError("There should be at least one node in the loss AST.")
-    
+
     return quantifiers, binders, all_nodes_traversed[-1]
 
 
-def reform_lambdas(
-    binders: Binders, 
-    body: Expression
-) -> Expression:
+def reform_lambdas(binders: Binders, body: Expression) -> Expression:
     """
     Reforms lambdas around the body of a loss AST.
     """
@@ -86,5 +94,5 @@ def reform_lambdas(
 
     for binder in binders_copy:
         new_body = Lam(binder, body=new_body)
-    
+
     return new_body

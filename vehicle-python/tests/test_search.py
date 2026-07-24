@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
+from vehicle_lang.typing import DL2DifferentiableLogic, VehicleDifferentiableLogic
 
-from vehicle_lang.typing import VehicleDifferentiableLogic, DL2DifferentiableLogic
 from .config import HASKELL_GOLDEN_TESTS_PATH
 
 GOLDEN_SPECS_BASE = HASKELL_GOLDEN_TESTS_PATH / "specifications"
@@ -32,22 +32,19 @@ def test_pytorch_search_single_input() -> None:
     networks = {"controller": model}
 
     search_results = loss_pt.search(
-        spec_path, 
-        logic=VehicleDifferentiableLogic(), 
-        networks=networks,
-        num_samples=10
+        spec_path, logic=VehicleDifferentiableLogic(), networks=networks, num_samples=10
     )
 
     # Check that the single property in the specification is searched
-    assert(len(search_results) == 1)
+    assert len(search_results) == 1
 
     result = search_results[0]
 
-    assert(result.property == "safe")
+    assert result.property == "safe"
     # Check that the search produced adversarial examples, not witnesses
     # to the property as it contains only universal quantifiers
-    assert(len(result.witnesses) == 0)
-    assert(len(result.adversarial_examples) == 10)
+    assert len(result.witnesses) == 0
+    assert len(result.adversarial_examples) == 10
 
     print(f"{result.property} ADVERSARIAL EXAMPLES \n")
 
@@ -56,13 +53,13 @@ def test_pytorch_search_single_input() -> None:
         print("\n")
 
         # Check that each adversarial example has 1 input
-        assert(len(adv_example.inputs) == 1)
+        assert len(adv_example.inputs) == 1
 
         final_loss = adv_example.loss
         initial_loss = adv_example.loss_history[0]
 
         # Check that the search minimised the loss
-        assert(final_loss <= initial_loss)
+        assert final_loss <= initial_loss
 
 
 def test_pytorch_search_multiple_inputs() -> None:
@@ -76,22 +73,19 @@ def test_pytorch_search_multiple_inputs() -> None:
     networks = {"f": model}
 
     search_results = loss_pt.search(
-        spec_path, 
-        logic=VehicleDifferentiableLogic(), 
-        networks=networks,
-        num_samples=10
+        spec_path, logic=VehicleDifferentiableLogic(), networks=networks, num_samples=10
     )
 
     # Check that the single property in the specification is searched
-    assert(len(search_results) == 1)
+    assert len(search_results) == 1
 
     result = search_results[0]
 
-    assert(result.property == "equalNested")
+    assert result.property == "equalNested"
     # Check that the search produced witnesses, not adversarial examples
     # to the property as it contains only existential quantifiers
-    assert(len(result.witnesses) == 10)
-    assert(len(result.adversarial_examples) == 0)
+    assert len(result.witnesses) == 10
+    assert len(result.adversarial_examples) == 0
 
     print(f"{result.property} WITNESSES \n")
 
@@ -100,10 +94,10 @@ def test_pytorch_search_multiple_inputs() -> None:
         print("\n")
 
         # Check that witness has 2 inputs
-        assert(len(witness.inputs) == 2)
+        assert len(witness.inputs) == 2
 
         final_loss = witness.loss
         initial_loss = witness.loss_history[0]
 
         # Check that the search minimised the loss
-        assert(final_loss <= initial_loss)
+        assert final_loss <= initial_loss

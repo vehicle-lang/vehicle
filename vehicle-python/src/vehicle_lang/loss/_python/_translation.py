@@ -17,6 +17,7 @@ def py_provenance(provenance: vcl.Provenance) -> dict[str, Any]:
         "col_offset": provenance.col_offset or 0,
     }
 
+
 # Helper to raise a TypeError while compiling
 def invalid_type(py_ast: py.expr, error: TypeError):
     py_ast_str: str
@@ -25,6 +26,7 @@ def invalid_type(py_ast: py.expr, error: TypeError):
     except Exception:
         py_ast_str = py.dump(py_ast)
     raise TypeError(f"{error}\n{py_ast_str}")
+
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST
@@ -50,18 +52,13 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     module_footer: Sequence[py.stmt] = field(default_factory=tuple)
     ignored_types: list[str] = field(init=False, default_factory=list)
 
-    def compile(
-        self,
-        py_ast: py.expr,
-        path: str | Path,
-        mode: str
-    ) -> dict[str, Any]:
+    def compile(self, py_ast: py.expr, path: str | Path, mode: str) -> dict[str, Any]:
         try:
             py_bytecode = compile(py_ast, filename=str(path), mode=mode)
             return py_bytecode
         except TypeError as e:
             invalid_type(py_ast, e)
-        
+
     def compile_program(
         self,
         program: vcl.Program,
@@ -100,13 +97,13 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         declaration_context["__vehicle__"] = self.builtins
 
         py_bytecode = self.compile(py_ast, path, mode="eval")
-        
+
         try:
             result = eval(py_bytecode, declaration_context)
             return result
         except TypeError as e:
             invalid_type(py_ast, e)
-        
+
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[

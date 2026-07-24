@@ -432,6 +432,7 @@ class DefAbstract(Declaration):
     def get_name(self) -> Name:
         return self.name
 
+
 ################################################################################
 # Modules
 ################################################################################
@@ -456,5 +457,6 @@ class Main(Program):
 @dataclass(frozen=True)
 class SearchProgram(Program):
     """Wrapper to store declarations and a map for property metadata"""
+
     map: dict[str, bool]
     program: Main

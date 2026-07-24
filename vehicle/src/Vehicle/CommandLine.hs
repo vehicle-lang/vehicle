@@ -244,7 +244,7 @@ lossLogicParser =
       <> helpDoc (Just ("The differentiable logic to export to." <+> supportedOptions allBuiltinDifferentiableLogics))
 
 lossModeParser :: Parser LossFunctionMode
-lossModeParser = 
+lossModeParser =
   option auto $
     long "lossMode"
       <> short 'm'
