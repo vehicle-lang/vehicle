@@ -13,7 +13,7 @@ import Data.Text (Text, pack)
 import GHC.Generics
 import Vehicle.Compile.Error (CompileError (MultiPropertyTraveralError), MultiPropertyTraveralError (..))
 import Vehicle.Compile.ExpandResources (expandResources)
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Prelude hiding (Dataset, Network, Parameter, datasets, name, networks, parameters)
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error (prettyCompileError)

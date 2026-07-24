@@ -21,10 +21,10 @@ import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot
-import Vehicle.Compile.Normalise.BuiltinForced (elimImplies, evalAnd, evalOr)
+import Vehicle.Compile.Normalise.Builtin (elimImplies, evalAnd, evalOr)
 import Vehicle.Compile.Normalise.Core (BuiltinEvaluationResult (..))
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()

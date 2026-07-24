@@ -7,8 +7,8 @@ where
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans (MonadTrans (..))
 import Vehicle.Compile.Constants.Rational
-import Vehicle.Compile.Normalise.NBEForced
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.Force
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Assertion (comparisonToAssertion)
 import Vehicle.Data.Builtin.Standard.Core (Builtin, ComparisonOp)

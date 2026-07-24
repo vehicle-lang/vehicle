@@ -7,10 +7,10 @@ import Control.Monad (zipWithM)
 import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Control.Monad.State (MonadTrans (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.BuiltinForced (evalForeachVector, getDim, getDims)
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Builtin (evalForeachVector, getDim, getDims)
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()

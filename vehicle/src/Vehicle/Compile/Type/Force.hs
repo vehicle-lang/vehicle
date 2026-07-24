@@ -11,7 +11,7 @@ where
 import Control.Monad.Reader (MonadReader, ReaderT (..), asks)
 import Control.Monad.Writer.Strict
 import Vehicle.Compile.Normalise.Core (NormalisableBuiltin)
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta (MetaInfo (..), MetaSet, MetaVariableContext, findMetaInfo)
 import qualified Vehicle.Compile.Type.Meta.Set as MetaSet

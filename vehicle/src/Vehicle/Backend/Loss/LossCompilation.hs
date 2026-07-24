@@ -9,7 +9,7 @@ where
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Backend.Loss.Core hiding (currentPass)
 import Vehicle.Compile.Error (CompileError (UnsupportedLossOperation))
-import Vehicle.Compile.Normalise.NBEForced (forceApplication, forceFreeVar, forceThunk)
+import Vehicle.Compile.Normalise.Force (forceApplication, forceFreeVar, forceThunk)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Prelude

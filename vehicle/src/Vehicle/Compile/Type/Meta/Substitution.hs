@@ -18,7 +18,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Ordered qualified as OMap
 import Data.Traversable (for)
 import Vehicle.Compile.Normalise.Core
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet, findUltimateUnsolvedMeta)

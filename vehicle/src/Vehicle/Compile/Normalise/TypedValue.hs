@@ -1,9 +1,9 @@
-module Vehicle.Compile.Normalise.TypedValueForced where
+module Vehicle.Compile.Normalise.TypedValue where
 
 import GHC.Stack (HasCallStack)
-import Vehicle.Compile.Normalise.BuiltinForced (getDims)
+import Vehicle.Compile.Normalise.Builtin (getDims)
 import Vehicle.Compile.Normalise.Core
-import Vehicle.Compile.Normalise.NBEForced (forceThunk)
+import Vehicle.Compile.Normalise.Force (forceThunk)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface

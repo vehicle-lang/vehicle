@@ -5,7 +5,7 @@ module Vehicle.Data.Builtin.Loss
 where
 
 import GHC.Generics (Generic)
-import Vehicle.Compile.Normalise.BuiltinForced
+import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Data.Builtin.Core.BasicOperations
 import Vehicle.Data.Builtin.Interface

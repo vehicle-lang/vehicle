@@ -7,7 +7,7 @@ import Data.Hashable (Hashable (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Normalise.BuiltinForced (evalIterate)
+import Vehicle.Compile.Normalise.Builtin (evalIterate)
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Print

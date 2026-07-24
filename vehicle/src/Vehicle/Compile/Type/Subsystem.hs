@@ -18,7 +18,7 @@ import Vehicle.Compile.Dependency (pruneUnusedDeclarations)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise.Core qualified as Forced
-import Vehicle.Compile.Normalise.NBEForced (findInstanceArg)
+import Vehicle.Compile.Normalise.Force (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Print.Error (errorInSubsystemMessage)

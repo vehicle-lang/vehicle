@@ -16,9 +16,9 @@ import Data.These (mergeTheseWith)
 import Prettyprinter (surround)
 import System.FilePath
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.BuiltinForced (getDimsExprs)
-import Vehicle.Compile.Normalise.NBEForced (forceThunk)
-import Vehicle.Compile.Normalise.TypedValueForced (TypeValue (..), toTypeValue)
+import Vehicle.Compile.Normalise.Builtin (getDimsExprs)
+import Vehicle.Compile.Normalise.Force (forceThunk)
+import Vehicle.Compile.Normalise.TypedValue (TypeValue (..), toTypeValue)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error.Property (propertyTraversalErrorDetails)

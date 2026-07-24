@@ -7,8 +7,8 @@ where
 import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBEForced (MonadNorm, forceThunk)
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.Force (MonadNorm, forceThunk)
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Standard

@@ -24,11 +24,11 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot)
-import Vehicle.Compile.Normalise.BuiltinForced
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Builtin
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteDims, forceAndRewriteTensor)
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Resource

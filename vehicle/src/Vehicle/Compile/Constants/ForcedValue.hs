@@ -2,10 +2,10 @@
 
 module Vehicle.Compile.Constants.ForcedValue where
 
-import Vehicle.Compile.Normalise.BuiltinForced
+import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Core
-import Vehicle.Compile.Normalise.NBEForced (forceThunk)
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.Force (forceThunk)
+import Vehicle.Compile.Normalise.TypedValue
   ( etaReduceTensor,
   )
 import Vehicle.Data.Assertion

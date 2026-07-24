@@ -13,7 +13,7 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Prelude (Ix (..))
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)

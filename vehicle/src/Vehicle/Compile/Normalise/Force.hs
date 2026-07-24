@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Compile.Normalise.NBEForced
+module Vehicle.Compile.Normalise.Force
   ( MonadNorm,
     TypedEvalScheme (..),
     eval,

@@ -3,8 +3,8 @@ module Vehicle.Compile.LiftIf
   )
 where
 
-import Vehicle.Compile.Normalise.BuiltinForced
-import Vehicle.Compile.Normalise.NBEForced ()
+import Vehicle.Compile.Normalise.Builtin
+import Vehicle.Compile.Normalise.Force ()
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Standard

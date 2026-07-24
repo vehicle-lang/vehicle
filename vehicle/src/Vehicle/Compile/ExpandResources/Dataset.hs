@@ -9,8 +9,8 @@ import System.FilePath (takeExtension)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset.IDX (readIDX)
-import Vehicle.Compile.Normalise.NBEForced
-import Vehicle.Compile.Normalise.TypedValueForced (TypeValue (..), toTypeValue)
+import Vehicle.Compile.Normalise.Force
+import Vehicle.Compile.Normalise.TypedValue (TypeValue (..), toTypeValue)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Standard

@@ -5,9 +5,9 @@ module Vehicle.Compile.LowerNot
   )
 where
 
-import Vehicle.Compile.Normalise.NBEForced (forceThunk)
+import Vehicle.Compile.Normalise.Force (forceThunk)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Unblock (UnblockingActions, unblockBoolExpr)

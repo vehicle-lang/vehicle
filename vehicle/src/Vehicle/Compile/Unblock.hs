@@ -24,11 +24,11 @@ where
 
 import GHC.Stack (HasCallStack)
 import Vehicle.Compile.LiftIf (unfoldIf)
-import Vehicle.Compile.Normalise.BuiltinForced
+import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Core
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface

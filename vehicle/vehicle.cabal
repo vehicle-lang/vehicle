@@ -221,11 +221,11 @@ library
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.LiftIf
     Vehicle.Compile.LowerNot
-    Vehicle.Compile.Normalise.BuiltinForced
+    Vehicle.Compile.Normalise.Builtin
     Vehicle.Compile.Normalise.Core
-    Vehicle.Compile.Normalise.NBEForced
+    Vehicle.Compile.Normalise.Force
     Vehicle.Compile.Normalise.RewriteRules
-    Vehicle.Compile.Normalise.TypedValueForced
+    Vehicle.Compile.Normalise.TypedValue
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
     Vehicle.Compile.Property

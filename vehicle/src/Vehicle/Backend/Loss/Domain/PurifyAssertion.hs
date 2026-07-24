@@ -14,9 +14,9 @@ import Control.Applicative (liftA2)
 import Control.Monad (liftM2)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Vehicle.Compile.Constants.ForcedValue (TensorValueLinearExpr)
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue)
 import Vehicle.Data.Assertion (Assertion, comparisonToAssertion)

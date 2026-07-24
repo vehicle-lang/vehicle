@@ -8,9 +8,9 @@ import Control.Applicative ((<|>))
 import Control.Monad.Trans.Maybe (MaybeT (..))
 import Data.Foldable (asum)
 import Data.Set qualified as Set
-import Vehicle.Compile.Normalise.BuiltinForced
+import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Core
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print

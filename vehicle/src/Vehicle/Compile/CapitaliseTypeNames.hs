@@ -8,7 +8,7 @@ import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.Data (Proxy (..))
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Normalise.NBEForced (forceThunk)
+import Vehicle.Compile.Normalise.Force (forceThunk)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..), DecidabilityBuiltinFunction (..))
 import Vehicle.Data.Code.ForcedValue

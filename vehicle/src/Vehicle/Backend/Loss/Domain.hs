@@ -19,11 +19,11 @@ import Vehicle.Compile.Constants.ForcedValue
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
-import Vehicle.Compile.Normalise.BuiltinForced (elimImplies)
-import Vehicle.Compile.Normalise.NBEForced
+import Vehicle.Compile.Normalise.Builtin (elimImplies)
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Unblock (unblockBoolExpr)
 import Vehicle.Data.Assertion (Assertion, NormalisedRelation (..), Relation (..))
@@ -533,7 +533,7 @@ extractKnownShapePrefix value = do
     IDimCons d ds -> do
       forcedDim <- forceThunk d
       case forcedDim of
-        INatLiteral @ForcedValue n -> (n :) <$> extractKnownShapePrefix ds
+        INatLiteral n -> (n :) <$> extractKnownShapePrefix ds
         _ -> return []
     _ -> return []
 

@@ -10,8 +10,8 @@ import Data.Text.Read (rational)
 import Text.Read (readMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
-import Vehicle.Compile.Normalise.NBEForced
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.Force
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (ParameterType (..))
 import Vehicle.Data.Builtin.Standard

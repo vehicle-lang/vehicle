@@ -7,7 +7,7 @@ import Data.List.NonEmpty
 import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Normalise.BuiltinForced (evalIterate)
+import Vehicle.Compile.Normalise.Builtin (evalIterate)
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Builtin.Interface

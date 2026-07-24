@@ -2,7 +2,7 @@
 
 module Vehicle.Data.Builtin.Standard.Normalise where
 
-import Vehicle.Compile.Normalise.BuiltinForced qualified as Forced
+import Vehicle.Compile.Normalise.Builtin qualified as Forced
 import Vehicle.Compile.Normalise.Core qualified as Forced
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Standard.Core

@@ -1,4 +1,4 @@
-module Vehicle.Compile.Normalise.BuiltinForced where
+module Vehicle.Compile.Normalise.Builtin where
 
 import Control.Monad (foldM, zipWithM)
 import Data.Maybe (isJust)

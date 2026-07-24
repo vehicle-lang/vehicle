@@ -3,9 +3,9 @@ module Vehicle.Backend.Solver.UserVariableElimination.PurifyAssertion
   )
 where
 
-import Vehicle.Compile.Normalise.BuiltinForced
+import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Unblock

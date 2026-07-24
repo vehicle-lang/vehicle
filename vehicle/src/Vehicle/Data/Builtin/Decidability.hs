@@ -6,7 +6,7 @@ where
 
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Normalise.BuiltinForced
+import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude (Expr (..), normAppList)
 import Vehicle.Data.Builtin.Core.BasicOperations

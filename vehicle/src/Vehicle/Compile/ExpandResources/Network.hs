@@ -9,8 +9,8 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
-import Vehicle.Compile.Normalise.NBEForced
-import Vehicle.Compile.Normalise.TypedValueForced
+import Vehicle.Compile.Normalise.Force
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Standard

@@ -237,6 +237,9 @@ inferExpr e = do
         addBinderToContext checkedBinder $ inferExpr body
 
       -- Substitute through the type of the bound expression to preserve well-typedness
+      -- TODO there is a bug here. The generated meta-variables will have the binder
+      -- in scope, but in reality the binder value is known. To fix this we should alter
+      -- the context to store the values.
       let finalType = checkedBoundExpr `substDBInto` typeOfBody
       return (Let p checkedBoundExpr checkedBinder checkedBody, finalType)
     Lam p binder body -> do

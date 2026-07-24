@@ -22,8 +22,8 @@ import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
-import Vehicle.Compile.Normalise.NBEForced
-import Vehicle.Compile.Normalise.TypedValueForced (DimensionsValue (..), NatValue (..), toDimensionsValue, toNatValue)
+import Vehicle.Compile.Normalise.Force
+import Vehicle.Compile.Normalise.TypedValue (DimensionsValue (..), NatValue (..), toDimensionsValue, toNatValue)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (DatasetElementType (..), DatasetType (..))
 import Vehicle.Data.Builtin.Standard
