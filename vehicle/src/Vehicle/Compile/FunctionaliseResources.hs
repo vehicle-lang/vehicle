@@ -101,7 +101,7 @@ functionaliseDecl d =
 
       return $ case s of
         BuiltinDef {} -> (addResourceUsage i binderNames, Just (DefAbstract p i s finalType))
-        _ -> (addResourceUsage i binderNames . addResourceDeclaration i finalType, Nothing)
+        _ -> (addResourceUsage i binderNames . addResourceDeclaration i finalType, Just (DefAbstract p i s finalType))
     DefFunction p i anns initialType initialBody -> do
       typeResourceUsage <- findResourceUses initialType
       bodyResourceUsage <- findResourceUses initialBody

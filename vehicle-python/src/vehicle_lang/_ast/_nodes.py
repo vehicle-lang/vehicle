@@ -421,6 +421,17 @@ class DefFunction(Declaration):
         return self.name
 
 
+@dataclass(frozen=True)
+class DefAbstract(Declaration):
+    provenance: Provenance = field(repr=False)
+    name: Name
+    sort: str
+    type: BuiltinType
+
+    @override
+    def get_name(self) -> Name:
+        return self.name
+
 ################################################################################
 # Modules
 ################################################################################

@@ -21,7 +21,8 @@ import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
 import Vehicle.Data.AST.Decl
   ( DefFunctionSort (..),
-    FunctionDeclAnnotation (..),
+    DefAbstractSort (..),
+    FunctionDeclAnnotation (..), ParameterSort (..),
   )
 import Vehicle.Data.AST.Expr.Scoped (normAppList)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -65,6 +66,7 @@ data SearchProg
 
 data JDecl
   = DefFunction Provenance Name JType JExpr
+  | DefAbstract Provenance Name JSort JType
   deriving (Generic)
 
 data JBinder
@@ -80,6 +82,13 @@ data JType
   | DimensionsType
   | DimensionIndexType
   | TypeVar Name [JExpr]
+  deriving (Show, Generic)
+
+data JSort
+  = Network
+  | Dataset
+  | Parameter
+  | Builtin
   deriving (Show, Generic)
 
 data JExpr
@@ -133,6 +142,9 @@ instance ToJSON JExpr where
 instance ToJSON JType where
   toJSON = genericToJSON jsonOptions
 
+instance ToJSON JSort where
+  toJSON = genericToJSON jsonOptions
+
 instance ToJSON JBinder where
   toJSON = genericToJSON jsonOptions
 
@@ -162,7 +174,13 @@ convertProg (S.Main decls) = Main <$> traverse convertDecl decls
 
 convertDecl :: (MonadJSON m) => S.Decl LossBuiltin -> m JDecl
 convertDecl = \case
-  S.DefAbstract {} -> developerError "Found abstract definition when converting to JSON"
+  S.DefAbstract p ident sort typ -> do
+    typ' <- convertType emptyBoundEnv typ
+    case sort of
+      NetworkDef -> return $ DefAbstract p (nameOf ident) Network typ'
+      DatasetDef -> return $ DefAbstract p (nameOf ident) Dataset typ'
+      ParameterDef _ -> return $ DefAbstract p (nameOf ident) Parameter typ'
+      BuiltinDef -> developerError "DefAbstractSort BuiltinDef is not yet implemented"
   S.DefRecord {} -> developerError "Found record when converting to JSON"
   S.DefFunction p ident _ typ body -> do
     typ' <- convertType emptyBoundEnv typ
@@ -470,6 +488,15 @@ fromJDecl = \case
       let ident = Identifier userModulePath name
       let sort = FunctionDecl 0 (Just AnnProperty)
       return $ S.DefFunction p ident sort typ' body'
+  DefAbstract p name sort typ ->
+    runFreshNameBoundContext $ do
+      typ' <- fromJType typ
+      let ident = Identifier userModulePath name
+      case sort of
+        Network -> return $ S.DefAbstract p ident NetworkDef typ'
+        Dataset -> return $ S.DefAbstract p ident DatasetDef typ'
+        Parameter -> return $ S.DefAbstract p ident (ParameterDef Inferable) typ'
+        Builtin -> developerError "DefAbstractSort BuiltinDef is not yet implemented"
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr LossBuiltin)
 fromJType = \case
