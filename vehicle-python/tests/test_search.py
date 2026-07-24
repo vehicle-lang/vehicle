@@ -1,3 +1,5 @@
+"""Test the generation of witnesses and adversarial examples for properties using gradient-based search."""
+
 from pathlib import Path
 from typing import Any, Tuple
 
@@ -22,6 +24,7 @@ def require_pytorch() -> Tuple[Any, Any]:
 
 
 def test_pytorch_search_single_input() -> None:
+    """Test gradient-based search for properties with a single input."""
     torch, loss_pt = require_pytorch()
     spec_path = GOLDEN_SPECS_BASE / "windController" / "spec.vcl"
 
@@ -66,6 +69,7 @@ def test_pytorch_search_single_input() -> None:
 
 
 def test_pytorch_search_multiple_inputs() -> None:
+    """Test gradient-based search for properties with multiple inputs."""
     torch, loss_pt = require_pytorch()
     spec_path = Path(__file__).parent / "data" / "test_quantifier_nested.vcl"
 
