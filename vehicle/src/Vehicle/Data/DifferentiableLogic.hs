@@ -5,8 +5,6 @@ import GHC.Generics (Generic)
 import Prettyprinter
 import Vehicle.Data.AST.Expr.Scoped (Expr)
 import Vehicle.Data.Builtin.Loss
-import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Code.Value
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -93,8 +91,3 @@ elementLogicName = "DifferentiableElementLogic"
 
 tensorLogicName :: Name
 tensorLogicName = "DifferentiableTensorLogic"
-
-isLogicDecl :: VDecl Builtin -> Bool
-isLogicDecl = \case
-  DefFunction _ _ _ (VFreeVar ident []) _ -> nameOf ident `elem` ([elementLogicName, tensorLogicName] :: [Name])
-  _ -> False

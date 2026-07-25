@@ -93,7 +93,7 @@ typeOfTypeClass tc = case tc of
   HasQuantifierIn {} -> type0 ~> type0 ~> type0
   HasNatLits {} -> type0 ~> type0
   HasRatLits -> type0 ~> type0
-  HasVecLits {} -> tNat ~> (type0 ~> type0) ~> type0
+  HasVecLits {} -> type0 ~> type0 ~> tNat ~> type0
   ValidPropertyType -> type0 ~> type0
   ValidParameterType {} -> type0 ~> type0
   ValidNetworkTensorType -> type0 ~> type0

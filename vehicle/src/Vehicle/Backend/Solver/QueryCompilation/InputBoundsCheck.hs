@@ -27,7 +27,6 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.MaybeTrivial (MonadMaybeTrivial (..))
 import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorShape)
-import Vehicle.Data.Tensor.Traversal (toPartialShape)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadReadableTensorBoundContext, getCompleteNamedCtx, lookupParentTensorVariable)
 import Vehicle.Data.Variable.Bound.Level
@@ -171,7 +170,7 @@ lookupCorrespondingInputVar var = do
       Just $
         VariableInfo
           { parentVariable = toTensorVar inputVar,
-            parentShape = toPartialShape (shapeOf nestedSliceVar) Nothing,
+            parentShape = shapeOf nestedSliceVar,
             indices = indices
           }
 
@@ -187,13 +186,12 @@ checkAllBoundsPresent (Partial allPartialbounds assertions) = do
   lv <- getBinderDepth
 
   errorsAndFinalBounds <- forM (Map.toList inputVariableMapping) $ \(var, (networkName, appInfo, varShape)) -> do
-    let errorCase indices = return $ Left (networkName, inputValue appInfo, findUnboundedVariables lv appInfo, indices)
+    let errorCase indices = return $ Left (networkName, inputType appInfo, inputValue appInfo, findUnboundedVariables lv appInfo, indices)
     case Map.lookup var allPartialbounds of
       Nothing -> errorCase wholeTensorUnbounded
       Just partialBounds -> do
-        let partialShapeOrShapes = flip toPartialShape Nothing <$> varShape
-        missingIndicesOrFlattenedBounds <- case partialShapeOrShapes of
-          UniModal partialShape -> fourierMotzkinTensorBoundsElimination partialShape partialBounds
+        missingIndicesOrFlattenedBounds <- case varShape of
+          UniModal {} -> fourierMotzkinTensorBoundsElimination partialBounds
           MultiModal _partialShapes -> error "MultiModal IO is not implmeneted yet"
         case missingIndicesOrFlattenedBounds of
           Right bounds -> return $ Right (BoundedValue var bounds)
