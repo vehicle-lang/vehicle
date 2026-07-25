@@ -918,7 +918,7 @@ formatCompileError = \case
         problem = multipleNetworkErrorMessages (pretty queryFormat) ctx apps,
         fix = Just "this is on our road map to fix with VNNLib 2.0, but please open an issue on the Issue tracker with your use-case."
       }
-  UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputType, inputValue, userVariables, unboundedInputs) :| _) ->
+  UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputType, inputValue, _userVariables, unboundedInputs) :| _) ->
     VehicleUserError
       { provenance = Just p,
         problem =
@@ -928,12 +928,15 @@ formatCompileError = \case
             <+> lineIndent (pretty networkName)
             <+> unboundedVarInfo,
         fix =
-          Just $
-            "add additional inequalities that restrict the value of" <+> case userVariables of
-              [v] -> "the quantified variable" <+> quotePretty v
-              _ -> "the following quantified variables:" <+> hsep (fmap pretty userVariables)
+          Just
+            "add additional inequalities that restrict the variables in the value above."
+            {-            <+> case userVariables of
+              [v] -> "the quantified variable" <+> prettyVar v
+              _ -> "the following quantified variables:" <+> hsep (fmap prettyVar userVariables)
+              -}
       }
     where
+      -- prettyVar v = prettyFriendly (WithContext (VBoundVar @NoMeta @Builtin v mempty) ctx)
       unboundedVarInfo =
         case inputType of
           UniModal (RecordIOType (NetworkRecordType _ recordTypeIdent _ fieldNames)) -> do
