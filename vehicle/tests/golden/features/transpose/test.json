@@ -16,10 +16,6 @@
     "produces": [
       "VNNLib.queries/positionsInRange-query1.txt",
       "VNNLib.queries/positionsInRange-query2.txt",
-      "VNNLib.queries/positionsInRange-query3.txt",
-      "VNNLib.queries/positionsInRange-query4.txt",
-      "VNNLib.queries/positionsInRange-query5.txt",
-      "VNNLib.queries/positionsInRange-query6.txt",
       "VNNLib.queries/positionUnderLimit-query1.txt",
       "VNNLib.queries/boundedScalar-query1.txt",
       "VNNLib.queries/*.vcl-plan"

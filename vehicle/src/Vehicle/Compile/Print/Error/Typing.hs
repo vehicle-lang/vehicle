@@ -11,17 +11,19 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseInFreeCtx)
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
 import Vehicle.Data.Builtin.Core (BuiltinType (..))
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue
+import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Bound.Context.Generic
+import Vehicle.Data.Variable.Free.Context (FreeContextT, runFreeContextT)
 import Vehicle.Prelude.Logging (SilentLoggerT, runSilentLoggerT)
 import Prelude hiding (pi)
 
@@ -204,7 +206,7 @@ failedUnificationConstraintsError ::
   (PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
   FailedUnificationConstraintsError builtin ->
   VehicleError
-failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (err :| _)) = failedConstraintMessage err
+failedUnificationConstraintsError (FailedUnificationConstraintsError _freeEnv (err :| _)) = failedConstraintMessage err
   where
     failedConstraintMessage :: WithContext (UnificationConstraint builtin) -> VehicleError
     failedConstraintMessage (WithContext (Unify origin e1 e2) ctx) = do
@@ -212,7 +214,7 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
       let namedBoundCtx = toNamedBoundCtx boundCtx
       let originMessage = case origin of
             CheckingExprType CheckingExpr {..} -> do
-              let normActualType = runNorm $ normaliseInFreeCtx freeEnv namedBoundCtx (boundContextToEnv boundCtx) checkedExprActualType
+              let normActualType = Unforced @MetaID (boundContextToEnv boundCtx) checkedExprActualType
               "expected"
                 <+> ( case checkedExpr of
                         Left binder -> "variable" <+> quotePretty binder
@@ -291,7 +293,7 @@ typeRestrictionError ::
   InstanceTypeRestrictionOrigin builtin ->
   [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
   VehicleError
-typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _candidates = do
+typeRestrictionError _ctx (TypeRestrictionOrigin _freeEnv (ident, p) sort typ) _candidates = do
   VehicleUserError
     { provenance = Just p,
       problem = problemDescription,
@@ -302,7 +304,7 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
             <+> "to a supported type"
     }
   where
-    gluedType = Glued typ (runNorm $ normaliseInFreeCtx freeEnv (namedBoundCtxOf ctx) emptyBoundEnv typ)
+    gluedType = Glued @MetaID typ (Unforced emptyBoundEnv typ)
 
     fixIdent = case sort of
       Right (FieldTypeIsAllowed f) -> quotePretty (nameOf f)
@@ -324,8 +326,11 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
             <+> "must have the same type and must be either:"
           <> line
           <> indent 2 (prettyAllowedTypes supportedTypes)
-      _ ->
-        unsupportedAnnotationTypeDescription (pretty sort) ident gluedType
+      _ -> do
+        let Glued expr normExpr = gluedType
+        let fnormExpr = Forced.Unforced Forced.emptyBoundEnv $ unnormalise 0 normExpr
+        let gluedType' = Forced.Glued expr fnormExpr
+        unsupportedAnnotationTypeDescription (pretty sort) ident gluedType'
           <> "."
             <+> "The possible valid types for"
             <+> quotePretty sort
@@ -415,7 +420,7 @@ calculateInstanceDisplayType ::
   [Arg builtin] ->
   Doc a
 calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = do
-  let normFullType = runNorm $ normaliseInFreeCtx freeEnv (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) fullType
+  let normFullType = Unforced (boundContextToEnv boundCtx) fullType
   let opArgs = mergeArgs actualArgs typingArgs
   instantiateTelescope boundCtx normFullType opArgs
   where
@@ -436,25 +441,29 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
           BoundVar {} -> True
           _ -> False
 
-    instantiateTelescope :: BoundCtx (Type builtin) -> VType builtin -> [(Arg builtin, Bool)] -> Doc a
-    instantiateTelescope ctx typ arguments = case (typ, arguments) of
-      (VPi binder _, [])
-        | isExplicit binder ->
-            prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
-      (VPi binder (Closure env body), args) -> do
-        let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
-        let recType = runNorm $ normaliseInFreeCtx freeEnv (toNamedBoundCtx ctx) (alterEnv env) body
-        let unnormBinder = quote mempty (boundCtxLv ctx) binder
-        instantiateTelescope (unnormBinder : ctx) recType remainingArgs
-      (_, []) -> prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
-      _ -> "Malformed type-class operation type" <+> prettyVerbose typ <+> "and args" <+> prettyVerbose (fmap fst arguments)
+    instantiateTelescope :: BoundCtx (Type builtin) -> UnforcedTypeWithMetas builtin -> [(Arg builtin, Bool)] -> Doc a
+    instantiateTelescope ctx typ arguments = do
+      let (forcedType, _) =
+            runNorm freeEnv $
+              MetaSubstitution.forceThunkWithMetas (toNamedBoundCtx ctx) mempty typ
+      case (forcedType, arguments) of
+        (VPi binder _, [])
+          | isExplicit binder ->
+              prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
+        (VPi binder (Closure env body), args) -> do
+          let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
+          let recType = Unforced (alterEnv env) body
+          let unnormBinder = quote mempty (boundCtxLv ctx) binder
+          instantiateTelescope (unnormBinder : ctx) recType remainingArgs
+        (_, []) -> prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
+        _ -> "Malformed type-class operation type" <+> prettyVerbose typ <+> "and args" <+> prettyVerbose (fmap fst arguments)
 
-    findRemainingArgs :: BoundCtx (Type builtin) -> VBinder binder -> [(Arg builtin, Bool)] -> (BoundEnv builtin -> BoundEnv builtin, [(Arg builtin, Bool)])
+    findRemainingArgs :: BoundCtx (Type builtin) -> UnforcedBinderWithMetas binder -> [(Arg builtin, Bool)] -> (BoundEnvWithMetas builtin -> BoundEnvWithMetas builtin, [(Arg builtin, Bool)])
     findRemainingArgs ctx binder args = case args of
       [] -> (extendEnvWithBound (boundCtxLv ctx) binder, [])
       ((arg, fromCandidate) : remainingArgs)
         | visibilityOf arg == visibilityOf binder || fromCandidate -> do
-            let normArg = runNorm $ normaliseInFreeCtx freeEnv (toNamedBoundCtx ctx) (boundContextToEnv ctx) (argExpr arg)
+            let normArg = Unforced (boundContextToEnv ctx) (argExpr arg)
             (extendEnvWithDefined normArg binder, remainingArgs)
         | isExplicit binder -> developerError "Missing explicit argument when printing"
         | otherwise -> (extendEnvWithBound (boundCtxLv ctx) binder, args)
@@ -487,19 +496,19 @@ prettyUnificationConstraintOriginExpr ::
 prettyUnificationConstraintOriginExpr ctx expr =
   prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
 
-runNorm :: SilentLoggerT Identity b -> b
-runNorm = fst . runIdentity . runSilentLoggerT
+runNorm :: FreeCtx builtin -> FreeContextT builtin (SilentLoggerT Identity) b -> b
+runNorm freeCtx = fst . runIdentity . runSilentLoggerT . runFreeContextT freeCtx
 
 unsupportedAnnotationTypeDescription ::
   forall builtin a.
   (Eq builtin, PrintableBuiltin builtin) =>
   Doc a ->
   Identifier ->
-  GluedType builtin ->
+  Forced.GluedType builtin ->
   Doc a
 unsupportedAnnotationTypeDescription annotation ident resourceType = do
-  let unreducedResourceType = unnormalised resourceType
-  let reducedResourceType = (unnormalise 0 (normalised resourceType) :: Expr builtin)
+  let unreducedResourceType = Forced.unnormalised resourceType
+  let reducedResourceType = (unnormalise 0 (Forced.normalised resourceType) :: Expr builtin)
   let reducedResourceTypeDoc = prettyFriendlyEmptyCtx reducedResourceType
   let unreducedResourceTypeDoc = prettyFriendlyEmptyCtx unreducedResourceType
 

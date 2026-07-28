@@ -4,6 +4,7 @@ module Vehicle.Data.Tensor
     TensorIndex,
     TensorIndices,
     allIndicesForShape,
+    allMultiIndices,
     showTensorIndices,
     flattenIndices,
     HasShape (..),
@@ -24,6 +25,7 @@ module Vehicle.Data.Tensor
     at,
     foldTensor,
     foldMapTensor,
+    foldMapTensorLike,
     mapTensor,
     traverseTensor,
     toList,
@@ -206,6 +208,11 @@ extendTensor dim = \case
   ConstantTensor shape value -> ConstantTensor (dim : shape) value
   DenseTensor shape values -> DenseTensor (dim : shape) (Vector.concat (replicate dim values))
 
+allMultiIndices :: TensorShape -> [TensorIndices]
+allMultiIndices = \case
+  [] -> [[]]
+  d : ds -> [i : rest | i <- [0 .. d - 1], rest <- allMultiIndices ds]
+
 transposeTensor :: (Eq a) => Tensor a -> Tensor a
 transposeTensor = \case
   ConstantTensor shape value -> ConstantTensor (reverse shape) value
@@ -213,11 +220,6 @@ transposeTensor = \case
     let revShape = reverse shape
         pickAt revIs = values Vector.! flattenIndices shape (reverse revIs)
      in fromVector revShape $ Vector.fromList [pickAt revIs | revIs <- allMultiIndices revShape]
-  where
-    allMultiIndices :: TensorShape -> [TensorIndices]
-    allMultiIndices = \case
-      [] -> [[]]
-      d : ds -> [i : rest | i <- [0 .. d - 1], rest <- allMultiIndices ds]
 
 foldMapTensor :: forall a b. (a -> b) -> (TensorShape -> [b] -> b) -> Tensor a -> b
 foldMapTensor mkValue mkVec t =

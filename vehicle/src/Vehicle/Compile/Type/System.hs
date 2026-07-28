@@ -14,7 +14,7 @@ import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core (Builtin (..))
-import Vehicle.Data.Code.Value (Value)
+import Vehicle.Data.Code.ForcedValue (ThunkWithMetas)
 import Vehicle.Data.Variable.Bound.Context.Generic (HasBoundCtx (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
@@ -94,15 +94,15 @@ data AuxiliaryConstraintProgress builtin
 
 handleAuxiliaryConstraintProgress ::
   (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
-  Value builtin ->
+  ThunkWithMetas builtin ->
   WithContext (InstanceConstraint builtin) ->
   AuxiliaryConstraintProgress builtin ->
   m ()
 handleAuxiliaryConstraintProgress solution originalConstraint@(WithContext _ ctx) = \case
   Stuck metas -> addAuxiliaryInstanceConstraints [blockConstraintOn originalConstraint metas]
   Progress newUnificationConstraints newAuxiliaryConstraints -> do
-    let normSolution = quote mempty (boundCtxLv $ boundContextOf ctx) solution
-    instantiateInstanceConstraintSolution originalConstraint normSolution
+    let unnormSolution = quote mempty (boundCtxLv $ boundContextOf ctx) solution
+    instantiateInstanceConstraintSolution originalConstraint unnormSolution
     addUnificationConstraints newUnificationConstraints
     addAuxiliaryInstanceConstraints newAuxiliaryConstraints
 
@@ -112,7 +112,12 @@ instance Semigroup (AuxiliaryConstraintProgress builtin) where
   x@Progress {} <> Stuck {} = x
   Progress u1 r1 <> Progress u2 r2 = Progress (u1 <> u2) (r1 <> r2)
 
-blockOn :: (MonadCompile m) => [MetaID] -> Maybe (m (AuxiliaryConstraintProgress builtin))
-blockOn metas = Just $ do
-  logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
-  return $ Stuck $ MetaSet.fromList metas
+blockOn ::
+  (MonadCompile m) =>
+  MetaSet ->
+  m (Maybe (AuxiliaryConstraintProgress builtin))
+blockOn metas
+  | MetaSet.null metas = return Nothing
+  | otherwise = do
+      logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
+      return $ Just $ Stuck metas

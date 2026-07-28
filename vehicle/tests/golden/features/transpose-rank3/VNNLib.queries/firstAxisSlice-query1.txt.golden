@@ -13,6 +13,11 @@
 
 ; Assertions
 (assert (>= g_Y[0, 0, 0] 0.0))
+(assert (>= g_Y[0, 1, 0] 0.0))
+(assert (>= g_Y[0, 2, 0] 0.0))
+(assert (>= g_Y[1, 0, 0] 0.0))
+(assert (>= g_Y[1, 1, 0] 0.0))
+(assert (>= g_Y[1, 2, 0] 0.0))
 
 ; Input bounds
 (assert (== g_X[0] 0.0))

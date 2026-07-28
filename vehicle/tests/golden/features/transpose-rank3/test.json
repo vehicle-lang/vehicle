@@ -15,17 +15,7 @@
     ],
     "produces": [
       "VNNLib.queries/allTransposedBounded-query1.txt",
-      "VNNLib.queries/allTransposedBounded-query2.txt",
-      "VNNLib.queries/allTransposedBounded-query3.txt",
-      "VNNLib.queries/allTransposedBounded-query4.txt",
-      "VNNLib.queries/allTransposedBounded-query5.txt",
-      "VNNLib.queries/allTransposedBounded-query6.txt",
       "VNNLib.queries/firstAxisSlice-query1.txt",
-      "VNNLib.queries/firstAxisSlice-query2.txt",
-      "VNNLib.queries/firstAxisSlice-query3.txt",
-      "VNNLib.queries/firstAxisSlice-query4.txt",
-      "VNNLib.queries/firstAxisSlice-query5.txt",
-      "VNNLib.queries/firstAxisSlice-query6.txt",
       "VNNLib.queries/*.vcl-plan"
     ],
     "ignore": {

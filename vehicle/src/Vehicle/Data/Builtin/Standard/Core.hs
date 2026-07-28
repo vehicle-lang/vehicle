@@ -344,18 +344,18 @@ builtinCast :: BuiltinCast -> DSLExpr Builtin
 builtinCast = builtin . BuiltinCast
 
 accessFromNatToIndex ::
-  (HasBuiltinConstructor expr) =>
-  Accessor (expr Builtin) (FromNatToIndexArgs (expr Builtin))
+  (HasBuiltinConstructor expr thunk) =>
+  Accessor (expr Builtin) (FromNatToIndexArgs (thunk Builtin))
 accessFromNatToIndex = accessArgs (castAccessor (FromNat FromNatToRat))
 
 accessFromNatToRat ::
-  (HasBuiltinConstructor expr) =>
-  Accessor (expr Builtin) (FromNatToSimpleArgs (expr Builtin))
+  (HasBuiltinConstructor expr thunk) =>
+  Accessor (expr Builtin) (FromNatToSimpleArgs (thunk Builtin))
 accessFromNatToRat = accessArgs (castAccessor (FromNat FromNatToIndex))
 
 accessFromVectorToList ::
-  (HasBuiltinConstructor expr) =>
-  Accessor (expr Builtin) (VectorToListArgs (expr Builtin))
+  (HasBuiltinConstructor expr thunk) =>
+  Accessor (expr Builtin) (VectorToListArgs (thunk Builtin))
 accessFromVectorToList = accessArgs (castAccessor FromVectorToList)
 
 isTensorType :: DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin

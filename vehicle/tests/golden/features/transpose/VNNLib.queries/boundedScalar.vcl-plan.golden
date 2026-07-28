@@ -9,32 +9,6 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "f₂[output]!2!1",
-                  "f₂[output]!2!0",
-                  "f₂[output]!2",
-                  "f₂[output]!1!1",
-                  "f₂[output]!1!0",
-                  "f₂[output]!1",
-                  "f₂[output]!0!1",
-                  "f₂[output]!0!0",
-                  "f₂[output]!0",
-                  "f₂[output]",
-                  "f₂[input]!1",
-                  "f₂[input]!0",
-                  "f₂[input]",
-                  "f₁[output]!2!1",
-                  "f₁[output]!2!0",
-                  "f₁[output]!2",
-                  "f₁[output]!1!1",
-                  "f₁[output]!1!0",
-                  "f₁[output]!1",
-                  "f₁[output]!0!1",
-                  "f₁[output]!0!0",
-                  "f₁[output]!0",
-                  "f₁[output]",
-                  "f₁[input]!1",
-                  "f₁[input]!0",
-                  "f₁[input]",
                   "f₀[output]!2!1",
                   "f₀[output]!2!0",
                   "f₀[output]!2",
@@ -98,158 +72,6 @@
                     ]
                   },
                   {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            3,
-                            2
-                          ]
-                        },
-                        "nestedStartingVariable": 17
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              3,
-                              2
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            4,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            2
-                          ]
-                        },
-                        "nestedStartingVariable": 14
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              2
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            1,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            3,
-                            2
-                          ]
-                        },
-                        "nestedStartingVariable": 30
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              3,
-                              2
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            4,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            2
-                          ]
-                        },
-                        "nestedStartingVariable": 27
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              2
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            1,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
                     "tag": "SolveInequalities",
                     "contents": [
                       0,
@@ -285,7 +107,7 @@
                               },
                               "coefficients": [
                                 [
-                                  38,
+                                  12,
                                   {
                                     "numerator": 1,
                                     "denominator": 1
@@ -333,7 +155,7 @@
                               },
                               "coefficients": [
                                 [
-                                  22,
+                                  9,
                                   {
                                     "numerator": 1,
                                     "denominator": 1

@@ -13,6 +13,8 @@
 
 ; Assertions
 (assert (<= f_Y[0, 0] 10.0))
+(assert (<= f_Y[1, 0] 10.0))
+(assert (<= f_Y[2, 0] 10.0))
 
 ; Input bounds
 (assert (== f_X[0] 0.0))

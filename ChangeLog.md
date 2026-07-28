@@ -2,6 +2,10 @@
 
 ## Next release
 
+### General
+
+* 50% speedup in compilation times across all backends.
+
 ### ITP backends
 
 * Fixed bug where the Isabelle backend mis-compiled declarations referencing `@network`, `@dataset`, or `@parameter` resources (#1195).

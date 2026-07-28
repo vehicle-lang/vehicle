@@ -17,7 +17,8 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (pruneUnusedDeclarations)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
-import Vehicle.Compile.Normalise.NBE (findInstanceArg)
+import Vehicle.Compile.Normalise.Core qualified as Forced
+import Vehicle.Compile.Normalise.Force (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Print.Error (errorInSubsystemMessage)
@@ -31,7 +32,6 @@ import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..))
 import Vehicle.Data.Builtin.Decidability.Instances (decidabilityBuiltinInstances)
 import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface (BuiltinHasListLiterals)
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin (..))
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity (LinearityBuiltin)
 import Vehicle.Data.Builtin.Linearity.Type ()
@@ -138,7 +138,7 @@ loadTypeSystemBuiltins typeSystem _instanceCandidates = do
 
 resolveInstanceArgumentsAndCasts ::
   forall m builtin.
-  (MonadCompile m, NormalisableBuiltin builtin, BuiltinHasListLiterals builtin, Show builtin) =>
+  (MonadCompile m, Forced.NormalisableBuiltin builtin, BuiltinHasListLiterals builtin, Show builtin) =>
   Prog builtin ->
   m (Prog builtin)
 resolveInstanceArgumentsAndCasts prog =
@@ -153,7 +153,7 @@ resolveInstanceArgumentsAndCasts prog =
   where
     removeBuiltinInstances :: BuiltinUpdate m builtin builtin
     removeBuiltinInstances p b args
-      | isTypeClassOp b = do
+      | Forced.isTypeClassOp b = do
           (inst, remainingArgs) <- findInstanceArg b args
           -- Replace the provenance of the final solution with the provenance of where the
           -- constraint was generated. This is needed to get the information to propagate
@@ -185,7 +185,7 @@ resolveInstanceArgumentsAndCasts prog =
           return $ normAppList (FreeVar p ident) args'
 
     removeCasts :: BuiltinUpdate m builtin builtin
-    removeCasts p b args = case isCast p b of
+    removeCasts p b args = case Forced.isCast p b of
       Just f -> f args
       Nothing -> return $ normAppList (Builtin p b) args
 

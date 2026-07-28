@@ -5,7 +5,7 @@ module Vehicle.List
 where
 
 import Control.Monad.State (MonadState, execStateT, modify)
-import Control.Monad.Writer (MonadWriter (tell), execWriterT)
+import Control.Monad.Writer.Strict (MonadWriter (tell), execWriterT)
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.Foldable (traverse_)
 import Data.Proxy (Proxy (..))
@@ -13,15 +13,15 @@ import Data.Text (Text, pack)
 import GHC.Generics
 import Vehicle.Compile.Error (CompileError (MultiPropertyTraveralError), MultiPropertyTraveralError (..))
 import Vehicle.Compile.ExpandResources (expandResources)
-import Vehicle.Compile.Normalise.NBE (evalDecl, normaliseClosure)
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Prelude hiding (Dataset, Network, Parameter, datasets, name, networks, parameters)
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error (prettyCompileError)
 import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (Builtin (..), Quantifier)
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface (QuantifyRatTensorArgs (..), accessQuantifyRatTensor)
-import Vehicle.Data.Code.Value (Closure, Spine, VDecl, VType, Value (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 import Vehicle.Prelude.Logging.Instance
@@ -159,24 +159,28 @@ searchDecls :: (MonadList m) => [Decl Builtin] -> m ()
 searchDecls = \case
   [] -> return ()
   d : ds -> do
-    normDecl <- evalDecl d
-    searchDecl normDecl
-    addDeclEntryToContext normDecl $ searchDecls ds
+    searchDecl d
+    addDeclEntryToContext d $ searchDecls ds
 
-searchDecl :: (MonadList m) => VDecl Builtin -> m ()
+searchDecl :: (MonadList m) => Decl Builtin -> m ()
 searchDecl decl = do
   case decl of
-    DefAbstract p ident sort typ -> case sort of
-      NetworkDef -> addNetwork p ident typ
-      DatasetDef -> addDataset p ident typ
-      ParameterDef s -> addParameter p ident typ s
-      BuiltinDef -> return ()
+    DefAbstract p ident sort typ -> do
+      let normType = Unforced emptyBoundEnv typ
+      case sort of
+        NetworkDef -> addNetwork p ident normType
+        DatasetDef -> addDataset p ident normType
+        ParameterDef s -> addParameter p ident normType s
+        BuiltinDef -> return ()
     DefFunction p ident sort typ body
       | not $ isAnnotatedAsProperty sort -> return ()
-      | otherwise -> addProperty p ident typ body
+      | otherwise -> do
+          let normType = Unforced emptyBoundEnv typ
+          let normBody = Unforced emptyBoundEnv body
+          addProperty p ident normType normBody
     DefRecord {} -> return ()
 
-addNetwork :: (MonadList m) => Provenance -> Identifier -> VType Builtin -> m ()
+addNetwork :: (MonadList m) => Provenance -> Identifier -> UnforcedType Builtin -> m ()
 addNetwork p ident typ = do
   let summary =
         NetworkSummary
@@ -186,7 +190,7 @@ addNetwork p ident typ = do
           }
   modify $ \s -> s {networks = summary : networks s}
 
-addDataset :: (MonadList m) => Provenance -> Identifier -> VType Builtin -> m ()
+addDataset :: (MonadList m) => Provenance -> Identifier -> UnforcedType Builtin -> m ()
 addDataset p ident typ = do
   let summary =
         DatasetSummary
@@ -196,7 +200,7 @@ addDataset p ident typ = do
           }
   modify $ \s -> s {datasets = summary : datasets s}
 
-addParameter :: (MonadList m) => Provenance -> Identifier -> VType Builtin -> ParameterSort -> m ()
+addParameter :: (MonadList m) => Provenance -> Identifier -> UnforcedType Builtin -> ParameterSort -> m ()
 addParameter p ident typ sort = do
   let summary =
         ParameterSummary
@@ -207,7 +211,7 @@ addParameter p ident typ sort = do
           }
   modify $ \s -> s {parameters = summary : parameters s}
 
-addProperty :: (MonadList m) => Provenance -> Identifier -> VType Builtin -> Value Builtin -> m ()
+addProperty :: (MonadList m) => Provenance -> Identifier -> UnforcedType Builtin -> Thunk Builtin -> m ()
 addProperty p ident typ body = do
   quantifiedVariables <- searchPropertyDecl (ident, p) typ body
   let summary =
@@ -225,9 +229,9 @@ type MonadListProperty m =
     MonadFreeContext Builtin m
   )
 
-searchPropertyDecl :: (MonadList m) => DeclProvenance -> VType Builtin -> Value Builtin -> m (Maybe (MultiProperty [QuantifiedVariableSummary]))
+searchPropertyDecl :: (MonadList m) => DeclProvenance -> UnforcedType Builtin -> Thunk Builtin -> m (Maybe (MultiProperty [QuantifiedVariableSummary]))
 searchPropertyDecl prov@(ident, _) declType declBody = do
-  traversalErrorOrResult <- traverseMultiProperty searchProperty (nameOf ident) declType declBody
+  traversalErrorOrResult <- runFreshNameBoundContextT $ traverseMultiProperty searchProperty (nameOf ident) declType declBody
 
   case traversalErrorOrResult of
     Right result -> return $ Just result
@@ -240,37 +244,41 @@ searchPropertyDecl prov@(ident, _) declType declBody = do
         UnreducableTensorValue {} -> mkActualError
         UnreducableType {} -> mkActualError
 
-searchProperty :: (MonadList m) => PropertyAddress -> Value Builtin -> m [QuantifiedVariableSummary]
-searchProperty _address value = runFreshNameBoundContextT $ execWriterT (searchValue value)
+searchProperty :: (MonadList m, MonadNameContext m) => PropertyAddress -> Thunk Builtin -> m [QuantifiedVariableSummary]
+searchProperty _address value = execWriterT (searchValue value)
 
 -- | Traverse a value to find all quantified variables
-searchValue :: (MonadListProperty m) => Value Builtin -> m ()
-searchValue value = case value of
-  VBoundVar _ spine -> searchSpine spine
-  VFreeVar _ spine -> searchSpine spine
-  VBuiltin _ spine -> do
-    searchBuiltinForQuantifier value
-    searchSpine spine
-  VLam binder closure -> do
-    body <- normaliseClosure binder closure
-    searchValue body
-  VRecord _ fields -> traverse_ searchValue fields
-  VRecordAcc _ record _ spine -> do searchValue record; searchSpine spine
-  -- Never traverse into types so the following cases shouldn't happen!
-  VUniverse {} -> unexpectedExprError "list" "VUniverse"
-  VPi {} -> unexpectedExprError "list" "VPi"
-  VMeta {} -> unexpectedExprError "list" "VMeta"
+searchValue :: (MonadListProperty m) => Thunk Builtin -> m ()
+searchValue value = do
+  forcedValue <- forceThunk value
+  case forcedValue of
+    VBoundVar _ spine -> searchSpine spine
+    VFreeVar _ spine -> searchSpine spine
+    VBuiltin _ spine -> do
+      searchBuiltinForQuantifier value
+      searchSpine spine
+    VLam binder closure -> do
+      lv <- getBinderDepth
+      let body = extendClosureWithBound closure binder lv
+      addNameToContext binder $ searchValue body
+    VRecord _ fields -> traverse_ searchValue fields
+    VRecordAcc _ record _ spine -> do searchValue record; searchSpine spine
+    -- Never traverse into types so the following cases shouldn't happen!
+    VUniverse {} -> unexpectedExprError "list" "VUniverse"
+    VPi {} -> unexpectedExprError "list" "VPi"
 
-searchSpine :: (MonadListProperty m) => Spine Builtin -> m ()
+searchSpine :: (MonadListProperty m) => UnforcedSpine Builtin -> m ()
 searchSpine = traverse_ (traverse_ searchValue)
 
-searchBuiltinForQuantifier :: (MonadListProperty m) => Value Builtin -> m ()
-searchBuiltinForQuantifier value = case getExpr (accessQuantifyRatTensor @Value @Builtin @Closure) value of
-  Just (q, args) -> do
-    let (name, p) = getNamedBinderInfo (quantifyBinder args)
-    let typeText = entityTypeText (typeOf $ quantifyBinder args)
-    tell [QuantifiedVariableSummary p name typeText q]
-  _ -> return ()
+searchBuiltinForQuantifier :: (MonadListProperty m) => Thunk Builtin -> m ()
+searchBuiltinForQuantifier value = do
+  forcedValue <- forceThunk value
+  case getExpr (accessQuantifyRatTensor @ForcedValue @Thunk @Builtin @Closure) forcedValue of
+    Just (q, args) -> do
+      let (name, p) = getNamedBinderInfo (quantifyBinder args)
+      let typeText = entityTypeText (typeOf $ quantifyBinder args)
+      tell [QuantifiedVariableSummary p name typeText q]
+    _ -> return ()
 
-entityTypeText :: VType Builtin -> Text
+entityTypeText :: UnforcedType Builtin -> Text
 entityTypeText entityType = pack $ show $ prettyFriendlyEmptyCtx entityType

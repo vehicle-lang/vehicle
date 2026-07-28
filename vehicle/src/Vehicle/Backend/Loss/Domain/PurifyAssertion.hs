@@ -3,6 +3,7 @@
 module Vehicle.Backend.Loss.Domain.PurifyAssertion
   ( tryPurifyAssertion,
     unblockingActions,
+    BlockingReason (..),
   )
 where
 
@@ -10,19 +11,21 @@ where
 import Control.Applicative (liftA2)
 #endif
 
-import Control.Monad (join)
+import Control.Monad (liftM2)
 import Control.Monad.Except (MonadError (..), runExceptT)
-import Vehicle.Compile.Constants.Value (TensorValueLinearExpr)
+import Vehicle.Compile.Constants.ForcedValue (TensorValueLinearExpr)
+import Vehicle.Compile.Normalise.Force
+import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue)
 import Vehicle.Data.Assertion (Assertion, comparisonToAssertion)
-import Vehicle.Data.Builtin.Interface.Normalise (evalConstTensor)
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), forIfTreeM, mapIfTreeLeaves)
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial (MaybeTrivial)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor (Tensor (..))
@@ -34,7 +37,7 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 type MonadPurifyAssertion m =
   ( MonadLogger m,
     MonadFreeContext Builtin m,
-    MonadReadableTensorBoundContext m
+    MonadTensorBoundContext m
   )
 
 -- | Takes a tensor level comparison and returns a tree of possible assertions
@@ -47,21 +50,15 @@ type MonadPurifyAssertion m =
 tryPurifyAssertion ::
   (MonadPurifyAssertion m) =>
   ComparisonOp ->
-  Either (TensorOp2Args (Value Builtin)) (TensorReduceComparisonArgs (Value Builtin)) ->
-  m (IfTree (Value Builtin) (Value Builtin, Maybe (MaybeTrivial (Assertion (TensorValueLinearExpr Builtin)))))
-tryPurifyAssertion op args = do
-  let (dims, e1, e2) = case args of
-        Left (TensorOp2Args ds x y) -> (ds, x, y)
-        Right (TensorReduceComparisonArgs d ds x y) -> (IDimCons d ds, x, y)
-  e1' <- compileLinearExpr dims e1
-  e2' <- compileLinearExpr dims e2
+  TensorComparisonArgs (Thunk Builtin) ->
+  m (IfTree (Thunk Builtin) (Thunk Builtin, Maybe (MaybeTrivial (Assertion (TensorValueLinearExpr Builtin)))))
+tryPurifyAssertion op (TensorComparisonArgs _pDims rDims e1 e2) = do
+  e1' <- compileLinearExpr rDims e1
+  e2' <- compileLinearExpr rDims e2
   forIfTreeM e1' $ \e1'' ->
     forIfTreeM e2' $ \e2'' -> do
       IfLeaf <$> do
-        let val = case args of
-              Left _ -> mkPointwiseCompare op (TensorOp2Args dims (value e1'') (value e2''))
-              Right (TensorReduceComparisonArgs d ds _ _) ->
-                mkReducedCompare op (TensorReduceComparisonArgs d ds (value e1'') (value e2''))
+        let val = Forced $ mkExpr accessCompareRatTensor (op, TensorComparisonArgs (Forced IDimNil) rDims (value e1'') (value e2''))
         solvedVal <- sequence $ liftA2 (comparisonToAssertion op) (valueAsLinearExpr e1'') (valueAsLinearExpr e2'')
         return (val, solvedVal)
 
@@ -69,60 +66,62 @@ tryPurifyAssertion op args = do
 -- Compiling linear expressions
 
 data Result = Result
-  { value :: Value Builtin,
+  { value :: Thunk Builtin,
     valueAsLinearExpr :: Maybe (TensorValueLinearExpr Builtin)
   }
 
-type BranchingResult = IfTree (Value Builtin) Result
+type BranchingResult = IfTree (Thunk Builtin) Result
 
 compileLinearExpr ::
   forall m.
   (MonadPurifyAssertion m) =>
-  VDims Builtin ->
-  Value Builtin ->
+  UnforcedDims Builtin ->
+  Thunk Builtin ->
   m BranchingResult
 compileLinearExpr dims expr =
-  logEntryAndExit expr $ case toRatTensorValue expr of
-    ---------------------
-    -- Handlable cases --
-    ---------------------
-    VRatTensorLiteral {} -> compileAsConstantExpr dims expr
-    VDatasetOrParameter {} -> compileAsConstantExpr dims expr
-    VRatTensorBoundVar var -> compileRatTensorVar dims var
-    VNegRatTensor args -> compileNegRatTensor recCompile args
-    VAddRatTensor args -> compileAddRatTensor recCompile args
-    VSubRatTensor args -> compileSubRatTensor recCompile args
-    VMulRatTensor args -> compileMulRatTensor recCompile args
-    VDivRatTensor args -> compileDivRatTensor recCompile args
-    VIfRatTensor args -> compileIf recCompile args
-    -----------------------------
-    -- Potentially unblockable --
-    -----------------------------
-    VPowRatTensor {} -> tryUnblock
-    VLogRatTensor {} -> tryUnblock
-    VExpRatTensor {} -> tryUnblock
-    VMinRatTensor {} -> tryUnblock
-    VMaxRatTensor {} -> tryUnblock
-    VReduceAddRatTensor {} -> tryUnblock
-    VReduceMulRatTensor {} -> tryUnblock
-    VReduceMinRatTensor {} -> tryUnblock
-    VReduceMaxRatTensor {} -> tryUnblock
-    VRatAtTensor {} -> tryUnblock
-    VRatForeach {} -> tryUnblock
-    VRatTensorTranspose {} -> tryUnblock
-    VRatRecordAcc {} -> tryUnblock
-    VRatAtVector {} -> tryUnblock
-    ------------------------
-    -- Definitely blocked --
-    ------------------------
-    VRatTensorNetworkApp {} -> blocked
-    --------------------
-    -- Unsure blocked --
-    --------------------
-    -- Very unsure about these two. We could try to use `unblockRatTensor`
-    -- but that at the moment returns `VRatStackTensor` as is...
-    VRatConstTensor {} -> compileAsConstantExpr dims expr
-    VRatStackTensor {} -> compileAsConstantExpr dims expr
+  logEntryAndExit expr $ do
+    forcedValue <- forceAndRewriteTensor expr
+    case toRatTensorValue forcedValue of
+      ---------------------
+      -- Handlable cases --
+      ---------------------
+      VRatTensorLiteral {} -> compileAsConstantExpr dims expr
+      VParameterOrDataset {} -> compileAsConstantExpr dims expr
+      VRatTensorBoundVar var -> compileRatTensorVar dims var
+      VNegRatTensor args -> compileNegRatTensor recCompile args
+      VAddRatTensor args -> compileAddRatTensor recCompile args
+      VSubRatTensor args -> compileSubRatTensor recCompile args
+      VMulRatTensor args -> compileMulRatTensor recCompile args
+      VDivRatTensor args -> compileDivRatTensor recCompile args
+      VIfRatTensor args -> compileIf recCompile args
+      -----------------------------
+      -- Potentially unblockable --
+      -----------------------------
+      VPowRatTensor {} -> tryUnblock
+      VLogRatTensor {} -> tryUnblock
+      VExpRatTensor {} -> tryUnblock
+      VMinRatTensor {} -> tryUnblock
+      VMaxRatTensor {} -> tryUnblock
+      VReduceAddRatTensor {} -> tryUnblock
+      VReduceMulRatTensor {} -> tryUnblock
+      VReduceMinRatTensor {} -> tryUnblock
+      VReduceMaxRatTensor {} -> tryUnblock
+      VRatAtTensor {} -> tryUnblock
+      VRatForeach {} -> tryUnblock
+      VRatTensorRecordAcc {} -> tryUnblock
+      VRatAtVector {} -> tryUnblock
+      VRatTensorTranspose {} -> tryUnblock
+      ------------------------
+      -- Definitely blocked --
+      ------------------------
+      VNetworkApplication {} -> blocked
+      --------------------
+      -- Unsure blocked --
+      --------------------
+      -- Very unsure about these two. We could try to use `unblockRatTensor`
+      -- but that at the moment returns `VRatStackTensor` as is...
+      VRatConstTensor {} -> compileAsConstantExpr dims expr
+      VRatStackTensor {} -> compileAsConstantExpr dims expr
   where
     ------------------------
     -- Helper definitions --
@@ -134,13 +133,13 @@ compileLinearExpr dims expr =
     blocked :: m BranchingResult
     blocked = return $ IfLeaf $ Result expr Nothing
 
-    recCompile :: Value Builtin -> m BranchingResult
+    recCompile :: Thunk Builtin -> m BranchingResult
     recCompile = compileLinearExpr dims
 
 compileAsConstantExpr ::
   (MonadPurifyAssertion m) =>
-  VDims Builtin ->
-  Value Builtin ->
+  UnforcedDims Builtin ->
+  Thunk Builtin ->
   m BranchingResult
 compileAsConstantExpr dims value = do
   return $
@@ -152,7 +151,7 @@ compileAsConstantExpr dims value = do
 
 compileRatTensorVar ::
   (MonadPurifyAssertion m) =>
-  VDims Builtin ->
+  UnforcedDims Builtin ->
   Lv ->
   m BranchingResult
 compileRatTensorVar dims lv = do
@@ -161,79 +160,81 @@ compileRatTensorVar dims lv = do
     case maybeSliceVar of
       Nothing -> return Nothing
       Just (_, sliceVar) -> do
-        zeroTensor <- evalConstTensor $ ConstTensorArgs IRatType (IRatLiteral 0) dims
+        let zeroTensor = Forced $ mkExpr accessConstTensor $ ConstTensorArgs (Forced IRatType) (Forced $ IRatLiteral 0) dims
         return $ Just $ singletonVarExpr (TensorValue dims zeroTensor) sliceVar
 
   return $
     IfLeaf $
       Result
-        { value = VBoundVar lv [],
+        { value = Forced $ VBoundVar lv [],
           valueAsLinearExpr = valueAsLinearExpr
         }
 
 compileNegRatTensor ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
-  TensorOp1Args (Value Builtin) ->
+  TensorOp1Args (Thunk Builtin) ->
   m BranchingResult
 compileNegRatTensor recCompile =
-  compileTensorOp1 recCompile (fromRatTensorValue . VNegRatTensor) (scaleExpr (-1))
+  compileTensorOp1 recCompile (mkExpr accessNegRatTensor) (scaleExpr (-1))
 
 compileAddRatTensor ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
-  TensorOp2Args (Value Builtin) ->
+  TensorOp2Args (Thunk Builtin) ->
   m BranchingResult
 compileAddRatTensor recCompile =
-  compileTensorOp2 recCompile (fromRatTensorValue . VAddRatTensor) (addLinearExprs 1 1)
+  compileTensorOp2 recCompile (mkExpr accessAddRatTensor) (addLinearExprs 1 1)
 
 compileSubRatTensor ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
-  TensorOp2Args (Value Builtin) ->
+  TensorOp2Args (Thunk Builtin) ->
   m BranchingResult
 compileSubRatTensor recCompile =
-  compileTensorOp2 recCompile (fromRatTensorValue . VSubRatTensor) (addLinearExprs 1 (-1))
+  compileTensorOp2 recCompile (mkExpr accessSubRatTensor) (addLinearExprs 1 (-1))
 
 compileMulRatTensor ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
-  TensorOp2Args (Value Builtin) ->
+  TensorOp2Args (Thunk Builtin) ->
   m BranchingResult
 compileMulRatTensor recCompile =
-  compileTensorOp2 recCompile (fromRatTensorValue . VMulRatTensor) multiplyLinearExprs
+  compileTensorOp2 recCompile (mkExpr accessMulRatTensor) multiplyLinearExprs
 
 compileDivRatTensor ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
-  TensorOp2Args (Value Builtin) ->
+  TensorOp2Args (Thunk Builtin) ->
   m BranchingResult
 compileDivRatTensor recCompile =
-  compileTensorOp2 recCompile (fromRatTensorValue . VDivRatTensor) divideLinearExprs
+  compileTensorOp2 recCompile (mkExpr accessDivRatTensor) divideLinearExprs
 
 compileTensorOp1 ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
-  (TensorOp1Args (Value Builtin) -> Value Builtin) ->
-  (TensorValueLinearExpr Builtin -> TensorValueLinearExpr Builtin) ->
-  TensorOp1Args (Value Builtin) ->
+  (TensorOp1Args (Thunk Builtin) -> ForcedValue Builtin) ->
+  (TensorValueLinearExpr Builtin -> m (TensorValueLinearExpr Builtin)) ->
+  TensorOp1Args (Thunk Builtin) ->
   m BranchingResult
 compileTensorOp1 compile evalFn evalLinearExpr (TensorOp1Args ds xs) = do
   xs' <- compile xs
   forIfTreeM xs' $ \result ->
     IfLeaf <$> do
+      let newValue = Forced $ evalFn $ TensorOp1Args ds (value result)
+      newLinearExpr <- traverse evalLinearExpr (valueAsLinearExpr result)
       return $
         Result
-          { value = evalFn $ TensorOp1Args ds (value result),
-            valueAsLinearExpr = fmap evalLinearExpr (valueAsLinearExpr result)
+          { value = newValue,
+            valueAsLinearExpr = newLinearExpr
           }
 
 compileTensorOp2 ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
-  (TensorOp2Args (Value Builtin) -> Value Builtin) ->
-  (TensorValueLinearExpr Builtin -> TensorValueLinearExpr Builtin -> Maybe (TensorValueLinearExpr Builtin)) ->
-  TensorOp2Args (Value Builtin) ->
+  (TensorOp2Args (Thunk Builtin) -> ForcedValue Builtin) ->
+  (TensorValueLinearExpr Builtin -> TensorValueLinearExpr Builtin -> Maybe (m (TensorValueLinearExpr Builtin))) ->
+  TensorOp2Args (Thunk Builtin) ->
   m BranchingResult
 compileTensorOp2 compile evalFn evalLinearExpr (TensorOp2Args ds xs ys) = do
   xs' <- compile xs
@@ -241,16 +242,19 @@ compileTensorOp2 compile evalFn evalLinearExpr (TensorOp2Args ds xs ys) = do
   forIfTreeM xs' $ \rxs'' ->
     forIfTreeM ys' $ \rys'' ->
       IfLeaf <$> do
+        let newValue = Forced $ evalFn $ TensorOp2Args ds (value rxs'') (value rys'')
+        let maybeLinearExprFn = liftM2 evalLinearExpr (valueAsLinearExpr rxs'') (valueAsLinearExpr rys'')
+        newLinearExpr <- maybe (return Nothing) sequence maybeLinearExprFn
         return $
           Result
-            { value = evalFn $ TensorOp2Args ds (value rxs'') (value rys''),
-              valueAsLinearExpr = join $ liftA2 evalLinearExpr (valueAsLinearExpr rxs'') (valueAsLinearExpr rys'')
+            { value = newValue,
+              valueAsLinearExpr = newLinearExpr
             }
 
 compileIf ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
-  IfArgs (Value Builtin) ->
+  IfArgs (Thunk Builtin) ->
   m BranchingResult
 compileIf compile (IfArgs _t c x y) = do
   x' <- compile x
@@ -262,8 +266,8 @@ compileIf compile (IfArgs _t c x y) = do
 
 tryAndUnblock ::
   (MonadPurifyAssertion m) =>
-  VDims Builtin ->
-  Value Builtin ->
+  UnforcedDims Builtin ->
+  Thunk Builtin ->
   m BranchingResult
 tryAndUnblock dims expr = do
   callDepth <- getCallDepth
@@ -295,11 +299,11 @@ unblockingActions =
 purifyBoundVar ::
   (MonadLogger m, MonadReadableTensorBoundContext m) =>
   Lv ->
-  m (Value Builtin)
+  m (Thunk Builtin)
 purifyBoundVar lv = do
-  (_, maybeUserVars) <- lookupVariableInNestedCtx lv
-  case maybeUserVars of
-    Nothing -> return $ VBoundVar lv []
+  (_, maybeChildVars) <- lookupVariableInNestedCtx lv
+  case maybeChildVars of
+    Nothing -> return $ Forced $ VBoundVar lv []
     Just (_tensorVar, sliceVar) -> replaceTensorVariableWithStackedChildren sliceVar
 
 --------------------------------------------------------------------------------
@@ -307,43 +311,46 @@ purifyBoundVar lv = do
 
 isFiniteConstant :: DimensionedTensorValue Builtin -> Maybe Rational
 isFiniteConstant = \case
-  TensorValue _ (IRatTensor (ConstantTensor _ (Finite c1))) -> Just c1
+  TensorValue _ (Forced (IRatTensor (ConstantTensor _ (Finite c1)))) -> Just c1
   _ -> Nothing
 
 addLinearExprs ::
+  (MonadNorm Builtin m) =>
   Coefficient ->
   Coefficient ->
   TensorValueLinearExpr Builtin ->
   TensorValueLinearExpr Builtin ->
-  Maybe (TensorValueLinearExpr Builtin)
+  Maybe (m (TensorValueLinearExpr Builtin))
 addLinearExprs c1 c2 le1 le2 = Just $ addExprsUnsafe c1 c2 le1 le2
 
 multiplyLinearExprs ::
+  (MonadNorm Builtin m) =>
   TensorValueLinearExpr Builtin ->
   TensorValueLinearExpr Builtin ->
-  Maybe (TensorValueLinearExpr Builtin)
+  Maybe (m (TensorValueLinearExpr Builtin))
 multiplyLinearExprs le1 le2 = case (isConstant le1, isConstant le2) of
   (Just (isFiniteConstant -> Just c1), _) -> Just $ scaleExpr c1 le2
   (_, Just (isFiniteConstant -> Just c2)) -> Just $ scaleExpr c2 le1
   (Just (TensorValue dims c1), Just (TensorValue _ c2)) -> Just $ do
-    let value = fromRatTensorValue $ VMulRatTensor $ TensorOp2Args dims c1 c2
-    constantExpr $ TensorValue dims value
+    let value = Forced $ mkExpr accessMulRatTensor $ TensorOp2Args dims c1 c2
+    return $ constantExpr $ TensorValue dims value
   _ -> Nothing
 
 divideLinearExprs ::
+  (MonadNorm Builtin m) =>
   TensorValueLinearExpr Builtin ->
   TensorValueLinearExpr Builtin ->
-  Maybe (TensorValueLinearExpr Builtin)
+  Maybe (m (TensorValueLinearExpr Builtin))
 divideLinearExprs le1 le2 = case (isConstant le1, isConstant le2) of
   (_, Just (isFiniteConstant -> Just c2)) -> Just $ scaleExpr (1 / c2) le1
   (Just (TensorValue dims c1), Just (TensorValue _ c2)) -> Just $ do
-    let value = fromRatTensorValue $ VDivRatTensor $ TensorOp2Args dims c1 c2
-    constantExpr $ TensorValue dims value
+    let value = Forced $ mkExpr accessDivRatTensor $ TensorOp2Args dims c1 c2
+    return $ constantExpr $ TensorValue dims value
   _ -> Nothing
 
 logEntryAndExit ::
   (MonadPurifyAssertion m) =>
-  Value Builtin ->
+  Thunk Builtin ->
   m BranchingResult ->
   m BranchingResult
 logEntryAndExit start action = do
