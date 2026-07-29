@@ -47,6 +47,7 @@ import Paths_vehicle (version)
 import Prettyprinter (Pretty (..))
 import System.Exit (ExitCode (ExitFailure), exitSuccess, exitWith)
 import System.IO (BufferMode (..), Handle, IOMode (..), hSetBuffering, stderr, stdin, stdout, withFile)
+import Vehicle.Compile.Prelude (MonadStdIO)
 import Vehicle.LSP.Config (Config)
 import Vehicle.LSP.Config qualified as Config
 import Vehicle.LSP.Handlers (handlers)
@@ -55,7 +56,7 @@ import Vehicle.LSP.State (Server, initialiseServer, newServer)
 
 --------------------------------------------------------------------------------
 
-runLSP :: LSPOptions -> IO ()
+runLSP :: (MonadStdIO IO) => LSPOptions -> IO ()
 runLSP LSPOptions {..} = do
   result <- withLogHandle maybeLogFile $ \logHandle -> do
     let -- Setup loggers:
@@ -119,6 +120,7 @@ newtype ReactorInput
   = ReactorAction {runReactorAction :: IO ()}
 
 lspDefinition ::
+  (MonadStdIO IO) =>
   Server ->
   LogAction IO (WithSeverity Text) ->
   LogAction LspTc (WithSeverity Text) ->
@@ -148,6 +150,7 @@ reactor logger reactorInputChan = do
   forever (runReactorAction =<< atomically (readTChan reactorInputChan))
 
 lspInitialise ::
+  (MonadStdIO IO) =>
   Server ->
   LogAction IO (WithSeverity Text) ->
   TChan ReactorInput ->

@@ -15,14 +15,16 @@ import Data.Text (Text, unpack)
 import GHC.Conc (forkIO)
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Vehicle.Compile.Error (CompileError (..), VehicleError, ParseError (..))
+import Vehicle.Compile.Error (CompileError (..), ParseError (..), VehicleError, provenance)
+import Vehicle.Compile.Prelude (ModulePath, MonadStdIO, Prog, userModulePath)
 import Vehicle.Compile.Print.Error
-import Vehicle.Data.AST.Expr.Scoped
-import Vehicle.Data.AST.Name (ModulePath, userModulePath)
+import Vehicle.Data.AST.Provenance qualified as P
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.LSP.Config (Config)
 import Vehicle.Prelude.Error
+import Vehicle.Prelude.Logging (runSilentLoggerT)
 import Vehicle.Prelude.Prettyprinter
+import Vehicle.TypeCheck (TypeCheckOptions (..), typeCheckUserProg)
 
 data Server = Server
   { stateRef :: TVar ServerState,
@@ -55,7 +57,7 @@ newServer = do
   resultQueue <- liftIO newTQueueIO
   return $ Server stateRef jobQueue resultQueue
 
-initialiseServer :: (MonadIO m) => Server -> LanguageContextEnv Config -> m ()
+initialiseServer :: (MonadStdIO IO) => Server -> LanguageContextEnv Config -> IO ()
 initialiseServer server@Server {..} env = do
   _ <- liftIO $ forkIO $ jobWorker server
   _ <- liftIO $ forkIO $ runLspT env $ resultWorker resultQueue
@@ -66,7 +68,7 @@ type FileVersion = Int32
 data FileState = FileState
   { fileVersion :: FileVersion,
     fileSource :: Text,
-    fileResult :: Maybe (Either CompileError (Module Builtin))
+    fileResult :: Maybe (Either CompileError (Prog Builtin))
   }
 
 fileUpdated ::
@@ -99,21 +101,33 @@ data Job = Job FileVersion NormalizedUri Text
 
 type JobQueue = TQueue Job
 
-lspTypeCheck :: NormalizedUri -> Text -> IO (Either CompileError (Module Builtin))
-lspTypeCheck uri txt =
-  pure . Left $
-    maybe invalidPathErr validPathErr maybeFilePath
+lspTypeCheck :: (MonadStdIO IO) => NormalizedUri -> Text -> IO (Either CompileError (Prog Builtin))
+lspTypeCheck uri _txt = do
+  case maybeFilePath of
+    Nothing ->
+      pure $
+        Left $
+          ParseError
+            (userModulePath, "") -- TODO: what can we do if the LSP is handed a bad file path?
+            (RawParseError ("invalid file path! " <> unpack (getUri rawUri)))
+    Just filePath -> do
+      (result, _warnings) <-
+        runSilentLoggerT
+          ( logCompileError
+              ( typeCheckUserProg
+                  TypeCheckOptions
+                    { specification = filePath,
+                      secondaryTypeSystem = Nothing, -- TODO: run all type systems
+                      declarationsToCompile = []
+                    }
+              )
+          )
+      pure result
   where
     rawUri = fromNormalizedUri uri
     maybeFilePath = uriToFilePath rawUri
 
-    invalidPathErr =
-      ParseError (userModulePath, "") (RawParseError ("invalid file path! " <> (unpack $ getUri rawUri)))
-
-    validPathErr filePath =
-      ParseError (userModulePath, filePath) (RawParseError ("hello world! " <> (unpack txt)))
-
-jobWorker :: Server -> IO ()
+jobWorker :: (MonadStdIO IO) => Server -> IO ()
 jobWorker (Server stateVar jobQueue resultQueue) = forever $ do
   Job version uri txt <- atomically $ readTQueue jobQueue
 
@@ -170,7 +184,7 @@ resultWorker resultQueue = forever $ do
 errorDiagnostic :: VehicleError -> Diagnostic
 errorDiagnostic err =
   Diagnostic
-    { _range = Range (Position 0 0) (Position 0 5),
+    { _range = maybe defaultRange v2lRange (P.range <$> provenance err),
       _severity = Just DiagnosticSeverity_Error,
       _code = Nothing,
       _codeDescription = Nothing,
@@ -180,3 +194,15 @@ errorDiagnostic err =
       _relatedInformation = Nothing,
       _data_ = Nothing
     }
+  where
+    defaultRange = Range (Position 0 0) (Position 0 0)
+
+    v2lRange :: P.Range -> Range
+    v2lRange r = Range (v2lPosition $ P.start r) (v2lPosition $ P.end r)
+
+    v2lPosition :: P.Position -> Position
+    v2lPosition p = Position (v2lInt $ P.posLine p) (v2lInt $ P.posColumn p)
+
+    -- LSP uses 0-based indexing for lines and columns while our Position uses 1-based indexing.
+    v2lInt :: Int -> UInt
+    v2lInt = subtract 1 . fromIntegral
