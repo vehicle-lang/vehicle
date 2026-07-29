@@ -11,14 +11,14 @@ import Control.Monad (forever, when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import GHC.Conc (forkIO)
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Vehicle.Compile.Error (CompileError, VehicleError)
+import Vehicle.Compile.Error (CompileError (..), VehicleError, ParseError (..))
 import Vehicle.Compile.Print.Error
 import Vehicle.Data.AST.Expr.Scoped
-import Vehicle.Data.AST.Name (ModulePath)
+import Vehicle.Data.AST.Name (ModulePath, userModulePath)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.LSP.Config (Config)
 import Vehicle.Prelude.Error
@@ -99,11 +99,25 @@ data Job = Job FileVersion NormalizedUri Text
 
 type JobQueue = TQueue Job
 
+lspTypeCheck :: NormalizedUri -> Text -> IO (Either CompileError (Module Builtin))
+lspTypeCheck uri txt =
+  pure . Left $
+    maybe invalidPathErr validPathErr maybeFilePath
+  where
+    rawUri = fromNormalizedUri uri
+    maybeFilePath = uriToFilePath rawUri
+
+    invalidPathErr =
+      ParseError (userModulePath, "") (RawParseError ("invalid file path! " <> (unpack $ getUri rawUri)))
+
+    validPathErr filePath =
+      ParseError (userModulePath, filePath) (RawParseError ("hello world! " <> (unpack txt)))
+
 jobWorker :: Server -> IO ()
 jobWorker (Server stateVar jobQueue resultQueue) = forever $ do
   Job version uri txt <- atomically $ readTQueue jobQueue
 
-  result <- _ uri txt
+  result <- lspTypeCheck uri txt
 
   atomically $ do
     oldState@ServerState {..} <- readTVar stateVar
