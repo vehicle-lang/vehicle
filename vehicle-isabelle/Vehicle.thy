@@ -159,6 +159,11 @@ declare dims_def[tensor_ops]
 declare vec_def[tensor_ops]
 declare tensor_from_vec_def[tensor_ops]
 
+text \<open>Transpose: reverse axes by reversing index lists on lookup.\<close>
+definition tensor_transpose :: "'a tensor \<Rightarrow> 'a FlexTensor"
+  where[tensor_ops]: "tensor_transpose t =
+    Abs_FlexTensor (tensor_from_lookup (rev (dims t)) (\<lambda> is. lookup t (rev is)))"
+
 lemma tensor_plus_0dim[tensor_0dim_arithmetic]:
   "(tensor_plus (Abs_tensor ([], [x])) (Abs_tensor ([], [y]))) = Abs_FlexTensor (Abs_tensor ([], [x+y]))"
   by (simp add: tensor_arithmetic tensor_ops)

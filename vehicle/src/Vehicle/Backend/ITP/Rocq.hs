@@ -559,6 +559,7 @@ compileBuiltin b args = case b of
           as
     FoldList -> compileApplication [MathcompImport Boot] "foldr" args
     MapList -> compileApplication [MathcompImport Boot] "map" args
+    ReverseList -> compileApplication [MathcompImport Boot] "rev" args
     AppendList {} -> unsupportedError
     ReduceAndTensor -> compileApplication [VehicleImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> compileApplication [VehicleImport VehicleUtils] "reduceOr" args
@@ -572,6 +573,7 @@ compileBuiltin b args = case b of
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 200) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
     StackTensor -> compileStack args
+    Transpose -> compileApplication [VehicleImport VehicleUtils] "transpose_t" args
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyRecord q -> compileQuantifierFunction q args

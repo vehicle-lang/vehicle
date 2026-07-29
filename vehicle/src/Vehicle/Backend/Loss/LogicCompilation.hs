@@ -332,19 +332,24 @@ isLiftableOp = \case
   Div DivRatTensor -> True
   Min MinRatTensor -> True
   Max MaxRatTensor -> True
-  CompareRatTensorPointwise _ -> True
+  CompareRatTensor _ -> True
   Implies -> False
+  QuantifyRecord {} -> False
   QuantifyRatTensor {} -> False
   If -> False
   Add {} -> False
   Mul {} -> False
-  PowRat -> False
+  Pow {} -> False
+  Log {} -> False
+  Exp {} -> False
   CompareNat {} -> False
   CompareIndex {} -> False
   AtTensor -> False
   AtVector -> False
   FoldList -> False
   MapList -> False
+  ReverseList -> False
+  AppendList -> False
   ReduceAndTensor -> False
   ReduceOrTensor -> False
   ReduceAddRatTensor -> False
@@ -356,6 +361,7 @@ isLiftableOp = \case
   ForeachTensor -> False
   ForeachVector -> False
   Iterate -> False
+  Transpose -> False
 
 reduceOp :: BuiltinFunction -> Maybe BuiltinFunction
 reduceOp = \case
@@ -366,7 +372,7 @@ reduceOp = \case
   Min MinRatTensor -> Just ReduceMinRatTensor
   Max MaxRatTensor -> Just ReduceMaxRatTensor
   Not -> Nothing
-  CompareRatTensorPointwise {} -> Nothing
+  CompareRatTensor {} -> Nothing
   CompareNat {} -> Nothing
   CompareIndex {} -> Nothing
   Neg NegRatTensor -> Nothing
@@ -374,14 +380,19 @@ reduceOp = \case
   Div DivRatTensor -> Nothing
   Implies -> Nothing
   QuantifyRatTensor {} -> Nothing
+  QuantifyRecord {} -> Nothing
   If -> Nothing
   Add _ -> Nothing
   Mul _ -> Nothing
-  PowRat -> Nothing
+  Pow {} -> Nothing
+  Log {} -> Nothing
+  Exp {} -> Nothing
   AtVector -> Nothing
   AtTensor -> Nothing
   FoldList -> Nothing
   MapList -> Nothing
+  ReverseList -> Nothing
+  AppendList -> Nothing
   ReduceAndTensor -> Nothing
   ReduceOrTensor -> Nothing
   ReduceAddRatTensor -> Nothing
@@ -393,6 +404,7 @@ reduceOp = \case
   ForeachTensor -> Nothing
   ForeachVector -> Nothing
   Iterate -> Nothing
+  Transpose -> Nothing
 
 type MonadCompileBody m =
   ( MonadLogger m,

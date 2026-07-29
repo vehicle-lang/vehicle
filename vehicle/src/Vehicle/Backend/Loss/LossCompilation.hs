@@ -105,11 +105,13 @@ convertThunk quantifiers = go
         S.AtTensor -> mkFunction AtTensor
         S.StackTensor -> mkFunction StackTensor
         S.ConstTensor -> mkFunction ConstTensor
+        S.Transpose -> mkFunction Transpose
         S.ForeachTensor -> mkFunction ForeachTensor
         S.AtVector -> mkFunction AtVector
         S.ForeachVector -> mkFunction ForeachVector
         S.FoldList -> mkFunction FoldList
         S.MapList -> mkFunction MapList
+        S.ReverseList -> mkFunction ReverseList
         S.AppendList -> mkFunction AppendList
         S.If -> unsupportedOperation "if"
         S.Implies -> unexpected

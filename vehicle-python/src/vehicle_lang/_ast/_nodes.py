@@ -324,6 +324,13 @@ class SearchRatTensor(Expression):
 
 
 @dataclass(frozen=True)
+class Transpose(Expression):
+    """Transpose: reverses all axes of a tensor (numpy-style)."""
+
+    xs: Expression
+
+
+@dataclass(frozen=True)
 class Dimension(Expression):
 
     value: int

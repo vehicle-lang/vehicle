@@ -678,6 +678,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
           as
     FoldList -> annotateApp moduleDefs [] "List.fold_right" args
     MapList -> annotateApp moduleDefs [] "List.map" args
+    ReverseList -> annotateApp moduleDefs [] "List.rev" args
     AppendList {} -> unsupportedError
     ReduceAndTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_and" args
     ReduceOrTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_or" args
@@ -696,6 +697,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     If -> annotateNotation moduleDefs [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args
     StackTensor -> compileStack moduleDefs args
+    Transpose -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_transpose" args
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
     Iterate -> unsupportedError

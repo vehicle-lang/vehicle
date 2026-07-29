@@ -89,6 +89,7 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold tListRaw
   MapList -> typeOfMap tListRaw
+  ReverseList -> typeOfReverseList
   AppendList -> forAllTypes $ \t -> tList t ~> tList t ~> tList t
   AtVector -> typeOfAtVector
   AtTensor -> typeOfAtTensor
@@ -97,6 +98,7 @@ typeOfBuiltinFunction = \case
   ForeachTensor -> typeOfForeachTensor
   ForeachVector -> typeOfForeachVector
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
+  Transpose -> typeOfTranspose
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case
@@ -162,6 +164,11 @@ typeOfCons =
   forAll "A" type0 $ \tElem ->
     tElem ~> tList tElem ~> tList tElem
 
+typeOfReverseList :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfReverseList =
+  forAll "A" type0 $ \tElem ->
+    tList tElem ~> tList tElem
+
 typeOfAtVector :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfAtVector =
   forAll "A" type0 $ \tElem ->
@@ -174,6 +181,12 @@ typeOfAtTensor =
     forAllDim Irrelevant $ \d ->
       forAllDims $ \ds ->
         tTensor tElem (dimCons d ds) ~> tIndex d ~> tTensor tElem ds
+
+typeOfTranspose :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfTranspose =
+  forAll "A" type0 $ \tElem ->
+    forAllDims $ \ds ->
+      tTensor tElem ds ~> tTensor tElem (reverseDims ds)
 
 typeOfVecLiteralCast :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfVecLiteralCast tCont tElem d =

@@ -110,6 +110,7 @@ compileLinearExpr dims expr =
       VRatForeach {} -> tryUnblock
       VRatTensorRecordAcc {} -> tryUnblock
       VRatAtVector {} -> tryUnblock
+      VRatTensorTranspose {} -> tryUnblock
       ------------------------
       -- Definitely blocked --
       ------------------------

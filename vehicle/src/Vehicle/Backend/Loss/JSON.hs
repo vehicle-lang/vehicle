@@ -129,6 +129,7 @@ data JExpr
   | DimensionNil
   | DimensionCons JExpr JExpr
   | DimensionIndex Int
+  | Transpose JExpr
   deriving (Show, Generic)
 
 instance ToJSON JProg where
@@ -347,6 +348,7 @@ convertBuiltin b spine = case b of
     L.ForeachTensor -> convertForeachTensor spine
     L.StackTensor -> convertStackTensor spine
     L.ConstTensor -> convertConstTensor spine
+    L.Transpose -> convertTranspose convertValue spine
     L.ForeachVector -> convertForeachVector spine
     L.AtVector -> convertAtVector spine
     -- Dimension operations, not yet converted
@@ -354,6 +356,7 @@ convertBuiltin b spine = case b of
     L.Mul L.MulNat -> unsupportedError b
     L.MapList -> unsupportedError b
     L.FoldList -> unsupportedError b
+    L.ReverseList -> unsupportedError b
     L.AppendList -> unsupportedError b
   L.LossBuiltinExtraFunction f -> case f of
     L.SearchRatTensor name minimise -> convertSearch name minimise spine
@@ -455,6 +458,15 @@ convertForeachVector :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JExpr
 convertForeachVector = convertNonNullaryOp L.ForeachVector 4 $
   \(ForeachVectorArgs _t d fn) ->
     ForeachVector <$> convertValue d <*> convertValue fn
+
+convertTranspose ::
+  (MonadJSON m) =>
+  (Thunk LossBuiltin -> m JExpr) ->
+  UnforcedSpine LossBuiltin ->
+  m JExpr
+convertTranspose convert spine = case getExpr accessSpine spine of
+  Just (TransposeTensorArgs _t _ds xs) -> Transpose <$> convert xs
+  Nothing -> arityError L.Transpose 3 spine
 
 convertSearch :: (MonadJSON m) => Name -> Bool -> UnforcedSpine LossBuiltin -> m JExpr
 convertSearch name minimise = convertNonNullaryOp (L.SearchRatTensor name minimise) 5 $
@@ -575,6 +587,7 @@ fromJExpr = \case
   ForeachTensor _n fn -> toFunction L.ForeachTensor [fn]
   ConstTensor c ds -> toFunction L.ConstTensor [c, ds]
   StackTensor xs -> toFunction L.StackTensor xs
+  Transpose xs -> toFunction L.Transpose [xs]
   VectorLiteral xs -> toConstructor L.VectorLiteral xs
   ForeachVector _n fn -> toFunction L.ForeachVector [fn]
   AtVector xs i -> toFunction L.AtVector [xs, i]

@@ -379,6 +379,7 @@ data RatTensorValue
   | VRatAtTensor (AtTensorArgs (Thunk Builtin))
   | VRatAtVector (AtVectorArgs (Thunk Builtin))
   | VRatForeach (ForeachTensorArgs (Thunk Builtin))
+  | VRatTensorTranspose (TransposeTensorArgs (Thunk Builtin))
   | VIfRatTensor (IfArgs (Thunk Builtin))
   | VNetworkApplication Identifier (NetworkAppArgs (Thunk Builtin))
   | VParameterOrDataset Identifier
@@ -413,6 +414,7 @@ toRatTensorValueFromBuiltin b spine = case VBuiltin b spine of
   (getExpr accessAtTensor -> Just args) -> VRatAtTensor args
   (getExpr accessAtVector -> Just args) -> VRatAtVector args
   (getExpr accessForeachTensor -> Just args) -> VRatForeach args
+  (getExpr accessTransposeTensor -> Just args) -> VRatTensorTranspose args
   _ -> developerError $ "ill-typed RatTensor builtin:" <+> prettyVerbose (VBuiltin b spine)
 
 toRatTensorValue :: ForcedValue Builtin -> RatTensorValue

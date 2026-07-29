@@ -83,6 +83,7 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
+  ReverseList -> forAllPolarities $ \pol -> pol ~> pol
   AppendList -> typeOfOp2 maxPolarity
   AtVector -> typeOfAt
   AtTensor -> typeOfAt
@@ -91,6 +92,7 @@ typeOfBuiltinFunction = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Transpose -> forAllPolarities $ \pol -> pol ~> pol
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case

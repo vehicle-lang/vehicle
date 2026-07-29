@@ -597,6 +597,7 @@ compileBuiltinFunction p f args = case f of
       Reduced as -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") as
   FoldList -> annotateApp [DataList] (Just listQualifier) "foldr" args
   MapList -> annotateApp [DataList] (Just listQualifier) "map" args
+  ReverseList -> annotateApp [DataList] (Just listQualifier) "reverse" args
   AppendList -> annotateInfixApp [DataList] 5 (Just listQualifier) "_++_" args
   ReduceAndTensor -> annotateApp [DataTensor] Nothing "reduceAnd" args
   ReduceOrTensor -> annotateApp [DataTensor] Nothing "reduceOr" args
@@ -613,6 +614,7 @@ compileBuiltinFunction p f args = case f of
   ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args
   ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
+  Transpose -> annotateApp [DataTensor] Nothing "transpose" args
   Iterate -> unsupportedError "Iterate"
   Pow {} -> unsupportedError "^"
   Log {} -> unsupportedError "log"
