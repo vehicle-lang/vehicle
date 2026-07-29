@@ -26,7 +26,6 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Variable.Bound.Context.Name (runFreshNameBoundContextT)
 import Vehicle.Data.Variable.Bound.Context.Name.Class
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (getFreeCtx), addDeclEntryToContext, runFreshFreeContextT)
-import Vehicle.Prelude
 
 type MonadLiftQuantifiers m =
   ( MonadCompile m,
@@ -331,6 +330,9 @@ updateRatTensorBoundVar lv value = do
     VRatAtTensor args -> do
       args' <- traverseAtTensorArg (updateRatTensorBoundVar lv) args
       return (Forced $ mkExpr accessAtTensor args')
+    VRatTensorTranspose args -> do
+      args' <- traverseTransposeTensor (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessTransposeTensor args')
     VRatForeach (ForeachTensorArgs typ d ds fn) -> do
       fn' <- updateRatTensorBoundVar lv fn
       return (Forced $ mkExpr accessForeachTensor (ForeachTensorArgs typ d ds fn'))
