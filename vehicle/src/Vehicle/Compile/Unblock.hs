@@ -10,6 +10,7 @@ module Vehicle.Compile.Unblock
     unblockIf,
     unblockAtTensor,
     unblockAtVector,
+    unblockTransposeTensor,
     unblockForeachTensor,
     unblockReduceTensor,
     unblockMinRatTensor,
@@ -101,11 +102,11 @@ unblockBoolTensorValue actions value = showEntry value $ do
     VBoolTensorQuantifyRat {} -> return $ IfLeaf $ Forced forcedValue
     VBoolTensorQuantifyRecord {} -> return $ IfLeaf $ Forced forcedValue
     -- Recursively unblock
-    VBoolConstTensor args -> unblockConstTensor actions args
+    VBoolConstTensor args -> unblockConstTensor unblock actions args
     VBoolTensorCompareRatTensor (op, args) -> unblockCompareRatTensor actions op args
-    VBoolTensorAnd args -> unblockTensorOp2 unblock evalAnd args
-    VBoolTensorOr args -> unblockTensorOp2 unblock evalOr args
-    VBoolTensorNot args -> unblockTensorOp1 unblock evalNot args
+    VBoolTensorAnd args -> unblockTensorOp2 unblock (forceEval evalAnd) args
+    VBoolTensorOr args -> unblockTensorOp2 unblock (forceEval evalOr) args
+    VBoolTensorNot args -> unblockTensorOp1 unblock (forceEval evalNot) args
     VBoolTensorImplies args -> unblock $ elimImplies args
     VBoolTensorIf args -> unblockIf unblock args
     VBoolTensorReduceAnd args -> unblockReduceTensor unblock (forceEval evalReduceAndTensor) args
@@ -133,14 +134,14 @@ unblockRatTensorValue actions@UnblockingActions {..} expr =
       VRatStackTensor {} -> return $ IfLeaf expr
       -- Recursively purify
       VIfRatTensor args -> unblockIf unblock args
-      VNegRatTensor args -> unblockTensorOp1 unblock evalNegRatTensor args
-      VLogRatTensor args -> unblockTensorOp1 unblock evalLogRatTensor args
-      VExpRatTensor args -> unblockTensorOp1 unblock evalExpRatTensor args
-      VAddRatTensor args -> unblockTensorOp2 unblock evalAddRatTensor args
-      VSubRatTensor args -> unblockTensorOp2 unblock evalSubRatTensor args
-      VMulRatTensor args -> unblockTensorOp2 unblock evalMulRatTensor args
-      VDivRatTensor args -> unblockTensorOp2 unblock evalDivRatTensor args
-      VPowRatTensor args -> unblockTensorOp2 unblock evalPowRatTensor args
+      VNegRatTensor args -> unblockTensorOp1 unblock (forceEval evalNegRatTensor) args
+      VLogRatTensor args -> unblockTensorOp1 unblock (forceEval evalLogRatTensor) args
+      VExpRatTensor args -> unblockTensorOp1 unblock (forceEval evalExpRatTensor) args
+      VAddRatTensor args -> unblockTensorOp2 unblock (forceEval evalAddRatTensor) args
+      VSubRatTensor args -> unblockTensorOp2 unblock (forceEval evalSubRatTensor) args
+      VMulRatTensor args -> unblockTensorOp2 unblock (forceEval evalMulRatTensor) args
+      VDivRatTensor args -> unblockTensorOp2 unblock (forceEval evalDivRatTensor) args
+      VPowRatTensor args -> unblockTensorOp2 unblock (forceEval evalPowRatTensor) args
       VReduceAddRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceAddRatTensor) args
       VReduceMulRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMulRatTensor) args
       VReduceMinRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMinRatTensor) args
@@ -153,6 +154,7 @@ unblockRatTensorValue actions@UnblockingActions {..} expr =
       VRatAtTensor args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
       VRatAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
       VRatForeach args -> unblockForeachTensor args
+      VRatTensorTranspose args -> unblockTransposeTensor unblock args
       VRatTensorRecordAcc typ value fieldName args -> unblockRecordAcc actions typ value fieldName args
   where
     unblock = unblockRatTensorValue actions
@@ -272,18 +274,18 @@ unblockIndexOp2 unblock evalFn (IndexComparisonArgs n1 n2 x y) = do
 unblockTensorOp1 ::
   (MonadUnblock m) =>
   TypeUnblockingFunction (Thunk Builtin) m ->
-  EvalSimple ForcedValue Thunk TensorOp1Args Builtin m ->
+  (TensorOp1Args (Thunk Builtin) -> m (Thunk Builtin)) ->
   OperationUnblockingFunction TensorOp1Args (Thunk Builtin) m
 unblockTensorOp1 unblock evalFn (TensorOp1Args ds xs) = do
   xs' <- unblock xs
   forIfTreeM xs' $ \xs'' ->
     IfLeaf
-      <$> forceEval evalFn (TensorOp1Args ds xs'')
+      <$> evalFn (TensorOp1Args ds xs'')
 
 unblockTensorOp2 ::
   (MonadUnblock m) =>
   TypeUnblockingFunction (Thunk Builtin) m ->
-  EvalSimple ForcedValue Thunk TensorOp2Args Builtin m ->
+  (TensorOp2Args (Thunk Builtin) -> m (Thunk Builtin)) ->
   OperationUnblockingFunction TensorOp2Args (Thunk Builtin) m
 unblockTensorOp2 unblock evalFn (TensorOp2Args ds xs ys) = do
   xs' <- unblock xs
@@ -291,7 +293,7 @@ unblockTensorOp2 unblock evalFn (TensorOp2Args ds xs ys) = do
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM ys' $ \ys'' -> do
       IfLeaf
-        <$> forceEval evalFn (TensorOp2Args ds xs'' ys'')
+        <$> evalFn (TensorOp2Args ds xs'' ys'')
 
 unblockCompareRatTensor ::
   (MonadUnblock m) =>
@@ -305,6 +307,15 @@ unblockCompareRatTensor actions op (TensorComparisonArgs pDims rDims xs ys) = do
     forIfTreeM ys' $ \ys'' -> do
       IfLeaf
         <$> forceEval (evalCompareRatTensor op) (TensorComparisonArgs pDims rDims xs'' ys'')
+
+unblockTransposeTensor ::
+  (MonadUnblock m) =>
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  OperationUnblockingFunction TransposeTensorArgs (Thunk Builtin) m
+unblockTransposeTensor unblock (TransposeTensorArgs t ds xs) = do
+  xs' <- unblock xs
+  forIfTreeM xs' $ \xs'' ->
+    IfLeaf <$> forceEvaluation accessTransposeTensor evalTransposeTensor (TransposeTensorArgs t ds xs'')
 
 unblockReduceTensor ::
   (MonadUnblock m) =>
@@ -422,15 +433,16 @@ unblockFoldList actions (FoldListArgs t1 t2 f e xs) = do
 
 unblockConstTensor ::
   (MonadUnblock m) =>
+  TypeUnblockingFunction (Thunk Builtin) m ->
   UnblockingActions m ->
   OperationUnblockingFunction ConstTensorArgs (Thunk Builtin) m
-unblockConstTensor actions (ConstTensorArgs t x ds) = do
-  x' <- unblockRatTensorValue actions x
+unblockConstTensor unblockValue actions (ConstTensorArgs t x ds) = do
+  x' <- unblockValue x
   ds' <- unblockListValue actions ds
   forIfTreeM x' $ \x'' ->
     forIfTreeM ds' $ \ds'' ->
       IfLeaf <$> do
-        forceEval evalConstTensor $ ConstTensorArgs t x'' ds''
+        forceEvaluation accessConstTensor evalConstTensor $ ConstTensorArgs t x'' ds''
 
 --------------------------------------------------------------------------------
 -- Unblocking operations

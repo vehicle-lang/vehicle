@@ -321,6 +321,9 @@ accessMapList = accessArgs accessMapListBuiltin
 accessFoldList :: (HasListExpr expr thunk builtin) => Accessor (expr builtin) (FoldListArgs (thunk builtin))
 accessFoldList = accessArgs accessFoldListBuiltin
 
+accessReverseList :: (HasListExpr expr thunk builtin) => Accessor (expr builtin) (ReverseListArgs (thunk builtin))
+accessReverseList = accessArgs accessReverseListBuiltin
+
 accessAppendList :: (HasListExpr expr thunk builtin) => Accessor (expr builtin) (AppendListArgs (thunk builtin))
 accessAppendList = accessArgs accessAppendListBuiltin
 
@@ -390,3 +393,8 @@ accessIterate ::
   (HasBuiltinConstructor expr thunk, BuiltinHasIterate builtin) =>
   Accessor (expr builtin) (IterateArgs (thunk builtin))
 accessIterate = accessArgs accessIterateBuiltin
+
+accessTransposeTensor ::
+  (HasBuiltinConstructor expr thunk, BuiltinHasTensors builtin) =>
+  Accessor (expr builtin) (TransposeTensorArgs (thunk builtin))
+accessTransposeTensor = accessArgs accessTransposeBuiltin

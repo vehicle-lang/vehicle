@@ -197,6 +197,7 @@ instance BuiltinHasListLiterals LinearityBuiltin where
 
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
   accessAppendListBuiltin = functionAccessor AppendList
 
 instance BuiltinHasIterate LinearityBuiltin where

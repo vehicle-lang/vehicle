@@ -312,6 +312,12 @@ traverseConstTensorValue f ConstTensorArgs {..} = do
   constValue' <- f constValue
   return $ ConstTensorArgs {constValue = constValue', ..}
 
+-- The trailing dims (@ds@) on 'StackTensorArgs', 'ForeachTensorArgs'
+-- and 'TransposeTensorArgs' below are 'implicit' rather than
+-- 'implicitIrrelevant': unification needs to solve the output shape
+-- from the input shape (e.g. reversing @ds@ for 'Transpose'), which
+-- requires the argument to participate in relevant elaboration.
+
 -- | Arguments for `StackTensor`
 data StackTensorArgs expr = StackTensorArgs
   { stackType :: expr,
@@ -326,7 +332,7 @@ instance IsArgs StackTensorArgs where
       { getExpr = \case
           (fmap argExpr -> t : d : ds : xs) -> Just $ StackTensorArgs t d ds xs
           _ -> Nothing,
-        mkExpr = \(StackTensorArgs t d ds xs) -> implicit t : implicit d : implicitIrrelevant ds : fmap explicit xs
+        mkExpr = \(StackTensorArgs t d ds xs) -> implicit t : implicit d : implicit ds : fmap explicit xs
       }
 
 mapStackTensorElements :: (expr -> expr) -> StackTensorArgs expr -> StackTensorArgs expr
@@ -351,8 +357,27 @@ instance IsArgs ForeachTensorArgs where
       { getExpr = \case
           (fmap argExpr -> [t, d, ds, fn]) -> Just $ ForeachTensorArgs t d ds fn
           _ -> Nothing,
-        mkExpr = \(ForeachTensorArgs t d ds fn) -> [implicit t, implicit d, implicitIrrelevant ds, explicit fn]
+        mkExpr = \(ForeachTensorArgs t d ds fn) -> [implicit t, implicit d, implicit ds, explicit fn]
       }
+
+-- | Arguments for `Transpose`
+data TransposeTensorArgs expr = TransposeTensorArgs
+  { transposeType :: expr,
+    transposeDims :: expr,
+    transposeTensor :: expr
+  }
+
+instance IsArgs TransposeTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, ds, xs]) -> Just $ TransposeTensorArgs t ds xs
+          _ -> Nothing,
+        mkExpr = \(TransposeTensorArgs t ds xs) -> [implicit t, implicit ds, explicit xs]
+      }
+
+traverseTransposeTensor :: (Applicative f) => (t -> f t) -> TransposeTensorArgs t -> f (TransposeTensorArgs t)
+traverseTransposeTensor f (TransposeTensorArgs t ds xs) = TransposeTensorArgs t ds <$> f xs
 
 -- | Arguments for `ForeachVector`
 data ForeachVectorArgs expr = ForeachVectorArgs
@@ -460,9 +485,27 @@ instance IsArgs MapListArgs where
       }
 
 --------------------------------------------------------------------------------
+-- ReverseList
+
+-- | Arguments for `ReverseList`
+data ReverseListArgs expr = ReverseListArgs
+  { reverseListElemType :: expr,
+    reverseListList :: expr
+  }
+
+instance IsArgs ReverseListArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, xs]) -> Just $ ReverseListArgs t xs
+          _ -> Nothing,
+        mkExpr = \(ReverseListArgs t xs) -> [implicit t, explicit xs]
+      }
+
+--------------------------------------------------------------------------------
 -- AppendList
 
--- | Arguments for `MapList`
+-- | Arguments for `AppendList`
 data AppendListArgs expr = AppendListArgs
   { appendListType :: expr,
     appendListOp1 :: expr,

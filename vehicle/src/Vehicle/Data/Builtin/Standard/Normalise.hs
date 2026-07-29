@@ -48,10 +48,12 @@ instance Forced.NormalisableBuiltin Builtin where
       ConstTensor -> Forced.Eval Forced.evalConstTensor
       FoldList -> Forced.Eval Forced.evalFoldList
       MapList -> Forced.Eval Forced.evalMapList
+      ReverseList -> Forced.Eval Forced.evalReverseList
       AppendList -> Forced.Eval Forced.evalAppendList
       ForeachTensor -> Forced.Eval Forced.evalForeachTensor
       ForeachVector -> Forced.Eval Forced.evalForeachVector
       Iterate -> Forced.Eval Forced.evalIterate
+      Transpose -> Forced.Eval Forced.evalTransposeTensor
       QuantifyRatTensor {} -> Forced.None
       QuantifyRecord {} -> Forced.None
     BuiltinCast c -> case c of

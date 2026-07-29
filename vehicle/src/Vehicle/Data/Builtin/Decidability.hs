@@ -209,6 +209,7 @@ instance BuiltinHasListLiterals DecidabilityBuiltin where
   accessConsBuiltin = constructorAccessor Cons
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
   accessAppendListBuiltin = functionAccessor AppendList
 
 instance BuiltinHasIterate DecidabilityBuiltin where
@@ -311,6 +312,7 @@ evalBoolVectorToProp args = return $ case args of
 instance NormalisableBuiltin DecidabilityBuiltin where
   evalScheme = \case
     StandardBuiltinFunction Iterate -> Eval evalIterate
+    StandardBuiltinFunction ReverseList -> Eval evalReverseList
     StandardBuiltinFunction AppendList -> Eval evalAppendList
     DecidabilityBuiltinTypeClassOp {} -> TypeClassOp
     _ -> None
@@ -322,6 +324,7 @@ instance NormalisableBuiltin DecidabilityBuiltin where
       StandardBuiltinFunction AppendList -> functionBlockingStatus AppendList spine
       _ -> DoesNotReduce
   -}
+
   isTypeClassOp = \case
     DecidabilityBuiltinTypeClassOp {} -> True
     _ -> False

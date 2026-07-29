@@ -267,6 +267,7 @@ instance BuiltinHasListLiterals Builtin where
   accessAppendListBuiltin = functionAccessor AppendList
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -295,6 +296,7 @@ instance BuiltinHasTensors Builtin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor AtTensor
+  accessTransposeBuiltin = functionAccessor Transpose
 
 --------------------------------------------------------------------------------
 -- Others

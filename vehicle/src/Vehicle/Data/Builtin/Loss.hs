@@ -104,9 +104,11 @@ data LossBuiltinFunction
   | StackTensor
   | ConstTensor
   | ForeachTensor
+  | Transpose
   | -- List
     MapList
   | FoldList
+  | ReverseList
   | AppendList
   | -- Vector
     ForeachVector
@@ -133,8 +135,10 @@ lossToStandardBuiltinFunction = \case
   StackTensor {} -> S.StackTensor {}
   ConstTensor -> S.ConstTensor
   ForeachTensor -> S.ForeachTensor
+  Transpose -> S.Transpose
   MapList -> S.MapList
   FoldList -> S.FoldList
+  ReverseList -> S.ReverseList
   AppendList -> S.AppendList
   ForeachVector -> S.ForeachVector
   AtVector -> S.AtVector
@@ -282,6 +286,7 @@ instance BuiltinHasListLiterals LossBuiltin where
   accessConsBuiltin = zeroArityConstructorAccessor Cons
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
   accessAppendListBuiltin = functionAccessor AppendList
 
 --------------------------------------------------------------------------------
@@ -304,6 +309,7 @@ instance BuiltinHasTensors LossBuiltin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor AtTensor
+  accessTransposeBuiltin = functionAccessor Transpose
 
 instance BuiltinHasForeach LossBuiltin where
   accessForeachTensorBuiltin = functionAccessor ForeachTensor
@@ -359,8 +365,10 @@ instance NormalisableBuiltin LossBuiltin where
       AtTensor -> Eval evalAtTensor
       StackTensor -> Eval evalStackTensor
       ConstTensor -> Eval evalConstTensor
+      Transpose -> Eval evalTransposeTensor
       FoldList -> Eval evalFoldList
       MapList -> Eval evalMapList
+      ReverseList -> Eval evalReverseList
       AppendList -> Eval evalAppendList
       ForeachTensor -> Eval evalForeachTensor
       ForeachVector -> Eval evalForeachVector

@@ -114,6 +114,7 @@ compile toVar shape = go
         VParameterOrDataset {} -> unreduced
         VRatTensorRecordAcc {} -> unreduced
         VRatForeach {} -> unreduced
+        VRatTensorTranspose {} -> unreduced
         VIfRatTensor {} -> unreduced
         -----------------------
         -- Unsupported cases --

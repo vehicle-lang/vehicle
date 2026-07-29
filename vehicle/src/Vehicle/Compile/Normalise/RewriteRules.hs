@@ -54,6 +54,7 @@ forceAndRewriteTensor value = do
   case forcedValue of
     (getExpr accessConstTensor -> Just args) -> rewriteConstTensor args
     (getExpr accessStackTensor -> Just args) -> rewriteStackTensor args
+    (getExpr accessTransposeTensor -> Just args) -> rewriteTransposeTensor args
     (getExpr accessAtTensor -> Just args) -> rewriteAtTensor args
     (getExpr accessForeachTensor -> Just args) -> rewriteForeachTensor args
     (getExpr accessReduceAnd -> Just args) -> rewriteReduceAndTensor args
@@ -213,6 +214,35 @@ rewriteReduceMulTensor ::
 rewriteReduceMulTensor = rewriteReduceTensor "reduceMul" accessMulRatTensor accessReduceMulRat evalReduceMulRatTensor Nothing
 
 -----------------------------------------------------------------------------
+-- Tranpose
+
+rewriteTransposeTensor ::
+  forall builtin m.
+  (MonadRewrite builtin m) =>
+  TransposeTensorArgs (Thunk builtin) ->
+  m (ForcedValue builtin)
+rewriteTransposeTensor args@(TransposeTensorArgs _t _ds tensor) = do
+  logCompilerSection2 MaxDetail "rewrite-transpose" $ go tensor
+  where
+    go :: Thunk builtin -> m (ForcedValue builtin)
+    go value = logRewrite getNameContext mkTranspose "transpose" value $ do
+      rewrittenValue <- forceAndRewriteTensor value
+      let maybeResult = goTranspose rewrittenValue
+      case maybeResult of
+        Just result -> result
+        Nothing -> do
+          evalResult <- forceEvaluation accessTransposeTensor evalTransposeTensor $ args {transposeTensor = Forced rewrittenValue}
+          forceThunk evalResult
+
+    goTranspose :: ForcedValue builtin -> Maybe (m (ForcedValue builtin))
+    goTranspose forcedTensor = case getExpr accessTransposeTensor forcedTensor of
+      Just (TransposeTensorArgs _ _ t) -> Just $ forceThunk t
+      _ -> Nothing
+
+    mkTranspose :: Thunk builtin -> Thunk builtin
+    mkTranspose t = Forced $ mkExpr accessTransposeTensor $ args {transposeTensor = t}
+
+-----------------------------------------------------------------------------
 -- At
 
 -- | An optimised evaluation procedure for `At` that attempts to minimise the
@@ -268,6 +298,40 @@ rewriteAtTensor args@(AtTensorArgs _tElem _d ds t index) =
     mkAt :: Thunk builtin -> Thunk builtin
     mkAt tensor = Forced $ mkExpr accessAtTensor $ args {atTensor = tensor}
 
+{-
+    goTranpose :: ForcedValue builtin -> m (Maybe (ForcedValue builtin))
+    goTranpose forcedValue = do
+      fds <- force ds
+      case fds of
+        IDimNil -> do
+          maybeChain <- collect forcedValue [(d, index)]
+          case maybeChain of
+            Just (underlying, pairs) -> return $ Just $ rebuild underlying (reverse pairs)
+            Nothing -> Nothing
+        _ -> Nothing
+      where
+      collect ::
+        ForcedValue builtin ->
+        [(Thunk builtin, Thunk builtin)] ->
+        m (Maybe (Thunk builtin, [(Thunk builtin, Thunk builtin)]))
+      collect inner acc = case getExpr accessTransposeTensor inner of
+        Just (TransposeTensorArgs _ _ underlying) -> return $ Just (underlying, acc)
+        Nothing -> case getExpr accessAtTensor inner of
+          Just (AtTensorArgs _ d' _ inner' i') -> do
+            fInner' <- force inner'
+            collect fInner' ((d', i') : acc)
+          Nothing -> return Nothing
+
+      rebuild :: Thunk builtin -> [(Thunk builtin, Thunk builtin)] -> Thunk builtin
+      rebuild underlying pairs = do
+        let dims = map fst pairs
+        let consifyDims = foldr (\x acc -> exprToThunk (IDimCons x acc)) (exprToThunk IDimNil)
+        let step (acc, j) (dj, idx) = do
+              let remDims = consifyDims (drop (j + 1) dims)
+              (exprToThunk (mkExpr accessAtTensor (AtTensorArgs t dj remDims acc idx)), j + 1)
+        let (result, _) = foldl step (underlying, 0) pairs
+        result
+-}
 -----------------------------------------------------------------------------
 -- Not
 

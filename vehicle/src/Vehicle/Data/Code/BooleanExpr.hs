@@ -202,6 +202,14 @@ forIfTreeM tree f = case tree of
   IfLeaf v -> f v
   IfTree c t1 t2 -> IfTree c <$> forIfTreeM t1 f <*> forIfTreeM t2 f
 
+forIfTreeListM :: (Monad m) => [IfTree condition leaf1] -> ([leaf1] -> m (IfTree condition leaf2)) -> m (IfTree condition leaf2)
+forIfTreeListM trees f = case trees of
+  [] -> f []
+  t : ts ->
+    forIfTreeM t $ \t' ->
+      forIfTreeListM ts $ \ts' ->
+        f (t' : ts')
+
 elimIfTree :: forall m condition leaf a. (Monad m) => (condition -> a -> a -> m a) -> (leaf -> m a) -> IfTree condition leaf -> m a
 elimIfTree branch leaf = go
   where
