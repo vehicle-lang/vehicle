@@ -14,11 +14,12 @@ of neural networks.
   lists
   vectors
   tensors
+  records
   quantifiers
   networks
   datasets
   parameters
   properties
   type-synonyms
+  differentiable-logics
   tips-and-tricks
-  advanced

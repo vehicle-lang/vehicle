@@ -19,5 +19,5 @@ class HasBoundCtx a expr | a -> expr where
 toNamedBoundCtx :: BoundCtx expr -> NamedBoundCtx
 toNamedBoundCtx = fmap nameOf
 
-namedBoundCtxOf :: (HasBoundCtx a builtin) => a -> NamedBoundCtx
+namedBoundCtxOf :: (HasBoundCtx a expr) => a -> NamedBoundCtx
 namedBoundCtxOf = toNamedBoundCtx . boundContextOf

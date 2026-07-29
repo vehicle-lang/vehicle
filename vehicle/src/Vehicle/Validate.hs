@@ -5,7 +5,6 @@ module Vehicle.Validate
 where
 
 import Control.Monad (forM)
-import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Aeson (ToJSON (..))
 import GHC.Generics (Generic)
 import Vehicle.Prelude
@@ -33,12 +32,12 @@ validate loggingSettings outputAsJSON checkOptions = runLoggerT loggingSettings 
   programOutput outputDocs
 
 checkSpecificationStatus ::
-  (MonadIO m, MonadLogger m) =>
+  (MonadStdIO m, MonadLogger m) =>
   ValidateOptions ->
   m ValidateResult
 checkSpecificationStatus ValidateOptions {..} = do
   let cacheIndexFile = specificationCacheIndexFileName verificationCache
-  SpecificationCacheIndex {..} <- liftIO $ readSpecificationCacheIndex cacheIndexFile
+  SpecificationCacheIndex {..} <- readSpecificationCacheIndex cacheIndexFile
   maybeIntegrityError <- checkIntegrityOfResources resourcesIntegrityInfo
   case maybeIntegrityError of
     Just err -> return $ IntegrityError err

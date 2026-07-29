@@ -10,9 +10,10 @@ module Vehicle.Data.Tensor
     isZeroDimensional,
     Tensor (ConstantTensor),
     BoolTensor,
-    RatTensor,
     IndexTensor,
     NatTensor,
+    RatTensor,
+    ExtendedRatTensor,
     pattern ZeroDimTensor,
     allTensor,
     anyTensor,
@@ -31,6 +32,7 @@ module Vehicle.Data.Tensor
     isTensorOfAll,
     compareTensor,
     extendTensor,
+    toFiniteRatTensor,
   )
 where
 
@@ -47,6 +49,7 @@ import Data.Vector.Internal.Check (HasCallStack)
 import Data.Vector.Serialize ()
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), concatWith, surround, (<+>))
+import Vehicle.Data.Real
 import Vehicle.Prelude.Error (developerError)
 
 --------------------------------------------------------------------------------
@@ -155,10 +158,10 @@ zipWithTensor f xs ys = case (xs, ys) of
   (ConstantTensor shape u, DenseTensor _ vs) -> fromVector shape $ fmap (f u) vs
   (DenseTensor shape us, DenseTensor _ vs) -> fromVector shape $ Vector.zipWith f us vs
 
-foldTensor :: (a -> a -> a) -> Tensor a -> Tensor a -> Tensor a
-foldTensor f e t = case toList t of
+foldTensor :: (a -> a -> a) -> a -> Tensor a -> Tensor a
+foldTensor f e t = ZeroDimTensor $ case toList t of
   [] -> e
-  (x : xs) -> ZeroDimTensor $ foldr f x xs
+  (x : xs) -> foldr f x xs
 
 at :: (HasCallStack, Eq a) => Tensor a -> Int -> Tensor a
 at xs i = case shapeOf xs of
@@ -218,9 +221,12 @@ compareTensor :: (a -> b -> Bool) -> Tensor a -> Tensor b -> Bool
 compareTensor f t1 t2 = allTensor id $ zipWithTensor f t1 t2
 
 prettyTensor :: (a -> Doc b) -> Tensor a -> Doc b
-prettyTensor prettyElement = do
-  let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
-  foldMapTensor prettyElement prettyRow
+prettyTensor prettyElement = \case
+  ConstantTensor [] value -> prettyElement value
+  ConstantTensor shape value -> "const" <+> prettyElement value <+> pretty shape
+  denseTensor -> do
+    let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
+    foldMapTensor prettyElement prettyRow denseTensor
 
 isTensorOfAll :: (Eq a) => Tensor a -> a -> Bool
 isTensorOfAll t x = case t of
@@ -237,6 +243,13 @@ type NatTensor = Tensor Int
 type IndexTensor = Tensor Int
 
 type RatTensor = Tensor Rational
+
+type ExtendedRatTensor = Tensor ExtendedRational
+
+toFiniteRatTensor :: ExtendedRatTensor -> Maybe RatTensor
+toFiniteRatTensor = traverseTensor $ \case
+  Finite v -> Just v
+  _ -> Nothing
 
 -- | Represents a plain value, with zero dimensions
 pattern ZeroDimTensor :: a -> Tensor a

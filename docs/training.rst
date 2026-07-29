@@ -3,6 +3,8 @@ Training with a specification
 Vehicle compiles each ``@property`` in your specification into a callable loss function. Use one of the backend modules (PyTorch or TensorFlow) to load the compiled declarations into Python.
 
 
+.. _loading-declarations:
+
 Loading declarations
 --------------------
 
@@ -15,7 +17,7 @@ Feed a ``.vcl`` file to the backend-specific ``load_specification`` helper. Each
 
    declarations = loss_pt.load_specification(
        "spec.vcl",
-       logic=vcl.DifferentiableLogic.Vehicle,  # optional, defaults to DL2
+       logic=vcl.VehicleDifferentiableLogic(),  # optional, defaults to DL2
    )
 
    constraint_loss_fn = declarations["output_bounded"]
@@ -62,7 +64,7 @@ TensorFlow works the same way—load the declarations through ``vehicle_lang.los
 
    declarations = loss_tf.load_specification(
        "spec.vcl",
-       logic=vcl.DifferentiableLogic.Vehicle,
+       logic=vcl.VehicleDifferentiableLogic(),
    )
    constraint_loss_fn = declarations["output_bounded"]
 
@@ -77,13 +79,14 @@ TensorFlow works the same way—load the declarations through ``vehicle_lang.los
 
 By combining your usual task loss with the constraint losses returned by Vehicle, you ensure the optimiser simultaneously keeps the model on task and enforces the specification.
 
+Note that calling ``constraint_loss_fn()`` will require passing the relevant parameters, datasets, and networks that are mentioned in the specification. This includes inferred parameters. For example, the size of a dataset can be inferred by the specification at compile time, and therefore may be tagged with ``infer=True``. However, since the dataset is passed to the loss backend at runtime, this value cannot currently be inferred. Therefore, it must still be passed explicitly as a parameter.
 
 Logic selection
 ---------------
 
 By default, Vehicle compiles properties into loss functions using the ``Vehicle`` differentiable logic. You can select a different logic by passing the ``logic`` argument to ``load_specification``. Available options are:
-- ``vehicle_lang.DifferentiableLogic.Vehicle`` (default)
-- ``vehicle_lang.DifferentiableLogic.DL2``
+- ``vehicle_lang.VehicleDifferentiableLogic()`` (default)
+- ``vehicle_lang.DL2DifferentiableLogic()``
 
 
 Custom samplers and declaration context

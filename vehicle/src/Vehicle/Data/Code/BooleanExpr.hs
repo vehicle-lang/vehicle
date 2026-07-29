@@ -184,3 +184,31 @@ exprToDNF = \case
   Query a -> singletonDNF a
   Conjunct xs -> foldr1 andDNF (fmap exprToDNF xs)
   Disjunct xs -> foldr1 orDNF (fmap exprToDNF xs)
+
+--------------------------------------------------------------------------------
+-- Trees of `If` values
+
+data IfTree condition leaf
+  = IfTree condition (IfTree condition leaf) (IfTree condition leaf)
+  | IfLeaf leaf
+
+mapIfTreeLeaves :: (leaf1 -> leaf2) -> IfTree condition leaf1 -> IfTree condition leaf2
+mapIfTreeLeaves f = \case
+  IfLeaf v -> IfLeaf (f v)
+  IfTree c t1 t2 -> IfTree c (mapIfTreeLeaves f t1) (mapIfTreeLeaves f t2)
+
+forIfTreeM :: (Monad m) => IfTree condition leaf1 -> (leaf1 -> m (IfTree condition leaf2)) -> m (IfTree condition leaf2)
+forIfTreeM tree f = case tree of
+  IfLeaf v -> f v
+  IfTree c t1 t2 -> IfTree c <$> forIfTreeM t1 f <*> forIfTreeM t2 f
+
+elimIfTree :: forall m condition leaf a. (Monad m) => (condition -> a -> a -> m a) -> (leaf -> m a) -> IfTree condition leaf -> m a
+elimIfTree branch leaf = go
+  where
+    go :: IfTree condition leaf -> m a
+    go = \case
+      IfLeaf v -> leaf v
+      IfTree c e1 e2 -> do
+        e1' <- go e1
+        e2' <- go e2
+        branch c e1' e2'

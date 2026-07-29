@@ -28,7 +28,7 @@ import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Trans.Maybe (MaybeT, mapMaybeT)
-import Control.Monad.Writer (WriterT (..), mapWriterT)
+import Control.Monad.Writer.Strict (WriterT (..), mapWriterT)
 import Data.List.Split (splitOn)
 import Data.Text (Text)
 import Data.Text qualified as Text (unpack)
@@ -51,8 +51,9 @@ data CompilerPass
   | Solver
   | ITP
   | Loss
+  | LossLogic
   | TypingSubsystem
-  | WitnessReconstruction
+  | Verification
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty CompilerPass where
@@ -62,8 +63,9 @@ instance Pretty CompilerPass where
     Solver -> "solver compilation"
     ITP -> "ITP compilation"
     Loss -> "loss compilation"
+    LossLogic -> "loss logic compilation"
     TypingSubsystem -> "subsystem type checking"
-    WitnessReconstruction -> "witness reconstruction"
+    Verification -> "actual verification"
 
 allCompilerPasses :: [String]
 allCompilerPasses = map show (enumerate @CompilerPass)
@@ -151,6 +153,15 @@ instance (MonadLogger m) => MonadLogger (ReaderT s m) where
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
   logWarning = lift . logWarning
+  {-# INLINEABLE runCompilerPass #-}
+  {-# INLINEABLE runCompileDecl #-}
+  {-# INLINEABLE setCallDepth #-}
+  {-# INLINEABLE getCallDepth #-}
+  {-# INLINEABLE incrCallDepth #-}
+  {-# INLINEABLE decrCallDepth #-}
+  {-# INLINEABLE getDebugLevel #-}
+  {-# INLINEABLE logMessage #-}
+  {-# INLINEABLE logWarning #-}
 
 instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
   runCompilerPass = mapWriterT . runCompilerPass

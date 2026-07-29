@@ -15,7 +15,7 @@ module Vehicle.Verify.Specification.IO
   )
 where
 
-import Control.Exception (IOException, catch)
+import Control.Exception (IOException, catch, try)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty')
@@ -32,7 +32,7 @@ import Vehicle.Verify.Specification
 --------------------------------------------------------------------------------
 -- Specification
 
-readSpecification :: (MonadIO m) => FilePath -> m ModuleText
+readSpecification :: (MonadStdIO m) => FilePath -> m ModuleText
 readSpecification inputFile
   | takeExtension inputFile /= specificationFileExtension = do
       fatalError $
@@ -45,21 +45,24 @@ readSpecification inputFile
             <+> "Only files with a"
             <+> quotePretty specificationFileExtension
             <+> "extension are supported."
-  | otherwise =
-      liftIO $
-        TIO.readFile inputFile `catch` \(e :: IOException) -> do
+  | otherwise = do
+      errorOrContents <- liftIO $ try @IOException $ TIO.readFile inputFile
+
+      case errorOrContents of
+        Left err -> do
           fatalError $
             "Error occured while reading specification"
               <+> quotePretty inputFile
               <> ":"
               <> line
-              <> indent 2 (pretty (show e))
+              <> indent 2 (pretty (show err))
+        Right contents -> return contents
 
 --------------------------------------------------------------------------------
 -- Verification plan output
 
 writeSpecificationCache ::
-  (MonadIO m) =>
+  (MonadStdIO m) =>
   FilePath ->
   SpecificationCacheIndex ->
   m ()
@@ -67,19 +70,19 @@ writeSpecificationCache folder plan = do
   let planText = encodePretty' prettyJSONConfig plan
   let planFile = specificationCacheIndexFileName folder
 
-  liftIO $
-    catch
-      (do BIO.writeFile planFile planText)
-      ( \(err :: IOException) ->
-          fatalError $
-            "Unable to write the verification plan to file"
-              <+> quotePretty planFile
-              <> line
-              <> indent 2 ("error:" <+> pretty (show err))
-      )
+  errorOr <- liftIO $ try @IOException (BIO.writeFile planFile planText)
+
+  case errorOr of
+    Left err ->
+      fatalError $
+        "Unable to write the verification plan to file"
+          <+> quotePretty planFile
+          <> line
+          <> indent 2 ("error:" <+> pretty (show err))
+    Right () -> return ()
 
 readSpecificationCacheIndex ::
-  (MonadIO m) =>
+  (MonadStdIO m) =>
   FilePath ->
   m SpecificationCacheIndex
 readSpecificationCacheIndex cacheFile = do
@@ -117,19 +120,19 @@ writePropertyVerificationPlan folder propertyAddress plan = do
 
   logDebug MinDetail $ "Creating file:" <+> pretty planFile
 
-  liftIO $
-    catch
-      (BIO.writeFile planFile planText)
-      ( \(err :: IOException) ->
-          fatalError $
-            "Unable to write the verification plan to file"
-              <+> quotePretty planFile
-              <> line
-              <> indent 2 ("error:" <+> pretty (show err))
-      )
+  errorOr <- liftIO $ try @IOException (BIO.writeFile planFile planText)
+
+  case errorOr of
+    Left err ->
+      fatalError $
+        "Unable to write the verification plan to file"
+          <+> quotePretty planFile
+          <> line
+          <> indent 2 ("error:" <+> pretty (show err))
+    Right () -> return ()
 
 readPropertyVerificationPlan ::
-  (MonadLogger m, MonadIO m) =>
+  (MonadLogger m, MonadStdIO m) =>
   FilePath ->
   m PropertyVerificationPlan
 readPropertyVerificationPlan planFile = do

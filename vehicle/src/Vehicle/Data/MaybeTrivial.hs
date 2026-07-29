@@ -96,9 +96,6 @@ instance (MonadMaybeTrivial m) => MonadMaybeTrivial (ReaderT a m) where
   trivial = lift . trivial
   nonTrivial = lift . nonTrivial
 
-liftTrivial :: (MonadMaybeTrivial m) => MaybeTrivial a -> m a
-liftTrivial = trivialElim trivial nonTrivial
-
 --------------------------------------------------------------------------------
 -- Triviality monad
 

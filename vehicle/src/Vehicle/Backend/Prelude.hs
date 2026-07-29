@@ -1,7 +1,6 @@
 module Vehicle.Backend.Prelude where
 
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.List (find)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
@@ -32,8 +31,7 @@ data DifferentiableLogicID
 
 instance Read DifferentiableLogicID where
   readsPrec _prec value = do
-    let logics = enumerate @BuiltinDifferentiableLogicID
-    let maybeLogicID = find (\logicID -> show logicID == value) logics
+    let maybeLogicID = lookupEnumerable @BuiltinDifferentiableLogicID show value
     let logicID = maybe (CustomLogic $ Text.pack value) BuiltinLogic maybeLogicID
     [(logicID, "")]
 

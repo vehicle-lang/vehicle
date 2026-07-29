@@ -5,10 +5,9 @@ module Vehicle.Prelude.Warning
   )
 where
 
-import Data.List (sortBy)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Map (Map)
-import Data.Map qualified as Map (insertWith, toList)
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OMap (empty, singleton, toAscList, unionWithR)
 import Data.Set (Set)
 import Data.Set qualified as Set (insert, toList)
 import Vehicle.Data.Tensor (TensorIndices)
@@ -31,9 +30,9 @@ data CompileWarning
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
   | TrivialPropertySummary PropertyAddress Bool
-  | UnderSpecifiedProblemSpaceVariablesSummary PropertyID PropertyName (NonEmpty (Name, TensorIndices))
-  | UnsoundStrictOrderConversionsSummary QueryFormatID PropertyID PropertyName Int
-  | AllConstantNetworkInputVariablesSummary QueryFormatID PropertyID PropertyName (NonEmpty TensorIndices)
+  | UnderSpecifiedProblemSpaceVariablesSummary PropertyName (NonEmpty (Name, TensorIndices))
+  | UnsoundStrictOrderConversionsSummary QueryFormatID PropertyName Int
+  | AllConstantNetworkInputVariablesSummary QueryFormatID PropertyName (NonEmpty TensorIndices)
   | BoundsOnlyQuantifierSummary PropertyName Name
 
 --------------------------------------------------------------------------------
@@ -41,9 +40,9 @@ data SummarisedCompileWarning
 
 data CombiningState = CombiningState
   { uniqueWarnings :: [SummarisedCompileWarning],
-    underSpecifiedProblemSpaceVars :: Map (PropertyID, PropertyName) (NonEmpty (Name, TensorIndices)),
-    unsoundStrictnessConversions :: Map (QueryFormatID, PropertyID, PropertyName) Int,
-    allConstantNetworkInputVars :: Map (QueryFormatID, PropertyID, PropertyName) (NonEmpty TensorIndices),
+    underSpecifiedProblemSpaceVars :: OMap PropertyName (NonEmpty (Name, TensorIndices)),
+    unsoundStrictnessConversions :: OMap (QueryFormatID, PropertyName) Int,
+    allConstantNetworkInputVars :: OMap (QueryFormatID, PropertyName) (NonEmpty TensorIndices),
     allBoundsOnlyQuantifier :: Set (PropertyName, Name)
   }
 
@@ -51,9 +50,9 @@ emptyState :: CombiningState
 emptyState =
   CombiningState
     { uniqueWarnings = mempty,
-      underSpecifiedProblemSpaceVars = mempty,
-      unsoundStrictnessConversions = mempty,
-      allConstantNetworkInputVars = mempty,
+      underSpecifiedProblemSpaceVars = OMap.empty,
+      unsoundStrictnessConversions = OMap.empty,
+      allConstantNetworkInputVars = OMap.empty,
       allBoundsOnlyQuantifier = mempty
     }
 
@@ -71,18 +70,18 @@ addWarningToState CombiningState {..} = \case
       }
   UnderSpecifiedProblemSpaceVar PropertyAddress {..} var ->
     CombiningState
-      { underSpecifiedProblemSpaceVars = Map.insertWith (<>) (propertyID, propertyName) [(var, propertyIndices)] underSpecifiedProblemSpaceVars,
+      { underSpecifiedProblemSpaceVars = orderedInsertWith (<>) (propertyName, [(var, propertyIndices)]) underSpecifiedProblemSpaceVars,
         ..
       }
-  UnsoundStrictOrderConversion queryFormat (PropertyAddress {..}, _queryID) ->
+  UnsoundStrictOrderConversion queryFormat (QueryAddress (PropertyAddress {..}) _queryID) ->
     CombiningState
-      { unsoundStrictnessConversions = Map.insertWith (+) (queryFormat, propertyID, propertyName) 1 unsoundStrictnessConversions,
+      { unsoundStrictnessConversions = orderedInsertWith (+) ((queryFormat, propertyName), 1) unsoundStrictnessConversions,
         ..
       }
   AllConstantNetworkInputVars queryFormat PropertyAddress {..} ->
     CombiningState
       { allConstantNetworkInputVars =
-          Map.insertWith (<>) (queryFormat, propertyID, propertyName) [propertyIndices] allConstantNetworkInputVars,
+          orderedInsertWith (<>) ((queryFormat, propertyName), [propertyIndices]) allConstantNetworkInputVars,
         ..
       }
   BoundsOnlyQuantifier ident varName ->
@@ -97,37 +96,26 @@ groupWarnings warnings = stateToWarnings $ foldl addWarningToState emptyState wa
 
 stateToWarnings :: CombiningState -> [SummarisedCompileWarning]
 stateToWarnings CombiningState {..} =
-  sortBy compareWarning $
-    uniqueWarnings
-      <> fmap combineUnderSpecifiedProblemSpaceVars (Map.toList underSpecifiedProblemSpaceVars)
-      <> fmap combineUnsoundStrictnessConversions (Map.toList unsoundStrictnessConversions)
-      <> fmap combineAllConstantNetworkInputVars (Map.toList allConstantNetworkInputVars)
-      <> fmap combineAllBoundsOnlyQuantifier (Set.toList allBoundsOnlyQuantifier)
+  reverse uniqueWarnings
+    <> fmap combineUnderSpecifiedProblemSpaceVars (OMap.toAscList underSpecifiedProblemSpaceVars)
+    <> fmap combineUnsoundStrictnessConversions (OMap.toAscList unsoundStrictnessConversions)
+    <> fmap combineAllConstantNetworkInputVars (OMap.toAscList allConstantNetworkInputVars)
+    <> fmap combineAllBoundsOnlyQuantifier (Set.toList allBoundsOnlyQuantifier)
 
-combineUnderSpecifiedProblemSpaceVars :: ((PropertyID, PropertyName), NonEmpty (Name, TensorIndices)) -> SummarisedCompileWarning
-combineUnderSpecifiedProblemSpaceVars ((propertyID, property), vars) = UnderSpecifiedProblemSpaceVariablesSummary propertyID property vars
+combineUnderSpecifiedProblemSpaceVars :: (PropertyName, NonEmpty (Name, TensorIndices)) -> SummarisedCompileWarning
+combineUnderSpecifiedProblemSpaceVars (property, vars) = UnderSpecifiedProblemSpaceVariablesSummary property vars
 
-combineUnsoundStrictnessConversions :: ((QueryFormatID, PropertyID, PropertyName), Int) -> SummarisedCompileWarning
-combineUnsoundStrictnessConversions ((queryFormatID, propertyID, property), number) =
-  UnsoundStrictOrderConversionsSummary queryFormatID propertyID property number
+combineUnsoundStrictnessConversions :: ((QueryFormatID, PropertyName), Int) -> SummarisedCompileWarning
+combineUnsoundStrictnessConversions ((queryFormatID, property), number) =
+  UnsoundStrictOrderConversionsSummary queryFormatID property number
 
-combineAllConstantNetworkInputVars :: ((QueryFormatID, PropertyID, PropertyName), NonEmpty TensorIndices) -> SummarisedCompileWarning
-combineAllConstantNetworkInputVars ((queryFormatID, propertyID, property), queries) =
-  AllConstantNetworkInputVariablesSummary queryFormatID propertyID property queries
+combineAllConstantNetworkInputVars :: ((QueryFormatID, PropertyName), NonEmpty TensorIndices) -> SummarisedCompileWarning
+combineAllConstantNetworkInputVars ((queryFormatID, property), queries) =
+  AllConstantNetworkInputVariablesSummary queryFormatID property queries
 
 combineAllBoundsOnlyQuantifier :: (PropertyName, Name) -> SummarisedCompileWarning
 combineAllBoundsOnlyQuantifier (propertyName, quantifierName) =
   BoundsOnlyQuantifierSummary propertyName quantifierName
 
-compareWarning :: SummarisedCompileWarning -> SummarisedCompileWarning -> Ordering
-compareWarning w1 w2 = compare (warningPropertyId w1) (warningPropertyId w2)
-  where
-    warningPropertyId :: SummarisedCompileWarning -> Maybe PropertyID
-    warningPropertyId w =
-      case w of
-        UnusedResourcesSummary {} -> Nothing
-        TrivialPropertySummary address _ -> Just $ propertyID address
-        UnderSpecifiedProblemSpaceVariablesSummary propertyID _ _ -> Just propertyID
-        UnsoundStrictOrderConversionsSummary _ propertyID _ _ -> Just propertyID
-        AllConstantNetworkInputVariablesSummary _ propertyID _ _ -> Just propertyID
-        BoundsOnlyQuantifierSummary {} -> Nothing
+orderedInsertWith :: (Ord k) => (a -> a -> a) -> (k, a) -> OMap k a -> OMap k a
+orderedInsertWith f (k, a) = OMap.unionWithR (const f) (OMap.singleton (k, a))

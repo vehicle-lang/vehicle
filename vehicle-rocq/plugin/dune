@@ -1,0 +1,11 @@
+(library
+ (name vehicle_plugin)
+ (public_name vehicle-rocq.plugin)
+ (synopsis "Vehicle validation tactic for Rocq")
+ (flags :standard -w -27)
+ (libraries rocq-runtime.plugins.ltac rocq-runtime.vernac))
+
+(rule
+ (targets g_vehicle.ml)
+ (deps (:mlg g_vehicle.mlg))
+ (action (chdir %{project_root} (run rocq pp-mlg %{deps}))))

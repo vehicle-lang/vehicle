@@ -110,7 +110,7 @@ compileRel address = \case
     logWarning (UnsoundStrictOrderConversion MarabouQueries address)
     return ">="
 
-compileCoefVar :: Bool -> (Coefficient, QueryVariable) -> Doc a
+compileCoefVar :: Bool -> (Rational, QueryVariable) -> Doc a
 compileCoefVar False (1, var) = pretty var
 compileCoefVar True (1, var) = "+" <> pretty var
 compileCoefVar _ (-1, var) = "-" <> pretty var

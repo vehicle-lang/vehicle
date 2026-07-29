@@ -1,0 +1,14 @@
+; End-to-end test for the vehicle_validate tactic.
+;
+; Skipped if `vehicle` is not on PATH (typical in dev builds before the
+; Haskell binary is installed). Set VEHICLE_ROOT to the workspace root
+; when running outside the source tree.
+
+(rule
+ (alias runtest)
+ (deps run_validate_test.sh)
+ (locks /vehicle-runtest)
+ (action
+  (no-infer
+   (bash
+    "if command -v vehicle >/dev/null 2>&1; then VEHICLE_ROOT=%{workspace_root}/.. sh %{dep:run_validate_test.sh}; else echo 'SKIP: vehicle not on PATH'; fi"))))

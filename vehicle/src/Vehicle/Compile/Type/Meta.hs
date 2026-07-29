@@ -3,7 +3,6 @@ module Vehicle.Compile.Type.Meta
     MetaVariableContext,
     MetaInfo (..),
     extendMetaCtx,
-    HasMetas (..),
     makeMetaType,
     getMetaDependencies,
     findMetaInfo,
@@ -15,7 +14,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.Value (GluedExpr (..))
+import Vehicle.Data.Code.ForcedValue
 
 findUltimateUnsolvedMeta ::
   (MonadLogger m, PrintableBuiltin builtin) =>

@@ -1,0 +1,20 @@
+(************************************************************************)
+(*                                                                       *)
+(*  Grammar extension for the vehicle_validate tactic.                  *)
+(*                                                                       *)
+(************************************************************************)
+
+DECLARE PLUGIN "vehicle-rocq.plugin"
+
+{
+
+open Stdarg
+open Ltac_plugin
+open Vehicle_validate
+
+}
+
+TACTIC EXTEND vehicle_validate
+| [ "vehicle_validate" string(cache_path) ] ->
+    { vehicle_validate_tac cache_path }
+END

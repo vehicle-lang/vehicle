@@ -41,7 +41,14 @@ import Vehicle.Libraries.StandardLibrary (isBuiltinModule)
 
 class (PrintableBuiltin builtin, Ord builtin) => ScopableBuiltin builtin where
   generateAuxiliaryRecordDefinitions ::
-    (MonadCompile m) => Provenance -> Identifier -> Maybe DefRecordSort -> Telescope builtin -> RecordFields builtin -> m [Decl builtin]
+    (MonadCompile m) =>
+    Provenance ->
+    Identifier ->
+    Maybe DefRecordSort ->
+    Telescope builtin ->
+    RecordFields builtin ->
+    [DerivableRecordOperation] ->
+    m [Decl builtin]
 
 --------------------------------------------------------------------------------
 -- Scope checking over declarations

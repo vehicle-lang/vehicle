@@ -11,7 +11,7 @@ import Data.Data (Proxy)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Variable.Bound.Context.Generic.Class
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
-import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..))
+import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext (..))
 
 --------------------------------------------------------------------------------
 -- Context monad instantiation

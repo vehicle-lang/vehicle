@@ -4,35 +4,38 @@ module Vehicle.Backend.Loss.Domain
 where
 
 import Control.Monad (foldM, forM)
-import Control.Monad.Except (MonadError (..), runExceptT)
+import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
+import Control.Monad.Reader (MonadReader)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Vehicle.Backend.Loss.Core
+import Vehicle.Backend.Loss.Domain.PurifyAssertion (BlockingReason, tryPurifyAssertion, unblockingActions)
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
-import Vehicle.Compile.Constants.Value
+import Vehicle.Compile.Constants.ForcedValue
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
-import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Normalise.Builtin (elimImplies)
+import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Unblock (MonadPurify, UnblockingActions (..), tryPurifyAssertion, unblockBoolExpr)
-import Vehicle.Data.Assertion (NormalisedRelation (..), Relation (..), comparisonToAssertion)
+import Vehicle.Compile.Unblock (unblockBoolExpr)
+import Vehicle.Data.Assertion (Assertion, NormalisedRelation (..), Relation (..))
 import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Interface.Normalise (evalConstTensor)
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Code.BooleanExpr (BooleanExpr (..), DisjunctAll (..), andBoolExpr, conjunctDisjunctsM, disjunctDisjuncts, disjunctsToList, eliminateTrivialDisjunctions, flattenBoolExpr)
+import Vehicle.Data.Code.BooleanExpr (BooleanExpr (..), DisjunctAll (..), andBoolExpr, conjunctDisjunctsM, disjunctDisjuncts, disjunctsToList, elimIfTree, eliminateTrivialDisjunctions, flattenBoolExpr)
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (pattern ZeroDimTensor)
@@ -41,29 +44,28 @@ import Vehicle.Data.Variable.Bound.Context.Generic (BoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
 compileQuantifier ::
   (MonadLogic m) =>
-  (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin)) ->
-  m (Value LossBuiltin)
+  (Quantifier, QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin)) ->
+  m (Thunk LossBuiltin)
 compileQuantifier (q, args) = do
   maybePartitions <- compileQuantifierInternal (q, args)
   case maybePartitions of
     Trivial b ->
       -- TODO add a warning
-      convertBoolTensorLiteral (ZeroDimTensor b)
+      Forced <$> convertBoolTensorLiteral (ZeroDimTensor b)
     NonTrivial partitions -> do
       let disjunctedPartitions = partitionsToDisjuncts partitions
       DisjunctAll (v :| vs) <- traverse checkFinalPartitionUnconstrained disjunctedPartitions
-      finalValue <- foldrM orLossValue v vs
-      logDebugM MaxDetail $ prettyFriendlyInCtx finalValue
-      return finalValue
+      foldrM orLossValue v vs
 
 checkFinalPartitionUnconstrained ::
   (MonadLogic m) =>
   Partition ->
-  m (Value LossBuiltin)
+  m (Thunk LossBuiltin)
 checkFinalPartitionUnconstrained = \case
   (Nothing, Nothing) -> developerError "Found unexpected trivial partition"
   (Nothing, Just value) -> return value
@@ -71,7 +73,7 @@ checkFinalPartitionUnconstrained = \case
 
 compileQuantifierInternal ::
   (MonadLogic m) =>
-  (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin)) ->
+  (Quantifier, QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin)) ->
   m (MaybeTrivial Partitions)
 compileQuantifierInternal (q, args) = case q of
   Exists -> compileExists args
@@ -79,27 +81,28 @@ compileQuantifierInternal (q, args) = case q of
 
 compileForall ::
   (MonadLogic m) =>
-  QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
+  QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin) ->
   m (MaybeTrivial Partitions)
-compileForall args@(QuantifyRatTensorArgs dims _ _) = do
-  notArgs <- negateQuantifierBody args
+compileForall args = do
+  let notArgs = negateQuantifierBody args
   maybePartitions <- compileExists notArgs
   case maybePartitions of
     Trivial b -> return $ Trivial $ not b
-    NonTrivial partitions -> NonTrivial <$> notPartitions dims partitions
+    NonTrivial partitions -> NonTrivial <$> notPartitions (Forced IDimNil) partitions
 
 compileExists ::
   (MonadLogic m) =>
-  QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
+  QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin) ->
   m (MaybeTrivial Partitions)
 compileExists (QuantifyRatTensorArgs dims binder closure) =
   logCompilerSection2 MaxDetail "convert-exists" $ do
     -- Extract the domain for the search
     lv <- getBinderDepth
-    body <- normaliseClosure binder closure
+    let body = extendClosureWithBound closure binder lv
     finalCtx <- getShrunkenContext
 
-    result <- addTensorBinderToContext dims binder $ do
+    shapePrefix <- extractKnownShapePrefix dims
+    result <- addTensorBinderToContextLocally shapePrefix binder $ do
       maybePartitions <- compileBool body
       case maybePartitions of
         Trivial b -> do
@@ -116,8 +119,8 @@ compileExists (QuantifyRatTensorArgs dims binder closure) =
 compileConstraints ::
   (MonadLogic m) =>
   BoundCtx () ->
-  VDims Builtin ->
-  VBinder Builtin ->
+  UnforcedDims Builtin ->
+  UnforcedBinder Builtin ->
   NestedSliceVariable ->
   Partition ->
   m (MaybeTrivial Partitions)
@@ -141,7 +144,7 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
       Nothing -> do
         (ident, _p) <- getDeclProvenance
         logWarning $ BoundsOnlyQuantifier (nameOf ident) varName
-        getLogicField TruthityElement
+        getLogicFieldValue TruthityElement
 
     logDebugM MidDetail $ do
       remainderDoc <- prettyFriendlyInCtx remainingBody
@@ -156,7 +159,7 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
     let remainder = Closure finalEnv lossBody
 
     -- Find the bounds on the quantified variable from the constraints
-    let partialShape = extractPartialShape dims
+    partialShape <- extractKnownShapePrefix dims
     disjunctedTensorBounds <- findTensorBounds var partialShape constraints
     logDebug MaxDetail $ "number-of-constraint-partitions:" <+> pretty (length disjunctedTensorBounds)
 
@@ -167,7 +170,7 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
           boundsDoc <- prettyFriendlyInCtx (BoundedValue var tensorBounds)
           return $ "all-variable-bounds:" <> lineIndent boundsDoc
 
-        errorOrDomain <- fourierMotzkinTensorBoundsElimination partialShape tensorBounds
+        errorOrDomain <- fourierMotzkinTensorBoundsElimination tensorBounds
         domain <- case errorOrDomain of
           Left err -> noQuantifierDomainError binder err
           Right domain -> return domain
@@ -187,25 +190,27 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
 compileSearch ::
   (MonadLogic m) =>
   Name ->
-  VDims Builtin ->
-  VBinder Builtin ->
+  Thunk Builtin ->
+  UnforcedBinder Builtin ->
   Closure LossBuiltin ->
-  Domain TensorValue ->
-  m (Value LossBuiltin)
+  Domain (DimensionedTensorValue LossBuiltin) ->
+  m (Thunk LossBuiltin)
 compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
   -- Convert the binder and the dimensions.
-  lossBinder <- traverse convertType binder
-  lossDims <- convertDims dims
+  lossBinder <- traverse convertQuantifierlessExprToLoss binder
+  lossDims <- convertQuantifierlessExprToLoss dims
 
   -- Generate the operation for doing the reduction
-  nameCtx <- getNameContext
+  -- We do not know how many samples the quantifier will generate so we must append
+  -- an explicit lambda that takes them and then applies them appropriately.
+  -- The sample implementation will then provide them at run time.
   genericReductionOp <- getLogicField ReduceDisjunction
-  -- TODO This is a complete hack. We really need the notion of an unknown dimension inside Vehicle.
-  let reductionDims = IDimCons (INatLiteral (-1)) lossDims
-  reductionOp <- normaliseAppInEmptyFreeEnv nameCtx genericReductionOp [implicitIrrelevant reductionDims]
+  let explicitDimsBinder = mkExplicitBinder (IListType INatType) (Just (mempty, "dims"))
+  let explicitDimsReductionOp = Lam mempty explicitDimsBinder (normAppList genericReductionOp [implicitIrrelevant (BoundVar mempty (Ix 0))])
+  let reductionOp = Unforced emptyBoundEnv explicitDimsReductionOp
 
   -- Reform the predicate as if we had no tensor variables at all
-  let lossPredicate = VLam lossBinder closure
+  let lossPredicate = Forced $ VLam lossBinder closure
 
   -- Create the final expression
   -- NOTE that this is unsound as we discard the strictness information.
@@ -219,22 +224,22 @@ compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
               searchPredicate = lossPredicate
             }
   minimise <- getLogicDirection
-  return $ VBuiltin (LossBuiltinFunction $ SearchRatTensor varName minimise) spine
+  return $ Forced $ VBuiltin (LossBuiltinExtraFunction $ SearchRatTensor varName minimise) spine
 
 findTensorBounds ::
   forall m.
   (MonadLogic m) =>
   NestedSliceVariable ->
-  PartiallyKnownTensorShape ->
+  KnownPrefixOfTensorShape ->
   UserVariableConstraintTree ->
-  m (DisjunctAll (TensorBounds TensorValue, Maybe UserVariableConstraintTree))
+  m (DisjunctAll (TensorBounds (DimensionedTensorValue LossBuiltin), Maybe UserVariableConstraintTree))
 findTensorBounds parentVar parentVarShape constraints =
   go (DisjunctAll [(emptyBounds, Just constraints)]) parentVar
   where
     go ::
-      DisjunctAll (TensorBounds TensorValue, Maybe UserVariableConstraintTree) ->
+      DisjunctAll (TensorBounds (DimensionedTensorValue LossBuiltin), Maybe UserVariableConstraintTree) ->
       NestedSliceVariable ->
-      m (DisjunctAll (TensorBounds TensorValue, Maybe UserVariableConstraintTree))
+      m (DisjunctAll (TensorBounds (DimensionedTensorValue LossBuiltin), Maybe UserVariableConstraintTree))
     go allBounds var = do
       result <- forM allBounds $ \(bounds, maybeTree) ->
         case maybeTree of
@@ -251,28 +256,28 @@ findTensorBounds parentVar parentVarShape constraints =
               Just childVariables -> foldM go finalBoundsAndRemainders childVariables
       return $ disjunctDisjuncts result
 
+findVarBound ::
+  (MonadLogic m) =>
+  NestedSliceVariable ->
+  VariableInfo ->
+  UserVariableConstraint LossBuiltin ->
+  m (Maybe (TensorBounds (DimensionedTensorValue LossBuiltin)))
+findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
+  | not (expr `containsVariable` toSliceVar var) = return Nothing
+  | otherwise = do
+      (coef, expr') <- rearrangeExprToSolveFor (toSliceVar var) expr
+      boundExpr <- tensorValueLinearExprToValue expr'
+      bounds <- convertToTensorBounds parentShape indices rel coef boundExpr
+      return $ Just bounds
+
 noQuantifierDomainError ::
-  (MonadDomain m) =>
-  VBinder Builtin ->
+  (MonadLogic m) =>
+  UnforcedBinder Builtin ->
   UnboundedIndices ->
   m a
 noQuantifierDomainError binder missingIndices = do
   propertyProv <- getDeclProvenance
   throwError $ NoQuantifierDomainFound propertyProv binder missingIndices
-
-findVarBound ::
-  (MonadLogic m) =>
-  NestedSliceVariable ->
-  VariableInfo ->
-  UserVariableConstraint ->
-  m (Maybe (TensorBounds TensorValue))
-findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
-  | not (expr `containsVariable` toSliceVar var) = return Nothing
-  | otherwise = do
-      let (coef, expr') = rearrangeExprToSolveFor (toSliceVar var) expr
-      let boundExpr = tensorValueLinarExprToValue expr'
-      let bounds = convertToTensorBounds parentShape indices rel coef boundExpr
-      return $ Just bounds
 
 --------------------------------------------------------------------------------
 -- Constraint search
@@ -280,18 +285,31 @@ findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
 -- Definitions
 
 type MonadDomain m =
-  ( MonadLogic m
+  ( MonadCompile m,
+    MonadReader LossCtx m,
+    MonadFreeContext Builtin m,
+    MonadFreeContext LossBuiltin m,
+    MonadTensorBoundContext m
   )
 
-orLossValue :: (MonadDomain m) => Value LossBuiltin -> Value LossBuiltin -> m (Value LossBuiltin)
-orLossValue e1 e2 = convertOr (TensorOp2Args IDimNil e1 e2)
+orLossValue :: (MonadDomain m) => Thunk LossBuiltin -> Thunk LossBuiltin -> m (Thunk LossBuiltin)
+orLossValue e1 e2 =
+  convertBooleanOp PointwiseDisjunction $
+    mkExpr accessSpine (TensorOp2Args (Forced IDimNil) e1 e2)
 
-andLossValue :: (MonadDomain m) => Value LossBuiltin -> Value LossBuiltin -> m (Value LossBuiltin)
-andLossValue e1 e2 = convertAnd (TensorOp2Args IDimNil e1 e2)
+andLossValue :: (MonadDomain m) => Thunk LossBuiltin -> Thunk LossBuiltin -> m (Thunk LossBuiltin)
+andLossValue e1 e2 =
+  convertBooleanOp PointwiseConjunction $
+    mkExpr accessSpine (TensorOp2Args (Forced IDimNil) e1 e2)
 
-notConstraint :: (MonadDomain m) => UserVariableConstraint -> m (BooleanExpr UserVariableConstraint)
+notLossValue :: (MonadDomain m) => Thunk LossBuiltin -> Thunk LossBuiltin -> m (Thunk LossBuiltin)
+notLossValue dims e =
+  convertBooleanOp PointwiseNegation $
+    mkExpr accessSpine (TensorOp1Args dims e)
+
+notConstraint :: (MonadDomain m) => UserVariableConstraint LossBuiltin -> m (BooleanExpr (UserVariableConstraint LossBuiltin))
 notConstraint (NormalisedRelation rel expr) = do
-  let negExpr = scaleExpr (-1) expr
+  negExpr <- scaleExpr (-1) expr
   return $ case rel of
     OLe -> Query $ NormalisedRelation OLt negExpr
     OLt -> Query $ NormalisedRelation OLe negExpr
@@ -302,12 +320,12 @@ notConstraint (NormalisedRelation rel expr) = do
 
 -- | Note that the constraints live in the extended tensor context, where as the remaining value lives
 -- in the original unextended context.
-type Partition = (Maybe UserVariableConstraintTree, Maybe (Value LossBuiltin))
+type Partition = (Maybe UserVariableConstraintTree, Maybe (Thunk LossBuiltin))
 
-notPartition :: (MonadDomain m) => VDims LossBuiltin -> Partition -> m Partition
+notPartition :: (MonadDomain m) => Thunk LossBuiltin -> Partition -> m Partition
 notPartition dims (constraintTree, value) = do
   notConstraintTree <- traverse (traverse notConstraint) constraintTree
-  notValue <- traverse (convertNot . TensorOp1Args dims) value
+  notValue <- traverse (notLossValue dims) value
   return (fmap flattenBoolExpr notConstraintTree, notValue)
 
 andPartition :: (MonadDomain m) => Partition -> Partition -> m Partition
@@ -318,30 +336,32 @@ andPartition (c1, v1) (c2, v2) = do
 
 -- | Note that the constraints live in the extended tensor context, where as the remaining value lives
 -- in the original unextended context.
-newtype Partitions = Partitions (Map (Maybe UserVariableConstraintTree) (Maybe (Value LossBuiltin)))
+type Partitions = Map (Maybe UserVariableConstraintTree) (Maybe (Thunk LossBuiltin))
 
-singletonConstrainedPartition :: UserVariableConstraint -> Partitions
-singletonConstrainedPartition constraint = Partitions $ Map.singleton (Just (Query constraint)) Nothing
-
-singletonUnconstrainedPartition :: (MonadDomain m) => Value LossBuiltin -> m Partitions
-singletonUnconstrainedPartition unconstrained = do
-  return $ Partitions $ Map.singleton Nothing (Just unconstrained)
+singletonUnconstrainedPartition :: (MonadDomain m) => Thunk Builtin -> m (MaybeTrivial Partitions)
+singletonUnconstrainedPartition nonDomainConstraint = do
+  logDebugM MaxDetail $ do
+    doc <- prettyFriendlyInCtx nonDomainConstraint
+    return $ "Found non-domain constraint:" <+> doc
+  lossNonDomainConstraint <- logCompilerSection2 MaxDetail "converting constraint to loss builtins" $ do
+    convertQuantifierlessExprToLoss nonDomainConstraint
+  return $ NonTrivial $ Map.singleton Nothing (Just lossNonDomainConstraint)
 
 singletonPartition :: Partition -> Partitions
-singletonPartition (tree, value) = Partitions $ Map.singleton tree value
+singletonPartition (tree, value) = Map.singleton tree value
 
 numberOfPartitions :: Partitions -> Int
-numberOfPartitions (Partitions ps) = length ps
+numberOfPartitions = length
 
 containsConstraints :: Partitions -> Bool
-containsConstraints (Partitions partitions) = case Map.toList partitions of
+containsConstraints partitions = case Map.toList partitions of
   [(Nothing, _)] -> False
   _ -> True
 
-notPartitions :: (MonadDomain m) => VDims Builtin -> Partitions -> m Partitions
+notPartitions :: (MonadDomain m) => Thunk Builtin -> Partitions -> m Partitions
 notPartitions dims partitions = do
   -- Negate each individual partition
-  lossDims <- convertDims dims
+  lossDims <- convertQuantifierlessExprToLoss dims
   let disjuncts = partitionsToDisjuncts partitions
   DisjunctAll (p :| ps) <- traverse (notPartition lossDims) disjuncts
 
@@ -350,7 +370,7 @@ notPartitions dims partitions = do
   return $ singletonPartition result
 
 partitionsToDisjuncts :: Partitions -> DisjunctAll Partition
-partitionsToDisjuncts (Partitions ps) = case Map.toList ps of
+partitionsToDisjuncts ps = case Map.toList ps of
   [] -> developerError "Empty partition"
   x : xs -> DisjunctAll $ x :| xs
 
@@ -361,54 +381,55 @@ disjunctMaybeTrivialPartitions :: (MonadDomain m) => DisjunctAll (MaybeTrivial P
 disjunctMaybeTrivialPartitions = traverse disjunctPartitions . eliminateTrivialDisjunctions
 
 orPartitions :: (MonadDomain m) => Partitions -> Partitions -> m Partitions
-orPartitions (Partitions p1) (Partitions p2) = do
-  Partitions <$> unionWithM (unionMaybeWithM orLossValue) p1 p2
+orPartitions p1 p2 = do
+  unionWithM (unionMaybeWithM orLossValue) p1 p2
 
 andPartitions :: (MonadDomain m) => Partitions -> Partitions -> m Partitions
 andPartitions p1 p2 = do
   disjuncts <- conjunctDisjunctsM andPartition (partitionsToDisjuncts p1) (partitionsToDisjuncts p2)
-  return $ Partitions $ Map.fromList $ disjunctsToList disjuncts
-
-unblockingActions :: (MonadDomain m) => UnblockingActions m
-unblockingActions =
-  UnblockingActions
-    { unblockRatTensorBoundVar = \lv -> return $ VBoundVar lv [],
-      unblockNetworkApp = \ident args -> return $ VFreeVar ident (mkExpr accessSpine args)
-    }
+  return $ Map.fromList $ disjunctsToList disjuncts
 
 --------------------------------------------------------------------------------
 -- Search algorithm
 
-compileBool :: (MonadDomain m) => Value Builtin -> m (MaybeTrivial Partitions)
-compileBool value = logEntryAndExit value $ case toBoolValue value of
-  -----------------------
-  -- Useful base cases --
-  -----------------------
-  VCompareRatTensor args -> compileComparison args
-  --------------------------
-  -- Un-useful base cases --
-  --------------------------
-  VBoolLiteral b -> return $ Trivial b
-  VCompareNat {} -> unsupportedOperation "CompareNat"
-  VCompareIndex {} -> unsupportedOperation "CompareIndex"
-  ---------------------
-  -- Recursive cases --
-  ---------------------
-  VAnd args -> compileAnd args
-  VOr args -> compileOr args
-  VBoolIf args -> compileBool =<< unfoldIf args
-  VNot args -> compileBool =<< lowerNot (unblockBoolExpr unblockingActions) args
-  VQuantifyRatTensor args -> compileQuantifierInternal args
-  -------------------
-  -- Blocked cases --
-  -------------------
-  VReduceAndTensor {} -> unblockBoolValue value
-  VReduceOrTensor {} -> unblockBoolValue value
-  VBoolAt {} -> unblockBoolValue value
+compileBool :: (MonadDomain m) => Thunk Builtin -> m (MaybeTrivial Partitions)
+compileBool value = logEntryAndExit value $ do
+  forcedValue <- forceAndRewriteTensor value
+  case toBoolValue forcedValue of
+    -----------------------
+    -- Useful base cases --
+    -----------------------
+    VCompareRatTensor args -> compileComparison args
+    --------------------------
+    -- Un-useful base cases --
+    --------------------------
+    VBoolLiteral b -> return $ Trivial b
+    VCompareNat {} -> unsupportedOperation "CompareNat"
+    VCompareIndex {} -> unsupportedOperation "CompareIndex"
+    ---------------------
+    -- Recursive cases --
+    ---------------------
+    VImplies args -> compileBool $ elimImplies args
+    VAnd args -> compileAnd args
+    VOr args -> compileOr args
+    VQuantifyRatTensor args -> compileQuantifierInternal args
+    VQuantifyRecord _args -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
+    -------------------
+    -- Blocked cases --
+    -------------------
+    VReduceAndTensor {} -> unblock forcedValue
+    VReduceOrTensor {} -> unblock forcedValue
+    VBoolTensorAt {} -> unblock forcedValue
+    VBoolVectorAt {} -> unblock forcedValue
+    VBoolFoldList {} -> unblock forcedValue
+    VBoolIf args -> compileBool =<< unfoldIf args
+    VNot (TensorOp1Args dims xs) -> unblockWith (lowerNot unblockingActions $ TensorOp1Args dims xs) (Forced forcedValue)
+  where
+    unblock forced = unblockWith (unblockBoolExpr unblockingActions (Forced forced)) (Forced forced)
 
 compileAnd ::
   (MonadDomain m) =>
-  TensorOp2Args (Value Builtin) ->
+  TensorOp2Args (Thunk Builtin) ->
   m (MaybeTrivial Partitions)
 compileAnd (TensorOp2Args _ e1 e2) = do
   c1 <- compileBool e1
@@ -417,7 +438,7 @@ compileAnd (TensorOp2Args _ e1 e2) = do
 
 compileOr ::
   (MonadDomain m) =>
-  TensorOp2Args (Value Builtin) ->
+  TensorOp2Args (Thunk Builtin) ->
   m (MaybeTrivial Partitions)
 compileOr (TensorOp2Args _ e1 e2) = do
   c1 <- compileBool e1
@@ -430,203 +451,95 @@ compileOr (TensorOp2Args _ e1 e2) = do
 compileComparison ::
   forall m.
   (MonadDomain m) =>
-  (ComparisonOp, TensorOp2Args (Value Builtin)) ->
+  (ComparisonOp, TensorComparisonArgs (Thunk Builtin)) ->
   m (MaybeTrivial Partitions)
-compileComparison (op, args)
-  | op == Ne = compileNonBoundComparison (op, args)
-  | otherwise = do
-      blockedValueOrResult <- purifyAssertion op args
-      case blockedValueOrResult of
-        Left err -> case err of
-          ImpureButProgress value -> compileBool value
-          ContainsNetwork ident -> do
-            logDebug MaxDetail $ "invalid-bound" <+> parens ("contains" <+> quotePretty ident)
-            compileNonBoundComparison (op, args)
-          ContainsMultipleUserVariablesFromSameSlice _parent var1 var2 -> do
+compileComparison (op, args) = do
+  logCompilerSection2 MaxDetail "assertion compilation" $ do
+    if op == Ne
+      then singletonUnconstrainedPartition $ Forced (mkExpr accessCompareRatTensor (op, args))
+      else do
+        blockedValueOrResult <- tryPurifyAssertion op args
+        elimIfTree compileBranch compileLeaf blockedValueOrResult
+  where
+    compileBranch ::
+      Thunk Builtin ->
+      MaybeTrivial Partitions ->
+      MaybeTrivial Partitions ->
+      m (MaybeTrivial Partitions)
+    compileBranch c x y = do
+      c' <- compileBool c
+      notC' <- compileBool (Forced <$> mkExpr accessNotTensor $ TensorOp1Args (Forced IDimNil) c)
+      cAndx <- andTrivialM andPartitions c' x
+      notCAndy <- andTrivialM andPartitions notC' y
+      orTrivialM orPartitions cAndx notCAndy
+
+    compileLeaf ::
+      (Thunk Builtin, Maybe (MaybeTrivial (Assertion (TensorValueLinearExpr Builtin)))) ->
+      m (MaybeTrivial Partitions)
+    compileLeaf (value, maybeEquivAssertion) = case maybeEquivAssertion of
+      Nothing -> singletonUnconstrainedPartition value
+      Just (Trivial b) -> return $ Trivial b
+      Just (NonTrivial assertion) -> do
+        let (NormalisedRelation rel (Sparse coeffs constant)) = assertion
+        if Map.null coeffs
+          then singletonUnconstrainedPartition value
+          else do
+            lossConstant <- logCompilerSection2 MaxDetail "converting constant to loss builtins" $ do
+              let TensorValue dims tensorValue = constant
+              lossConstant <- convertQuantifierlessExprToLoss tensorValue
+              lossDims <- convertQuantifierlessExprToLoss dims
+              return $ TensorValue lossDims lossConstant
+
+            let lossAssertion = NormalisedRelation rel (Sparse coeffs lossConstant)
+            let partitions = Map.singleton (Just (Query lossAssertion)) Nothing
             logDebugM MaxDetail $ do
-              var1Doc <- squotes <$> prettyFriendlyInCtx var1
-              var2Doc <- squotes <$> prettyFriendlyInCtx var2
-              return $ "invalid-bound" <+> parens ("contains" <+> var1Doc <+> "and" <+> var2Doc <+> "from same tensor")
-            compileNonBoundComparison (op, args)
-        Right (TensorOp2Args dims e1 e2) -> do
-          lossDims <- convertDims dims
-          errorOrAssertion <- runExceptT $ do
-            linX <- compileLinearExpr lossDims e1
-            linY <- compileLinearExpr lossDims e2
-            comparisonToAssertion op linX linY
-
-          case errorOrAssertion of
-            Left uncompilable -> do
-              logDebugM MaxDetail $ do
-                doc <- prettyFriendlyInCtx uncompilable
-                return $ "invalid-bound" <+> parens ("unable to unblock" <+> doc)
-              compileNonBoundComparison (op, args)
-            Right (Left trivialValue) -> do
-              logDebug MaxDetail $ "invalid-bound" <+> parens ("trivially" <+> pretty trivialValue)
-              return $ Trivial trivialValue
-            Right (Right assertion) -> do
-              logDebugM MaxDetail $ do
-                doc <- prettyFriendlyInCtx assertion
-                return $ "valid-bound: " <+> doc
-              return $ NonTrivial $ singletonConstrainedPartition assertion
-
-compileNonBoundComparison ::
-  (MonadDomain m) =>
-  (ComparisonOp, TensorOp2Args (Value Builtin)) ->
-  m (MaybeTrivial Partitions)
-compileNonBoundComparison args = do
-  value <- convertRatTensorPointwiseComparison args
-  NonTrivial <$> singletonUnconstrainedPartition value
+              doc <- prettyFriendlyInCtx lossAssertion
+              return $ "Found domain constraint:" <+> doc
+            return $ NonTrivial partitions
 
 -- | Unblocking a boolean value is a little complicated.
--- If an expression cannot be immediately compiled to constriants, we have two
--- options. Firstly, it _may_ contain constraints so we need to try unblocking
--- it to see and then compiling the results. However, if the resulting expression
--- contains no constraints over the quantified variables, then we instead
--- directly convert it to a loss value as that will likely result in a more
--- efficient expression to evaluate.
-unblockBoolValue ::
-  (MonadDomain m) =>
-  Value Builtin ->
-  m (MaybeTrivial Partitions)
-unblockBoolValue value = do
-  result <- unblockBoolExpr unblockingActions value
-  maybePartitions <- compileBool result
-  case maybePartitions of
-    Trivial {} -> return maybePartitions
-    NonTrivial partitions ->
-      if containsConstraints partitions
-        then return maybePartitions
-        else do
-          lossValue <- convertBoolTensor value
-          NonTrivial <$> singletonUnconstrainedPartition lossValue
-
---------------------------------------------------------------------------------
--- Comparison purification
-
--- | A comparison may be compiled to a potential bound as long as:
--- * It does not contain any network applications (e.g. f x < 0.5)
--- * It does not compare slices from the same user tensor (e.g. x ! 0 < x ! 1)
-data PurificationError
-  = ContainsNetwork Identifier
-  | ContainsMultipleUserVariablesFromSameSlice UserTensorVariable UserSliceVariable UserSliceVariable
-  | ImpureButProgress (Value Builtin)
-
--- | Monad purify
-type MonadPurifyAssertion m =
-  ( MonadPurify m,
-    MonadError PurificationError m,
-    MonadReadableTensorBoundContext m
-  )
-
-purifyAssertion ::
-  (MonadDomain m) =>
-  ComparisonOp ->
-  TensorOp2Args (Value Builtin) ->
-  m (Either PurificationError (TensorOp2Args (Value Builtin)))
-purifyAssertion op args = do
-  callDepth <- getCallDepth
-  runExceptT $ do
-    errorOrResult <- tryPurifyAssertion purifyUnblockingActions op args
-    case errorOrResult of
-      Left err -> do
-        setCallDepth callDepth
-        throwError $ ImpureButProgress err
-      Right value -> return value
-
-purifyUnblockingActions :: (MonadPurifyAssertion m) => UnblockingActions m
-purifyUnblockingActions =
-  UnblockingActions
-    { unblockRatTensorBoundVar = purifyBoundVar,
-      unblockNetworkApp = purifyNetworkApp
-    }
-
-purifyNetworkApp :: (MonadPurifyAssertion m) => Identifier -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
-purifyNetworkApp ident _spine = throwError $ ContainsNetwork ident
-
-purifyBoundVar :: (MonadPurifyAssertion m) => Lv -> m (Value Builtin)
-purifyBoundVar lv = do
-  (_, maybeUserVars) <- lookupVariableInNestedCtx lv
-  case maybeUserVars of
-    Nothing -> return $ VBoundVar lv []
-    Just (_tensorVar, sliceVar) -> replaceTensorVariableWithStackedChildren sliceVar
-
---------------------------------------------------------------------------------
--- Compiling linear expressions
-
-compileLinearExpr ::
+unblockWith ::
   forall m.
-  (MonadLogger m, MonadReadableTensorBoundContext m, MonadError (Value Builtin) m) =>
-  VDims LossBuiltin ->
-  Value Builtin ->
-  m (LinearExpr SliceVariable TensorValue)
-compileLinearExpr dims expr = case toRatTensorValue expr of
-  ----------------
-  -- Base cases --
-  ----------------
-  VRatTensorLiteral t -> do
-    let lossExpr = mkExpr accessRatTensorLiteral t
-    return $ constantExpr $ TensorValue dims lossExpr
-  VRatTensorBoundVar var -> do
-    maybeExpr <- compileRatTensorVar dims var
-    maybe unlinearisable return maybeExpr
-  ---------------------
-  -- Inductive cases --
-  ---------------------
-  VNegRatTensor (TensorOp1Args _ e) -> do
-    e' <- compileLinearExpr dims e
-    return $ scaleExpr (-1) e'
-  VAddRatTensor (TensorOp2Args _ e1 e2) -> do
-    e1' <- compileLinearExpr dims e1
-    e2' <- compileLinearExpr dims e2
-    return $ addExprsUnsafe 1 1 e1' e2'
-  VSubRatTensor (TensorOp2Args _ e1 e2) -> do
-    e1' <- compileLinearExpr dims e1
-    e2' <- compileLinearExpr dims e2
-    return $ addExprsUnsafe 1 (-1) e1' e2'
-  ---------------------
-  -- Unreduced cases --
-  ---------------------
-  -- The expression is being blocked
-  VRatConstTensor {} -> unlinearisable
-  VRatStackTensor {} -> unlinearisable
-  VRatAt {} -> unlinearisable
-  VRatTensorFreeVar {} -> unlinearisable
-  VRatForeach {} -> unlinearisable
-  VIfRatTensor {} -> unlinearisable
-  -----------------------
-  -- Unsupported cases --
-  -----------------------
-  -- Min/max could be handled by splitting into two constraints?
-  VMinRatTensor {} -> unlinearisable
-  VMaxRatTensor {} -> unlinearisable
-  VReduceAddRatTensor {} -> unlinearisable
-  VReduceMulRatTensor {} -> unlinearisable
-  VReduceMinRatTensor {} -> unlinearisable
-  VReduceMaxRatTensor {} -> unlinearisable
-  VMulRatTensor (TensorOp2Args _ _e1 _e2) -> unlinearisable
-  VDivRatTensor (TensorOp2Args _ _e1 _e2) -> unlinearisable
-  where
-    unlinearisable :: m (LinearExpr SliceVariable TensorValue)
-    unlinearisable = throwError expr
-
-compileRatTensorVar ::
-  (MonadLogger m, MonadReadableTensorBoundContext m) =>
-  VDims LossBuiltin ->
-  Lv ->
-  m (Maybe (LinearExpr SliceVariable TensorValue))
-compileRatTensorVar dims lv = do
-  (_, maybeSliceVar) <- lookupVariableInNestedCtx lv
-  forM maybeSliceVar $ \(_tensorVar, sliceVar) -> do
-    zeroTensor <- evalConstTensor $ ConstTensorArgs IRatType (IRatLiteral 0) dims
-    return $ singletonVarExpr (TensorValue dims zeroTensor) sliceVar
+  (MonadDomain m) =>
+  ExceptT BlockingReason m (Thunk Builtin) ->
+  Thunk Builtin ->
+  m (MaybeTrivial Partitions)
+unblockWith action defaultValue = do
+  callDepth <- getCallDepth
+  blockedOrUnblockedExpr <- runExceptT action
+  case blockedOrUnblockedExpr of
+    -- If we cannot unblock it return an unconstrained partition
+    Left _blockingExpr -> do
+      setCallDepth callDepth
+      singletonUnconstrainedPartition defaultValue
+    Right unblockedExpr -> do
+      -- If we can unblock it then try to continue compilation
+      maybePartitions <- compileBool unblockedExpr
+      case maybePartitions of
+        NonTrivial partitions | not (containsConstraints partitions) -> singletonUnconstrainedPartition defaultValue
+        _ -> return maybePartitions
 
 --------------------------------------------------------------------------------
 -- Utils
 
+extractKnownShapePrefix ::
+  forall m.
+  (MonadDomain m) =>
+  Thunk Builtin ->
+  m KnownPrefixOfTensorShape
+extractKnownShapePrefix value = do
+  forcedValue <- forceThunk value
+  case forcedValue of
+    IDimCons d ds -> do
+      forcedDim <- forceThunk d
+      case forcedDim of
+        INatLiteral n -> (n :) <$> extractKnownShapePrefix ds
+        _ -> return []
+    _ -> return []
+
 logEntryAndExit ::
   (MonadDomain m) =>
-  Value Builtin ->
+  Thunk Builtin ->
   m (MaybeTrivial Partitions) ->
   m (MaybeTrivial Partitions)
 logEntryAndExit start action = do
@@ -637,6 +550,6 @@ logEntryAndExit start action = do
   result <- action
   decrCallDepth
   logDebugM MaxDetail $ do
-    -- tensorCtx <- toNamedBoundCtx . originalCtx <$> getNestedVariableCtx
-    return "search-exit" -- :" <+> prettyFriendlyInCt
+    doc <- prettyFriendlyInCtx result
+    return $ "search-exit:" <+> lineIndent doc
   return result

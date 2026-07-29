@@ -5,12 +5,16 @@ module Vehicle.Data.Builtin.Standard.Type () where
 import Data.Foldable (traverse_)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Scope.Core
+import Vehicle.Compile.Scope.Records
+import Vehicle.Compile.Sugar.Core
 import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.System
+import Vehicle.Data.AST.Expr.Desugared qualified as D (Expr (..), normAppList)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Standard.Core
@@ -18,9 +22,27 @@ import Vehicle.Data.Builtin.Standard.IndexSolver
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
+import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 import Vehicle.Libraries.StandardLibrary
 import Prelude hiding (iterate, pi)
+
+--------------------------------------------------------------------------------
+-- Scoping
+--------------------------------------------------------------------------------
+
+instance DesugarableBuiltin Builtin where
+  elabUnitLiteral p = D.Builtin p $ BuiltinConstructor UnitLiteral
+  elabBoolLiteral p = D.Builtin p . BuiltinConstructor . BoolTensorLiteral . ZeroDimTensor
+  elabNatLiteral p n = do
+    let fromNat = D.Builtin p (TypeClassOp FromNatTC)
+    D.normAppList fromNat $ fmap explicit [D.Builtin p $ BuiltinConstructor $ NatLiteral n]
+  elabDecimalLiteral p r = do
+    let fromRat = D.Builtin p (TypeClassOp FromRatTC)
+    D.normAppList fromRat $ fmap explicit [D.Builtin p $ BuiltinConstructor $ RatTensorLiteral $ ZeroDimTensor r]
+
+instance ScopableBuiltin Builtin where
+  generateAuxiliaryRecordDefinitions = generateBuiltinAuxiliaryRecordDefinitions
 
 --------------------------------------------------------------------------------
 -- Typing
@@ -62,7 +84,6 @@ typeStandardBuiltin p = \case
 
 typeOfTypeClass :: TypeClass -> DSLExpr Builtin
 typeOfTypeClass tc = case tc of
-  HasCompare {} -> type0 ~> type0 ~> type0
   HasQuantifier {} -> type0 ~> type0 ~> type0
   HasNeg -> type0 ~> type0 ~> type0
   HasAt -> type0 ~> type0 ~> type0 ~> type0
@@ -72,13 +93,10 @@ typeOfTypeClass tc = case tc of
   HasQuantifierIn {} -> type0 ~> type0 ~> type0
   HasNatLits {} -> type0 ~> type0
   HasRatLits -> type0 ~> type0
-  HasVecLits {} -> tNat ~> (type0 ~> type0) ~> type0
+  HasVecLits {} -> type0 ~> type0 ~> tNat ~> type0
   ValidPropertyType -> type0 ~> type0
   ValidParameterType {} -> type0 ~> type0
   ValidNetworkTensorType -> type0 ~> type0
-  ValidDatasetType -> type0 ~> type0
-  ValidDatasetListElementType -> type0 ~> type0
-  ValidDatasetTensorElementType -> type0 ~> type0
   IsTensorType {} -> typeOfBuiltinType TensorType
   ValidTensorLikeType -> type0 ~> type0
 
@@ -92,7 +110,6 @@ typeOfTypeClassOp b = case b of
   FromRatTC -> forAllTypes $ \t -> hasRatLits t ~~~> typeOfFromRat t
   VecLiteralTC -> typeOfVectorLiteral
   NegTC -> typeOfTCOp1 hasNeg
-  CompareTC op -> typeOfTCComparisonOp $ hasCompare op
   AtTC -> typeOfTCOp2 hasAt
   ForeachTC ->
     forAll "A" type0 $ \t1 ->
@@ -111,17 +128,6 @@ typeOfBuiltinCast = \case
   FromRat dom -> case dom of
     FromRatToRat -> typeOfFromRat (tRatTensor dimNil)
   FromVectorToList -> typeOfFromVectorToList
-
-typeOfTCComparisonOp ::
-  (BuiltinHasStandardTypes builtin) =>
-  (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) ->
-  DSLExpr builtin
-typeOfTCComparisonOp constraint =
-  forAllTypeTriples $ \t1 t2 t3 ->
-    constraint t1 t2 t3
-      ~~~> t1
-      ~> t2
-      ~> t3
 
 typeOfFromVectorToList :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfFromVectorToList =
@@ -177,7 +183,7 @@ restrictStandardDeclType declSort (ident, p) typ = do
   let tc = case declSort of
         RestrictedProperty -> Builtin p (TypeClass ValidPropertyType)
         RestrictedParameter s -> Builtin p (TypeClass (ValidParameterType s))
-        RestrictedDataset -> Builtin p (TypeClass ValidDatasetType)
+        RestrictedDataset -> FreeVar p validDatasetTypeIdent
         RestrictedNetwork -> FreeVar p validNetworkTypeIdent
 
   let expr = App tc [explicit typ]

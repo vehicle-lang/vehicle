@@ -9,7 +9,7 @@
       "verify-cache/*",
       "verify-cache/*/*"
     ],
-    "lines": ".*\"fileHash\".*"
+    "lines": ".*[fileHash][filePath].*"
   }
 },
 {
@@ -22,7 +22,7 @@
       "verify-cache/*",
       "verify-cache/*/*"
     ],
-    "lines": ".*\"fileHash\".*"
+    "lines": ".*[fileHash][filePath].*"
   }
 }
 ]

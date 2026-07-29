@@ -12,7 +12,6 @@ data DerivedFunction
   = TypeAnn
   | QuantifyIndex Quantifier
   | QuantifyInList Quantifier
-  | CompareRatTensorReduced ComparisonOp
   deriving (Eq, Show, Ord, Generic)
 
 instance Pretty DerivedFunction where
@@ -20,7 +19,6 @@ instance Pretty DerivedFunction where
     TypeAnn -> "typeAnn"
     QuantifyIndex q -> pretty q <> "Index"
     QuantifyInList q -> pretty q <> "InList"
-    CompareRatTensorReduced op -> comparisonOpName op <> "RatTensorReduced"
 
 instance HasIdentifier DerivedFunction where
   identifierOf f = stdlibIdentifier $ layoutAsText $ pretty f

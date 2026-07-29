@@ -24,14 +24,13 @@ import Control.Monad.Identity (IdentityT)
 import Control.Monad.Reader (ReaderT)
 import Control.Monad.State (StateT)
 import Control.Monad.Trans.Class (MonadTrans (lift))
-import Control.Monad.Writer (WriterT)
+import Control.Monad.Writer.Strict (WriterT)
 import Data.Text (Text)
 import Data.Version (Version)
 import System.Directory (createDirectoryIfMissing, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
 import System.FilePath ((</>))
-import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
 import Vehicle.Prelude.Prettyprinter
@@ -121,10 +120,10 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
-fatalError :: (MonadIO m) => Doc a -> m b
-fatalError message = liftIO $ do
-  hPrint stderr message
-  exitFailure
+fatalError :: (MonadStdIO m) => Doc a -> m b
+fatalError message = do
+  writeStderr $ layoutAsText message
+  liftIO exitFailure
 
 programOutput :: (MonadStdIO m) => Doc a -> m ()
 programOutput message = writeStdoutLn $ layoutAsText message

@@ -34,10 +34,13 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1,
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1,
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 4
                       },
                       "AllDimensions"
@@ -47,7 +50,10 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 8
                       },
                       "AllDimensions"
@@ -57,10 +63,13 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1,
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1,
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 0
                       },
                       {
@@ -91,29 +100,42 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "oppositeFaces",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "UniModal",
+                        "contents": {
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [],
+                            "baseType": []
+                          }
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          1,
-                          2
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "UniModal",
+                        "contents": {
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              1,
+                              2
+                            ],
+                            "baseType": []
+                          }
+                        }
                       }
                     },
                     "networkFilepath": "baseline.onnx"

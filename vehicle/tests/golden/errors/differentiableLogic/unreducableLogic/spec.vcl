@@ -16,8 +16,8 @@ CustomLoss = if f 0 > 0 then
   , pointwiseGreaterEqualThan  = \x y -> y - x
   , pointwiseEqual             = \x y -> min (x - y) (y - x)
   , pointwiseNotEqual          = \x y -> max (x - y) (y - x)
-  , reduceConjunction          = \e xs -> reduceMax e xs
-  , reduceDisjunction          = \e xs -> reduceMin e xs
+  , reduceConjunction          = \xs -> reduceMax xs
+  , reduceDisjunction          = \xs -> reduceMin xs
   } else
   { trueElement                = 0
   , falseElement               = 20
@@ -30,6 +30,6 @@ CustomLoss = if f 0 > 0 then
   , pointwiseGreaterEqualThan  = \x y -> y - x
   , pointwiseEqual             = \x y -> min (x - y) (y - x)
   , pointwiseNotEqual          = \x y -> max (x - y) (y - x)
-  , reduceConjunction          = \e xs -> reduceMax e xs
-  , reduceDisjunction          = \e xs -> reduceMin e xs
+  , reduceConjunction          = \xs -> reduceMax xs
+  , reduceDisjunction          = \xs -> reduceMin xs
   }

@@ -4,10 +4,11 @@ module Vehicle.Data.Variable.Bound.Context.Tensor
   )
 where
 
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Code.ForcedValue
+import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (HasShape (..))
 import Vehicle.Data.Variable.Bound.Context.Name.Class as Export
 import Vehicle.Data.Variable.Bound.Context.Name.Core as Export
@@ -25,19 +26,19 @@ import Vehicle.Prelude (developerError)
 replaceTensorVariableWithStackedChildren ::
   (MonadReadableTensorBoundContext m) =>
   SliceVariable ->
-  m (Value Builtin)
+  m (Thunk Builtin)
 replaceTensorVariableWithStackedChildren var = do
   nestedVar <- lookupNestedSliceVariable var
   case (childVariablesOf nestedVar, shapeOf nestedVar) of
-    (Nothing, []) -> return $ VBoundVar (toLv var) []
+    (Nothing, []) -> return $ Forced $ Forced.VBoundVar (toLv var) []
     (Just childVars, d : ds) ->
       return $
-        fromRatTensorValue $
-          VRatStackTensor $
+        Forced $
+          mkExpr accessStackTensor $
             StackTensorArgs
-              { stackType = IRatType,
-                stackFirstDim = INatLiteral d,
-                stackRemainingDims = mkDims ds,
-                stackElements = flip map childVars $ \v -> VBoundVar (toLv v) []
+              { stackType = Forced IRatType,
+                stackFirstDim = Forced $ INatLiteral d,
+                stackRemainingDims = Forced $ mkDims ds,
+                stackElements = flip map childVars $ \v -> Forced $ Forced.VBoundVar (toLv v) []
               }
     _ -> developerError "mismatched children and shape"

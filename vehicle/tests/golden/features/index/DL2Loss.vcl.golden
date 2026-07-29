@@ -1,6 +1,6 @@
 @property;
 eqIndex : Tensor Real;
-eqIndex = 1000000.0
+eqIndex = infinity
 
 @property;
 neqIndex : Tensor Real;
@@ -16,8 +16,8 @@ ltIndex = 0.0
 
 @property;
 geqIndex : Tensor Real;
-geqIndex = 1000000.0
+geqIndex = infinity
 
 @property;
 gtIndex : Tensor Real;
-gtIndex = 1000000.0
+gtIndex = infinity

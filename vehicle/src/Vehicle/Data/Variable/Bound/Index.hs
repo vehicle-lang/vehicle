@@ -29,7 +29,7 @@ pattern Ix i <- InnerIx i
 
 checkIx :: (HasCallStack) => Int -> Ix
 checkIx i
-  | i < 0 = developerError $ "malformed ix" <+> pretty i
+  | i < 0 = developerError $ "malformed DeBruijn index" <+> quotePretty i
   | otherwise = InnerIx i
 
 instance NFData Ix

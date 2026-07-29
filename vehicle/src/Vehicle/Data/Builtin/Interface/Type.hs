@@ -1,11 +1,11 @@
 module Vehicle.Data.Builtin.Interface.Type where
 
 import Data.Proxy (Proxy)
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Type.Core (InstanceHead)
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Data.AST.Expr.Scoped (Type)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
@@ -45,7 +45,7 @@ typeOfBuiltinFunction = \case
   Or -> typeOfTensorOp2 tBool
   Implies -> typeOfTensorOp2 tBool
   QuantifyRatTensor _ -> forAllDims $ \ds -> typeOfQuantifier (tRatTensor ds)
-  QuantifyTensorLike _ -> forAllTypes $ \ts -> typeOfQuantifier ts
+  QuantifyRecord _ -> forAllTypes $ \ts -> typeOfQuantifier ts
   If -> typeOfIf
   ReduceAndTensor -> typeOfTensorBoolReduceOp
   ReduceOrTensor -> typeOfTensorBoolReduceOp
@@ -66,7 +66,12 @@ typeOfBuiltinFunction = \case
     MinRatTensor -> typeOfTensorOp2 tRat
   Max dom -> case dom of
     MaxRatTensor -> typeOfTensorOp2 tRat
-  PowRat -> forAllDims $ \dims -> tRatTensor dims ~> tNat ~> tRatTensor dims
+  Pow dom -> case dom of
+    PowRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRat ~> tRatTensor dims
+  Log dom -> case dom of
+    LogRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dims
+  Exp dom -> case dom of
+    ExpRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dims
   ReduceAddRatTensor -> typeOfTensorRatReduceOp
   ReduceMulRatTensor -> typeOfTensorRatReduceOp
   ReduceMinRatTensor -> typeOfTensorRatReduceOp
@@ -77,12 +82,14 @@ typeOfBuiltinFunction = \case
         tIndex n1 ~> tIndex n2 ~> tBoolTensor dimNil
   CompareNat {} ->
     tNat ~> tNat ~> tBoolTensor dimNil
-  CompareRatTensorPointwise {} ->
-    forAllDims $ \dims ->
-      tRatTensor dims ~> tRatTensor dims ~> tBoolTensor dims
+  CompareRatTensor {} ->
+    forAllDims $ \pointwiseDims ->
+      forAllDims $ \reduceDims ->
+        tRatTensor (append tNat pointwiseDims reduceDims) ~> tRatTensor (append tNat pointwiseDims reduceDims) ~> tBoolTensor pointwiseDims
   -- Container functions
   FoldList -> typeOfFold tListRaw
   MapList -> typeOfMap tListRaw
+  AppendList -> forAllTypes $ \t -> tList t ~> tList t ~> tList t
   AtVector -> typeOfAtVector
   AtTensor -> typeOfAtTensor
   StackTensor -> typeOfStackTensor
@@ -132,7 +139,7 @@ typeOfTensorReduceOp ::
   DSLExpr builtin ->
   DSLExpr builtin
 typeOfTensorReduceOp tElem =
-  forAllDims $ \dims -> tTensor tElem dimNil ~> tTensor tElem dims ~> tTensor tElem dimNil
+  forAllDims $ \dims -> tTensor tElem dims ~> tTensor tElem dimNil
 
 typeOfTensorRatReduceOp :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin
 typeOfTensorRatReduceOp = typeOfTensorReduceOp tRat

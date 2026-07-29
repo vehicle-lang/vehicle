@@ -14,49 +14,34 @@ The type of natural numbers is written as ``Nat``.
 The available operations over naturals are:
 
 .. list-table::
-   :widths: 25 15 40 20
+   :widths: 18 14 35 33
    :header-rows: 1
 
    * - Operation
-     - Symbol
+     - Syntax
      - Type
-     - Example
-   * - Addition
-     - :code:`+`
-     - :code:`Nat -> Nat -> Nat`
+     - Support
+   * - Add
      - :code:`x + y`
-   * - Multiplication
-     - :code:`*`
-     - :code:`Nat -> Nat -> Nat`
+     - :code:`Nat → Nat → Nat`
+     - |backendall_full|
+   * - Multiply
      - :code:`x * y`
-   * - Division
-     - :code:`/`
-     - :code:`Nat -> Nat -> Real`
+     - :code:`Nat → Nat → Nat`
+     - |backendall_full|
+   * - Divide
      - :code:`x / y`
-   * - Less than or equal
-     - :code:`<=`
-     - :code:`Nat -> Nat -> Bool`
-     - :code:`x <= y`
-   * - Less than
-     - :code:`<`
-     - :code:`Nat -> Nat -> Bool`
-     - :code:`x < y`
-   * - Greater than or equal
-     - :code:`>=`
-     - :code:`Nat -> Nat -> Bool`
-     - :code:`x >= y`
-   * - Greater than
-     - :code:`>`
-     - :code:`Nat -> Nat -> Bool`
-     - :code:`x >= y`
-   * - Min
-     - :code:`min`
-     - :code:`Nat -> Nat -> Bool`
-     - :code:`min x y`
-   * - Max
-     - :code:`max`
-     - :code:`Nat -> Nat -> Bool`
-     - :code:`max x y`
+     - :code:`Nat → Nat → Real`
+     - |backendall_full|
+   * - Compare
+     - | ``x < y``
+       | ``x > y``
+       | ``x <= y``
+       | ``x >= y``
+       | ``x == y``
+       | ``x != y``
+     - ``Nat → Nat → Bool``
+     - |backendall_full|
 
 Note that inequalities can be chained, so that ``x < y <= z`` will be
 expanded to ``x < y and y <= z``.
@@ -69,57 +54,96 @@ The type of real numbers is written as ``Real``.
 The available operations over reals are:
 
 .. list-table::
-   :widths: 25 15 40 20
+   :widths: 18 14 35 33
    :header-rows: 1
 
    * - Operation
-     - Symbol
+     - Syntax
      - Type
-     - Example
-   * - Addition
-     - :code:`+`
-     - :code:`Real -> Real -> Real`
-     - :code:`x + y`
-   * - Subtraction
-     - :code:`-`
-     - :code:`Real -> Real -> Real`
-     - :code:`x - y`
-   * - Multiplication
-     - :code:`*`
-     - :code:`Real -> Real -> Real`
-     - :code:`x * y`
-   * - Division
-     - :code:`/`
-     - :code:`Real -> Real -> Real`
-     - :code:`x / y`
+     - Support
    * - Negation
-     - :code:`-`
-     - :code:`Real -> Real`
      - :code:`- y`
-   * - Less than or equal
-     - :code:`<=`
-     - :code:`Real -> Real -> Bool`
-     - :code:`x <= y`
-   * - Less than
-     - :code:`<`
-     - :code:`Real -> Real -> Bool`
-     - :code:`x < y`
-   * - Greater than or equal
-     - :code:`>=`
-     - :code:`Real -> Real -> Bool`
-     - :code:`x >= y`
-   * - Greater than
-     - :code:`>`
-     - :code:`Real -> Real -> Bool`
-     - :code:`x >= y`
+     - :code:`Real → Real`
+     - |backendall_full|
+   * - Add
+     - :code:`x + y`
+     - :code:`Real → Real → Real`
+     - |backendall_full|
+   * - Subtract
+     - :code:`x - y`
+     - :code:`Real → Real → Real`
+     - |backendall_full|
+   * - Multiply
+     - :code:`x * y`
+     - :code:`Real → Real → Real`
+     - | |backendloss_full|
+       | |backendverification_part| (:ref:`⤴ <verifying-linearity-limitations>`)
+       | |backendagda_full|
+       | |backendrocq_full|
+       | |backendimandra_full|
+       | |backendisabelle_full|
+   * - Divide
+     - :code:`x / y`
+     - :code:`Real → Real → Real`
+     - | |backendloss_full|
+       | |backendverification_part| (:ref:`⤴ <verifying-linearity-limitations>`)
+       | |backendagda_full|
+       | |backendrocq_full|
+       | |backendimandra_full|
+       | |backendisabelle_full|
+   * - Power
+     - :code:`x ^ y`
+     - :code:`Real → Real → Real`
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - Natural log
+     - :code:`log x`
+     - :code:`Real → Real`
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - Exponential
+     - :code:`exp x`
+     - :code:`Real → Real`
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
+   * - Compare
+     - | ``x < y``
+       | ``x > y``
+       | ``x <= y``
+       | ``x >= y``
+       | ``x == y``
+       | ``x != y``
+     - ``Real → Real → Bool``
+     - |backendall_full|
    * - Min
-     - :code:`min`
-     - :code:`Real -> Real -> Bool`
      - :code:`min x y`
+     - :code:`Real → Real → Real`
+     - |backendall_full|
    * - Max
-     - :code:`max`
-     - :code:`Real -> Real -> Bool`
      - :code:`max x y`
+     - :code:`Real → Real → Real`
+     - |backendall_full|
+   * - Infinity
+     - :code:`infinity`
+     - :code:`Real`
+     - | |backendloss_full|
+       | |backendverification_easy|
+       | |backendagda_easy|
+       | |backendrocq_easy|
+       | |backendimandra_easy|
+       | |backendisabelle_easy|
 
 
 .. note::

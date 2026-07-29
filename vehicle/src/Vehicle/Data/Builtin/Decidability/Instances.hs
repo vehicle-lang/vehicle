@@ -39,18 +39,6 @@ allInstances =
       )
     ]
       -------------
-      -- Network --
-      -------------
-      <> [ ( forAllDims $ \ds1 ->
-               forAllDims $ \ds2 ->
-                 decTypeClass ValidNetworkType [tRatTensor ds1 ~> tRatTensor ds2],
-             lamDims $ \_ds1 ->
-               lamDims $ \_ds2 ->
-                 tUnit,
-             Nothing
-           )
-         ]
-      -------------
       -- Tensors --
       -------------
       <> [ ( isTensorType,
@@ -151,8 +139,7 @@ comparisonCandidates :: ComparisonOp -> [TempCandidate]
 comparisonCandidates op =
   tensorTypeClassCandidate (FieldCompareIndex op) (builtinFunction $ CompareIndex op) (PropCompareIndex op)
     <> tensorTypeClassCandidate (FieldCompareNat op) (builtinFunction $ CompareNat op) (PropCompareNat op)
-    <> tensorTypeClassCandidate (FieldCompareRatTensorPointwise op) (builtinFunction $ CompareRatTensorPointwise op) (PropCompareRatTensorPointwise op)
-    <> tensorTypeClassCandidate (FieldCompareRatTensorReduced op) (builtinDerivedFunction $ CompareRatTensorReduced op) (PropCompareRatTensorPointwise op)
+    <> tensorTypeClassCandidate (FieldCompareRatTensor op) (builtinFunction $ CompareRatTensor op) (PropCompareRatTensor op)
 
 quantifierCandidates :: Quantifier -> [TempCandidate]
 quantifierCandidates q =

@@ -1644,6 +1644,8 @@ name = "vehicle-lang"
 source = { editable = "." }
 dependencies = [
     { name = "jaxtyping" },
+    { name = "pre-commit" },
+    { name = "pytest" },
     { name = "typing-extensions" },
 ]
 
@@ -1691,14 +1693,16 @@ requires-dist = [
     { name = "build", marker = "extra == 'wheel'" },
     { name = "delocate", marker = "sys_platform == 'darwin' and extra == 'wheel'" },
     { name = "jax", marker = "extra == 'jax'", specifier = ">=0.4.26" },
-    { name = "jaxtyping", specifier = ">=0.2,<0.3" },
+    { name = "jaxtyping", specifier = ">=0.2,<0.4" },
     { name = "numpy", marker = "extra == 'numpy'", specifier = ">=1.21,<3" },
     { name = "numpy", marker = "extra == 'test'", specifier = ">=1.21,<3" },
     { name = "packaging", marker = "extra == 'test'", specifier = ">=23" },
+    { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.3.0" },
     { name = "pygments", marker = "extra == 'pygments'", specifier = ">=2.14,<3" },
     { name = "pygments", marker = "extra == 'test'", specifier = ">=2.14,<3" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.1,<9" },
+    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=7.1,<10" },
     { name = "tensorflow", marker = "(python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin' and extra == 'tensorflow') or (python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'tensorflow') or (python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'tensorflow') or (python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'tensorflow')", specifier = ">=2,<3" },
     { name = "torch", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and extra == 'pytorch'", specifier = ">=2,<3" },
     { name = "types-pygments", marker = "extra == 'mypy'", specifier = ">=2.14,<3" },

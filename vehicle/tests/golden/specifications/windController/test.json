@@ -111,8 +111,7 @@
       "controller.onnx"
     ],
     "external": [
-      "spec.vcl",
-      "controller.onnx"
+      "Marabou"
     ]
   },
   {
@@ -124,9 +123,7 @@
       "../../../testVerifier"
     ],
     "external": [
-      "spec.vcl",
-      "controller.onnx",
-      "../../../testVerifier"
+      "TestVerifier"
     ]
   },
   {
@@ -138,9 +135,7 @@
       "../../../testVerifier"
     ],
     "external": [
-      "spec.vcl",
-      "controller.onnx",
-      "../../../testVerifier"
+      "TestVerifier"
     ]
   }
 ]

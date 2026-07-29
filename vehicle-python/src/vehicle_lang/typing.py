@@ -1,3 +1,4 @@
+from abc import ABCMeta, abstractmethod
 from enum import Enum
 
 from typing_extensions import Protocol, TypeAlias
@@ -36,29 +37,31 @@ class Explicit(Enum):
         return "Explicit"
 
 
-class DifferentiableLogic(Enum):
-    """
-    The differentiable logics supported by Vehicle.
-    """
+class DifferentiableLogic(metaclass=ABCMeta):
 
-    Vehicle = 1
-    DL2 = 2
-    # Godel = 3
-    # Lukasiewicz = 4
-    # Product = 5
-    # Yager = 6
+    @abstractmethod
+    def _vehicle_option_name(self) -> str: ...
 
-    @property
+
+class VehicleDifferentiableLogic(DifferentiableLogic):
+
     def _vehicle_option_name(self) -> str:
-        return {
-            DifferentiableLogic.Vehicle: "VehicleLoss",
-            DifferentiableLogic.DL2: "DL2Loss",
-            # Currently unsupported options
-            # DifferentiableLogic.Godel: "GodelLoss",
-            # DifferentiableLogic.Lukasiewicz: "LukasiewiczLoss",
-            # DifferentiableLogic.Product: "ProductLoss",
-            # DifferentiableLogic.Yager: "YagerLoss",
-        }[self]
+        return "VehicleLoss"
+
+
+class DL2DifferentiableLogic(DifferentiableLogic):
+
+    def _vehicle_option_name(self) -> str:
+        return "DL2Loss"
+
+
+class CustomDifferentiableLogic(DifferentiableLogic):
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def _vehicle_option_name(self) -> str:
+        return self._name
 
 
 class LossBackend(Enum):
@@ -85,7 +88,6 @@ class QueryFormat(Enum):
     VNNLib = 1
     Marabou = 2
 
-    @property
     def _vehicle_option_name(self) -> str:
         return {
             QueryFormat.VNNLib: "VNNLibQueries",
@@ -101,28 +103,8 @@ class ITP(Enum):
     Agda = 1
     Rocq = 2
 
-    @property
     def _vehicle_option_name(self) -> str:
         return {ITP.Agda: "Agda", ITP.Rocq: "Rocq"}[self]
-
-
-class Verifier(Enum):
-    """
-    The neural network verifiers supported by Vehicle.
-    """
-
-    Marabou = 1
-    """
-    The `Marabou verifier`_.
-
-    .. _Marabou verifier: https://github.com/NeuralNetworkVerification/Marabou#readme
-    """
-
-    @property
-    def _vehicle_option_name(self) -> str:
-        return {
-            Verifier.Marabou: "Marabou",
-        }[self]
 
 
 class ExportTarget(Enum):
@@ -133,6 +115,5 @@ class ExportTarget(Enum):
     Agda = 1
     Rocq = 2
 
-    @property
     def _vehicle_option_name(self) -> str:
         return {ExportTarget.Agda: "Agda", ExportTarget.Rocq: "Rocq"}[self]

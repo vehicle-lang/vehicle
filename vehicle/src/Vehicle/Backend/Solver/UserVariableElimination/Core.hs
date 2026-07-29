@@ -1,6 +1,7 @@
 module Vehicle.Backend.Solver.UserVariableElimination.Core where
 
 import Control.Monad (forM)
+import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..))
 import Data.Char.SScript (subscript)
@@ -16,13 +17,13 @@ import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkName)
+import Vehicle.Compile.Resource (NetworkIOType, NetworkModality, NetworkName, networkInputType)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound (BoundedValue, Domain)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.LinearExpr
-import Vehicle.Data.Code.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor as Tensor
@@ -53,7 +54,8 @@ data PropertyMetaData = PropertyMetaData
 data NetworkApplicationInfo = NetworkApplicationInfo
   { inputVariable :: NetworkInputTensorVariable,
     outputVariable :: NetworkOutputTensorVariable,
-    inputValue :: Value Builtin
+    inputType :: NetworkIOType,
+    inputValue :: Thunk Builtin
   }
 
 type NetworkApplications = Map NetworkName (NonEmpty NetworkApplicationInfo)
@@ -79,8 +81,8 @@ emptyGlobalCtx =
 
 addUserVarToGlobalContext ::
   (MonadLogger m, MonadTensorBoundContext m) =>
-  VBinder Builtin ->
-  TensorShape ->
+  UnforcedBinder Builtin ->
+  NetworkModality TensorShape ->
   GlobalCtx ->
   m (UserTensorVariable, GlobalCtx)
 addUserVarToGlobalContext binder shape GlobalCtx {..} = do
@@ -109,24 +111,25 @@ createNetworkVarName networkName application inputOrOutput =
 -- Monads
 
 type MonadPropertyStructure m =
-  ( MonadCompile m,
+  ( MonadLogger m,
     MonadFreeContext Builtin m,
-    MonadReader PropertyMetaData m,
-    MonadTensorBoundContext m,
-    MonadReadableNameContext m
+    MonadReader PropertyMetaData m
   )
 
 type MonadQueryStructure m =
   ( MonadPropertyStructure m,
-    MonadState GlobalCtx m
+    MonadTensorBoundContext m,
+    MonadReadableNameContext m,
+    MonadState GlobalCtx m,
+    MonadError CompileError m
   )
 
 addNetworkApplicationToGlobalCtx ::
-  (MonadQueryStructure m) =>
+  (MonadPropertyStructure m, MonadState GlobalCtx m, MonadTensorBoundContext m) =>
   Name ->
   NetworkContextInfo ->
-  Value Builtin ->
-  m (Value Builtin, Value Builtin)
+  Thunk Builtin ->
+  m (Thunk Builtin, Thunk Builtin)
 addNetworkApplicationToGlobalCtx name networkInfo arg = do
   -- Can't current track network application provenance
   let p = mempty
@@ -149,7 +152,8 @@ addNetworkApplicationToGlobalCtx name networkInfo arg = do
         NetworkApplicationInfo
           { inputVariable = coerce inputVar,
             outputVariable = coerce outputVar,
-            inputValue = arg
+            inputValue = arg,
+            inputType = networkInputType $ networkType networkInfo
           }
 
   -- Update the global context
@@ -160,7 +164,7 @@ addNetworkApplicationToGlobalCtx name networkInfo arg = do
         ..
       }
 
-  return (inputVarExpr, outputVarExpr)
+  return (Forced inputVarExpr, Forced outputVarExpr)
 
 createSubstitutionForVariable ::
   forall m variable.
@@ -170,7 +174,7 @@ createSubstitutionForVariable ::
   m (LinearSubstitution SliceVariable, CompilationStep)
 createSubstitutionForVariable varToSolveFor (NormalisedRelation () linearExpr) = do
   nestedVar <- lookupNestedSliceVariable varToSolveFor
-  let (_, rearrangedExpr) = rearrangeExprToSolveFor (toSliceVar varToSolveFor) linearExpr
+  (_, rearrangedExpr) <- rearrangeExprToSolveFor (toSliceVar varToSolveFor) linearExpr
   varSubsts <- go nestedVar rearrangedExpr
   let step = SolveEquality nestedVar rearrangedExpr
   return (Map.fromList varSubsts, step)

@@ -1,6 +1,8 @@
 Type synonyms
 =============
 
+|backendall_full|
+
 Although Vehicle's builtin types are sufficient to write a wide range
 of specifications, specifications can often be made more readable by using
 the :code:`type` keyword to defining meaningful synonyms for those that are

@@ -305,6 +305,8 @@ Limitations of verification
 As you might expect, verification is a very hard problem. Therefore there are
 several limitations that users should be aware of.
 
+.. _verifying-linearity-limitations:
+
 Linearity
 +++++++++
 
@@ -331,6 +333,8 @@ value ``x * y``.
 In the case where you do try to verify a non-linear property, Vehicle will use
 its sophisticated auxiliary type-system to help you pinpoint the source of the
 non-linearity.
+
+.. _verifying-quantifier-limitations:
 
 Quantifiers
 +++++++++++

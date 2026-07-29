@@ -4,7 +4,7 @@ type Input = Tensor Real [2]
 classifier : Input -> Real
 
 boundedByEpsilon : Input -> Bool
-boundedByEpsilon x = reduceAnd True ([ -3.25, -3.25 ] <=. x and x <=. [ 3.25, 3.25 ])
+boundedByEpsilon x = reduceAnd ([ -3.25, -3.25 ] <=. x and x <=. [ 3.25, 3.25 ])
 
 @property
 robust : Bool

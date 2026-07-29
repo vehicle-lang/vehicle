@@ -1,11 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Data.Variable.Bound.Level
-  ( VariableLike (..),
-    Lv (..),
-    dbLevelToIndex,
-    dbIndexToLevel,
-    shiftDBIndex,
+  ( module Core,
     TensorVariableLike (..),
     TensorVariable (..),
     UserTensorVariable (..),
@@ -28,59 +24,13 @@ where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
-import Data.Coerce (coerce)
-import Data.Hashable (Hashable (..))
+import Data.Coerce
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Serialize (Serialize)
-import Data.Vector.Internal.Check (HasCallStack)
 import GHC.Generics (Generic)
+import Vehicle.Compile.Resource (NetworkModality (..))
 import Vehicle.Data.Tensor
-import Vehicle.Data.Variable.Bound.Index
+import Vehicle.Data.Variable.Bound.Level.Core as Core
 import Vehicle.Prelude
-
---------------------------------------------------------------------------------
--- Generic interface
-
--- | A variable.
-class (Eq variable, Ord variable) => VariableLike variable where
-  toLv :: variable -> Lv
-
-instance VariableLike Lv where
-  toLv = id
-
---------------------------------------------------------------------------------
--- Levels
-
--- | DeBruijn level - represents how many binders deep we currently are.
--- (e.g. \f . f (\x . x)) the variable `f` is at level 0 and the variable `x`
--- is at level 1.
--- When used as a variable refers to the binder at that level.
-newtype Lv = Lv
-  { unLv :: Int
-  }
-  deriving (Eq, Ord, Num, Enum, Show, Generic, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
-
-instance NFData Lv
-
-instance Hashable Lv
-
-instance Serialize Lv
-
-instance Pretty Lv where
-  pretty l = "𝓵" <> pretty (unLv l)
-
--- | Converts a `Lv` x to a `Ix` given that we're currently at
--- level `l`.
-dbLevelToIndex :: (HasCallStack) => Lv -> Lv -> Ix
-dbLevelToIndex l x = Ix (unLv l - unLv x - 1)
-
--- | Converts a `Lv` x to a `Ix` given that we're currently at
--- level `l`.
-dbIndexToLevel :: Lv -> Ix -> Lv
-dbIndexToLevel l x = Lv (unLv l - unIx x - 1)
-
-shiftDBIndex :: Ix -> Lv -> Ix
-shiftDBIndex i l = Ix (unIx i + unLv l)
 
 --------------------------------------------------------------------------------
 -- Slice variables
@@ -264,7 +214,7 @@ instance SliceVariableLike NetworkIOElementVariable where
 --
 -- We store it like this in order to maximise space efficiency.
 data NestedSliceVariable = NestedSliceVariable
-  { nestedTensorShape :: TensorShape,
+  { nestedTensorShape :: NetworkModality TensorShape,
     nestedStartingVariable :: SliceVariable
   }
   deriving (Show, Eq, Ord, Generic)
@@ -279,7 +229,9 @@ instance Pretty NestedSliceVariable where
   pretty (NestedSliceVariable shape l) = pretty (toLv l) <> ":" <+> pretty shape
 
 instance HasShape NestedSliceVariable where
-  shapeOf = nestedTensorShape
+  shapeOf (NestedSliceVariable shapeOrShapes _) = case shapeOrShapes of
+    UniModal shape -> shape
+    MultiModal _shapes -> error "MultiModal IO is not implemented yet"
 
 instance VariableLike NestedSliceVariable where
   toLv = toLv . nestedStartingVariable
@@ -291,12 +243,17 @@ numberOfSliceVariablesIn :: TensorShape -> Int
 numberOfSliceVariablesIn shape = sum $ NonEmpty.scanl (*) 1 shape
 
 childVariablesOf :: NestedSliceVariable -> Maybe [NestedSliceVariable]
-childVariablesOf (NestedSliceVariable shape startingVar) = case shape of
-  [] -> Nothing
-  d : ds -> Just $ do
-    let subSize = numberOfSliceVariablesIn ds
-    let calculateChildStartingVar i = SliceVariable $ toLv startingVar + Lv (1 + subSize * i)
-    fmap (NestedSliceVariable ds . calculateChildStartingVar) [0 .. d - 1]
+childVariablesOf (NestedSliceVariable shapeOrShapes startingVar) = case shapeOrShapes of
+  UniModal shape -> getChildrenOf shape
+  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
+  where
+    getChildrenOf :: TensorShape -> Maybe [NestedSliceVariable]
+    getChildrenOf s = case s of
+      [] -> Nothing
+      d : ds -> Just $ do
+        let subSize = numberOfSliceVariablesIn ds
+        let calculateChildStartingVar i = SliceVariable $ toLv startingVar + Lv (1 + subSize * i)
+        fmap (NestedSliceVariable (UniModal ds) . calculateChildStartingVar) [0 .. d - 1]
 
 elementVariablesOf :: NestedSliceVariable -> [(NetworkIOElementVariable, TensorIndices)]
 elementVariablesOf = go mempty
@@ -307,24 +264,34 @@ elementVariablesOf = go mempty
       Just childVars -> concatMap (\(v, index) -> go (index : indices) v) $ zip childVars [0 ..]
 
 -- | Returns the shape of the provided slice variable
-findSliceShape :: NestedSliceVariable -> SliceVariable -> TensorShape
-findSliceShape (NestedSliceVariable shape lv) var = go shape (unLv $ toLv var - toLv lv)
+findSliceShape :: NestedSliceVariable -> SliceVariable -> NetworkModality TensorShape
+findSliceShape (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
+  UniModal shape -> UniModal (go startIndex shape)
+  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
   where
-    go :: TensorShape -> Int -> TensorShape
-    go ds 0 = ds
-    go [] _flatIndex = developerError "Malformed shape and index"
-    go (_d : ds) flatIndex = do
+    startIndex :: Int
+    startIndex = unLv $ toLv var - toLv lv
+
+    go :: Int -> TensorShape -> TensorShape
+    go 0 ds = ds
+    go _flatIndex [] = developerError "Malformed shape and index"
+    go flatIndex (_d : ds) = do
       let newFlatIndex = (flatIndex - 1) `rem` numberOfSliceVariablesIn ds
-      go ds newFlatIndex
+      go newFlatIndex ds
 
 -- | Returns the indices into the provided parent variable of the provided slice variable
 findSliceIndices :: (SliceVariableLike variable) => NestedSliceVariable -> variable -> TensorIndices
-findSliceIndices (NestedSliceVariable shape lv) var = go mempty shape (unLv $ toLv var - toLv lv)
+findSliceIndices (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
+  UniModal shape -> go mempty startIndex shape
+  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
   where
-    go :: TensorIndices -> TensorShape -> Int -> TensorIndices
-    go indices _ 0 = reverse indices
-    go _indices [] _flatIndex = developerError "Malformed shape and index"
-    go indices (_d : ds) flatIndex = do
+    startIndex :: Int
+    startIndex = unLv $ toLv var - toLv lv
+
+    go :: TensorIndices -> Int -> TensorShape -> TensorIndices
+    go indices 0 _ = reverse indices
+    go _indices _flatIndex [] = developerError "Malformed shape and index"
+    go indices flatIndex (_d : ds) = do
       let newIndex = (flatIndex - 1) `div` numberOfSliceVariablesIn ds
       let newFlatIndex = (flatIndex - 1) `rem` numberOfSliceVariablesIn ds
-      go (newIndex : indices) ds newFlatIndex
+      go (newIndex : indices) newFlatIndex ds

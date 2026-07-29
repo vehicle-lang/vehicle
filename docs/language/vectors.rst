@@ -85,43 +85,21 @@ Operations
 The following operations over vectors are currently supported:
 
 .. list-table::
-   :widths: 15 12 38 15 20
+   :widths: 14 20 33 33
    :header-rows: 1
 
    * - Operation
-     - Symbol
+     - Syntax
      - Type
-     - Example
-     - Description
+     - Support
    * - Lookup
-     - :code:`!`
-     - :code:`Vector A d -> Index d -> A`
-     - :code:`v ! i`
-     - Extract the value at a given index of the vector.
-   * - Map
-     - :code:`map`
-     - :code:`(A -> B) -> Vector A d -> Vector B d`
-     - :code:`map f v`
-     - Apply the function ``f`` to every value in the vector.
-   * - Addition
-     - :code:`+`
-     - :code:`Vector A d -> Vector A d -> Vector A d`
-     - :code:`v1 + v2`
-     - Pointwise add the values in two vectors together. Only valid
-       if addition is defined for the type of elements ``A``.
-   * - Subtraction
-     - :code:`-`
-     - :code:`Vector A d -> Vector A d -> Vector A d`
-     - :code:`v1 - v2`
-     - Pointwise subtract the values in the first vector from the values
-       in the second. Only valid if subtraction is defined for the type of
-       elements ``A``.
-   * - Fold
-     - :code:`fold`
-     - :code:`(A -> B -> B) -> B -> Vector A d -> B`
-     - :code:`fold f e v`
-     - Reduce the vector to a single value by iterating the function `f`
-       repeatedly with the head of the vector.
+     - :code:`e ! i`
+     - :code:`Vector A d → Index d → A`
+     - |backendall_full|
+   * - Foreach
+     - ``foreach i . e``
+     - ``(Index d → A) → Vector A d``
+     - |backendall_full|
 
 Indexing
 --------
@@ -161,37 +139,22 @@ results in ``7`` which is not a member of ``Index 5``. Consequently
 the set of operations supported by ``Index`` types is extremely limited:
 
 .. list-table::
-   :widths: 25 15 40 20
+   :widths: 17 15 37 33
    :header-rows: 1
 
    * - Operation
-     - Symbol
+     - Syntax
      - Type
-     - Example
-   * - Less than or equal
-     - :code:`<=`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`x <= y`
-   * - Less than
-     - :code:`<`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`x < y`
-   * - Greater than or equal
-     - :code:`>=`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`x >= y`
-   * - Greater than
-     - :code:`>`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`x >= y`
-   * - Min
-     - :code:`min`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`min x y`
-   * - Max
-     - :code:`max`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`max x y`
+     - Support
+   * - Comparisons
+     - | ``x < y``
+       | ``x > y``
+       | ``x <= y``
+       | ``x >= y``
+       | ``x == y``
+       | ``x != y``
+     - :code:`Index d1 → Index d2 → Bool`
+     - |backendall_full|
 
 Non-constant sizes
 ------------------

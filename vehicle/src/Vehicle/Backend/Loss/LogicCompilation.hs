@@ -14,17 +14,22 @@ import Data.Map.Ordered (OMap)
 import Data.Map.Ordered qualified as OMap
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.Core hiding (lookupLogicField)
-import Vehicle.Backend.Loss.LossCompilation (convertFunction, convertRatTensor)
+import Vehicle.Backend.Loss.LossCompilation (convertQuantifierlessExprToLoss)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Builtin
+import Vehicle.Compile.Normalise.Core
+import Vehicle.Compile.Normalise.Force
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
-import Vehicle.Data.Builtin.Interface.Normalise (evalCompareRatTensorPointwise)
+import Vehicle.Compile.Print
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LogicDirection, LossBuiltin)
 import Vehicle.Data.Builtin.Standard (Builtin)
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
+import Vehicle.Data.Variable.Bound.Context.Name (runFreshNameBoundContextT)
 import Vehicle.Data.Variable.Free.Context
 
 --------------------------------------------------------------------------------
@@ -35,14 +40,15 @@ findAndCompileLogic ::
   DifferentiableLogicID ->
   Prog Builtin ->
   m DifferentiableLogicImplementation
-findAndCompileLogic logicID prog = do
-  MonadLossState {..} <-
-    runMonadLossT $ traverseNormalisedDecls_ (convertLogicDecl logicID) prog
-  case maybeImplementation of
-    Just definition -> return definition
-    Nothing -> do
-      let names = fmap nameOf foundLogics
-      missingLogicError names logicID
+findAndCompileLogic logicID prog =
+  logCompilerSection2 MidDetail ("search for logic" <+> quotePretty logicID) $ do
+    MonadLossState {..} <-
+      runMonadLossT $ traverseDeclsInCtx_ (convertLogicDecl logicID) prog
+    case maybeImplementation of
+      Just definition -> return definition
+      Nothing -> do
+        let names = fmap nameOf foundLogics
+        missingLogicError names logicID
 
 --------------------------------------------------------------------------------
 -- Monad
@@ -97,20 +103,30 @@ registerMatchedLogic implementation = modify $
 convertLogicDecl ::
   (MonadLoss m) =>
   DifferentiableLogicID ->
-  VDecl Builtin ->
+  Decl Builtin ->
   m ()
 convertLogicDecl logicID decl =
   case decl of
-    DefFunction p ident _ann _typ body
-      | isLogicDecl decl -> do
-          if nameOf logicID /= nameOf ident
-            then registerUnmatchedLogic ident
-            else case body of
+    DefFunction p ident _ann typ body -> do
+      whenM (isLogicDecl typ) $ do
+        if nameOf logicID /= nameOf ident
+          then registerUnmatchedLogic ident
+          else do
+            normBody <- runFreshNameBoundContextT $ forceThunk $ Unforced emptyBoundEnv body
+            case normBody of
               VRecord _ fields -> do
-                logic <- compileLogic logicID decl fields
+                let declProv = (identifierOf decl, provenanceOf decl)
+                logic <- compileLogic logicID declProv fields
                 registerMatchedLogic logic
               _ -> throwError $ UnreducableDifferentiableLogic (ident, p)
     _ -> return ()
+
+isLogicDecl :: (MonadFreeContext Builtin m) => Type Builtin -> m Bool
+isLogicDecl typ = do
+  normType <- runFreshNameBoundContextT $ forceThunk $ Unforced @NoMeta emptyBoundEnv typ
+  return $ case normType of
+    VFreeVar ident [] -> nameOf ident `elem` ([elementLogicName, tensorLogicName] :: [Name])
+    _ -> False
 
 -- | Compiles a differentiable logic from the DSL over booleans to normalised
 -- values over tensors that are suitable for substitution.
@@ -119,52 +135,50 @@ compileLogic ::
   forall m.
   (MonadLoss m) =>
   DifferentiableLogicID ->
-  VDecl Builtin ->
-  OMap FieldName (Value Builtin) ->
+  DeclProvenance ->
+  OMap FieldName (Thunk Builtin) ->
   m DifferentiableLogicImplementation
-compileLogic logicID decl fields = do
+compileLogic logicID declProv fields = do
   logCompilerSection2 MinDetail ("compiling logic" <+> quotePretty logicID) $ do
     -- Lift fields to the tensor level
     let tensorLogicFields = [minBound .. maxBound] :: [TensorDifferentiableLogicField]
-    lossTensorImplementation <- foldM (compileLogicField logicID decl fields) mempty tensorLogicFields
-    minimise <- calculateLogicDirection decl fields
+    lossTensorImplementation <- foldM (compileLogicField logicID declProv fields) mempty tensorLogicFields
+    minimise <- calculateLogicDirection declProv fields
     -- Convert fields to loss tensors
     return (lossTensorImplementation, minimise)
 
 calculateLogicDirection ::
   (MonadLoss m) =>
-  VDecl Builtin ->
-  OMap FieldName (Value Builtin) ->
+  DeclProvenance ->
+  OMap FieldName (Thunk Builtin) ->
   m LogicDirection
-calculateLogicDirection decl fields = do
+calculateLogicDirection declProv fields = do
   let trueValue = lookupLogicField TruthityElement fields
   let falseValue = lookupLogicField FalsityElement fields
-  result <- evalCompareRatTensorPointwise Le $ TensorOp2Args IDimNil trueValue falseValue
+  let args = TensorComparisonArgs (Forced IDimNil) (Forced IDimNil) trueValue falseValue
+  result <- runFreshNameBoundContextT $ evalCompareRatTensor @ForcedValue Le args
   case result of
-    IBoolLiteral b -> return b
-    _ -> do
-      let prov = (identifierOf decl, provenanceOf decl)
-      throwError $ UnorderableDifferentiableLogic prov result
+    Evaluated (Forced (IBoolLiteral b)) -> return b
+    _ -> throwError $ UnorderableDifferentiableLogic declProv (mkExpr accessCompareRatTensor (Le, args))
 
 compileLogicField ::
   (MonadLoss m) =>
   DifferentiableLogicID ->
-  VDecl Builtin ->
-  OMap FieldName (Value Builtin) ->
-  Map TensorDifferentiableLogicField (Value LossBuiltin) ->
+  DeclProvenance ->
+  OMap FieldName (Thunk Builtin) ->
+  Map TensorDifferentiableLogicField (Expr LossBuiltin) ->
   TensorDifferentiableLogicField ->
-  m (Map TensorDifferentiableLogicField (Value LossBuiltin))
-compileLogicField logicID decl fields impl field =
+  m (Map TensorDifferentiableLogicField (Expr LossBuiltin))
+compileLogicField logicID declProv fields impl field =
   logCompilerSection2 MidDetail ("compiling tensor-field" <+> quotePretty field) $ do
     let tensorValue = lookupLogicField field fields
-    logDebug MaxDetail $ "tensor-result:" <+> prettyFriendlyEmptyCtx tensorValue <> line
-    logDebug MaxDetail $ "tensor-result:" <+> prettyVerbose tensorValue <> line
-
+    logDebug MaxDetail $ "input:" <+> prettyFriendlyEmptyCtx tensorValue
     lossTensorExpr <-
-      runMonadLogicT logicID (mempty, True) decl $ do
-        convertFunction convertRatTensor tensorValue
-    logDebug MaxDetail $ "loss-tensor-result:" <+> prettyFriendlyEmptyCtx lossTensorExpr
-    return $ Map.insert field lossTensorExpr impl
+      runFreshFreeContextT (Proxy @LossBuiltin) $ do
+        runMonadLogicT logicID (mempty, True) declProv $ do
+          convertQuantifierlessExprToLoss tensorValue
+    logDebug MaxDetail $ "output:" <+> prettyFriendlyEmptyCtx lossTensorExpr
+    return $ Map.insert field (unnormalise 0 lossTensorExpr) impl
 
 lookupLogicField :: TensorDifferentiableLogicField -> OMap FieldName value -> value
 lookupLogicField field logicFields = do

@@ -3,9 +3,8 @@ module Vehicle.Data.DifferentiableLogic where
 import Data.Map (Map)
 import GHC.Generics (Generic)
 import Prettyprinter
+import Vehicle.Data.AST.Expr.Scoped (Expr)
 import Vehicle.Data.Builtin.Loss
-import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Code.Value
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -83,7 +82,7 @@ comparisonOpToField = \case
 -- Tensor implementation
 
 type DifferentiableLogicImplementation =
-  ( Map TensorDifferentiableLogicField (Value LossBuiltin),
+  ( Map TensorDifferentiableLogicField (Expr LossBuiltin),
     LogicDirection
   )
 
@@ -92,8 +91,3 @@ elementLogicName = "DifferentiableElementLogic"
 
 tensorLogicName :: Name
 tensorLogicName = "DifferentiableTensorLogic"
-
-isLogicDecl :: VDecl Builtin -> Bool
-isLogicDecl = \case
-  DefFunction _ _ _ (VFreeVar ident []) _ -> nameOf ident `elem` ([elementLogicName, tensorLogicName] :: [Name])
-  _ -> False

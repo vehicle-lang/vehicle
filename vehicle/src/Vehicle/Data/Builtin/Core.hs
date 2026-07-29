@@ -12,6 +12,10 @@ import Prettyprinter (Pretty (..))
 import Vehicle.Data.Builtin.Core.BasicOperations as X
 import Vehicle.Data.Builtin.Core.Derived as X
 import Vehicle.Data.Builtin.Core.TypeClass as X
+  ( TypeClass (..),
+    TypeClassOp (..),
+  )
+import Vehicle.Data.Real
 import Vehicle.Data.Tensor
 
 --------------------------------------------------------------------------------
@@ -61,7 +65,7 @@ data BuiltinConstructor
   | VectorLiteral
   | BoolTensorLiteral (Tensor Bool)
   | NatTensorLiteral (Tensor Int)
-  | RatTensorLiteral (Tensor Rational)
+  | RatTensorLiteral (Tensor ExtendedRational)
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinConstructor
@@ -77,7 +81,7 @@ instance Pretty BuiltinConstructor where
     UnitLiteral -> "()"
     NatLiteral n -> pretty n
     IndexLiteral n -> pretty n
-    VectorLiteral -> "vec"
+    VectorLiteral -> "vecLit"
     BoolTensorLiteral x -> pretty x
     NatTensorLiteral x -> pretty x
     RatTensorLiteral x -> pretty x
@@ -92,12 +96,13 @@ data BuiltinFunction
   | Or
   | Implies
   | QuantifyRatTensor Quantifier
-  | QuantifyTensorLike Quantifier
+  | QuantifyRecord Quantifier
   | If
   | CompareIndex ComparisonOp
   | CompareNat ComparisonOp
-  | CompareRatTensorPointwise ComparisonOp
-  | ReduceAndTensor
+  | CompareRatTensor ComparisonOp
+  | -- | CompareRatTensorPointwise ComparisonOp
+    ReduceAndTensor
   | ReduceOrTensor
   | -- Rat operations
     Add AddDomain
@@ -107,7 +112,9 @@ data BuiltinFunction
   | Div DivDomain
   | Min MinDomain
   | Max MaxDomain
-  | PowRat
+  | Pow PowDomain
+  | Log LogDomain
+  | Exp ExpDomain
   | ReduceAddRatTensor
   | ReduceMulRatTensor
   | ReduceMinRatTensor
@@ -124,6 +131,7 @@ data BuiltinFunction
   | -- List operations
     FoldList
   | MapList
+  | AppendList
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -141,7 +149,7 @@ instance Pretty BuiltinFunction where
     Not -> "not"
     Implies -> "=>"
     QuantifyRatTensor q -> pretty q
-    QuantifyTensorLike q -> pretty q
+    QuantifyRecord q -> pretty q
     If -> "if"
     ReduceAndTensor -> "reduceAndTensor"
     ReduceOrTensor -> "reduceOrTensor"
@@ -152,21 +160,25 @@ instance Pretty BuiltinFunction where
     Div dom -> "div" <> pretty dom
     Min dom -> "min" <> pretty dom
     Max dom -> "max" <> pretty dom
-    PowRat -> "**"
+    Pow dom -> "pow" <> pretty dom
+    Log dom -> "log" <> pretty dom
+    Exp dom -> "exp" <> pretty dom
     ReduceAddRatTensor -> "reduceAddRatTensor"
     ReduceMulRatTensor -> "reduceMulRatTensor"
     ReduceMinRatTensor -> "reduceMinRatTensor"
     ReduceMaxRatTensor -> "reduceMaxRatTensor"
     CompareIndex op -> comparisonOpName op <> "Index"
     CompareNat op -> comparisonOpName op <> "Nat"
-    CompareRatTensorPointwise op -> comparisonOpName op <> "RatTensorPointwise"
+    CompareRatTensor op -> comparisonOpName op <> "RatTensor"
+    -- CompareRatTensorPointwise op -> comparisonOpName op <> "RatTensorPointwise"
     FoldList -> "foldList"
     MapList -> "mapList"
+    AppendList -> "appendList"
     ForeachTensor -> "foreachTensor"
     ForeachVector -> "foreachVector"
     Iterate -> "iterate"
-    AtTensor -> "!t"
-    AtVector -> "!v"
+    AtTensor -> "atTensor"
+    AtVector -> "atVector"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
 

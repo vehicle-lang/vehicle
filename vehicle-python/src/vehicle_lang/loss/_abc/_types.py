@@ -24,6 +24,7 @@ Expression = TypeVar("Expression")  # e.g., py.expr
 # Scalar types (Vehicle's base types)
 Index = TypeVar("Index")  # Vehicle Index → backend scalar
 Rat = TypeVar("Rat")  # Vehicle Rat → backend scalar
+Vector = TypeVar("Vector")  # Vehicle Vector a → backend vector
 
 # Generic tensor type (Vehicle's Tensor a - polymorphic over element type)
 Tensor = TypeVar("Tensor")  # Vehicle Tensor a → backend tensor

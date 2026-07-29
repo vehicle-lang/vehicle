@@ -8,10 +8,10 @@ import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.Data (Proxy (..))
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Normalise.NBE (evalInEmptyEnv, normaliseClosureInCtx)
+import Vehicle.Compile.Normalise.Force (forceThunk)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..), DecidabilityBuiltinFunction (..))
-import Vehicle.Data.Code.Value (Value (..))
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, runFreshFreeContextT)
 
@@ -92,21 +92,29 @@ capitaliseIdentifierIfType ident = do
       then capitaliseIdentifier ident
       else ident
 
-isTypeDef :: forall m. (MonadCapitalise m) => Decl DecidabilityBuiltin -> m Bool
+isTypeDef :: (MonadCapitalise m) => Decl DecidabilityBuiltin -> m Bool
 isTypeDef decl = case decl of
   DefAbstract {} -> return False
   DefRecord {} -> return False
-  DefFunction _ _ _ t _ -> do
-    normType <- evalInEmptyEnv t
-    case normType of
+  DefFunction _ _ _ t _ -> runFreshNameBoundContextT $ do
+    forcedType <- forceThunk $ Unforced emptyBoundEnv t
+    case forcedType of
       -- We don't capitalise things of type `Bool` because they will be lifted
       -- to the type level, only things of type `X -> Bool`.
-      VPi {} -> go mempty normType
+      VPi {} -> go $ Forced forcedType
       _ -> return False
   where
-    go :: NamedBoundCtx -> Value DecidabilityBuiltin -> m Bool
-    go _ (VBuiltin (DecidabilityBuiltinFunction PropType) []) = return True
-    go ctx (VPi binder closure) = do
-      result <- normaliseClosureInCtx ctx binder closure
-      go (nameOf binder : ctx) result
-    go _ _ = return False
+    go ::
+      (MonadCapitalise m, MonadNameContext m) =>
+      Thunk DecidabilityBuiltin ->
+      m Bool
+    go t = do
+      forcedType <- forceThunk t
+      case forcedType of
+        (VBuiltin (DecidabilityBuiltinFunction PropType) []) ->
+          return True
+        (VPi binder closure) -> do
+          lv <- getBinderDepth
+          let result = extendClosureWithBound closure binder lv
+          addNameToContext binder $ go result
+        _ -> return False

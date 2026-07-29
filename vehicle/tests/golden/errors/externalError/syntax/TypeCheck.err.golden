@@ -1,4 +1,5 @@
 {
+  "tag": "VehicleUserError",
   "provenance": null,
   "problem": "syntax error at line 6, column 23 before `;'",
   "fix": null

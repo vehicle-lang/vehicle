@@ -20,7 +20,7 @@ propertyTraversalErrorDetails declProv = \case
 
 nonConcreteType :: DeclProvenance -> UnAnnDoc -> VehicleError
 nonConcreteType (ident, p) problem =
-  VehicleError
+  VehicleUserError
     { provenance = Just p,
       problem =
         "unable to compile property"
@@ -33,7 +33,7 @@ nonConcreteType (ident, p) problem =
 
 unreducableValue :: DeclProvenance -> UnAnnDoc -> UnAnnDoc -> VehicleError
 unreducableValue (ident, p) typ value =
-  VehicleError
+  VehicleUserError
     { provenance = Just p,
       problem =
         "unable to compile property"

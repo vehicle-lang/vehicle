@@ -11,8 +11,10 @@ the value may not be known ahead of time, or you might want to reuse the
 same spec with multiple different values e.g. assign different values
 for epsilon in a robustness specification.
 
-Basics
-------
+Explicit Parameters
+-------------------
+
+|backendall_full|
 
 Parameters can be declared using the ``@parameter`` annotation as follows:
 
@@ -28,8 +30,15 @@ Similar to networks and datasets, parameters are passed in at compile time via
 the :code:`--parameter` command line option. For example setting :code:`epsilon` to
 the value :code:`0.1` can be achieved using :code:`--parameter epsilon:0.1`.
 
-Inferable parameters
+Inferable Parameters
 --------------------
+
+|backendloss_part| (:ref:`⤴ <loading-declarations>`)
+|backendverification_full|
+|backendagda_full|
+|backendrocq_full|
+|backendimandra_full|
+|backendisabelle_full|
 
 Sometimes the value of the parameter can be inferred from other parts of the
 specification, but is still inconvenient to pass in at compile time.

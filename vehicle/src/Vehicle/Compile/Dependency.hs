@@ -11,7 +11,7 @@ module Vehicle.Compile.Dependency
   )
 where
 
-import Control.Monad.Writer (MonadWriter (..), execWriter)
+import Control.Monad.Writer.Strict (MonadWriter (..), execWriter)
 import Data.Foldable (traverse_)
 import Data.Graph (Graph, Vertex, dfs, graphFromEdges, indegree, vertices)
 import Data.Map (Map)

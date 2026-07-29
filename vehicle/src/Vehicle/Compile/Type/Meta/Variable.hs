@@ -3,24 +3,17 @@ module Vehicle.Compile.Type.Meta.Variable
     extendMetaCtx,
     makeMetaType,
     getMetaDependencies,
-    HasMetas (..),
     MetaVariableContext,
     findMetaInfo,
     addMetaSolution,
   )
 where
 
-import Control.Monad.Writer (MonadWriter (..), execWriter)
-import Data.List.NonEmpty (NonEmpty)
-import Data.Map.Ordered qualified as OMap
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
-import Vehicle.Compile.Type.Meta.Set (MetaSet)
-import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue (GluedExprWithMetas)
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
 
 -- Eventually when metas make into the builtins, this should module
@@ -38,7 +31,7 @@ data MetaInfo builtin = MetaInfo
     -- | The number of bound variables in scope when the meta-variable was created.
     metaCtx :: BoundCtx (Expr builtin),
     -- | The solution to the meta variable
-    metaSolution :: Maybe (GluedExpr builtin)
+    metaSolution :: Maybe (GluedExprWithMetas builtin)
   }
 
 extendMetaCtx :: Binder builtin -> MetaInfo builtin -> MetaInfo builtin
@@ -48,7 +41,7 @@ extendMetaCtx binder MetaInfo {..} =
       ..
     }
 
-addSolutionToInfo :: GluedExpr builtin -> MetaInfo builtin -> MetaInfo builtin
+addSolutionToInfo :: GluedExprWithMetas builtin -> MetaInfo builtin -> MetaInfo builtin
 addSolutionToInfo solution info = info {metaSolution = Just solution}
 
 -- | Creates a Pi type that abstracts over all bound variables
@@ -73,88 +66,6 @@ getMetaDependencies = \case
   _ -> []
 
 --------------------------------------------------------------------------------
--- Objects which have meta variables in.
-
-class HasMetas a where
-  findMetas :: (MonadWriter MetaSet m) => a -> m ()
-
-  metasIn :: a -> MetaSet
-  metasIn e = execWriter (findMetas e)
-
-instance HasMetas (Expr builtin) where
-  findMetas expr = case expr of
-    Meta _ m -> tell (MetaSet.singleton m)
-    Universe {} -> return ()
-    Hole {} -> return ()
-    Builtin {} -> return ()
-    BoundVar {} -> return ()
-    FreeVar {} -> return ()
-    Pi _ binder result -> do findMetas binder; findMetas result
-    Let _ bound binder body -> do findMetas bound; findMetas binder; findMetas body
-    Lam _ binder body -> do findMetas binder; findMetas body
-    App fun args -> do findMetas fun; findMetas args
-    Record _ _ fields -> findMetas $ fmap snd fields
-    RecordProj _ recordType record _ -> do findMetas recordType; findMetas record
-
-instance HasMetas (Value builtin) where
-  findMetas expr = case expr of
-    VMeta m spine -> do
-      tell (MetaSet.singleton m)
-      findMetas spine
-    VUniverse {} -> return ()
-    VBuiltin _ spine -> findMetas spine
-    VFreeVar _ spine -> findMetas spine
-    VBoundVar _ spine -> findMetas spine
-    VPi binder closure -> do findMetas binder; findMetas closure
-    VLam binder closure -> do findMetas binder; findMetas closure
-    VRecord _ fields -> findMetas (snd <$> OMap.assocs fields)
-    VRecordAcc recordType record _ spine -> do
-      findMetas recordType
-      findMetas record
-      findMetas spine
-
-instance HasMetas (Closure builtin) where
-  findMetas (Closure env expr) = do traverseEnv_ findMetas env; findMetas expr
-
-instance (HasMetas expr) => HasMetas (GenericArg expr) where
-  findMetas = mapM_ findMetas
-
-instance (HasMetas expr) => HasMetas (GenericBinder expr) where
-  findMetas = mapM_ findMetas
-
-instance (HasMetas a) => HasMetas [a] where
-  findMetas = mapM_ findMetas
-
-instance (HasMetas a) => HasMetas (NonEmpty a) where
-  findMetas = mapM_ findMetas
-
-instance HasMetas (InstanceConstraint builtin) where
-  findMetas (Resolve _ m _ _ goal) = do
-    tell (MetaSet.singleton m)
-    findMetas goal
-
-instance HasMetas (InstanceGoal builtin) where
-  findMetas (InstanceGoal _ _ spine) = findMetas spine
-
-instance HasMetas (UnificationConstraint builtin) where
-  findMetas (Unify _ e1 e2) = do findMetas e1; findMetas e2
-
-instance HasMetas (ArgInsertionProblem builtin) where
-  findMetas ArgInsertionProblem {..} = do
-    findMetas originalFun
-    findMetas checkedArgs
-    findMetas uncheckedArgs
-
-instance HasMetas (ApplicationConstraint builtin) where
-  findMetas (InferArgs _ _ insertionProblem) = findMetas insertionProblem
-
-instance HasMetas (Constraint builtin) where
-  findMetas = \case
-    UnificationConstraint c -> findMetas c
-    InstanceConstraint c -> findMetas c
-    ApplicationConstraint c -> findMetas c
-
---------------------------------------------------------------------------------
 -- Meta context
 
 type MetaVariableContext builtin = MetaMap (MetaInfo builtin)
@@ -167,5 +78,5 @@ findMetaInfo ctx meta =
       developerError $
         "Requesting info for unknown meta" <+> pretty meta <+> "not in context"
 
-addMetaSolution :: GluedExpr builtin -> MetaID -> MetaVariableContext builtin -> MetaVariableContext builtin
+addMetaSolution :: GluedExprWithMetas builtin -> MetaID -> MetaVariableContext builtin -> MetaVariableContext builtin
 addMetaSolution solution = MetaMap.adjust (addSolutionToInfo solution)

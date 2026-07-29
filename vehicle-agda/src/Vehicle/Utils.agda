@@ -107,10 +107,6 @@ uniformSets : ∀ n {a} → Set a → Sets n (uniformLevels n a)
 uniformSets ℕ.zero A = tt
 uniformSets (suc n) A = A , uniformSets n A
 
-stabulate : ∀ n → (f : Fin n → Level) → (g : (i : Fin n) → Set (f i)) → Sets n (ltabulate n f)
-stabulate ℕ.zero f g = _
-stabulate (suc n) f g = g zero , stabulate n (f ∘′ suc) (λ u → g (suc u))
-
 open import Relation.Binary.PropositionalEquality
 
 substLevel : ∀ {a b} → a ≡ b → Set a → Set b

@@ -56,15 +56,15 @@ typeOfBuiltinFunction = \case
   Implies -> typeOfOp2 impliesPolarity
   And {} -> typeOfOp2 maxPolarity
   Or {} -> typeOfOp2 maxPolarity
-  ReduceAndTensor -> typeOfOp2 maxPolarity
-  ReduceOrTensor -> typeOfOp2 maxPolarity
+  ReduceAndTensor -> forAllPolarities $ \p -> p ~> p
+  ReduceOrTensor -> forAllPolarities $ \p -> p ~> p
   QuantifyRatTensor q -> typeOfQuantifier q
-  QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
+  QuantifyRecord _ -> unsupportedTensorLikeQuantifier
   If -> typeOfIf
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxPolarity
   CompareIndex {} -> typeOfOp2 maxPolarity
-  CompareRatTensorPointwise {} -> typeOfOp2 maxPolarity
+  CompareRatTensor {} -> typeOfOp2 maxPolarity
   -- Arithmetic operations
   Add {} -> typeOfUnquantifiedOp2
   Mul {} -> typeOfUnquantifiedOp2
@@ -73,14 +73,17 @@ typeOfBuiltinFunction = \case
   Div {} -> typeOfUnquantifiedOp2
   Min {} -> typeOfUnquantifiedOp2
   Max {} -> typeOfUnquantifiedOp2
-  PowRat {} -> typeOfUnquantifiedOp2
-  ReduceAddRatTensor -> typeOfUnquantifiedOp2
-  ReduceMulRatTensor -> typeOfUnquantifiedOp2
-  ReduceMinRatTensor -> typeOfUnquantifiedOp2
-  ReduceMaxRatTensor -> typeOfUnquantifiedOp2
+  Pow {} -> typeOfUnquantifiedOp2
+  Log {} -> typeOfUnquantifiedOp1
+  Exp {} -> typeOfUnquantifiedOp1
+  ReduceAddRatTensor -> typeOfUnquantifiedOp1
+  ReduceMulRatTensor -> typeOfUnquantifiedOp1
+  ReduceMinRatTensor -> typeOfUnquantifiedOp1
+  ReduceMaxRatTensor -> typeOfUnquantifiedOp1
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
+  AppendList -> typeOfOp2 maxPolarity
   AtVector -> typeOfAt
   AtTensor -> typeOfAt
   StackTensor -> typeOfStack

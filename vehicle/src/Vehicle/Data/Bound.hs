@@ -1,8 +1,10 @@
 module Vehicle.Data.Bound where
 
 import Control.DeepSeq (NFData)
+import Control.Monad (mapAndUnzipM)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
+import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map
 import Data.Set qualified as Set
@@ -42,37 +44,37 @@ wholeTensorUnbounded = These [[]] [[]]
 --------------------------------------------------------------------------------
 -- IsBound
 
-class (ConstantLike constant) => IsBound bound constant where
-  andBound :: bound constant -> bound constant -> bound constant
-  boundToValue :: bound constant -> (InequalityRelation, constant)
-  valueToBound :: (InequalityRelation, constant) -> bound constant
+class (Monad m, ConstantLike constant m) => IsBound bound constant m where
+  andBound :: bound constant -> bound constant -> m (bound constant)
+  boundToValue :: bound constant -> m (InequalityRelation, constant)
+  valueToBound :: (InequalityRelation, constant) -> m (bound constant)
 
 stackBounds ::
-  (IsBound bound constant) =>
+  (IsBound bound constant m) =>
   [bound constant] ->
-  bound constant
+  m (bound constant)
 stackBounds bounds = do
-  let (rels, values) = unzipWith boundToValue bounds
-  let stackedValue = stackConstants values
+  (rels, values) <- mapAndUnzipM boundToValue bounds
+  stackedValue <- stackConstants values
   let stackedRel = foldr combineInequalityRelations NonStrict rels
   valueToBound (stackedRel, stackedValue)
 
 unstackBounds ::
-  (IsBound bound constant) =>
+  (IsBound bound constant m) =>
   bound constant ->
-  [bound constant]
+  m [bound constant]
 unstackBounds bound = do
-  let (rel, constant) = boundToValue bound
-  let stackedValues = unstackConstants constant
-  fmap (\val -> valueToBound (rel, val)) stackedValues
+  (rel, constant) <- boundToValue bound
+  stackedValues <- unstackConstants constant
+  traverse (\val -> valueToBound (rel, val)) stackedValues
 
 andBoundList ::
-  (IsBound bound constant) =>
+  (IsBound bound constant m) =>
   [bound constant] ->
-  Maybe (bound constant)
+  m (Maybe (bound constant))
 andBoundList = \case
-  [] -> Nothing
-  x : xs -> Just $ foldr andBound x xs
+  [] -> return Nothing
+  x : xs -> Just <$> foldrM andBound x xs
 
 --------------------------------------------------------------------------------
 -- Lower bounds
@@ -93,15 +95,15 @@ instance (FromJSON expr) => FromJSON (LowerBound expr)
 instance (HasShape expr) => HasShape (LowerBound expr) where
   shapeOf = shapeOf . lowerBoundValue
 
-instance (ConstantLike expr) => IsBound LowerBound expr where
+instance (ConstantLike expr m) => IsBound LowerBound expr m where
   andBound (LowerBound r1 v1) (LowerBound r2 v2) = do
-    let newValue = maxConstants v1 v2
+    newValue <- maxConstants v1 v2
     let newRelation = combineInequalityRelations r1 r2
-    LowerBound newRelation newValue
+    return $ LowerBound newRelation newValue
 
-  boundToValue (LowerBound rel value) = (rel, value)
+  boundToValue (LowerBound rel value) = return (rel, value)
 
-  valueToBound = uncurry LowerBound
+  valueToBound = return . uncurry LowerBound
 
 --------------------------------------------------------------------------------
 -- UpperBound
@@ -119,15 +121,15 @@ instance (ToJSON expr) => ToJSON (UpperBound expr)
 
 instance (FromJSON expr) => FromJSON (UpperBound expr)
 
-instance (ConstantLike expr) => IsBound UpperBound expr where
+instance (ConstantLike expr m) => IsBound UpperBound expr m where
   andBound (UpperBound r1 v1) (UpperBound r2 v2) = do
-    let newValue = minConstants v1 v2
+    newValue <- minConstants v1 v2
     let newRelation = combineInequalityRelations r1 r2
-    UpperBound newRelation newValue
+    return $ UpperBound newRelation newValue
 
-  boundToValue (UpperBound rel value) = (rel, value)
+  boundToValue (UpperBound rel value) = return (rel, value)
 
-  valueToBound = uncurry UpperBound
+  valueToBound = return . uncurry UpperBound
 
 --------------------------------------------------------------------------------
 -- Bounds
@@ -223,7 +225,7 @@ instance IsBounds TensorBounds expr where
 
 data VariableInfo = VariableInfo
   { parentVariable :: TensorVariable,
-    parentShape :: PartiallyKnownTensorShape,
+    parentShape :: KnownPrefixOfTensorShape,
     indices :: TensorIndices
   }
 
@@ -241,14 +243,14 @@ maybeBoundsToSliceBounds = \case
   These lower upper -> SliceBounds [lower] [upper]
 
 tryConvertAssertionToBound ::
-  (ConstantLike constant) =>
+  (ConstantLike constant m) =>
   SliceVariable ->
   Assertion (LinearExpr SliceVariable constant) ->
-  MaybeBounds (LinearExpr SliceVariable constant)
+  m (MaybeBounds (LinearExpr SliceVariable constant))
 tryConvertAssertionToBound targetVariable (NormalisedRelation rel expr)
-  | targetVariable `Set.notMember` variablesOf expr = Nothing
+  | targetVariable `Set.notMember` variablesOf expr = return Nothing
   | otherwise = do
-      let (coeff, valueExpr) = rearrangeExprToSolveFor targetVariable expr
+      (coeff, valueExpr) <- rearrangeExprToSolveFor targetVariable expr
       let strictness = case rel of
             OEq -> These NonStrict NonStrict
             OLt
@@ -258,10 +260,10 @@ tryConvertAssertionToBound targetVariable (NormalisedRelation rel expr)
               | coeff < 0 -> This NonStrict
               | otherwise -> That NonStrict
 
-      Just $ bimap (`LowerBound` valueExpr) (`UpperBound` valueExpr) strictness
+      return $ Just $ bimap (`LowerBound` valueExpr) (`UpperBound` valueExpr) strictness
 
 tryToConvertToTensorBounds ::
-  (Monad m, MonadReadableNameContext m, ConstantLike constant, Show constant) =>
+  (Monad m, MonadReadableNameContext m, ConstantLike constant m, Show constant) =>
   (SliceVariable -> m (Maybe VariableInfo)) ->
   Assertion (LinearExpr SliceVariable constant) ->
   m (Maybe (TensorVariable, TensorBounds constant))
@@ -269,22 +271,22 @@ tryToConvertToTensorBounds lookupTensorVar (NormalisedRelation rel expr) = do
   case Map.toList (coefficients expr) of
     [(var, coef)] -> do
       maybeVar <- lookupTensorVar var
-      return $ case maybeVar of
+      case maybeVar of
         Just VariableInfo {..} -> do
-          let scaledBound = scaleConstant (-(1 / coef)) (constantValue expr)
-          let bounds = convertToTensorBounds parentShape indices rel coef scaledBound
-          Just (parentVariable, bounds)
-        _ -> Nothing
+          scaledBound <- scaleConstant (-(1 / coef)) (constantValue expr)
+          bounds <- convertToTensorBounds parentShape indices rel coef scaledBound
+          return $ Just (parentVariable, bounds)
+        _ -> return Nothing
     _ -> return Nothing
 
 convertToTensorBounds ::
-  (ConstantLike constant, Show constant) =>
-  PartiallyKnownTensorShape ->
+  (ConstantLike constant m, Show constant) =>
+  KnownPrefixOfTensorShape ->
   TensorIndices ->
   Relation ->
   Coefficient ->
   constant ->
-  TensorBounds constant
+  m (TensorBounds constant)
 convertToTensorBounds shape indices rel coeff bound = do
   -- c*x + b REL 0   -> x REL (-1/c)*b
   let strictness = case rel of
@@ -298,8 +300,8 @@ convertToTensorBounds shape indices rel coeff bound = do
 
   let maybeBounds = bimap (`LowerBound` bound) (`UpperBound` bound) strictness
   let sliceBounds = maybeBoundsToSliceBounds maybeBounds
-  let tensorSliceBounds = singleNestedSliceBound sliceBounds (knownPrefix shape) indices
-  TensorBounds tensorSliceBounds
+  let tensorSliceBounds = singleNestedSliceBound sliceBounds shape indices
+  return $ TensorBounds tensorSliceBounds
 
 --------------------------------------------------------------------------------
 -- Domains

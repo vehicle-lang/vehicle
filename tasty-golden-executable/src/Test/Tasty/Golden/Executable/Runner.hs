@@ -51,7 +51,7 @@ import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals (..), 
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, asLiteral, glob, match)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles (..), IgnoreLines (..))
 import Test.Tasty.Golden.Executable.TestSpec.SizeOnly (SizeOnlyExtensions, toSizeOnlyExtensionsSet)
-import Test.Tasty.Golden.Executable.TestSpec.TextPattern (strikeOut)
+import Test.Tasty.Golden.Executable.TestSpec.TextPattern (strikeOutAll)
 import Test.Tasty.Golden.Executable.TestSpecs (TestSpecs (..), readTestSpecsFile, testSpecsFileName, writeTestSpecsFile)
 import Test.Tasty.Options (OptionDescription (..), OptionSet, lookupOption)
 import Test.Tasty.Providers (IsTest (..), Result, testPassed)
@@ -64,9 +64,10 @@ instance IsTest TestSpec where
     if not $ isEnabled testSpec
       then return $ testSkip "disabled"
       else do
-        let missingExternals = checkExternals (lookupOption options) testSpec
+        let allowedExternals = lookupOption options
+        let missingExternals = checkExternals allowedExternals testSpec
         if not $ null missingExternals
-          then return $ testSkip $ "missing externals: " <> show missingExternals
+          then return $ testSkip $ "externals not on allowlist: " <> show missingExternals
           else do
             -- Create loose equality based on the ignore options
             let maybeLooseEq
@@ -574,9 +575,8 @@ diffText eq golden actual = do
 
 -- | Make a loose equality which ignores text matching the provided text patterns.
 makeLooseEq :: IgnoreLines -> Text -> Text -> Bool
-makeLooseEq (IgnoreLines patterns) golden actual = strikeOutAll golden == strikeOutAll actual
-  where
-    strikeOutAll line = foldr strikeOut line patterns
+makeLooseEq (IgnoreLines patterns) golden actual =
+  strikeOutAll patterns golden == strikeOutAll patterns actual
 
 -- | Make a loose equality which short-circuits using equality.
 shortCircuitWithEq :: (Eq a) => Maybe (a -> a -> Bool) -> a -> a -> Bool
