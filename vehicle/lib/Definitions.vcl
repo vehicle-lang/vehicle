@@ -190,7 +190,7 @@ natHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Nat
 natHasValidDatasetTensorElementType = {}
 
 @instance(default=0)
-realHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Real
+realHasValidDatasetTensorElementType : HasValidDatasetTensorElementType NonCastingReal
 realHasValidDatasetTensorElementType = {}
 
 -- Dataset list element types
@@ -206,7 +206,7 @@ vectorHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> H
 vectorHasValidDatasetListElementType = {}
 
 @instance
-tensorHasValidDatasetListElementType : {{HasValidDatasetTensorElementType t}} -> {{ IsTensorType t dims }} -> HasValidDatasetListElementType (Tensor t dims)
+tensorHasValidDatasetListElementType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetListElementType (NonCastingTensor t dims)
 tensorHasValidDatasetListElementType = {}
 
 @instance
@@ -230,7 +230,7 @@ vectorHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidData
 vectorHasValidDatasetType = {}
 
 @instance
-tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} ->  {{ IsTensorType t dims }} -> HasValidDatasetType (Tensor t dims)
+tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetType (NonCastingTensor t dims)
 tensorHasValidDatasetType = {}
 
 

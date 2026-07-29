@@ -5,7 +5,7 @@ import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Maybe (MaybeT)
-import Control.Monad.Writer (WriterT (..))
+import Control.Monad.Writer.Strict (WriterT (..))
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Map (Map)
@@ -15,23 +15,23 @@ import Data.Proxy (Proxy (..))
 import GHC.Stack (HasCallStack)
 import Prettyprinter (fill)
 import Vehicle.Compile.Error (MonadCompile)
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta
-  ( HasMetas (..),
-    MetaInfo (..),
+  ( MetaInfo (..),
     MetaVariableContext,
     findMetaInfo,
   )
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Meta.Substitution as MetaSubstitution (MetaSubstitutable (..), RawMetaSubstitutable (..))
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
+import Vehicle.Compile.Type.Meta.Substitution (HasMetas, MetaSubstitutable (..), RawMetaSubstitutable (..))
+import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
 import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Code.ForcedValue (ForcedValueWithMetas, ThunkWithMetas, UnforcedSpineWithMetas)
 import Vehicle.Data.Code.ModuleInterface
-import Vehicle.Data.Code.Value (FreeEnv)
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (addDeclToContext)
@@ -110,7 +110,7 @@ data TypeCheckerState builtin = TypeCheckerState
   { importedModules :: ImportedModuleContext builtin,
     currentModuleInterface :: ModuleTypingInterface builtin,
     declsByName :: Map Identifier (Decl builtin),
-    currentFreeEnv :: FreeEnv builtin,
+    currentFreeCtx :: FreeCtx builtin,
     currentDeclState :: TypeCheckerDeclState builtin
   }
 
@@ -125,7 +125,7 @@ emptyTypeCheckerState instanceDatabase importedModules = do
   TypeCheckerState
     { importedModules = importedModules,
       currentModuleInterface = emptyModuleTypingInterface {instanceDatabase = instanceDatabase},
-      currentFreeEnv = mergeImportedFreeEnvs importedModules,
+      currentFreeCtx = mergeImportedFreeCtxs importedModules,
       declsByName = importedDeclsByName,
       currentDeclState = emptyTypeCheckerDeclState
     }
@@ -159,6 +159,10 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (SupplyT a m) 
   modifyTypeCheckerState = lift . modifyTypeCheckerState
 
 instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (MaybeT m) where
+  getTypeCheckerState = lift getTypeCheckerState
+  modifyTypeCheckerState = lift . modifyTypeCheckerState
+
+instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (NameBoundContextT m) where
   getTypeCheckerState = lift getTypeCheckerState
   modifyTypeCheckerState = lift . modifyTypeCheckerState
 
@@ -259,6 +263,16 @@ getIsUnblockedFn = do
   let isUnblocked = not . constraintIsBlocked metasSolved
   return isUnblocked
 
+metasIn ::
+  forall builtin m a.
+  (MonadTypeChecker builtin m, HasMetas a) =>
+  Proxy builtin ->
+  a ->
+  m MetaSet
+metasIn _ x = do
+  s <- getMetaVariableCtx @builtin
+  return $ MetaSubstitution.metasIn s x
+
 substMetaVariables ::
   forall builtin m a.
   (MonadTypeChecker builtin m, NormalisableBuiltin builtin, RawMetaSubstitutable m builtin a) =>
@@ -287,6 +301,25 @@ getUnsolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy buil
 getUnsolvedMetas _proxy = do
   unsolvedMetas <- MetaMap.filter (isNothing . metaSolution) <$> getMetaVariableCtx @builtin
   return $ MetaMap.keys unsolvedMetas
+
+forceThunkWithMetas ::
+  (MonadTypeChecker builtin m) =>
+  NamedBoundCtx ->
+  ThunkWithMetas builtin ->
+  m (ForcedValueWithMetas builtin, MetaSet)
+forceThunkWithMetas ctx value = do
+  metaCtx <- getMetaVariableCtx
+  MetaSubstitution.forceThunkWithMetas ctx metaCtx value
+
+forceApplicationWithMetas ::
+  (MonadTypeChecker builtin m) =>
+  NamedBoundCtx ->
+  ThunkWithMetas builtin ->
+  UnforcedSpineWithMetas builtin ->
+  m (ForcedValueWithMetas builtin)
+forceApplicationWithMetas ctx value spine = do
+  metaCtx <- getMetaVariableCtx
+  MetaSubstitution.forceApplicationWithMetas ctx metaCtx value spine
 
 --------------------------------------------------------------------------------
 -- Meta-variable creation
@@ -328,7 +361,7 @@ freshMeta p metaType boundCtx = do
     "fresh-meta"
       <+> prettyFriendly (WithContext metaExpr (toNamedBoundCtx boundCtx))
       <+> ":"
-      <+> prettyVerbose metaType
+      <+> prettyFriendly (WithContext metaType (toNamedBoundCtx boundCtx))
   return (metaID, metaExpr)
 
 --------------------------------------------------------------------------------
@@ -414,7 +447,7 @@ getMetasLinkedToMetasIn ::
   m MetaSet
 getMetasLinkedToMetasIn allConstraints typeOfInterest = do
   let constraints = fmap objectIn allConstraints
-  let metasInType = metasIn typeOfInterest
+  metasInType <- metasIn (Proxy @builtin) typeOfInterest
   loopOverConstraints constraints metasInType
   where
     loopOverConstraints :: [Constraint builtin] -> MetaSet -> m MetaSet
@@ -429,7 +462,7 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
       Constraint builtin ->
       m ([Constraint builtin], MetaSet)
     processConstraint (nonRelatedConstraints, typeMetas) constraint = do
-      let constraintMetas = metasIn constraint
+      constraintMetas <- metasIn (Proxy @builtin) constraint
       return $
         if MetaSet.disjoint constraintMetas typeMetas
           then (constraint : nonRelatedConstraints, typeMetas)

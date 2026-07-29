@@ -3,110 +3,127 @@ module Vehicle.Backend.Loss.LiftQuantifier
   )
 where
 
-import Data.Proxy (Proxy (..))
-import Data.Map (Map)
-import Data.Map qualified as Map
 import Control.Monad.Except (MonadError (..))
-import Vehicle.Prelude
-import Vehicle.Data.Variable.Bound.Context.Generic (MonadBoundContext (addBinderToContext, getBoundCtx), runFreshBoundContextT, addBinderToContext)
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext, runFreshFreeContextT, addDeclEntryToContext)
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Interface
-import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Code.Value (Closure (..), Value (..), VDecl, boundContextToEnv, VBinder, VDims, VType)
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseClosure, evalDecl)
-import Vehicle.Compile.Normalise.Quote (unnormalise)
-import Vehicle.Compile.LiftIf (unfoldIf)
-import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
 import Control.Monad.RWS (MonadReader, ask)
 import Control.Monad.Reader (runReaderT)
-import Control.Monad.Writer (MonadWriter (..), runWriterT)
+import Control.Monad.Writer.Strict (MonadWriter (..), runWriterT)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Proxy (Proxy (..))
+import Vehicle.Compile.Error
+import Vehicle.Compile.LiftIf (unfoldIf)
+import Vehicle.Compile.Normalise.Builtin (elimImplies)
+import Vehicle.Compile.Normalise.Force
+import Vehicle.Compile.Normalise.Quote (unnormalise)
+import Vehicle.Compile.Normalise.TypedValue
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
+import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
+import Vehicle.Data.Builtin.Interface (Accessor (..))
+import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.ForcedValue
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Variable.Bound.Context.Name (runFreshNameBoundContextT)
+import Vehicle.Data.Variable.Bound.Context.Name.Class
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (getFreeCtx), addDeclEntryToContext, runFreshFreeContextT)
+import Vehicle.Prelude
 
 type MonadLiftQuantifiers m =
   ( MonadCompile m,
     MonadFreeContext Builtin m,
-    MonadBoundContext (Value Builtin) m,
+    MonadNameContext m,
     MonadReader DeclProvenance m
   )
 
-type OldContextValue = Value Builtin
-type NewContextValue = Value Builtin
-type QuantifierData = (Quantifier, Either (VDims Builtin) (VType Builtin), VBinder Builtin)
+type OldContextValue = Thunk Builtin
+
+type NewContextValue = Thunk Builtin
+
+type QuantifierData = (Quantifier, Either (UnforcedDims Builtin) (UnforcedType Builtin), UnforcedBinder Builtin)
+
 type PropertyData = Map Name Bool
 
 liftQuantifiers ::
   (MonadCompile m) =>
   Prog Builtin ->
-  m(PropertyData, Prog Builtin)
-liftQuantifiers (Main ds) =
+  m (PropertyData, Prog Builtin)
+liftQuantifiers (Main ds) = logCompilerPass LossLogic $
   runFreshFreeContextT (Proxy @Builtin) $ do
     (ds', propertyData) <- runWriterT (liftQuantifierDecls ds)
     return (propertyData, Main ds')
 
 liftQuantifierDecls ::
-  (MonadCompile m,
-   MonadFreeContext Builtin m,
-   MonadWriter PropertyData m) =>
+  ( MonadCompile m,
+    MonadFreeContext Builtin m,
+    MonadWriter PropertyData m
+  ) =>
   [Decl Builtin] ->
-  m[Decl Builtin]
+  m [Decl Builtin]
 liftQuantifierDecls = \case
   [] -> return []
   decl : decls -> do
-    normDecl <- evalDecl decl
-    normDecl' <-  liftQuantifierDecl normDecl
-    let decl' = fmap (unnormalise 0) normDecl'
-    decls' <- addDeclEntryToContext normDecl $ liftQuantifierDecls decls
+    logDebug MaxDetail $ pretty $ identifierOf decl
+    logDebugM MaxDetail $ do
+      pretty . Map.keys <$> getFreeCtx (Proxy @Builtin)
+    decl' <- liftQuantifierDecl decl
+    decls' <- addDeclEntryToContext decl' $ liftQuantifierDecls decls
     return (decl' : decls')
 
--- accepts and returns normalised decl
 liftQuantifierDecl ::
-  (MonadCompile m,
-   MonadFreeContext Builtin m,
-   MonadWriter PropertyData m) =>
-  VDecl Builtin ->
-  m(VDecl Builtin)
+  ( MonadCompile m,
+    MonadFreeContext Builtin m,
+    MonadWriter PropertyData m
+  ) =>
+  Decl Builtin ->
+  m (Decl Builtin)
 liftQuantifierDecl decl = case decl of
   DefAbstract {} -> return decl
+  DefRecord {} -> return decl
   DefFunction p ident ann typ expr ->
     if isAnnotatedAsProperty ann
       then do
-        ((quantifiers, value), _) <- runFreshBoundContextT (Proxy @(Value Builtin)) $ runReaderT (liftQuantifierProperty (expr, 0)) (ident, p)
-        printValue <- runFreshBoundContextT (Proxy @(Value Builtin)) $ reconstructProperty quantifiers value
-        logDebug MinDetail $ prettyFriendlyEmptyCtx  printValue
+        ((quantifiers, value), _) <-
+          runFreshNameBoundContextT $
+            flip runReaderT (ident, p) $
+              liftQuantifierProperty (Unforced emptyBoundEnv expr, 0)
+        logDebugM MinDetail $ do
+          printValue <- runFreshNameBoundContextT $ reconstructProperty quantifiers value
+          return $ prettyFriendlyEmptyCtx printValue
         ((newQuantifiers, newValue), findCounterExample) <- runReaderT (flipForall (quantifiers, value)) (ident, p)
-        liftedValue <- runFreshBoundContextT (Proxy @(Value Builtin)) $ reconstructProperty newQuantifiers newValue
-        logDebug MinDetail $ prettyFriendlyEmptyCtx liftedValue
+        liftedValue <- runFreshNameBoundContextT $ reconstructProperty newQuantifiers newValue
+        logDebug MinDetail $ do
+          prettyFriendlyEmptyCtx liftedValue
         tell (Map.singleton (identifierName ident) findCounterExample)
-        return $ DefFunction p ident ann typ liftedValue
+        return $ DefFunction p ident ann typ $ unnormalise 0 liftedValue
       else return decl
-  DefRecord {} -> return decl
 
--- Returns a Bool representing whether performing a search on the property would produce a counter-example
+-- | Returns a Bool representing whether performing a search on the property would produce a counter-example
 -- True = example input found will be a counter-example to the property
 -- False = example input found will not be a counter-example
 flipForall ::
-  (MonadCompile m,
-   MonadReader DeclProvenance m) =>
+  ( MonadCompile m,
+    MonadReader DeclProvenance m
+  ) =>
   ([QuantifierData], NewContextValue) ->
-  m(([QuantifierData], NewContextValue), Bool)
+  m (([QuantifierData], NewContextValue), Bool)
 flipForall (quantifierData, value) = case quantifierData of
   [] -> return ((quantifierData, value), True)
   (firstQuantifier, _, _) : _ -> do
     newQuantifierData <- checkAlternatingQuantifiers firstQuantifier quantifierData
-    if firstQuantifier == Forall
-      then return ((newQuantifierData, fromBoolValue $ VNot (TensorOp1Args IDimNil value)), True) -- not sure what dims to use here
-      else return ((newQuantifierData, value), False)
+    return $
+      if firstQuantifier == Forall
+        then ((newQuantifierData, Forced $ mkExpr accessNotTensor (TensorOp1Args (Forced IDimNil) value)), True) -- not sure what dims to use here
+        else ((newQuantifierData, value), False)
 
--- Throws an error if there are alternating quantifiers in the property and makes all quantifiers existential
+-- | Throws an error if there are alternating quantifiers in the
+-- property and makes all quantifiers existential
 checkAlternatingQuantifiers ::
-  (MonadCompile m,
-   MonadReader DeclProvenance m) =>
+  ( MonadCompile m,
+    MonadReader DeclProvenance m
+  ) =>
   Quantifier ->
   [QuantifierData] ->
-  m[QuantifierData]
+  m [QuantifierData]
 checkAlternatingQuantifiers prevQuantifier quantifierData = case quantifierData of
   [] -> return []
   (quantifier, dimsOrTyp, binder) : qs ->
@@ -119,214 +136,227 @@ checkAlternatingQuantifiers prevQuantifier quantifierData = case quantifierData 
         return ((Exists, dimsOrTyp, binder) : newData)
 
 reconstructProperty ::
-  (MonadCompile m,
-  MonadFreeContext Builtin m,
-  MonadBoundContext (Value Builtin) m)  =>
+  ( MonadCompile m,
+    MonadFreeContext Builtin m,
+    MonadNameContext m
+  ) =>
   [QuantifierData] ->
   NewContextValue ->
-  m(Value Builtin)
+  m (Thunk Builtin)
 reconstructProperty quantifiers value = case quantifiers of
   [] -> return value
   (quantifier, dimsOrType, binder) : qs -> do
-    newBody <- addBinderToContext binder $ do
+    newBody <- addNameToContext binder $ do
       reconstructed <- reconstructProperty qs value
-      ctx <- getBoundCtx (Proxy @(Value Builtin))
-      let lv = boundCtxLv ctx
-      let newBody = unnormalise lv reconstructed
-      return newBody
-    ctx <- getBoundCtx (Proxy @(Value Builtin))
-    let newEnv = boundContextToEnv ctx
+      lv <- getBinderDepth
+      return $ unnormalise lv reconstructed
+    newEnv <- namedBoundContextToEnv <$> getNameContext
     case dimsOrType of
-      Left dims -> return (fromBoolValue $ VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs dims binder (Closure newEnv newBody)))
-      Right typ -> return (fromBoolValue $ VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder (Closure newEnv newBody)))
+      Left dims -> return (Forced $ mkExpr accessQuantifyRatTensor (quantifier, QuantifyRatTensorArgs dims binder (Closure newEnv newBody)))
+      Right typ -> return (Forced $ mkExpr accessQuantifyRecord (quantifier, QuantifyRecordArgs typ binder (Closure newEnv newBody)))
 
 liftQuantifierProperty ::
   (MonadLiftQuantifiers m) =>
   (OldContextValue, Lv) ->
-  m(([QuantifierData], NewContextValue), Lv)
-liftQuantifierProperty (value, ctxDelta) = case toBoolValue value of
-  VBoolLiteral _ -> return (([], value), 0)
-  VAnd (TensorOp2Args dims arg1 arg2) -> do
-    ((quantifiers1, arg1'), ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
-    ((quantifiers2, arg2'), ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
-    return ((quantifiers1 ++ quantifiers2, fromBoolValue $ VAnd (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2)
-  VOr (TensorOp2Args dims arg1 arg2) -> do
-    ((quantifiers1, arg1'), ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
-    ((quantifiers2, arg2'), ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
-    return ((quantifiers1 ++ quantifiers2, fromBoolValue $ VOr (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2)
-  VNot (TensorOp1Args dims arg) -> do
-    ((quantifiers, arg'), ctxSize) <- liftQuantifierProperty (arg, ctxDelta)
-    return ((quantifiers, fromBoolValue $ VNot (TensorOp1Args dims arg')), ctxSize)
-  VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs dims binder closure) -> do
-    normBody <- normaliseClosure binder closure
-    ((quantifiers, body'), ctxSize) <- addBinderToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
-    return (((quantifier, Left dims, binder) : quantifiers, body'), ctxSize + 1)
-  VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder closure) -> do
-    normBody <- normaliseClosure binder closure
-    ((quantifiers, body'), ctxSize) <- addBinderToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
-    return (((quantifier, Right typ, binder) : quantifiers, body'), ctxSize + 1)
-  VBoolIf args -> do
-    unfolded <- unfoldIf args
-    liftQuantifierProperty (unfolded, ctxDelta)
-  VReduceAndTensor _ -> do
-    unblocked <- unblockBoolExpr unblockingActions value
-    liftQuantifierProperty (unblocked, ctxDelta)
-  VReduceOrTensor _ -> do
-    unblocked <- unblockBoolExpr unblockingActions value
-    liftQuantifierProperty (unblocked, ctxDelta)
-  VBoolAt _ -> do
-    unblocked <- unblockBoolExpr unblockingActions value
-    liftQuantifierProperty (unblocked, ctxDelta)
-  VCompareIndex (op, IndexComparisonArgs size1 size2 arg1 arg2) -> do
-    arg1' <- updateIndexBoundVar ctxDelta arg1
-    arg2' <- updateIndexBoundVar ctxDelta arg2
-    return (([], fromBoolValue $ VCompareIndex (op, IndexComparisonArgs size1 size2 arg1' arg2')), 0)
-  VCompareNat (op, args) -> do
-    args' <- traverseOp2Args (updateNatBoundVar ctxDelta) args
-    return (([], fromBoolValue $ VCompareNat (op, args')), 0)
-  VCompareRatTensor (op, args) -> do
-    args' <- traverseTensorOp2Args (updateRatTensorBoundVar ctxDelta) args
-    return (([], fromBoolValue $ VCompareRatTensor (op, args')), 0)
+  m (([QuantifierData], NewContextValue), Lv)
+liftQuantifierProperty (value, ctxDelta) = do
+  forcedValue <- forceThunk value
+  case toBoolValue forcedValue of
+    VBoolLiteral _ ->
+      return (([], value), 0)
+    VAnd (TensorOp2Args dims arg1 arg2) -> do
+      ((quantifiers1, arg1'), ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
+      ((quantifiers2, arg2'), ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
+      return ((quantifiers1 ++ quantifiers2, Forced $ mkExpr accessAndTensor (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2)
+    VOr (TensorOp2Args dims arg1 arg2) -> do
+      ((quantifiers1, arg1'), ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
+      ((quantifiers2, arg2'), ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
+      return ((quantifiers1 ++ quantifiers2, Forced $ mkExpr accessOrTensor (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2)
+    VNot (TensorOp1Args dims arg) -> do
+      ((quantifiers, arg'), ctxSize) <- liftQuantifierProperty (arg, ctxDelta)
+      return ((quantifiers, Forced $ mkExpr accessNotTensor (TensorOp1Args dims arg')), ctxSize)
+    VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs dims binder closure) -> do
+      lv <- getBinderDepth
+      let normBody = extendClosureWithBound closure binder lv
+      ((quantifiers, body'), ctxSize) <- addNameToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
+      return (((quantifier, Left dims, binder) : quantifiers, body'), ctxSize + 1)
+    VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder closure) -> do
+      lv <- getBinderDepth
+      let normBody = extendClosureWithBound closure binder lv
+      ((quantifiers, body'), ctxSize) <- addNameToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
+      return (((quantifier, Right typ, binder) : quantifiers, body'), ctxSize + 1)
+    VBoolIf args -> do
+      unfolded <- unfoldIf args
+      liftQuantifierProperty (unfolded, ctxDelta)
+    VCompareIndex (op, IndexComparisonArgs size1 size2 arg1 arg2) -> do
+      arg1' <- updateIndexBoundVar ctxDelta arg1
+      arg2' <- updateIndexBoundVar ctxDelta arg2
+      return (([], Forced $ mkExpr accessCompareIndex (op, IndexComparisonArgs size1 size2 arg1' arg2')), 0)
+    VCompareNat (op, args) -> do
+      args' <- traverseOp2Args (updateNatBoundVar ctxDelta) args
+      return (([], Forced $ mkExpr accessCompareNat (op, args')), 0)
+    VCompareRatTensor (op, TensorComparisonArgs rDims pDims xs ys) -> do
+      xs' <- updateRatTensorBoundVar ctxDelta xs
+      ys' <- updateRatTensorBoundVar ctxDelta ys
+      let args' = TensorComparisonArgs rDims pDims xs' ys'
+      return (([], Forced $ mkExpr accessCompareRatTensor (op, args')), 0)
+    VImplies args -> do
+      let unfolded = elimImplies args
+      liftQuantifierProperty (unfolded, ctxDelta)
+    VBoolVectorAt {} -> unblock
+    VBoolFoldList {} -> unblock
+    VReduceAndTensor {} -> unblock
+    VReduceOrTensor {} -> unblock
+    VBoolTensorAt {} -> unblock
+  where
+    unblock = do
+      unblocked <- unblockBoolExpr unblockingActions value
+      liftQuantifierProperty (unblocked, ctxDelta)
 
 updateIndexBoundVar ::
   (MonadLiftQuantifiers m) =>
   Lv ->
-  Value Builtin ->
-  m(Value Builtin)
-updateIndexBoundVar lv value = case toIndexValue value of
-  VIndexLiteral _ _ -> return value
-  VIndexBoundVar v spine -> do
-    spine' <- traverseArgs (updateIndexBoundVar lv) spine
-    return $ VBoundVar (v + lv) spine'
-  VIndexIf _  -> do
-    declProv <- ask
-    throwError $ UnableToLiftQuantifiersInProperty declProv
-  VIndexAtVector (AtVectorArgs typ dim vector idx) -> do
-    vector' <- updateIndexBoundVar lv vector
-    return (fromIndexValue $ VIndexAtVector (AtVectorArgs typ dim vector' idx))
-  VIndexParameter _ -> return value
+  Thunk Builtin ->
+  m (Thunk Builtin)
+updateIndexBoundVar lv value = do
+  forcedValue <- forceThunk value
+  case toIndexValue forcedValue of
+    VIndexLiteral {} ->
+      return value
+    VIndexBoundVar v spine -> do
+      spine' <- traverseArgs (updateIndexBoundVar lv) spine
+      return $ Forced $ VBoundVar (v + lv) spine'
+    VIndexIf {} -> do
+      declProv <- ask
+      throwError $ UnableToLiftQuantifiersInProperty declProv
+    VIndexAtVector (AtVectorArgs typ dim vector idx) -> do
+      vector' <- updateIndexBoundVar lv vector
+      return (Forced $ mkExpr accessAtVector (AtVectorArgs typ dim vector' idx))
+    VIndexParameter {} ->
+      return value
+    VIndexRecordAcc typ val fieldName spine -> do
+      val' <- updateIndexBoundVar lv val
+      spine' <- traverseArgs (updateRatTensorBoundVar lv) spine
+      return (Forced $ VRecordAcc typ val' fieldName spine')
 
 updateNatBoundVar ::
   (MonadLiftQuantifiers m) =>
   Lv ->
-  Value Builtin ->
-  m(Value Builtin)
-updateNatBoundVar lv value = case toNatValue value of
-  VNatLiteral _ -> return value
-  VNatBoundVar v spine -> do
-    spine' <- traverseArgs (updateNatBoundVar lv) spine
-    return (fromNatValue $ VNatBoundVar (v + lv) spine')
-  VNatIf _ -> do
-    declProv <- ask
-    throwError $ UnableToLiftQuantifiersInProperty declProv
-  VNatAdd args -> do
-    args' <- traverseOp2Args (updateNatBoundVar lv) args
-    return (fromNatValue $ VNatAdd args')
-  VNatMul args -> do
-    args' <- traverseOp2Args (updateNatBoundVar lv) args
-    return (fromNatValue $ VNatMul args')
-  VNatParameter _ -> return value
+  Thunk Builtin ->
+  m (Thunk Builtin)
+updateNatBoundVar lv value = do
+  forcedValue <- forceThunk value
+  case toNatValue forcedValue of
+    VNatLiteral _ -> return value
+    VNatBoundVar v spine -> do
+      spine' <- traverseArgs (updateNatBoundVar lv) spine
+      return (Forced $ VBoundVar (v + lv) spine')
+    VNatIf _ -> do
+      declProv <- ask
+      throwError $ UnableToLiftQuantifiersInProperty declProv
+    VNatAdd args -> do
+      args' <- traverseOp2Args (updateNatBoundVar lv) args
+      return (Forced $ mkExpr accessAddNat args')
+    VNatMul args -> do
+      args' <- traverseOp2Args (updateNatBoundVar lv) args
+      return (Forced $ mkExpr accessMulNat args')
+    VNatParameter _ -> return value
 
 updateRatTensorBoundVar ::
   (MonadLiftQuantifiers m) =>
   Lv ->
-  Value Builtin ->
-  m(Value Builtin)
-updateRatTensorBoundVar lv value = case toRatTensorValue value of
-  VRatTensorLiteral _ -> return value
-  VNegRatTensor (TensorOp1Args dims arg) -> do
-    arg' <- updateRatTensorBoundVar lv arg
-    return (fromRatTensorValue $ VNegRatTensor (TensorOp1Args dims arg'))
-  VLogRatTensor (TensorOp1Args dims arg) -> do
-    arg' <- updateRatTensorBoundVar lv arg
-    return (fromRatTensorValue $ VLogRatTensor (TensorOp1Args dims arg'))
-  VExpRatTensor (TensorOp1Args dims arg) -> do
-    arg' <- updateRatTensorBoundVar lv arg
-    return (fromRatTensorValue $ VExpRatTensor (TensorOp1Args dims arg'))
-  VAddRatTensor args -> do
-    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VAddRatTensor args')
-  VSubRatTensor args -> do
-    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VSubRatTensor args')
-  VMulRatTensor args -> do
-    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VMulRatTensor args')
-  VDivRatTensor args -> do
-    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VDivRatTensor args')
-  VMinRatTensor args -> do
-    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VMinRatTensor args')
-  VMaxRatTensor args -> do
-    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VMaxRatTensor args')
-  VPowRatTensor args -> do
-    args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VPowRatTensor args')
-  VReduceAddRatTensor args -> do
-    args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VReduceAddRatTensor args')
-  VReduceMulRatTensor args -> do
-    args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VReduceMulRatTensor args')
-  VReduceMinRatTensor args -> do
-    args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VReduceMinRatTensor args')
-  VReduceMaxRatTensor args -> do
-    args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VReduceMaxRatTensor args')
-  VIfRatTensor _ -> do
-    declProv <- ask
-    throwError $ UnableToLiftQuantifiersInProperty declProv
-  VRatTensorBoundVar v -> return (fromRatTensorValue $ VRatTensorBoundVar (v + lv))
-  VRatTensorNetworkApp ident (NetworkAppArgs arg) -> do
-    arg' <- updateRatTensorBoundVar lv arg
-    return (fromRatTensorValue $ VRatTensorNetworkApp ident (NetworkAppArgs arg'))
-  VRatConstTensor args -> do
-    args' <- traverseConstTensorValue (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VRatConstTensor args')
-  VRatStackTensor args -> do
-    args' <-  traverseStackTensorElements (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VRatStackTensor args')
-  VRatAtTensor args -> do
-    args' <- traverseAtTensorArg (updateRatTensorBoundVar lv) args
-    return (fromRatTensorValue $ VRatAtTensor args')
-  VRatForeach (ForeachTensorArgs typ d ds fn) -> do
-    fn' <- updateRatTensorBoundVar lv fn
-    return (fromRatTensorValue $ VRatForeach (ForeachTensorArgs typ d ds fn'))
-  VRatRecordAcc typ val fieldName spine -> do
-    val' <- updateRatTensorBoundVar lv val
-    spine' <- traverseArgs (updateRatTensorBoundVar lv) spine
-    return (fromRatTensorValue $ VRatRecordAcc typ val' fieldName spine')
-  VDatasetOrParameter _ -> return value
-  VRatAtVector (AtVectorArgs typ dim vector idx) -> do
-    vector' <- updateRatTensorBoundVar lv vector
-    return (fromRatTensorValue $ VRatAtVector (AtVectorArgs typ dim vector' idx))
+  Thunk Builtin ->
+  m (Thunk Builtin)
+updateRatTensorBoundVar lv value = do
+  forcedValue <- forceThunk value
+  case toRatTensorValue forcedValue of
+    VRatTensorLiteral _ ->
+      return value
+    VNegRatTensor (TensorOp1Args dims arg) -> do
+      arg' <- updateRatTensorBoundVar lv arg
+      return (Forced $ mkExpr accessNegRatTensor (TensorOp1Args dims arg'))
+    VLogRatTensor (TensorOp1Args dims arg) -> do
+      arg' <- updateRatTensorBoundVar lv arg
+      return (Forced $ mkExpr accessLogRatTensor (TensorOp1Args dims arg'))
+    VExpRatTensor (TensorOp1Args dims arg) -> do
+      arg' <- updateRatTensorBoundVar lv arg
+      return (Forced $ mkExpr accessExpRatTensor (TensorOp1Args dims arg'))
+    VAddRatTensor args -> do
+      args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessAddRatTensor args')
+    VSubRatTensor args -> do
+      args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessSubRatTensor args')
+    VMulRatTensor args -> do
+      args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessMulRatTensor args')
+    VDivRatTensor args -> do
+      args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessDivRatTensor args')
+    VMinRatTensor args -> do
+      args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessMinRatTensor args')
+    VMaxRatTensor args -> do
+      args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessMaxRatTensor args')
+    VPowRatTensor args -> do
+      args' <- traverseTensorOp2Args (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessPowRatTensor args')
+    VReduceAddRatTensor args -> do
+      args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessReduceAddRat args')
+    VReduceMulRatTensor args -> do
+      args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessReduceMulRat args')
+    VReduceMinRatTensor args -> do
+      args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessReduceMinRat args')
+    VReduceMaxRatTensor args -> do
+      args' <- traverseReductionArgs (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessReduceMaxRat args')
+    VIfRatTensor _ -> do
+      declProv <- ask
+      throwError $ UnableToLiftQuantifiersInProperty declProv
+    VRatTensorBoundVar v ->
+      return (Forced $ VBoundVar (v + lv) [])
+    VNetworkApplication ident (NetworkAppArgs arg) -> do
+      arg' <- updateRatTensorBoundVar lv arg
+      return (Forced $ VFreeVar ident (mkExpr accessSpine $ NetworkAppArgs arg'))
+    VRatConstTensor args -> do
+      args' <- traverseConstTensorValue (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessConstTensor args')
+    VRatStackTensor args -> do
+      args' <- traverseStackTensorElements (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessStackTensor args')
+    VRatAtTensor args -> do
+      args' <- traverseAtTensorArg (updateRatTensorBoundVar lv) args
+      return (Forced $ mkExpr accessAtTensor args')
+    VRatForeach (ForeachTensorArgs typ d ds fn) -> do
+      fn' <- updateRatTensorBoundVar lv fn
+      return (Forced $ mkExpr accessForeachTensor (ForeachTensorArgs typ d ds fn'))
+    VRatTensorRecordAcc typ val fieldName spine -> do
+      val' <- updateRatTensorBoundVar lv val
+      spine' <- traverseArgs (updateRatTensorBoundVar lv) spine
+      return (Forced $ VRecordAcc typ val' fieldName spine')
+    VParameterOrDataset _ ->
+      return value
+    VRatAtVector (AtVectorArgs typ dim vector idx) -> do
+      vector' <- updateRatTensorBoundVar lv vector
+      return (Forced $ mkExpr accessAtVector (AtVectorArgs typ dim vector' idx))
 
 unblockingActions :: (MonadLiftQuantifiers m) => UnblockingActions m
 unblockingActions =
-  UnblockingActions {
-    unblockRatTensorBoundVar = \_ -> do
-      declProv <- ask
-      throwError $ UnableToLiftQuantifiersInProperty declProv,
-    unblockRecordBoundVar = \_ -> do
-      declProv <- ask
-      throwError $ UnableToLiftQuantifiersInProperty declProv,
-    unblockNetworkApp = \_ _ _ _-> do
-      declProv <- ask
-      throwError $ UnableToLiftQuantifiersInProperty declProv,
-    unblockDatasetOrParameter = \_ -> do
-      declProv <- ask
-      throwError $ UnableToLiftQuantifiersInProperty declProv
-  }
-
-{-showValue :: (MonadLogger m, MonadBoundContext (Value Builtin) m) => (OldContextValue, Lv) -> m(([QuantifierData], NewContextValue), Lv) -> m(([QuantifierData], NewContextValue), Lv)
-showValue (value, lv) resultFunction = do
-  ctx <- getBoundCtx (Proxy @(Value Builtin))
-  logDebug MinDetail $ "lift-enter" <+> prettyVerbose value <+> pretty lv <+> prettyVerbose ctx
-  incrCallDepth
-  ((quantifiers, newValue), newLv) <- resultFunction
-  decrCallDepth
-  logDebug MinDetail $ "lift-exit" <+> prettyVerbose newValue <+> pretty newLv <+> prettyVerbose ctx
-  return ((quantifiers, newValue), newLv)-}
+  UnblockingActions
+    { unblockRatTensorBoundVar = \_ -> do
+        declProv <- ask
+        throwError $ UnableToLiftQuantifiersInProperty declProv,
+      unblockRecordBoundVar = \_ -> do
+        declProv <- ask
+        throwError $ UnableToLiftQuantifiersInProperty declProv,
+      unblockNetworkApp = \_ _ _ _ -> do
+        declProv <- ask
+        throwError $ UnableToLiftQuantifiersInProperty declProv,
+      unblockDatasetOrParameter = \_ -> do
+        declProv <- ask
+        throwError $ UnableToLiftQuantifiersInProperty declProv
+    }

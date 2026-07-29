@@ -1,5 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE NamedFieldPuns #-}
 module Vehicle.Compile
   ( CompileOptions (..),
     LossOptions (..),
@@ -10,7 +8,7 @@ module Vehicle.Compile
 where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Writer (MonadWriter (..), WriterT (..))
+import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
 import System.Directory (makeAbsolute)
 import Vehicle.Backend.ITP.Agda
 import Vehicle.Backend.ITP.Imandra
@@ -18,6 +16,7 @@ import Vehicle.Backend.ITP.Isabelle
 import Vehicle.Backend.ITP.Rocq
 import Vehicle.Backend.Loss (convertToLossTensors)
 import Vehicle.Backend.Loss.JSON
+import Vehicle.Backend.Loss.LiftQuantifier (liftQuantifiers)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Solver
 import Vehicle.Compile.Error
@@ -32,7 +31,6 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
-import Vehicle.Backend.Loss.LiftQuantifier (liftQuantifiers)
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -175,16 +173,15 @@ compileToTrainingLoss ::
   Prog Builtin ->
   OutputAsJSON ->
   m ()
-compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON =
-  logCompilerPass Loss $ do
-    lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
-    hoistedProg <- hoistInferableParameters lossTensorProg
-    functionalisedProg <- functionaliseResources hoistedProg
-    jsonProg <- convertToJSONProg functionalisedProg
-    let outputText
-          | outputAsJSON = prettyAsJSON jsonProg
-          | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
-    writeResultToFile Nothing outputFile outputText
+compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON = do
+  lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
+  hoistedProg <- hoistInferableParameters lossTensorProg
+  functionalisedProg <- functionaliseResources hoistedProg
+  jsonProg <- convertToJSONProg functionalisedProg
+  let outputText
+        | outputAsJSON = prettyAsJSON jsonProg
+        | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
+  writeResultToFile Nothing outputFile outputText
 
 compileToSearchLoss ::
   forall m.
@@ -198,7 +195,9 @@ compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON =
   logCompilerPass Loss $ do
     (propertyData, liftedProg) <- liftQuantifiers typedProg
     lossTensorProg <- convertToLossTensors differentiableLogicID liftedProg
+    logDebug MaxDetail "Hit1"
     jsonProg <- convertToJSONProg lossTensorProg
+    logDebug MaxDetail "Hit2"
     let outputText
           | outputAsJSON = prettyAsJSON $ SearchProgram propertyData jsonProg
           | otherwise = prettyFriendly (convertFromJSONProg jsonProg)

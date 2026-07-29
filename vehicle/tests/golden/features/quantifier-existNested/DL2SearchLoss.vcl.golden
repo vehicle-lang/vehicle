@@ -1,11 +1,14 @@
-@property;
-existEqualNested : (Tensor Real -> Tensor Real) -> Tensor Real;
-existEqualNested = \ f -> search[x1] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x1 -> search[x2] (\ dims -> \ xs -> reduceMul xs) nil 1.0 2.0 (\ x2 -> max 0.0 (1.0 - f x1) + max 0.0 (2.0 - f x2)))
+@network;
+f : Tensor Real -> Tensor Real
 
 @property;
-existLeftMoreNested : (Tensor Real -> Tensor Real) -> Tensor Real;
-existLeftMoreNested = \ f -> search[x1] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x1 -> search[x2] (\ dims -> \ xs -> reduceMul xs) nil 1.0 2.0 (\ x2 -> search[x3] (\ dims -> \ xs -> reduceMul xs) nil 2.0 3.0 (\ x3 -> max 0.0 (1.0 - f x1) + max 0.0 (2.0 - f x2) + max 0.0 (3.0 - f x3))))
+existEqualNested : Tensor Real;
+existEqualNested = search[x1] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x1 -> search[x2] (\ dims -> \ xs -> reduceMul xs) nil 1.0 2.0 (\ x2 -> max (const 0.0 nil) (1.0 - f x1) + max (const 0.0 nil) (2.0 - f x2)))
 
 @property;
-existRightMoreNested : (Tensor Real -> Tensor Real) -> Tensor Real;
-existRightMoreNested = \ f -> search[x1] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x1 -> search[x2] (\ dims -> \ xs -> reduceMul xs) nil 1.0 2.0 (\ x2 -> search[x3] (\ dims -> \ xs -> reduceMul xs) nil 2.0 3.0 (\ x3 -> max 0.0 (1.0 - f x1) + (max 0.0 (2.0 - f x2) + max 0.0 (3.0 - f x3)))))
+existLeftMoreNested : Tensor Real;
+existLeftMoreNested = search[x1] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x1 -> search[x2] (\ dims -> \ xs -> reduceMul xs) nil 1.0 2.0 (\ x2 -> search[x3] (\ dims -> \ xs -> reduceMul xs) nil 2.0 3.0 (\ x3 -> max (const 0.0 nil) (1.0 - f x1) + max (const 0.0 nil) (2.0 - f x2) + max (const 0.0 nil) (3.0 - f x3))))
+
+@property;
+existRightMoreNested : Tensor Real;
+existRightMoreNested = search[x1] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x1 -> search[x2] (\ dims -> \ xs -> reduceMul xs) nil 1.0 2.0 (\ x2 -> search[x3] (\ dims -> \ xs -> reduceMul xs) nil 2.0 3.0 (\ x3 -> max (const 0.0 nil) (1.0 - f x1) + (max (const 0.0 nil) (2.0 - f x2) + max (const 0.0 nil) (3.0 - f x3)))))

@@ -13,16 +13,15 @@ where
 import Data.Bifunctor (Bifunctor (..))
 import Data.Map (fromListWith)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval)
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Bound.Context.Generic
 
@@ -37,8 +36,8 @@ malformedConstraintError c =
 createInstanceUnification ::
   (MonadTypeChecker builtin m) =>
   (ConstraintContext builtin, InstanceConstraintOrigin builtin) ->
-  Value builtin ->
-  Value builtin ->
+  ThunkWithMetas builtin ->
+  ThunkWithMetas builtin ->
   m (WithContext (UnificationConstraint builtin))
 createInstanceUnification (ctx, origin) e1 e2 = do
   let unifyOrigin = CheckingInstanceType origin
@@ -94,6 +93,6 @@ instantiateInstanceConstraintSolution (WithContext (Resolve origin meta _ _ _) c
       logDebug MaxDetail ("solved" <+> pretty meta <+> "as" <+> prettyVerbose solution)
       logDebug MaxDetail (indent 2 ("however" <+> pretty meta <+> "=" <+> prettyVerbose (unnormalised existingSolution) <+> "already so unifying"))
       let abstractedSolution = abstractOverCtx (metaCtx metaInfo) solution
-      normSolution <- eval (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) abstractedSolution
+      let normSolution = Unforced (boundContextToEnv boundCtx) abstractedSolution
       newConstraint <- createInstanceUnification (ctx, origin) normSolution (normalised existingSolution)
       addUnificationConstraints [newConstraint]

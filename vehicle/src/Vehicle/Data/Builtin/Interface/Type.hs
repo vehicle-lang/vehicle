@@ -1,11 +1,11 @@
 module Vehicle.Data.Builtin.Interface.Type where
 
 import Data.Proxy (Proxy)
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Type.Core (InstanceHead)
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Data.AST.Expr.Scoped (Type)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL

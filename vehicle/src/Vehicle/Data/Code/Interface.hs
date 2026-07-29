@@ -12,14 +12,10 @@ module Vehicle.Data.Code.Interface
     module Patterns,
     mkListExpr,
     mkDims,
-    getDim,
-    getDims,
-    getDimsExprs,
     mkIndexInto,
   )
 where
 
-import Control.Monad.Except (MonadError (..))
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Code.Interface.Args as Args
 import Vehicle.Data.Code.Interface.Operations as Operations
@@ -27,36 +23,20 @@ import Vehicle.Data.Code.Interface.Patterns as Patterns
 import Vehicle.Data.Tensor
 
 mkListExpr ::
-  (HasListExpr expr builtin) =>
-  expr builtin ->
-  [expr builtin] ->
+  (HasListExpr expr thunk builtin) =>
+  thunk builtin ->
+  [thunk builtin] ->
   expr builtin
-mkListExpr tElem = foldr (ICons tElem) (INil tElem)
+mkListExpr tElem = foldr (\x xs -> ICons tElem x (exprToThunk xs)) (INil tElem)
 
-mkDims :: (HasNatExpr expr builtin, HasListExpr expr builtin, BuiltinHasNatType builtin) => [Int] -> expr builtin
-mkDims ds = mkListExpr INatType (fmap INatLiteral ds)
-
-getDim :: (HasNatExpr expr builtin) => expr builtin -> Maybe Int
-getDim = \case
-  INatLiteral n -> Just n
-  _ -> Nothing
-
-getDimsExprs :: (HasNatType expr builtin, HasNatExpr expr builtin, HasListExpr expr builtin) => expr builtin -> Either (expr builtin) [expr builtin]
-getDimsExprs = \case
-  IDimNil -> return []
-  IDimCons d ds -> (d :) <$> getDimsExprs ds
-  e -> throwError e
-
-getDims :: (HasNatType expr builtin, HasNatExpr expr builtin, HasListExpr expr builtin) => expr builtin -> Maybe TensorShape
-getDims v = case getDimsExprs v of
-  Left {} -> Nothing
-  Right xs -> traverse getDim xs
+mkDims :: forall expr thunk builtin. (HasNatType expr thunk builtin, HasNatExpr expr thunk builtin, HasListExpr expr thunk builtin) => [Int] -> expr builtin
+mkDims ds = mkListExpr (exprToThunk @expr INatType) (fmap (exprToThunk @expr . INatLiteral) ds)
 
 -- | Takes a `X` and [i_1, ... i_n] and returns `X ! i_1 ! i_n`
 mkIndexInto ::
-  forall expr builtin.
-  (HasTensorExpr expr builtin) =>
-  expr builtin ->
+  forall expr thunk builtin.
+  (HasTensorExpr expr thunk builtin) =>
+  thunk builtin ->
   expr builtin ->
   TensorShape ->
   TensorIndices ->
@@ -71,9 +51,9 @@ mkIndexInto elementType value shape indices = go value (zip shape indices)
               mkExpr accessAtTensor $
                 AtTensorArgs
                   { atType = elementType,
-                    atFirstDim = INatLiteral d,
-                    atRemainingDims = mkDims $ fmap fst xs,
-                    atTensor = tensor,
-                    atIndex = IIndexLiteral i (INatLiteral d)
+                    atFirstDim = exprToThunk @expr $ INatLiteral d,
+                    atRemainingDims = exprToThunk @expr $ mkDims $ fmap fst xs,
+                    atTensor = exprToThunk tensor,
+                    atIndex = exprToThunk @expr $ IIndexLiteral i (exprToThunk @expr $ INatLiteral d)
                   }
         go result xs
