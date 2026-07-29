@@ -227,9 +227,6 @@ atTensor t d ds tens idx = builtinFunction AtTensor @@@ [t] .@@@ [d, ds] @@ [ten
 reverseDims :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin
 reverseDims ds = builtinFunction ReverseList @@@ [tNat] @@ [ds]
 
-transpose :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-transpose tElem ds xs = builtinFunction Transpose @@@ [tElem, ds] @@ [xs]
-
 iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 iterate t f n e = do
   let fn = explLam "f" (t ~> t) $ \iterFn -> explLam "e" t $ \resultSoFar -> f iterFn resultSoFar

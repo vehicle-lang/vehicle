@@ -322,6 +322,12 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
+        """Translate SearchRatTensor to builtin call.
+
+        The reduction_op is a curried function (λxs. reduce xs) where:
+        - xs is the sequence of samples to reduce
+        """
+        # Call sampler once to get samples
         sampler_call = py_app(
             py_subscript(
                 py_qualified_name("__vehicle_user_samplers__", provenance=vcl.MISSING),
@@ -336,11 +342,30 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+        # Apply as: (λsamples. reduction_op(len(samples))(samples).
+        # We cannot know the number of samples at compile time, so we pass both the samples and their length to the reduction_op.
+        # The number of samples is important as it may use them to construct constant tensors of the relevant dimension.
+        samples_name = "_samples"
+        samples_var = py_name(samples_name, provenance=vcl.MISSING)
         return py_app(
-            py_app(
-                self.translate_expression(expression.reduction_op),
-                self.translate_expression(expression.dims),
-                provenance=vcl.MISSING,
+            py.Lambda(
+                args=py_binder(
+                    py.arg(arg=samples_name, annotation=None, **asdict(vcl.MISSING))
+                ),
+                body=py_app(
+                    py_app(
+                        self.translate_expression(expression.reduction_op),
+                        py_app(
+                            py_name("len", provenance=vcl.MISSING),
+                            samples_var,
+                            provenance=vcl.MISSING,
+                        ),
+                        provenance=vcl.MISSING,
+                    ),
+                    samples_var,
+                    provenance=vcl.MISSING,
+                ),
+                **asdict(vcl.MISSING),
             ),
             sampler_call,
             provenance=vcl.MISSING,

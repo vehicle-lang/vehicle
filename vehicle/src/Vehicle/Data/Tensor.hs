@@ -216,10 +216,10 @@ allMultiIndices = \case
 transposeTensor :: (Eq a) => Tensor a -> Tensor a
 transposeTensor = \case
   ConstantTensor shape value -> ConstantTensor (reverse shape) value
-  DenseTensor shape values ->
+  DenseTensor shape values -> do
     let revShape = reverse shape
-        pickAt revIs = values Vector.! flattenIndices shape (reverse revIs)
-     in fromVector revShape $ Vector.fromList [pickAt revIs | revIs <- allMultiIndices revShape]
+    let pickAt revIs = values Vector.! flattenIndices shape (reverse revIs)
+    fromVector revShape $ Vector.fromList [pickAt revIs | revIs <- allMultiIndices revShape]
 
 foldMapTensor :: forall a b. (a -> b) -> (TensorShape -> [b] -> b) -> Tensor a -> b
 foldMapTensor mkValue mkVec t =

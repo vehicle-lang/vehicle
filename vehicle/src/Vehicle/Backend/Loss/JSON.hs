@@ -111,7 +111,7 @@ data JExpr
   | DimensionNil
   | DimensionCons JExpr JExpr
   | DimensionIndex Int
-  | Transpose JExpr -- (tensor): reverses every axis
+  | Transpose JExpr
   deriving (Show, Generic)
 
 instance ToJSON JProg where
@@ -424,7 +424,7 @@ convertTranspose ::
   UnforcedSpine LossBuiltin ->
   m JExpr
 convertTranspose convert spine = case getExpr accessSpine spine of
-  Just (TransposeArgs _t _ds xs) -> Transpose <$> convert xs
+  Just (TransposeTensorArgs _t _ds xs) -> Transpose <$> convert xs
   Nothing -> arityError L.Transpose 3 spine
 
 convertSearch :: (MonadJSON m) => Name -> Bool -> UnforcedSpine LossBuiltin -> m JExpr

@@ -206,9 +206,7 @@ convertToDecidabilityFreeVars f p ident args = do
   return $ normAppList (FreeVar p ident) finalArgs
   where
     -- For each leading auto-generalised implicit Pi binder, consume the
-    -- matching implicit from the spine. By this stage every such binder
-    -- has already had its implicit filled in, so the old `Hole` fallback
-    -- is unreachable.
+    -- matching implicit from the spine.
     insertNewArgs :: [Arg DecidabilityBuiltin] -> Type DecidabilityBuiltin -> m [Arg DecidabilityBuiltin]
     insertNewArgs as = \case
       Pi _ binder result | wasInsertedByCompiler binder && isImplicit binder ->

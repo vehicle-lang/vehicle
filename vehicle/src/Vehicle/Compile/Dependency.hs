@@ -83,10 +83,7 @@ fromEdges (AdjacencyGraph outEdges) = do
 --------------------------------------------------------------------------------
 -- Constructing the dependency graph
 
-createDependencyGraph ::
-  forall builtin.
-  [Decl builtin] ->
-  DependencyGraph Identifier
+createDependencyGraph :: [Decl builtin] -> DependencyGraph Identifier
 createDependencyGraph ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDecl ds
   where
     goDecl :: Decl builtin -> (Identifier, Set Identifier)
@@ -112,9 +109,7 @@ createDependencyGraph ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDe
 --------------------------------------------------------------------------------
 -- Completely unused declarations
 
-completelyUnusedDeclarations ::
-  [Decl builtin] ->
-  Set Identifier
+completelyUnusedDeclarations :: [Decl builtin] -> Set Identifier
 completelyUnusedDeclarations decls = do
   let DependencyGraph {..} = createDependencyGraph decls
   let indegrees = indegree graph

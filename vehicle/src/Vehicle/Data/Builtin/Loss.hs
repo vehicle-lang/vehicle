@@ -365,7 +365,7 @@ instance NormalisableBuiltin LossBuiltin where
       AtTensor -> Eval evalAtTensor
       StackTensor -> Eval evalStackTensor
       ConstTensor -> Eval evalConstTensor
-      Transpose -> Eval evalTranspose
+      Transpose -> Eval evalTransposeTensor
       FoldList -> Eval evalFoldList
       MapList -> Eval evalMapList
       ReverseList -> Eval evalReverseList

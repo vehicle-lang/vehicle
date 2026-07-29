@@ -394,7 +394,7 @@ accessIterate ::
   Accessor (expr builtin) (IterateArgs (thunk builtin))
 accessIterate = accessArgs accessIterateBuiltin
 
-accessTranspose ::
+accessTransposeTensor ::
   (HasBuiltinConstructor expr thunk, BuiltinHasTensors builtin) =>
-  Accessor (expr builtin) (TransposeArgs (thunk builtin))
-accessTranspose = accessArgs accessTransposeBuiltin
+  Accessor (expr builtin) (TransposeTensorArgs (thunk builtin))
+accessTransposeTensor = accessArgs accessTransposeBuiltin

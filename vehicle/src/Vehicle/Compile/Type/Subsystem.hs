@@ -74,12 +74,7 @@ decidabilityTypeCheck ::
   m (Prog DecidabilityBuiltin)
 decidabilityTypeCheck prog = do
   prunedProg <- pruneUnusedDeclarations prog
-  -- Two 'resolveInstanceArgumentsAndCasts' calls: the first turns
-  -- standard 'Builtin' TypeClassOps into concrete builtins so
-  -- 'convertToDecidabilityBuiltins' can remap them; the second
-  -- clears 'DecidabilityBuiltinTypeClassOp' heads it minted.
-  castFreeProg <- resolveInstanceArgumentsAndCasts prunedProg
-  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances castFreeProg
+  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances prunedProg
   decProg <- case errorOrDecProg of
     Left err -> developerError $ errorInSubsystemMessage "determine the decidability of the program for export to ITP" err
     Right decProg -> return decProg

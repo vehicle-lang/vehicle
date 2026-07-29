@@ -41,7 +41,6 @@ forceEvaluation ::
   args (thunk builtin) ->
   m (thunk builtin)
 forceEvaluation accessOp evalFn args = do
-  -- This is a total cludge and we may need to plum the whole monad through `ConstantLike`...
   evalResult <- evalFn args
   return $ case evalResult of
     Evaluated result -> result
@@ -415,66 +414,70 @@ evalReverseList (ReverseListArgs t xs) = go xs (exprToThunk (INil t))
         ICons _ v vs -> go vs (exprToThunk (ICons t v acc))
         _ -> return $ Unevaluable [fcurr]
 
-evalTranspose ::
+evalTransposeTensor ::
   forall m expr thunk builtin.
   (MonadNormBuiltin m, NormalisableExpr expr thunk builtin m, HasTensorLiterals expr builtin, BuiltinHasNatLiterals builtin, BuiltinHasNatType builtin, HasTensorExpr expr thunk builtin) =>
-  EvalSimple expr thunk TransposeArgs builtin m
-evalTranspose (TransposeArgs _ inputDims tensor) = do
-  ftensor <- force @expr tensor
-  maybeShape <- getDims inputDims
-  case goLiteral ftensor tensorLiterals <|> goConst ftensor maybeShape of
+  EvalSimple expr thunk TransposeTensorArgs builtin m
+evalTransposeTensor (TransposeTensorArgs _ inputDims tensor) = do
+  ftensor <- force tensor
+  case goLiteral ftensor tensorLiterals <|> goConst ftensor of
     Just result -> return $ Evaluated $ exprToThunk result
-    Nothing -> case maybeShape of
-      Just shape -> do
-        maybeLeaves <- gatherStack shape ftensor
-        case maybeLeaves of
-          Just leaves ->
-            return $ Evaluated $ foldMapTensorLike id mkStack (reverse shape) (permuteFlat shape leaves)
-          Nothing -> return $ Unevaluable [ftensor]
-      Nothing -> return $ Unevaluable [ftensor]
+    Nothing -> do
+      maybeResult <- goStack ftensor
+      case maybeResult of
+        Just result -> return $ Evaluated result
+        Nothing -> return $ Unevaluable [ftensor]
   where
     goLiteral :: expr builtin -> [TensorLiteralAccessor expr builtin] -> Maybe (expr builtin)
     goLiteral _ [] = Nothing
     goLiteral ft (Wrapper Access {getExpr = getLit, mkExpr = mkLit} : rest) =
       (mkLit . Tensor.transposeTensor <$> getLit ft) <|> goLiteral ft rest
 
-    goConst :: expr builtin -> Maybe TensorShape -> Maybe (expr builtin)
-    goConst ft mshape = do
+    goConst :: expr builtin -> Maybe (expr builtin)
+    goConst ft = do
       ConstTensorArgs t v _ <- getExpr accessConstTensor ft
-      shape <- mshape
-      let rds = exprToThunk (mkDims (reverse shape))
+      let rds = exprToThunk $ mkExpr accessReverseList $ ReverseListArgs (exprToThunk INatType) inputDims
       pure $ mkExpr accessConstTensor (ConstTensorArgs t v rds)
 
-    gatherStack :: TensorShape -> expr builtin -> m (Maybe [thunk builtin])
-    gatherStack [] v = return $ Just [exprToThunk v]
-    gatherStack (d : ds) v = case getExpr accessStackTensor v of
-      Nothing -> return Nothing
-      Just (StackTensorArgs _ _ _ rows) ->
-        if length rows /= d
-          then return Nothing
-          else do
-            forcedRows <- traverse (force @expr) rows
-            subs <- traverse (gatherStack ds) forcedRows
-            return $ fmap concat (sequence subs)
+    goStack :: expr builtin -> m (Maybe (thunk builtin))
+    goStack forcedTensor = do
+      maybeShape <- getDims inputDims
+      case maybeShape of
+        Just shape -> do
+          maybeLeaves <- gatherStack shape forcedTensor
+          case maybeLeaves of
+            Just leaves -> return $ Just $ foldMapTensorLike id mkStack (reverse shape) (permuteFlat shape leaves)
+            Nothing -> return Nothing
+        Nothing -> return Nothing
+      where
+        gatherStack :: TensorShape -> expr builtin -> m (Maybe [thunk builtin])
+        gatherStack [] v = return $ Just [exprToThunk v]
+        gatherStack (d : ds) v = case getExpr accessStackTensor v of
+          Nothing -> return Nothing
+          Just (StackTensorArgs _ _ _ rows) ->
+            if length rows /= d
+              then return Nothing
+              else do
+                forcedRows <- traverse (force @expr) rows
+                subs <- traverse (gatherStack ds) forcedRows
+                return $ fmap concat (sequence subs)
 
-    permuteFlat :: TensorShape -> [thunk builtin] -> [thunk builtin]
-    permuteFlat shape leaves =
-      let values = Vector.fromList leaves
-       in [ values Vector.! flattenIndices shape (reverse revIs)
-            | revIs <- allMultiIndices (reverse shape)
-          ]
+        permuteFlat :: TensorShape -> [thunk builtin] -> [thunk builtin]
+        permuteFlat shape leaves = do
+          let values = Vector.fromList leaves
+          [values Vector.! flattenIndices shape (reverse revIs) | revIs <- allMultiIndices (reverse shape)]
 
-    mkStack :: TensorShape -> [thunk builtin] -> thunk builtin
-    mkStack ds elems =
-      exprToThunk $
-        mkExpr
-          accessStackTensor
-          ( StackTensorArgs
-              (exprToThunk INatType)
-              (exprToThunk (INatLiteral (length elems)))
-              (exprToThunk (mkDims ds))
-              elems
-          )
+        mkStack :: TensorShape -> [thunk builtin] -> thunk builtin
+        mkStack ds elems =
+          exprToThunk $
+            mkExpr
+              accessStackTensor
+              ( StackTensorArgs
+                  (exprToThunk INatType)
+                  (exprToThunk (INatLiteral (length elems)))
+                  (exprToThunk (mkDims ds))
+                  elems
+              )
 
 evalAppendList ::
   forall m expr thunk builtin.
@@ -566,7 +569,7 @@ evalAtTensor ::
   forall expr thunk builtin m.
   (MonadNormBuiltin m, HasTensorLiterals expr builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasNatType builtin, HasTensorExpr expr thunk builtin) =>
   EvalSimple expr thunk AtTensorArgs builtin m
-evalAtTensor (AtTensorArgs t d ds tensor index) = do
+evalAtTensor (AtTensorArgs _t _d ds tensor index) = do
   fTensor <- force @expr tensor
   case fTensor of
     (getExpr accessConstTensor -> Just constArgs) -> return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor $ constArgs {constDims = ds}
@@ -575,15 +578,7 @@ evalAtTensor (AtTensorArgs t d ds tensor index) = do
       case fIndex of
         IIndexLiteral i _ -> return $ Evaluated $ stackElements stackArgs !! i
         _ -> return $ Unevaluable [fIndex, fTensor]
-    _ -> do
-      fDs <- force @expr ds
-      case fDs of
-        IDimNil -> do
-          maybeChain <- collect fTensor [(d, index)]
-          case maybeChain of
-            Just (underlying, pairs) -> return $ Evaluated $ rebuild underlying (reverse pairs)
-            Nothing -> goLiterals fTensor tensorLiterals
-        _ -> goLiterals fTensor tensorLiterals
+    _ -> goLiterals fTensor tensorLiterals
   where
     goLiterals :: expr builtin -> [TensorLiteralAccessor expr builtin] -> m (BuiltinEvaluationResult expr thunk builtin)
     goLiterals fTensor literals = case literals of
@@ -596,28 +591,6 @@ evalAtTensor (AtTensorArgs t d ds tensor index) = do
             IIndexLiteral ci _ -> return $ Evaluated $ exprToThunk $ mkExpr (xs `at` ci)
             _ -> return $ Unevaluable [fIndex, fTensor]
       [] -> return $ Unevaluable [fTensor]
-
-    collect ::
-      expr builtin ->
-      [(thunk builtin, thunk builtin)] ->
-      m (Maybe (thunk builtin, [(thunk builtin, thunk builtin)]))
-    collect inner acc = case getExpr accessTranspose inner of
-      Just (TransposeArgs _ _ underlying) -> return $ Just (underlying, acc)
-      Nothing -> case getExpr accessAtTensor inner of
-        Just (AtTensorArgs _ d' _ inner' i') -> do
-          fInner' <- force @expr inner'
-          collect fInner' ((d', i') : acc)
-        Nothing -> return Nothing
-
-    rebuild :: thunk builtin -> [(thunk builtin, thunk builtin)] -> thunk builtin
-    rebuild underlying pairs =
-      let dims = map fst pairs
-          consifyDims = foldr (\x acc -> exprToThunk (IDimCons x acc)) (exprToThunk IDimNil)
-          step (acc, j) (dj, idx) =
-            let remDims = consifyDims (drop (j + 1) dims)
-             in (exprToThunk (mkExpr accessAtTensor (AtTensorArgs t dj remDims acc idx)), j + 1)
-          (result, _) = foldl step (underlying, 0 :: Int) pairs
-       in result
 
 -----------------------------------------------------------------------------
 -- Foreach

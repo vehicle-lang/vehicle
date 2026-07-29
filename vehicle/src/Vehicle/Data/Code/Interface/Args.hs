@@ -313,7 +313,7 @@ traverseConstTensorValue f ConstTensorArgs {..} = do
   return $ ConstTensorArgs {constValue = constValue', ..}
 
 -- The trailing dims (@ds@) on 'StackTensorArgs', 'ForeachTensorArgs'
--- and 'TransposeArgs' below are 'implicit' rather than
+-- and 'TransposeTensorArgs' below are 'implicit' rather than
 -- 'implicitIrrelevant': unification needs to solve the output shape
 -- from the input shape (e.g. reversing @ds@ for 'Transpose'), which
 -- requires the argument to participate in relevant elaboration.
@@ -361,23 +361,23 @@ instance IsArgs ForeachTensorArgs where
       }
 
 -- | Arguments for `Transpose`
-data TransposeArgs expr = TransposeArgs
+data TransposeTensorArgs expr = TransposeTensorArgs
   { transposeType :: expr,
     transposeDims :: expr,
     transposeTensor :: expr
   }
 
-instance IsArgs TransposeArgs where
+instance IsArgs TransposeTensorArgs where
   accessSpine =
     Access
       { getExpr = \case
-          (fmap argExpr -> [t, ds, xs]) -> Just $ TransposeArgs t ds xs
+          (fmap argExpr -> [t, ds, xs]) -> Just $ TransposeTensorArgs t ds xs
           _ -> Nothing,
-        mkExpr = \(TransposeArgs t ds xs) -> [implicit t, implicit ds, explicit xs]
+        mkExpr = \(TransposeTensorArgs t ds xs) -> [implicit t, implicit ds, explicit xs]
       }
 
-traverseTransposeTensor :: (Applicative f) => (t -> f t) -> TransposeArgs t -> f (TransposeArgs t)
-traverseTransposeTensor f (TransposeArgs t ds xs) = TransposeArgs t ds <$> f xs
+traverseTransposeTensor :: (Applicative f) => (t -> f t) -> TransposeTensorArgs t -> f (TransposeTensorArgs t)
+traverseTransposeTensor f (TransposeTensorArgs t ds xs) = TransposeTensorArgs t ds <$> f xs
 
 -- | Arguments for `ForeachVector`
 data ForeachVectorArgs expr = ForeachVectorArgs

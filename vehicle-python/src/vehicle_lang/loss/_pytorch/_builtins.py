@@ -156,6 +156,7 @@ class PyTorchBuiltins(
 
     @override
     def Transpose(self, xs: torch.Tensor) -> torch.Tensor:
+        # Note: torch.transpose only works for 2D tensors, so we use permute for generality
         return xs.permute(*reversed(range(xs.ndim)))
 
     @override
