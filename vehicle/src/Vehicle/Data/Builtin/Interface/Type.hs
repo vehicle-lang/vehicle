@@ -238,4 +238,4 @@ typeOfFold f =
 
 typeOfQuantifier :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfQuantifier t dims = (t ~> tBoolTensor dims) ~> tBoolTensor dims
--- typeOfQuantifier t = (t ~> tBoolTensor dimNil) ~> tBoolTensor dimNil 
+-- typeOfQuantifier t = (t ~> tBoolTensor dimNil) ~> tBoolTensor dimNil
