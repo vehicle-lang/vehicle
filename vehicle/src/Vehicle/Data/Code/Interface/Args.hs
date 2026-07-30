@@ -541,7 +541,8 @@ instance IsArgs NetworkAppArgs where
 
 -- | Arguments for `QuantifyRatTensor`
 data QuantifyRatTensorArgs expr body = QuantifyRatTensorArgs
-  { quantifyDimensions :: expr,
+  { quantifyPointwiseDims :: expr,
+    quantifyBaseDims :: expr,
     quantifyBinder :: GenericBinder expr,
     quantifyBody :: body
   }
@@ -552,12 +553,12 @@ accessQuantifyRatTensorSpine ::
 accessQuantifyRatTensorSpine =
   Access
     { getExpr = \case
-        (fmap argExpr -> [dims, fn]) -> case getExpr accessLamC fn of
-          Just (binder, body) -> Just (QuantifyRatTensorArgs dims binder body)
+        (fmap argExpr -> [pDims, bDims, fn]) -> case getExpr accessLamC fn of
+          Just (binder, body) -> Just (QuantifyRatTensorArgs pDims bDims binder body)
           _ -> Nothing
         _ -> Nothing,
-      mkExpr = \(QuantifyRatTensorArgs dims binder body) ->
-        [ implicitIrrelevant dims,
+      mkExpr = \(QuantifyRatTensorArgs pDims bDims binder body) ->
+        [ implicit pDims, implicitIrrelevant bDims, -- not too sure of which ones should be impiicit vs implicitirrelevant
           explicit (mkExpr accessLamC (binder, body))
         ]
     }

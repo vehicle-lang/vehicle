@@ -444,7 +444,8 @@ elabExpr expr = case expr of
   B.DivRealTensor tk -> builtinFunction (V.Div V.DivRatTensor) tk []
   B.QuantifyForAllIndex tk -> derivedFunction (V.QuantifyIndex V.Forall) tk []
   B.QuantifyExistsIndex tk -> derivedFunction (V.QuantifyIndex V.Exists) tk []
-  B.QuantifyForallRealTensor tk -> builtinFunction (V.QuantifyRatTensor V.Forall) tk []
+  B.QuantifyForallRealTensor tk -> 
+    -- builtinFunction (V.QuantifyRatTensor V.Forall) tk []
   B.QuantifyExistsRealTensor tk -> builtinFunction (V.QuantifyRatTensor V.Exists) tk []
   B.QuantifyForallTensorLike tk -> builtinFunction (V.QuantifyRecord V.Forall) tk []
   B.QuantifyExistsTensorLike tk -> builtinFunction (V.QuantifyRecord V.Exists) tk []
@@ -581,9 +582,6 @@ elabCompareReduced op tk args = do
   explicitArgs <- fmap V.explicit <$> traverse elabExpr args
   return $ V.normAppList fn (implArgs ++ explicitArgs)
 
--- elabCompareReduced op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims", e1, e2]
--- elabCompareReduced op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
-
 elabComparePointwise :: (MonadElab m, IsToken token) => V.ComparisonOp -> token -> [B.Expr] -> m (V.Expr Builtin)
 elabComparePointwise op tk args = do
   p <- mkProvenance tk
@@ -593,9 +591,6 @@ elabComparePointwise op tk args = do
   let implArgs = [V.implicitIrrelevant pDims, V.implicit rDims]
   explicitArgs <- fmap V.explicit <$> traverse elabExpr args
   return $ V.normAppList fn (implArgs ++ explicitArgs)
-
--- elabComparePointwise op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil", e1, e2]
--- elabComparePointwise op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
 
 findRelevance :: [B.Modality] -> V.Relevance
 findRelevance ms

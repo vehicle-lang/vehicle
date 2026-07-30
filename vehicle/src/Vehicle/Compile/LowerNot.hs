@@ -74,9 +74,9 @@ negateRatTensorQuantifierBody ::
   (MonadReadableNameContext m) =>
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
-negateRatTensorQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
+negateRatTensorQuantifierBody (QuantifyRatTensorArgs pDims bDims binder (Closure env body)) = do
   let newBody = mkExpr accessNotTensor $ TensorOp1Args IDimNil body
-  return $ QuantifyRatTensorArgs dims binder (Closure env newBody)
+  return $ QuantifyRatTensorArgs pDims bDims binder (Closure env newBody)
 
 negateRecordQuantifierBody ::
   (MonadReadableNameContext m) =>

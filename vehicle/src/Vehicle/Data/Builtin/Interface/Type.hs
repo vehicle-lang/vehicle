@@ -44,8 +44,10 @@ typeOfBuiltinFunction = \case
   And -> typeOfTensorOp2 tBool
   Or -> typeOfTensorOp2 tBool
   Implies -> typeOfTensorOp2 tBool
-  QuantifyRatTensor _ -> forAllDims $ \ds -> typeOfQuantifier (tRatTensor ds)
-  QuantifyRecord _ -> forAllTypes $ \ts -> typeOfQuantifier ts
+  QuantifyRatTensor _ -> forAllDims $ \pointwiseDims ->
+    forAllDims $ \baseDims ->
+      typeOfQuantifier (tRatTensor (append tNat pointwiseDims baseDims)) pointwiseDims
+  QuantifyRecord _ -> forAllTypes $ \ts -> typeOfQuantifier ts dimNil
   If -> typeOfIf
   ReduceAndTensor -> typeOfTensorBoolReduceOp
   ReduceOrTensor -> typeOfTensorBoolReduceOp
@@ -221,5 +223,6 @@ typeOfFold f =
     forAll "B" type0 $ \b ->
       (a ~> b ~> b) ~> b ~> f @@ [a] ~> b
 
-typeOfQuantifier :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
-typeOfQuantifier t = (t ~> tBoolTensor dimNil) ~> tBoolTensor dimNil
+typeOfQuantifier :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+typeOfQuantifier t dims = (t ~> tBoolTensor dims) ~> tBoolTensor dims
+-- typeOfQuantifier t = (t ~> tBoolTensor dimNil) ~> tBoolTensor dimNil 
