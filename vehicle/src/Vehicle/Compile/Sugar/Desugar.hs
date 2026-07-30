@@ -446,9 +446,8 @@ elabExpr expr = case expr of
   B.DivRealTensor tk -> builtinFunction (V.Div V.DivRatTensor) tk []
   B.QuantifyForAllIndex tk -> derivedFunction (V.QuantifyIndex V.Forall) tk []
   B.QuantifyExistsIndex tk -> derivedFunction (V.QuantifyIndex V.Exists) tk []
-  B.QuantifyForallRealTensor tk -> 
-    -- builtinFunction (V.QuantifyRatTensor V.Forall) tk []
-  B.QuantifyExistsRealTensor tk -> builtinFunction (V.QuantifyRatTensor V.Exists) tk []
+  B.QuantifyForallRealTensor tk -> elabQuantifyRatTensor V.Forall tk []
+  B.QuantifyExistsRealTensor tk -> elabQuantifyRatTensor V.Exists tk []
   B.QuantifyForallTensorLike tk -> builtinFunction (V.QuantifyRecord V.Forall) tk []
   B.QuantifyExistsTensorLike tk -> builtinFunction (V.QuantifyRecord V.Exists) tk []
   B.CompareIndexEq tk -> builtinFunction (V.CompareIndex V.Eq) tk []
@@ -593,6 +592,12 @@ elabComparePointwise op tk args = do
   let implArgs = [V.implicitIrrelevant pDims, V.implicit rDims]
   explicitArgs <- fmap V.explicit <$> traverse elabExpr args
   return $ V.normAppList fn (implArgs ++ explicitArgs)
+
+-- the only thing we need to add when desugaring is the pointwise dims, which is always nil
+elabQuantifyRatTensor :: (MonadElab m, IsToken token) => V.Quantifier -> token -> [B.Expr] -> m (V.Expr Builtin)
+elabQuantifyRatTensor quant tk args = do
+  let pDims = B.Nil $ mkToken B.TokNil "nil"
+  builtinFunction (V.QuantifyRatTensor quant) tk (pDims : args)
 
 findRelevance :: [B.Modality] -> V.Relevance
 findRelevance ms

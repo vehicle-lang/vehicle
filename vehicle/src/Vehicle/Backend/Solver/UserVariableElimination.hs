@@ -99,7 +99,7 @@ wrapQuantifyRecord QuantifyRecordArgs {..} = do
 
   -- Construct body (_PairFromTensor _t0)
   let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
-  let ratTensorArgs = QuantifyRatTensorArgs dims tensorBinder (Closure boundEnv nestedBody)
+  let ratTensorArgs = QuantifyRatTensorArgs (Forced IDimNil) dims tensorBinder (Closure boundEnv nestedBody)
 
   fieldNames <- getRecordFieldNames recordTypeIdent
   let name = getBinderName quantifyRecordBinder
@@ -109,7 +109,7 @@ eliminateExists ::
   (MonadQueryStructure m) =>
   QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin) ->
   m (MaybeTrivial Partitions)
-eliminateExists (QuantifyRatTensorArgs _ binder closure) = do
+eliminateExists (QuantifyRatTensorArgs _pDims _bDims binder closure) = do
   let varName = getBinderName binder
   let subpassDoc = "elimination of existential quantifier over" <+> quotePretty varName
   logCompilerSection2 MidDetail subpassDoc $ do

@@ -127,10 +127,11 @@ lowerNot actions (TensorOp1Args dims value) = do
 negateQuantifierBody ::
   QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin) ->
   QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin)
-negateQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
+negateQuantifierBody (QuantifyRatTensorArgs pDims bDims binder (Closure env body)) = do
   let newBody = mkExpr accessNotTensor $ TensorOp1Args IDimNil body
   QuantifyRatTensorArgs
-    { quantifyDimensions = dims,
+    { quantifyPointwiseDims = pDims,
+      quantifyBaseDims = bDims,
       quantifyBinder = binder,
       quantifyBody = Closure env newBody
     }

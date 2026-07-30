@@ -620,7 +620,7 @@ accessQuantifyRatTensorSpine =
           _ -> Nothing
         _ -> Nothing,
       mkExpr = \(QuantifyRatTensorArgs pDims bDims binder body) ->
-        [ implicit pDims, implicitIrrelevant bDims, -- not too sure of which ones should be impiicit vs implicitirrelevant
+        [ implicit pDims, implicitIrrelevant bDims,
           explicit (mkExpr accessForcedLamC (binder, body))
         ]
     }
