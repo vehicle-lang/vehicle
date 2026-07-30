@@ -85,12 +85,12 @@ instance Serialize TypeClassOp
 
 instance Pretty TypeClassOp where
   pretty = \case
-    NegTC -> "-"
-    FromNatTC -> "fromNat"
-    FromRatTC -> "fromRat"
-    VecLiteralTC {} -> "vec"
-    AtTC -> "!"
-    MapTC -> "map"
-    FoldTC -> "fold"
-    ForeachTC -> "foreach"
+    NegTC -> "negTC"
+    FromNatTC -> "fromNatTC"
+    FromRatTC -> "fromRatTC"
+    VecLiteralTC {} -> "vecTC"
+    AtTC -> "atTC"
+    MapTC -> "mapTC"
+    FoldTC -> "foldTC"
+    ForeachTC -> "foreachTC"
     TensorTypeTC -> "TensorTC"

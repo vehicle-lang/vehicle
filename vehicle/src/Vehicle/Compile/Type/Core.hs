@@ -10,7 +10,7 @@ import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue (ForcedValueWithMetas, GenericForcedValue (..), ThunkWithMetas, UnforcedSpineWithMetas)
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
 
 --------------------------------------------------------------------------------
@@ -155,11 +155,11 @@ type InstanceHead builtin = Either Identifier builtin
 data InstanceGoal builtin = InstanceGoal
   { goalTelescope :: Telescope builtin,
     goalHead :: InstanceHead builtin,
-    goalSpine :: Spine builtin
+    goalSpine :: UnforcedSpineWithMetas builtin
   }
   deriving (Show)
 
-goalExpr :: InstanceGoal builtin -> Value builtin
+goalExpr :: InstanceGoal builtin -> ForcedValueWithMetas builtin
 goalExpr InstanceGoal {..} =
   case goalHead of
     Left ident -> VFreeVar ident goalSpine
@@ -263,8 +263,8 @@ data UnificationConstraintOrigin builtin
 data UnificationConstraint builtin
   = Unify
       (UnificationConstraintOrigin builtin)
-      (Value builtin)
-      (Value builtin)
+      (ThunkWithMetas builtin)
+      (ThunkWithMetas builtin)
   deriving (Show)
 
 type instance

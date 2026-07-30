@@ -20,7 +20,6 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (AdjacencyGraph, emptyAdjacencyGraph, insertEdge, insertNode, topologicalSort)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (DeclarationFilter, monomorphise)
-import Vehicle.Compile.Normalise.NBE (evalDecl)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error
@@ -36,9 +35,7 @@ import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Instances (standardBuiltinInstances)
 import Vehicle.Data.Builtin.Standard.Type ()
-import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeEnvs, typedModule)
-import Vehicle.Data.Code.Value (FreeEnv)
-import Vehicle.Data.Variable.Free.Context (runFreeContextT)
+import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeCtxs, typedModule)
 import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
 import Vehicle.Libraries.Core (ResolvedLibrary (..))
 import Vehicle.Libraries.StandardLibrary (standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
@@ -79,9 +76,10 @@ typeCheckUserProg TypeCheckOptions {..} = do
   -- Post-process the program to simplify it
   keepUnusedDeclarationFn <- checkDeclarationNamesPresent userProg declarationsToCompile
   monomorphisedProg <- monomorphise userProg keepUnusedDeclarationFn
-  castFreeProgram <- resolveInstanceArgumentsAndCasts monomorphisedProg
 
-  flattenProgram castFreeProgram importedModules moduleGraph
+  prog <- flattenProgram monomorphisedProg importedModules moduleGraph
+  castFreeProg <- resolveInstanceArgumentsAndCasts prog
+  return castFreeProg
 
 checkDeclarationNamesPresent ::
   (MonadCompile m) =>
@@ -157,7 +155,7 @@ instance Semigroup ModuleStatus where
 
 data ModuleInfo = ModuleInfo
   { moduleInterface :: ModuleInterface Builtin,
-    moduleFreeEnv :: FreeEnv Builtin,
+    moduleFreeCtx :: FreeCtx Builtin,
     moduleStatus :: ModuleStatus
   }
 
@@ -330,11 +328,11 @@ loadCachedModule moduleFile implicitImports moduleText moduleInterface = do
   case status of
     Changed -> parseAndTypeCheckModule moduleFile implicitImports moduleText
     Unchanged -> do
-      freeEnv <- calculateModuleEnv importedCtx decls
+      freeCtx <- calculateModuleCtx importedCtx decls
       return $
         ModuleInfo
           { moduleInterface = moduleInterface,
-            moduleFreeEnv = freeEnv,
+            moduleFreeCtx = freeCtx,
             moduleStatus = Unchanged
           }
 
@@ -346,7 +344,7 @@ loadImports imports = do
   results <- forM imports $ \importStatement -> do
     let modulePath = importPath importStatement
     ModuleInfo {..} <- loadModule modulePath
-    return (moduleStatus, (modulePath, moduleInterface, moduleFreeEnv))
+    return (moduleStatus, (modulePath, moduleInterface, moduleFreeCtx))
 
   let (statuses, importedCtx) = unzipF results
   let finalStatus = foldr (<>) Unchanged statuses
@@ -385,24 +383,22 @@ parseAndTypeCheckModule moduleFile implicitImports moduleText = do
   return $
     ModuleInfo
       { moduleInterface = moduleInterface,
-        moduleFreeEnv = moduleEnv,
+        moduleFreeCtx = moduleEnv,
         moduleStatus = Changed
       }
 
-calculateModuleEnv ::
+calculateModuleCtx ::
   forall m.
   (MonadCompile m) =>
   ImportedModuleContext Builtin ->
   [Decl Builtin] ->
-  m (FreeEnv Builtin)
-calculateModuleEnv importedCtx = go (mergeImportedFreeEnvs importedCtx)
+  m (FreeCtx Builtin)
+calculateModuleCtx importedCtx = go (mergeImportedFreeCtxs importedCtx)
   where
-    go :: FreeEnv Builtin -> [Decl Builtin] -> m (FreeEnv Builtin)
+    go :: FreeCtx Builtin -> [Decl Builtin] -> m (FreeCtx Builtin)
     go env = \case
       [] -> return env
-      d : ds -> do
-        normDecl <- runFreeContextT env $ evalDecl d
-        go (Map.insert (identifierOf normDecl) normDecl env) ds
+      d : ds -> go (Map.insert (identifierOf d) d env) ds
 
 cyclicImportsError :: (MonadTCMProg m) => ModulePath -> [ModulePath] -> m a
 cyclicImportsError newModule previousModules =

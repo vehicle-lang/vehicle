@@ -21,6 +21,7 @@ import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Prettyprinter.Render.Text (renderStrict)
 import System.FilePath (takeBaseName)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -30,7 +31,6 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
-import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -848,7 +848,9 @@ compileBuiltin isOutType localeAssms b args = case b of
           as
     FoldList -> annotateApp localeAssms [] "foldr" args
     MapList -> annotateApp localeAssms [] "map" args
+    ReverseList -> annotateApp localeAssms [] "rev" args
     AppendList {} -> unsupportedError
+    Transpose -> annotateApp localeAssms [RequireImport VehicleTensor] "tensor_transpose" args
     ReduceAndTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> annotateApp localeAssms [] "reduceAdd" args

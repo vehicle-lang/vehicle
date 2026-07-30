@@ -8,7 +8,6 @@ import Control.Monad.Except (MonadError (..))
 import Data.Either (partitionEithers)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Print.Error (formatCompileError)
@@ -18,7 +17,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue (GenericThunk (..), ThunkWithMetas, boundContextToEnv)
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
@@ -59,12 +58,9 @@ solveInstanceConstraint ::
   WithContext (InstanceConstraint builtin) ->
   m ()
 solveInstanceConstraint depth constraint = do
-  normConstraint <- substMetaVariables constraint
-  logDebug MaxDetail $ "Forced:" <+> prettyExternal normConstraint
-
-  let goal = instanceGoal $ objectIn normConstraint
-  candidateState <- getCurrentCandidateState normConstraint
-  solveInstanceGoal normConstraint candidateState depth goal
+  let goal = instanceGoal $ objectIn constraint
+  candidateState <- getCurrentCandidateState constraint
+  solveInstanceGoal constraint candidateState depth goal
 
 solveInstanceGoal ::
   forall builtin m.
@@ -75,13 +71,6 @@ solveInstanceGoal ::
   InstanceGoal builtin ->
   m ()
 solveInstanceGoal constraint (candidates, failedCandidates) depth goal = do
-  logDebug MaxDetail $
-    line
-      <> "Candidates:"
-      <> line
-      <> indent 2 (prettyMultiLineList (fmap prettyExternal candidates))
-      <> line
-
   -- Try all candidates
   (unsuccessfulCandidates, successfulCandidates) <-
     partitionEithers <$> traverse (checkCandidate constraint goal depth) candidates
@@ -110,25 +99,26 @@ solveInstanceGoal constraint (candidates, failedCandidates) depth goal = do
       logDebug MaxDetail $
         "Multiple possible candidates:"
           <> lineIndent (vsep $ fmap (prettyExternal . successfulCandidate) successfulCandidates)
+      {-
+            -- Find most general candiate
+            case findLeastGeneralCandidate successfulCandidates of
+              Just SuccessfulInstanceCandidate {..} -> do
+                logDebug MaxDetail $ "Accepting least general candidate:" <+> squotes (prettyExternal successfulCandidate)
+                adoptHypotheticalState successfulState
+              Nothing -> do
+                -}
+      -- Create the updated constraint
+      let newPossibleCandidates = fmap successfulCandidate successfulCandidates
+      let newFailedCandidates = failedCandidates <> unsuccessfulCandidates
+      let newConstraint = flip mapObject constraint $ \c ->
+            c
+              { instanceCandidateState = Just (newPossibleCandidates, newFailedCandidates)
+              }
+      -- TODO can we be more precise with the set of blocking metas?
+      -- Probably not as the set of blocking metas will depend on the depth at which we're searching
+      blockedConstraint <- blockConstraintOn newConstraint <$> getUnsolvedMetas (Proxy @builtin)
 
-      -- Find most general candiate
-      case findLeastGeneralCandidate successfulCandidates of
-        Just SuccessfulInstanceCandidate {..} -> do
-          logDebug MaxDetail $ "Accepting least general candidate:" <+> squotes (prettyExternal successfulCandidate)
-          adoptHypotheticalState successfulState
-        Nothing -> do
-          -- Create the updated constraint
-          let newPossibleCandidates = fmap successfulCandidate successfulCandidates
-          let newFailedCandidates = failedCandidates <> unsuccessfulCandidates
-          let newConstraint = flip mapObject constraint $ \c ->
-                c
-                  { instanceCandidateState = Just (newPossibleCandidates, newFailedCandidates)
-                  }
-          -- TODO can we be more precise with the set of blocking metas?
-          -- Probably not as the set of blocking metas will depend on the depth at which we're searching
-          blockedConstraint <- blockConstraintOn newConstraint <$> getUnsolvedMetas (Proxy @builtin)
-
-          addInstanceConstraints [blockedConstraint]
+      addInstanceConstraints [blockedConstraint]
 
 getCurrentCandidateState ::
   forall builtin m.
@@ -200,7 +190,7 @@ getCandidatesInBoundCtx goal ctx = go ctx
 data SuccessfulInstanceCandidate builtin = SuccessfulInstanceCandidate
   { successfulCandidate :: WithContext (InstanceCandidate builtin),
     successfulState :: TypeCheckerState builtin,
-    successfulSolution :: Value builtin
+    successfulSolution :: ThunkWithMetas builtin
   }
 
 -- | Checks whether a candidate is a possibility for the instance goal.
@@ -245,7 +235,7 @@ acceptCandidate ::
   WithContext (InstanceConstraint builtin) ->
   InstanceGoal builtin ->
   WithContext (InstanceCandidate builtin) ->
-  m (Value builtin)
+  m (ThunkWithMetas builtin)
 acceptCandidate (WithContext Resolve {..} constraintCtx) goal candidate = do
   -- Allow the candidate to access all the arguments in the goal telescope.
   let goalCtxExtension = goalTelescope goal
@@ -258,7 +248,7 @@ acceptCandidate (WithContext Resolve {..} constraintCtx) goal candidate = do
     instantiateCandidateTelescope goalCtxExtension (constraintCtx, instanceOrigin) candidate
 
   -- Unify the goal and candidate bodies
-  goalConstraint <- createInstanceUnification extendedGoalInfo (goalExpr goal) substCandidateExpr
+  goalConstraint <- createInstanceUnification extendedGoalInfo (Forced $ goalExpr goal) substCandidateExpr
 
   instantiateInstanceConstraintSolution (WithContext Resolve {..} newConstraintCtx) substCandidateSolution
 
@@ -275,7 +265,7 @@ instantiateCandidateTelescope ::
   BoundCtx (Type builtin) ->
   InstanceConstraintInfo builtin ->
   WithContext (InstanceCandidate builtin) ->
-  m (Value builtin, Expr builtin)
+  m (ThunkWithMetas builtin, Expr builtin)
 instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin) candidate = do
   let WithContext InstanceCandidate {..} candidateCtx = candidate
   logCompilerSection MaxDetail "instantiating candidate telescope" $ do
@@ -283,15 +273,16 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
     let createInstance relevance typ = do
           let newInfo = (setConstraintBoundCtx constraintCtx initialCtx, constraintOrigin)
           -- WARNING massive hack should be traversing the normalised type here.
-          normBinderType <- eval (toNamedBoundCtx initialCtx) (boundContextToEnv initialCtx) typ
+          let normBinderType = Unforced (boundContextToEnv initialCtx) typ
           (expr, constraint) <- createDerivedInstanceConstraint newInfo relevance normBinderType
           addInstanceConstraints [constraint]
           return expr
 
     (candidateBody, candidateSol, _args) <- instantiateTelescope InstanceTelescope createInstance initialCtx (candidateExpr, candidateSolution)
-    normCandidateBody <- eval (toNamedBoundCtx initialCtx) (boundContextToEnv initialCtx) candidateBody
+    let normCandidateBody = Unforced (boundContextToEnv initialCtx) candidateBody
     return (normCandidateBody, candidateSol)
 
+{-
 -- | Sees if one of the candidates is provably less general than all the
 -- others, e.g.
 --
@@ -325,7 +316,7 @@ lessGeneralThan ::
 lessGeneralThan candidate1 candidate2 =
   go (successfulSolution candidate1) (successfulSolution candidate2)
   where
-    go :: Value builtin -> Value builtin -> Maybe Ordering
+    go :: ForcedValueWithMetas builtin -> ForcedValueWithMetas builtin -> Maybe Ordering
     go v1 v2 = case (v1, v2) of
       (VMeta {}, VMeta {}) -> Just EQ
       (VMeta {}, _) -> Just GT
@@ -372,3 +363,4 @@ countOrderings = \case
       Just EQ -> counts {numberOfEQs = numberOfEQs counts + 1}
       Just LT -> counts {numberOfLTs = numberOfLTs counts + 1}
       Just GT -> counts {numberOfGTs = numberOfGTs counts + 1}
+-}

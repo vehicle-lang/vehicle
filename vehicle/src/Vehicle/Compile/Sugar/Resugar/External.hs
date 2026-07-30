@@ -256,8 +256,8 @@ delabBuiltinFunction fun args = case fun of
   V.QuantifyRatTensor q -> delabQuantifier q args
   V.QuantifyRecord q -> delabQuantifier q args
   V.CompareRatTensor op -> case args of
-    [argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), _rDims, xs, ys] -> delabCompareReduced op [xs, ys]
-    [_pDims, argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), xs, ys] -> delabComparePointwise op [xs, ys]
+    [V.headOf . argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), _rDims, xs, ys] -> delabCompareReduced op [xs, ys]
+    [_pDims, V.headOf . argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), xs, ys] -> delabComparePointwise op [xs, ys]
     [xs, ys] -> delabCompareReduced op [xs, ys]
     _ -> cheatDelabPretty op args
   V.CompareIndex op -> delabComparison op args
@@ -279,6 +279,8 @@ delabBuiltinFunction fun args = case fun of
   V.StackTensor {} -> rawDelab
   V.ConstTensor -> delabApp (B.Const tokConst) args
   V.Iterate -> rawDelab
+  V.Transpose -> delabApp (B.Transpose tokTranspose) args
+  V.ReverseList -> rawDelab
   where
     rawDelab = cheatDelabPretty fun args
 

@@ -2,6 +2,13 @@
 
 ## Next release
 
+### General
+
+* 50% speedup in compilation times across all backends.
+
+* Added the `transpose` operator on tensors.
+  See [tensors](docs/language/tensors.rst) for documentation.
+
 ### ITP backends
 
 * Fixed bug where the Isabelle backend mis-compiled declarations referencing `@network`, `@dataset`, or `@parameter` resources (#1195).

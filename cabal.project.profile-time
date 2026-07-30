@@ -8,4 +8,4 @@ import: cabal.project
 -- Enable profiling
 profiling: True
 package *
-    profiling-detail: late-toplevel
+    profiling-detail: toplevel-functions

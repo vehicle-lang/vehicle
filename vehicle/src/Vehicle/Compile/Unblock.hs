@@ -4,30 +4,39 @@ module Vehicle.Compile.Unblock
     OperationUnblockingFunction,
     TypeUnblockingFunction,
     unblockRatTensorValue,
+    unblockIndexValue,
     unblockRecordValue,
+    unblockVectorValue,
     unblockIf,
     unblockAtTensor,
     unblockAtVector,
+    unblockTransposeTensor,
     unblockForeachTensor,
     unblockReduceTensor,
     unblockMinRatTensor,
     unblockMaxRatTensor,
+    unblockConstTensor,
     unblockTensorOp2,
     unblockTensorOp1,
     unblockRecordAcc,
+    forceEval,
   )
 where
 
+import GHC.Stack (HasCallStack)
 import Vehicle.Compile.LiftIf (unfoldIf)
-import Vehicle.Compile.Normalise.NBE (eval, evalApp, evalRecordAcc)
+import Vehicle.Compile.Normalise.Builtin
+import Vehicle.Compile.Normalise.Core
+import Vehicle.Compile.Normalise.Force
+import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Data.Builtin.Interface.Normalise
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), elimIfTree, forIfTreeM)
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context.Class
 
@@ -38,7 +47,7 @@ import Vehicle.Data.Variable.Free.Context.Class
 type MonadUnblock m =
   ( MonadLogger m,
     MonadFreeContext Builtin m,
-    MonadReadableNameContext m
+    MonadNameContext m
   )
 
 type MonadPurify m = MonadUnblock m
@@ -46,18 +55,18 @@ type MonadPurify m = MonadUnblock m
 data UnblockingActions m = UnblockingActions
   { unblockRatTensorBoundVar ::
       Lv ->
-      m (Value Builtin),
+      m (Thunk Builtin),
     unblockNetworkApp ::
-      TypeUnblockingFunction (Value Builtin) m ->
-      TypeUnblockingFunction (Value Builtin) m ->
+      TypeUnblockingFunction (Thunk Builtin) m ->
+      TypeUnblockingFunction (Thunk Builtin) m ->
       Identifier ->
-      OperationUnblockingFunction NetworkAppArgs (Value Builtin) m,
+      OperationUnblockingFunction NetworkAppArgs (Thunk Builtin) m,
     unblockDatasetOrParameter ::
       Identifier ->
-      m (Value Builtin),
+      m (Thunk Builtin),
     unblockRecordBoundVar ::
       Lv ->
-      m (Value Builtin)
+      m (Thunk Builtin)
   }
 
 -- | Lifts all `if`s in the provided expression `e` to the top-level, while
@@ -66,274 +75,393 @@ data UnblockingActions m = UnblockingActions
 unblockBoolExpr ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  Value Builtin ->
-  m (Value Builtin)
+  Thunk Builtin ->
+  m (Thunk Builtin)
 unblockBoolExpr actions expr = do
   exprDoc <- prettyFriendlyInCtx expr
   logCompilerSection MaxDetail ("unblocking" <+> exprDoc) $ do
     ifTree <- unblockBoolTensorValue actions expr
-    let elimIf c x y = unfoldIf $ IfArgs IBoolType c x y
+    let elimIf c x y = unfoldIf $ IfArgs (Forced IBoolType) c x y
     elimIfTree elimIf return ifTree
 
 --------------------------------------------------------------------------------
 -- Main unblocking functions
 
-type TypeUnblockingFunction a m = (MonadUnblock m) => Value Builtin -> m (IfTree (Value Builtin) a)
+type TypeUnblockingFunction a m =
+  (MonadUnblock m) =>
+  Thunk Builtin ->
+  m (IfTree (Thunk Builtin) a)
 
-unblockBoolTensorValue :: UnblockingActions m -> TypeUnblockingFunction (Value Builtin) m
-unblockBoolTensorValue actions expr = showEntry expr $
-  case toBoolTensorValue expr of
+unblockBoolTensorValue :: UnblockingActions m -> TypeUnblockingFunction (Thunk Builtin) m
+unblockBoolTensorValue actions value = showEntry value $ do
+  forcedValue <- forceAndRewriteTensor value
+  case toBoolTensorValue forcedValue of
     -- Already unblocked
-    VBoolTensorLiteral {} -> return $ IfLeaf expr
-    VBoolStackTensor {} -> return $ IfLeaf expr
-    VBoolConstTensor {} -> return $ IfLeaf expr
-    VBoolTensorQuantifyRat {} -> return $ IfLeaf expr
-    VBoolTensorQuantifyRecord {} -> return $ IfLeaf expr
-    VBoolTensorAnd args -> unblockTensorOp2 unblock evalAnd args
-    VBoolTensorOr args -> unblockTensorOp2 unblock evalOr args
-    VBoolTensorNot args -> unblockTensorOp1 unblock evalNot args
-    VBoolTensorCompareRatReduced {} -> return $ IfLeaf expr
-    VBoolTensorCompareRatPointwise (op, args) -> unblockTensorOp2 (unblockRatTensorValue actions) (evalCompareRatPointwise op) args
+    VBoolTensorLiteral {} -> return $ IfLeaf $ Forced forcedValue
+    VBoolStackTensor {} -> return $ IfLeaf $ Forced forcedValue
+    VBoolTensorQuantifyRat {} -> return $ IfLeaf $ Forced forcedValue
+    VBoolTensorQuantifyRecord {} -> return $ IfLeaf $ Forced forcedValue
     -- Recursively unblock
+    VBoolConstTensor args -> unblockConstTensor unblock actions args
+    VBoolTensorCompareRatTensor (op, args) -> unblockCompareRatTensor actions op args
+    VBoolTensorAnd args -> unblockTensorOp2 unblock (forceEval evalAnd) args
+    VBoolTensorOr args -> unblockTensorOp2 unblock (forceEval evalOr) args
+    VBoolTensorNot args -> unblockTensorOp1 unblock (forceEval evalNot) args
+    VBoolTensorImplies args -> unblock $ elimImplies args
     VBoolTensorIf args -> unblockIf unblock args
-    VBoolTensorReduceAnd args -> unblockReduceTensor unblock unoptimisedEvalReduceAndTensor args
-    VBoolTensorReduceOr args -> unblockReduceTensor unblock evalReduceOrTensor args
-    VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
+    VBoolTensorReduceAnd args -> unblockReduceTensor unblock (forceEval evalReduceAndTensor) args
+    VBoolTensorReduceOr args -> unblockReduceTensor unblock (forceEval evalReduceOrTensor) args
+    VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (unblockIndexValue actions) (evalCompareIndex op) args
     VBoolTensorCompareNat (op, args) -> unblockOp2 unblockNatValue (evalCompareNat op) args
-    VBoolTensorAt args -> unblockAtTensor unblock args
+    VBoolTensorTensorAt args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
+    VBoolTensorVectorAt args -> unblockAtVector unblock (unblockIndexValue actions) args
     VBoolTensorForeach args -> unblockForeachTensor args
+    VBoolTensorFoldList args -> unblockFoldList actions args
   where
     unblock = unblockBoolTensorValue actions
 
 unblockRatTensorValue ::
   (MonadPurify m) =>
   UnblockingActions m ->
-  TypeUnblockingFunction (Value Builtin) m
-unblockRatTensorValue actions@UnblockingActions {..} expr = showEntry expr $ do
-  case toRatTensorValue expr of
-    -- Rational operators
-    VRatTensorLiteral {} -> return $ IfLeaf expr
-    VRatConstTensor {} -> return $ IfLeaf expr
-    VRatStackTensor {} -> return $ IfLeaf expr
-    -- Recursively purify
-    VIfRatTensor args -> unblockIf unblock args
-    VNegRatTensor args -> unblockTensorOp1 unblock evalNegRatTensor args
-    VLogRatTensor args -> unblockTensorOp1 unblock evalLogRatTensor args
-    VExpRatTensor args -> unblockTensorOp1 unblock evalExpRatTensor args
-    VAddRatTensor args -> unblockTensorOp2 unblock evalAddRatTensor args
-    VSubRatTensor args -> unblockTensorOp2 unblock evalSubRatTensor args
-    VMulRatTensor args -> unblockTensorOp2 unblock evalMulRatTensor args
-    VDivRatTensor args -> unblockTensorOp2 unblock evalDivRatTensor args
-    VPowRatTensor args -> unblockTensorOp2 unblock evalPowRatTensor args
-    VReduceAddRatTensor args -> unblockReduceTensor unblock evalReduceAddRatTensor args
-    VReduceMulRatTensor args -> unblockReduceTensor unblock evalReduceMulRatTensor args
-    VReduceMinRatTensor args -> unblockReduceTensor unblock evalReduceMinRatTensor args
-    VReduceMaxRatTensor args -> unblockReduceTensor unblock evalReduceMaxRatTensor args
-    VMinRatTensor args -> unblockMinRatTensor unblock args
-    VMaxRatTensor args -> unblockMaxRatTensor unblock args
-    VRatTensorBoundVar v -> unblock =<< unblockRatTensorBoundVar v
-    VRatTensorNetworkApp n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
-    VDatasetOrParameter ident -> unblock =<< unblockDatasetOrParameter ident
-    VRatAtTensor args -> unblockAtTensor unblock args
-    VRatAtVector args -> unblockAtVector unblock args
-    VRatForeach args -> unblockForeachTensor args
-    VRatRecordAcc typ value fieldName _ -> unblockRecordAcc (unblockRecordValue actions) typ value fieldName
+  TypeUnblockingFunction (Thunk Builtin) m
+unblockRatTensorValue actions@UnblockingActions {..} expr =
+  showEntry expr $ do
+    forcedValue <- forceThunk expr
+    case toRatTensorValue forcedValue of
+      -- Rational operators
+      VRatTensorLiteral {} -> return $ IfLeaf expr
+      VRatConstTensor {} -> return $ IfLeaf expr
+      VRatStackTensor {} -> return $ IfLeaf expr
+      -- Recursively purify
+      VIfRatTensor args -> unblockIf unblock args
+      VNegRatTensor args -> unblockTensorOp1 unblock (forceEval evalNegRatTensor) args
+      VLogRatTensor args -> unblockTensorOp1 unblock (forceEval evalLogRatTensor) args
+      VExpRatTensor args -> unblockTensorOp1 unblock (forceEval evalExpRatTensor) args
+      VAddRatTensor args -> unblockTensorOp2 unblock (forceEval evalAddRatTensor) args
+      VSubRatTensor args -> unblockTensorOp2 unblock (forceEval evalSubRatTensor) args
+      VMulRatTensor args -> unblockTensorOp2 unblock (forceEval evalMulRatTensor) args
+      VDivRatTensor args -> unblockTensorOp2 unblock (forceEval evalDivRatTensor) args
+      VPowRatTensor args -> unblockTensorOp2 unblock (forceEval evalPowRatTensor) args
+      VReduceAddRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceAddRatTensor) args
+      VReduceMulRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMulRatTensor) args
+      VReduceMinRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMinRatTensor) args
+      VReduceMaxRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMaxRatTensor) args
+      VMinRatTensor args -> unblockMinRatTensor unblock args
+      VMaxRatTensor args -> unblockMaxRatTensor unblock args
+      VRatTensorBoundVar v -> unblock =<< unblockRatTensorBoundVar v
+      VNetworkApplication n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
+      VParameterOrDataset ident -> unblock =<< unblockDatasetOrParameter ident
+      VRatAtTensor args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
+      VRatAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
+      VRatForeach args -> unblockForeachTensor args
+      VRatTensorTranspose args -> unblockTransposeTensor unblock args
+      VRatTensorRecordAcc typ value fieldName args -> unblockRecordAcc actions typ value fieldName args
   where
     unblock = unblockRatTensorValue actions
 
 unblockRecordValue ::
   UnblockingActions m ->
-  TypeUnblockingFunction (Value Builtin) m
+  TypeUnblockingFunction (Thunk Builtin) m
 unblockRecordValue actions@UnblockingActions {..} expr = showEntry expr $ do
-  case toRecordValue expr of
-    VRecordLiteral {} -> return $ IfLeaf expr
-    VRecordNetworkApp n args -> unblockNetworkApp unblockTensor unblockRecord n args
-    VRecordBoundVar v -> unblockRecord =<< unblockRecordBoundVar v
+  forcedValue <- forceThunk expr
+  case toRecordValue forcedValue of
+    VRecordRecord {} -> return $ IfLeaf expr
+    -- VRecordNetworkApp n args -> unblockNetworkApp unblockTensor unblockRecord n args
+    VRecordBoundVar v spine -> case spine of
+      [] -> unblockRecord =<< unblockRecordBoundVar v
+      _ -> unexpectedExprError currentPass "record boundVar with args"
+    VRecordNetworkApp n args -> unblockNetworkApp (unblockRatTensorValue actions) unblockRecord n args
+    VRecordMeta {} -> unexpectedExprError currentPass "record meta"
+    VRecordBuiltin b spine -> case VBuiltin b spine of
+      (getExpr accessIf -> Just args) -> unblockIf unblockRecord args
+      _ -> unexpectedExprError currentPass (pretty b <+> "record")
+    VRecordRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
   where
-    unblockTensor = unblockRatTensorValue actions
     unblockRecord = unblockRecordValue actions
 
-unblockIndexValue :: TypeUnblockingFunction (Value Builtin) m
-unblockIndexValue expr = showEntry expr $ case toIndexValue expr of
-  VIndexLiteral {} -> return $ IfLeaf expr
-  VIndexIf args -> unblockIf unblockIndexValue args
-  VIndexAtVector args -> unblockAtVector unblockVectorValue args
-  VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
-  VIndexParameter {} -> unexpectedExprError currentPass (prettyVerbose expr)
+unblockIndexValue ::
+  UnblockingActions m ->
+  TypeUnblockingFunction (Thunk Builtin) m
+unblockIndexValue actions value = showEntry value $ do
+  forcedValue <- forceThunk value
+  case toIndexValue forcedValue of
+    VIndexLiteral {} -> return $ IfLeaf value
+    VIndexParameter {} -> return $ IfLeaf value
+    VIndexIf args -> unblockIf (unblockIndexValue actions) args
+    VIndexAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
+    VIndexRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
+    VIndexBoundVar {} -> do
+      -- There can be no bound index variables as quantifiers over indices
+      -- should be normalised out.
+      unexpectedExprError currentPass (prettyVerbose value)
 
-unblockNatValue :: TypeUnblockingFunction (Value Builtin) m
-unblockNatValue expr = showEntry expr $ case toNatValue expr of
-  VNatLiteral {} -> return $ IfLeaf expr
-  VNatIf ifArgs -> unblockIf unblockNatValue ifArgs
-  VNatAdd args -> unblockOp2 unblockNatValue evalAddNat args
-  VNatMul args -> unblockOp2 unblockNatValue evalMulNat args
-  VNatBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
-  VNatParameter {} -> unexpectedExprError currentPass (prettyVerbose expr)
+unblockNatValue :: TypeUnblockingFunction (Thunk Builtin) m
+unblockNatValue value = showEntry value $ do
+  forcedValue <- forceThunk value
+  case toNatValue forcedValue of
+    VNatLiteral {} -> return $ IfLeaf value
+    VNatIf ifArgs -> unblockIf unblockNatValue ifArgs
+    VNatAdd args -> unblockOp2 unblockNatValue evalAddNat args
+    VNatMul args -> unblockOp2 unblockNatValue evalMulNat args
+    VNatBoundVar {} -> unexpectedExprError currentPass (prettyVerbose value)
+    VNatParameter {} -> unexpectedExprError currentPass (prettyVerbose value)
 
-unblockVectorValue :: TypeUnblockingFunction (Value Builtin) m
-unblockVectorValue expr = showEntry expr $ case toVectorValue expr of
-  VVectorLiteral {} -> return $ IfLeaf expr
-  VVectorIf args -> unblockIf unblockVectorValue args
-  VVectorForeach args -> unblockForeachVector args
-  VVectorBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
-  VVectorDataset {} -> unexpectedExprError currentPass (prettyVerbose expr)
+unblockVectorValue ::
+  UnblockingActions m ->
+  TypeUnblockingFunction (Thunk Builtin) m
+unblockVectorValue actions value = showEntry value $ do
+  forcedValue <- forceThunk value
+  case toVectorValue forcedValue of
+    VVectorLiteral {} -> return $ IfLeaf $ Forced forcedValue
+    VVectorIf args -> unblockIf (unblockVectorValue actions) args
+    VVectorForeach args -> unblockForeachVector args
+    VVectorBoundVar {} -> unexpectedExprError currentPass (prettyVerbose forcedValue)
+    VVectorDataset {} -> unexpectedExprError currentPass (prettyVerbose forcedValue)
+    VVectorRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
+
+unblockListValue ::
+  UnblockingActions m ->
+  TypeUnblockingFunction (Thunk Builtin) m
+unblockListValue actions value = showEntry value $ do
+  forcedValue <- forceThunk value
+  case toListValue forcedValue of
+    VListNil {} -> return $ IfLeaf value
+    VListCons {} -> return $ IfLeaf value
+    VListMap args -> unblockMapList actions args
+    VListIf args -> unblockIf (unblockListValue actions) args
+    VListBoundVar {} -> unexpectedExprError currentPass (prettyVerbose value)
+    VListDataset {} -> unexpectedExprError currentPass (prettyVerbose value)
+    VListRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
 
 --------------------------------------------------------------------------------
 -- Unblocking individual operations
 
 type OperationUnblockingFunction args a m =
-  (MonadUnblock m) => args (Value Builtin) -> m (IfTree (Value Builtin) a)
+  (MonadUnblock m) => args (Thunk Builtin) -> m (IfTree (Thunk Builtin) a)
 
 unblockIf ::
   TypeUnblockingFunction a m ->
   OperationUnblockingFunction IfArgs a m
-unblockIf unblock (IfArgs _ c x y) =
+unblockIf unblock (IfArgs _ c x y) = do
   IfTree c <$> unblock x <*> unblock y
 
 unblockOp2 ::
   (MonadUnblock m) =>
-  TypeUnblockingFunction (Value Builtin) m ->
-  EvalSimple Op2Args Value Builtin m ->
-  OperationUnblockingFunction Op2Args (Value Builtin) m
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  EvalSimple ForcedValue Thunk Op2Args Builtin m ->
+  OperationUnblockingFunction Op2Args (Thunk Builtin) m
 unblockOp2 unblock evalFn (Op2Args x y) = do
   x' <- unblock x
   y' <- unblock y
   forIfTreeM x' $ \x'' ->
     forIfTreeM y' $ \y'' ->
       IfLeaf <$> do
-        evalFn $ Op2Args x'' y''
+        forceEval evalFn $ Op2Args x'' y''
 
 unblockIndexOp2 ::
   (MonadUnblock m) =>
-  EvalSimple IndexComparisonArgs Value Builtin m ->
-  OperationUnblockingFunction IndexComparisonArgs (Value Builtin) m
-unblockIndexOp2 evalFn (IndexComparisonArgs n1 n2 x y) = do
-  x' <- unblockIndexValue x
-  y' <- unblockIndexValue y
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  EvalSimple ForcedValue Thunk IndexComparisonArgs Builtin m ->
+  OperationUnblockingFunction IndexComparisonArgs (Thunk Builtin) m
+unblockIndexOp2 unblock evalFn (IndexComparisonArgs n1 n2 x y) = do
+  x' <- unblock x
+  y' <- unblock y
   forIfTreeM x' $ \x'' ->
     forIfTreeM y' $ \y'' ->
       IfLeaf <$> do
-        evalFn $ IndexComparisonArgs n1 n2 x'' y''
+        forceEval evalFn $ IndexComparisonArgs n1 n2 x'' y''
 
 unblockTensorOp1 ::
   (MonadUnblock m) =>
-  TypeUnblockingFunction (Value Builtin) m ->
-  EvalSimple TensorOp1Args Value Builtin m ->
-  OperationUnblockingFunction TensorOp1Args (Value Builtin) m
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  (TensorOp1Args (Thunk Builtin) -> m (Thunk Builtin)) ->
+  OperationUnblockingFunction TensorOp1Args (Thunk Builtin) m
 unblockTensorOp1 unblock evalFn (TensorOp1Args ds xs) = do
   xs' <- unblock xs
-  forIfTreeM xs' $ \xs'' -> IfLeaf <$> evalFn (TensorOp1Args ds xs'')
+  forIfTreeM xs' $ \xs'' ->
+    IfLeaf
+      <$> evalFn (TensorOp1Args ds xs'')
 
 unblockTensorOp2 ::
   (MonadUnblock m) =>
-  TypeUnblockingFunction (Value Builtin) m ->
-  EvalSimple TensorOp2Args Value Builtin m ->
-  OperationUnblockingFunction TensorOp2Args (Value Builtin) m
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  (TensorOp2Args (Thunk Builtin) -> m (Thunk Builtin)) ->
+  OperationUnblockingFunction TensorOp2Args (Thunk Builtin) m
 unblockTensorOp2 unblock evalFn (TensorOp2Args ds xs ys) = do
   xs' <- unblock xs
   ys' <- unblock ys
   forIfTreeM xs' $ \xs'' ->
-    forIfTreeM ys' $ \ys'' -> IfLeaf <$> evalFn (TensorOp2Args ds xs'' ys'')
+    forIfTreeM ys' $ \ys'' -> do
+      IfLeaf
+        <$> evalFn (TensorOp2Args ds xs'' ys'')
+
+unblockCompareRatTensor ::
+  (MonadUnblock m) =>
+  UnblockingActions m ->
+  ComparisonOp ->
+  OperationUnblockingFunction TensorComparisonArgs (Thunk Builtin) m
+unblockCompareRatTensor actions op (TensorComparisonArgs pDims rDims xs ys) = do
+  xs' <- unblockRatTensorValue actions xs
+  ys' <- unblockRatTensorValue actions ys
+  forIfTreeM xs' $ \xs'' ->
+    forIfTreeM ys' $ \ys'' -> do
+      IfLeaf
+        <$> forceEval (evalCompareRatTensor op) (TensorComparisonArgs pDims rDims xs'' ys'')
+
+unblockTransposeTensor ::
+  (MonadUnblock m) =>
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  OperationUnblockingFunction TransposeTensorArgs (Thunk Builtin) m
+unblockTransposeTensor unblock (TransposeTensorArgs t ds xs) = do
+  xs' <- unblock xs
+  forIfTreeM xs' $ \xs'' ->
+    IfLeaf <$> forceEvaluation accessTransposeTensor evalTransposeTensor (TransposeTensorArgs t ds xs'')
 
 unblockReduceTensor ::
   (MonadUnblock m) =>
-  TypeUnblockingFunction (Value Builtin) m ->
-  (TensorReductionArgs (Value Builtin) -> m a) ->
-  OperationUnblockingFunction TensorReductionArgs a m
-unblockReduceTensor unblock evalFn (TensorReductionArgs ds xs) = do
-  xs' <- unblock xs
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  (TensorReductionArgs (Thunk Builtin) -> m (Thunk Builtin)) ->
+  OperationUnblockingFunction TensorReductionArgs (Thunk Builtin) m
+unblockReduceTensor unblockArg evalFn (TensorReductionArgs ds xs) = do
+  xs' <- unblockArg xs
   forIfTreeM xs' $ \xs'' ->
     IfLeaf <$> do
       evalFn $ TensorReductionArgs ds xs''
 
 unblockAtTensor ::
   (MonadUnblock m) =>
-  TypeUnblockingFunction (Value Builtin) m ->
-  OperationUnblockingFunction AtTensorArgs (Value Builtin) m
-unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
-  xs' <- unblock xs
-  i' <- unblockIndexValue i
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  OperationUnblockingFunction AtTensorArgs (Thunk Builtin) m
+unblockAtTensor unblock unblockTensor unblockIndex (AtTensorArgs tElem d ds xs i) = do
+  xs' <- unblockTensor xs
+  i' <- unblockIndex i
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->
-      IfLeaf <$> do
-        nameCtx <- getNameContext
-        evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
+      unblock
+        =<< forceEval evalAtTensor (AtTensorArgs tElem d ds xs'' i'')
 
 unblockAtVector ::
   (MonadUnblock m) =>
-  TypeUnblockingFunction (Value Builtin) m ->
-  OperationUnblockingFunction AtVectorArgs (Value Builtin) m
-unblockAtVector unblock (AtVectorArgs tElem d xs i) = do
-  xs' <- unblock xs
-  i' <- unblockIndexValue i
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  OperationUnblockingFunction AtVectorArgs (Thunk Builtin) m
+unblockAtVector unblockVector unblockIndex (AtVectorArgs tElem d xs i) = do
+  xs' <- unblockVector xs
+  i' <- unblockIndex i
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->
       IfLeaf <$> do
-        evalAtVector $ AtVectorArgs tElem d xs'' i''
+        forceEval evalAtVector $ AtVectorArgs tElem d xs'' i''
 
 unblockRecordAcc ::
   (MonadUnblock m) =>
-  TypeUnblockingFunction (Value Builtin) m ->
-  VType Builtin ->
-  Value Builtin ->
+  UnblockingActions m ->
+  UnforcedType Builtin ->
+  Thunk Builtin ->
   FieldName ->
-  m (IfTree (Value Builtin) (Value Builtin))
-unblockRecordAcc unblock typ value fieldName = do
-  value' <- unblock value
+  UnforcedSpine Builtin ->
+  m (IfTree (Thunk Builtin) (Thunk Builtin))
+unblockRecordAcc actions typ value fieldName args = do
+  value' <- unblockRecordValue actions value
   forIfTreeM value' $ \value'' ->
     IfLeaf <$> do
-      evalRecordAcc typ value'' fieldName
+      Forced <$> forceRecordAcc typ value'' fieldName args
 
 unblockForeachTensor ::
   (MonadUnblock m) =>
-  OperationUnblockingFunction ForeachTensorArgs (Value Builtin) m
+  OperationUnblockingFunction ForeachTensorArgs (Thunk Builtin) m
 unblockForeachTensor (ForeachTensorArgs tElem d ds fn) = do
   d' <- unblockNatValue d
   forIfTreeM d' $ \d'' ->
     IfLeaf <$> do
-      nameCtx <- getNameContext
-      unoptimisedEvalForeachTensor nameCtx evalApp $ ForeachTensorArgs tElem d'' ds fn
+      let result = forceEval evalForeachTensor
+      result $ ForeachTensorArgs tElem d'' ds fn
 
 unblockRatTensorExtrema ::
   ComparisonOp ->
-  TypeUnblockingFunction (Value Builtin) m ->
-  OperationUnblockingFunction TensorOp2Args (Value Builtin) m
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  OperationUnblockingFunction TensorOp2Args (Thunk Builtin) m
 unblockRatTensorExtrema op unblock (TensorOp2Args ds x y) = do
   x' <- unblock x
   y' <- unblock y
   forIfTreeM x' $ \x'' ->
     forIfTreeM y' $ \y'' -> do
-      let cArgs = TensorOp2Args ds x'' y''
-      let c = fromBoolValue $ VCompareRatTensor (op, cArgs)
+      let cArgs = TensorComparisonArgs (Forced IDimNil) ds x'' y''
+      let c = Forced $ mkExpr accessCompareRatTensor (op, cArgs)
       return $ IfTree c (IfLeaf x'') (IfLeaf y'')
 
 unblockMinRatTensor ::
-  TypeUnblockingFunction (Value Builtin) m ->
-  OperationUnblockingFunction TensorOp2Args (Value Builtin) m
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  OperationUnblockingFunction TensorOp2Args (Thunk Builtin) m
 unblockMinRatTensor = unblockRatTensorExtrema Le
 
 unblockMaxRatTensor ::
-  TypeUnblockingFunction (Value Builtin) m ->
-  OperationUnblockingFunction TensorOp2Args (Value Builtin) m
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  OperationUnblockingFunction TensorOp2Args (Thunk Builtin) m
 unblockMaxRatTensor = unblockRatTensorExtrema Ge
 
 unblockForeachVector ::
   (MonadUnblock m) =>
-  OperationUnblockingFunction ForeachVectorArgs (Value Builtin) m
+  OperationUnblockingFunction ForeachVectorArgs (Thunk Builtin) m
 unblockForeachVector (ForeachVectorArgs tElem d fn) = do
   d' <- unblockNatValue d
   forIfTreeM d' $ \d'' ->
     IfLeaf <$> do
-      nameCtx <- getNameContext
-      evalForeachVector nameCtx evalApp eval $ ForeachVectorArgs tElem d'' fn
+      forceEval evalForeachVector $ ForeachVectorArgs tElem d'' fn
+
+unblockMapList ::
+  (MonadUnblock m) =>
+  UnblockingActions m ->
+  OperationUnblockingFunction MapListArgs (Thunk Builtin) m
+unblockMapList actions (MapListArgs t1 t2 f xs) = do
+  xs' <- unblockListValue actions xs
+  forIfTreeM xs' $ \xs'' ->
+    IfLeaf <$> do
+      forceEval evalMapList $ MapListArgs t1 t2 f xs''
+
+unblockFoldList ::
+  (MonadUnblock m) =>
+  UnblockingActions m ->
+  OperationUnblockingFunction FoldListArgs (Thunk Builtin) m
+unblockFoldList actions (FoldListArgs t1 t2 f e xs) = do
+  xs' <- unblockListValue actions xs
+  forIfTreeM xs' $ \xs'' ->
+    IfLeaf <$> do
+      forceEval evalFoldList $ FoldListArgs t1 t2 f e xs''
+
+unblockConstTensor ::
+  (MonadUnblock m) =>
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  UnblockingActions m ->
+  OperationUnblockingFunction ConstTensorArgs (Thunk Builtin) m
+unblockConstTensor unblockValue actions (ConstTensorArgs t x ds) = do
+  x' <- unblockValue x
+  ds' <- unblockListValue actions ds
+  forIfTreeM x' $ \x'' ->
+    forIfTreeM ds' $ \ds'' ->
+      IfLeaf <$> do
+        forceEvaluation accessConstTensor evalConstTensor $ ConstTensorArgs t x'' ds''
 
 --------------------------------------------------------------------------------
 -- Unblocking operations
 
+forceEval ::
+  (MonadNorm Builtin m, HasCallStack) =>
+  EvalSimple ForcedValue Thunk args Builtin m ->
+  args (Thunk Builtin) ->
+  m (Thunk Builtin)
+forceEval evalFn args = do
+  evalResult <- evalFn args
+  case evalResult of
+    Evaluated result -> return result
+    Unevaluable {} -> developerError "Unblocking evaluation results in unevaluable result"
+
 currentPass :: Doc a
 currentPass = "unblocking"
 
-showEntry :: forall m. (MonadUnblock m) => Value Builtin -> m (IfTree (Value Builtin) (Value Builtin)) -> m (IfTree (Value Builtin) (Value Builtin))
+showEntry :: forall m. (MonadUnblock m) => Thunk Builtin -> m (IfTree (Thunk Builtin) (Thunk Builtin)) -> m (IfTree (Thunk Builtin) (Thunk Builtin))
 showEntry input resultFn = do
   logDebugM MaxDetail $ do
     ctx <- getNameContext
