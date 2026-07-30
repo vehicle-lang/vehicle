@@ -1,97 +1,147 @@
 module Vehicle.Compile.LowerNot
   ( lowerNot,
-    negateRatTensorQuantifierBody,
+    negateQuantifierBody,
     negateRecordQuantifierBody,
   )
 where
 
+import Vehicle.Compile.Normalise.Force (forceThunk)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Data.Builtin.Interface (Accessor (..))
+import Vehicle.Compile.Unblock (UnblockingActions, unblockBoolExpr)
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
 --------------------------------------------------------------------------------
 -- Not elimination
 
 type MonadDropNot m =
   ( MonadLogger m,
-    MonadReadableNameContext m
+    MonadNameContext m,
+    MonadFreeContext Builtin m
   )
 
--- | Tries to push in a `Not` as far as possible into a boolean expression.
--- If it is not possible to push it all the way through, it calls the continuation.
+-- | Pushes a `Not` into a boolean expression.
 lowerNot ::
   forall m.
   (MonadDropNot m) =>
-  TensorOp1Args (Value Builtin) ->
-  m (Value Builtin)
-lowerNot (TensorOp1Args _ arg) = do
-  result <- go arg
-  ctx <- getNameContext
-  logDebug MaxDetail $ "push-not:" <+> prettyFriendly (WithContext result ctx)
+  UnblockingActions m ->
+  TensorOp1Args (Thunk Builtin) ->
+  m (Thunk Builtin)
+lowerNot actions (TensorOp1Args dims value) = do
+  forcedValue <- forceThunk value
+  result <- case toBoolTensorValue forcedValue of
+    -- Base cases
+    VBoolTensorLiteral b -> return $ Forced $ mkExpr accessBoolTensorLiteral (mapTensor not b)
+    VBoolTensorNot args -> return $ tensorOp1Arg args
+    VBoolTensorCompareIndex (op, args) -> return $ Forced $ mkExpr accessCompareIndex (neg op, args)
+    VBoolTensorCompareNat (op, args) -> return $ Forced $ mkExpr accessCompareNat (neg op, args)
+    VBoolTensorCompareRatTensor (op, args) -> negateCompareRatTensorArgs op args
+    VBoolTensorQuantifyRat (q, args) -> return $ Forced $ mkExpr accessQuantifyRatTensor (neg q, negateQuantifierBody args)
+    VBoolTensorQuantifyRecord (q, args) -> return $ Forced $ mkExpr accessQuantifyRecord (neg q, negateRecordQuantifierBody args)
+    -- Recursive cases
+    VBoolConstTensor args -> Forced . mkExpr accessConstTensor <$> negateConstTensorArgs args
+    VBoolStackTensor args -> Forced . mkExpr accessStackTensor <$> negateStackTensorArgs args
+    VBoolTensorOr args -> Forced . mkExpr accessAndTensor <$> negateOp2Args args
+    VBoolTensorAnd args -> Forced . mkExpr accessOrTensor <$> negateOp2Args args
+    VBoolTensorImplies args -> Forced <$> negateImplication args
+    VBoolTensorIf args -> Forced . mkExpr accessIf <$> negateIfArgs dims args
+    VBoolTensorReduceOr args -> Forced . mkExpr accessReduceAnd <$> negateReductionArgs args
+    VBoolTensorReduceAnd args -> Forced . mkExpr accessReduceOr <$> negateReductionArgs args
+    VBoolTensorTensorAt args -> Forced . mkExpr accessAtTensor <$> negateAtTensorArgs args
+    VBoolTensorForeach args -> Forced . mkExpr accessForeachTensor <$> negateForeachArgs args
+    VBoolTensorFoldList {} -> unblockAndNegate forcedValue
+    VBoolTensorVectorAt {} -> unblockAndNegate forcedValue
+
+  logDebugM MaxDetail $ do
+    ctx <- getNameContext
+    return $ "push-not:" <+> prettyFriendly (WithContext result ctx)
+
   return result
   where
-    go :: Value Builtin -> m (Value Builtin)
-    go e = case toBoolTensorValue e of
-      ----------------
-      -- Base cases --
-      ----------------
-      VBoolTensorLiteral b -> return $ fromBoolTensorValue $ VBoolTensorLiteral (mapTensor not b)
-      VBoolTensorNot args -> return $ tensorOp1Arg args
-      VBoolTensorCompareIndex (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareIndex (neg op, args)
-      VBoolTensorCompareNat (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareNat (neg op, args)
-      VBoolTensorCompareRatPointwise (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareRatPointwise (neg op, args)
-      VBoolTensorCompareRatReduced (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareRatReduced (neg op, args)
-      -- We can't actually lower the `not` through the body of the quantifier as
-      -- it is not yet unnormalised. However, it's fine to stop here as we'll
-      -- simply continue to normalise it once we re-encounter it again after
-      -- normalising the quantifier.
-      VBoolTensorQuantifyRat (q, args) -> fromBoolTensorValue . VBoolTensorQuantifyRat . (neg q,) <$> negateRatTensorQuantifierBody args
-      VBoolTensorQuantifyRecord (q, args) -> fromBoolTensorValue . VBoolTensorQuantifyRecord . (neg q,) <$> negateRecordQuantifierBody args
-      ---------------------
-      -- Inductive cases --
-      ---------------------
-      VBoolConstTensor args -> fromBoolTensorValue . VBoolConstTensor <$> traverseConstTensorValue go args
-      VBoolStackTensor args -> fromBoolTensorValue . VBoolStackTensor <$> traverseStackTensorElements go args
-      VBoolTensorOr args -> fromBoolTensorValue . VBoolTensorAnd <$> traverseTensorOp2Args go args
-      VBoolTensorAnd args -> fromBoolTensorValue . VBoolTensorOr <$> traverseTensorOp2Args go args
-      VBoolTensorIf args -> fromBoolTensorValue . VBoolTensorIf <$> traverseIfArgBranches go args
-      VBoolTensorReduceOr args -> fromBoolTensorValue . VBoolTensorReduceAnd <$> traverseReductionArgs go args
-      VBoolTensorReduceAnd args -> fromBoolTensorValue . VBoolTensorReduceOr <$> traverseReductionArgs go args
-      VBoolTensorAt args -> fromBoolTensorValue . VBoolTensorAt <$> traverseAtTensorArg go args
-      VBoolTensorForeach args -> fromBoolTensorValue . VBoolTensorForeach <$> negateForeachArgs args
+    unblockAndNegate :: ForcedValue Builtin -> m (Thunk Builtin)
+    unblockAndNegate v = do
+      result <- unblockBoolExpr actions (Forced v)
+      lowerNot actions $ TensorOp1Args dims result
 
-negateRatTensorQuantifierBody ::
-  (MonadReadableNameContext m) =>
-  QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
-  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
-negateRatTensorQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
+    negateThunk :: Thunk Builtin -> Thunk Builtin -> m (Thunk Builtin)
+    negateThunk ds v = lowerNot actions $ TensorOp1Args ds v
+
+    negateImplication :: TensorOp2Args (Thunk Builtin) -> m (ForcedValue Builtin)
+    negateImplication (TensorOp2Args ds x y) = do
+      negY <- negateThunk dims y
+      return $ mkExpr accessAndTensor $ TensorOp2Args ds x negY
+
+    negateOp2Args :: TensorOp2Args (Thunk Builtin) -> m (TensorOp2Args (Thunk Builtin))
+    negateOp2Args args = traverseTensorOp2Args (negateThunk (tensorOp2Dims args)) args
+
+    negateCompareRatTensorArgs :: ComparisonOp -> TensorComparisonArgs (Thunk Builtin) -> m (Thunk Builtin)
+    negateCompareRatTensorArgs op (TensorComparisonArgs pDims rDims xs ys) = do
+      fpDims <- forceThunk pDims
+      frDims <- forceThunk rDims
+      case (fpDims, frDims) of
+        (IDimNil, _) -> do
+          let pointwiseComparison = Forced $ mkExpr accessCompareRatTensor (neg op, TensorComparisonArgs (Forced fpDims) (Forced frDims) xs ys)
+          return $ Forced $ mkExpr accessReduceOr $ TensorReductionArgs dims pointwiseComparison
+        (_, IDimNil) -> return $ Forced $ mkExpr accessCompareRatTensor (neg op, TensorComparisonArgs pDims rDims xs ys)
+        _ -> developerError "negation of mixed comparisons not yet implemented"
+
+    negateReductionArgs :: TensorReductionArgs (Thunk Builtin) -> m (TensorReductionArgs (Thunk Builtin))
+    negateReductionArgs args = traverseReductionArgs (negateThunk (tensorReductionDims args)) args
+
+    negateIfArgs :: Thunk Builtin -> IfArgs (Thunk Builtin) -> m (IfArgs (Thunk Builtin))
+    negateIfArgs ds = traverseIfArgBranches (negateThunk ds)
+
+    negateConstTensorArgs :: ConstTensorArgs (Thunk Builtin) -> m (ConstTensorArgs (Thunk Builtin))
+    negateConstTensorArgs = traverseConstTensorValue (negateThunk (Forced IDimNil))
+
+    negateStackTensorArgs :: StackTensorArgs (Thunk Builtin) -> m (StackTensorArgs (Thunk Builtin))
+    negateStackTensorArgs args = traverseStackTensorElements (negateThunk (stackRemainingDims args)) args
+
+    negateAtTensorArgs :: AtTensorArgs (Thunk Builtin) -> m (AtTensorArgs (Thunk Builtin))
+    negateAtTensorArgs args@AtTensorArgs {..} =
+      traverseAtTensorArg (negateThunk $ Forced (IDimCons atFirstDim atRemainingDims)) args
+
+    negateForeachArgs ::
+      (MonadDropNot m) =>
+      ForeachTensorArgs (Thunk Builtin) ->
+      m (ForeachTensorArgs (Thunk Builtin))
+    negateForeachArgs (ForeachTensorArgs t d ds fn) = do
+      forcedFn <- forceThunk fn
+      (binder, Closure env body) <- case forcedFn of
+        VLam binder closure -> return (binder, closure)
+        _ -> developerError "Malformed foreachTensor"
+      lv <- getBinderDepth
+      let ds' = quote mempty lv ds
+      let newBody = mkExpr accessNotTensor $ TensorOp1Args ds' body
+      let newFn = Forced $ VLam binder (Closure env newBody)
+      return $ ForeachTensorArgs t d ds newFn
+
+negateQuantifierBody ::
+  QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin) ->
+  QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin)
+negateQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
   let newBody = mkExpr accessNotTensor $ TensorOp1Args IDimNil body
-  return $ QuantifyRatTensorArgs dims binder (Closure env newBody)
+  QuantifyRatTensorArgs
+    { quantifyDimensions = dims,
+      quantifyBinder = binder,
+      quantifyBody = Closure env newBody
+    }
 
 negateRecordQuantifierBody ::
-  (MonadReadableNameContext m) =>
-  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
-  m (QuantifyRecordArgs (Value Builtin) (Closure Builtin))
+  QuantifyRecordArgs (Thunk Builtin) (Closure Builtin) ->
+  QuantifyRecordArgs (Thunk Builtin) (Closure Builtin)
 negateRecordQuantifierBody (QuantifyRecordArgs typ binder (Closure env body)) = do
   let newBody = mkExpr accessNotTensor $ TensorOp1Args IDimNil body
-  return $ QuantifyRecordArgs typ binder (Closure env newBody)
-
-negateForeachArgs ::
-  (MonadReadableNameContext m) =>
-  ForeachTensorArgs (Value Builtin) ->
-  m (ForeachTensorArgs (Value Builtin))
-negateForeachArgs (ForeachTensorArgs t dim dims fn) = do
-  (binder, Closure env body) <- case fn of
-    VLam binder closure -> return (binder, closure)
-    _ -> developerError "Malformed foreachTensor"
-  lv <- getBinderDepth
-  let dims' = quote mempty lv dims
-  let newBody = mkExpr accessNotTensor $ TensorOp1Args dims' body
-  return $ ForeachTensorArgs t dim dims (VLam binder (Closure env newBody))
+  QuantifyRecordArgs
+    { quantifyRecordType = typ,
+      quantifyRecordBinder = binder,
+      quantifyRecordBody = Closure env newBody
+    }

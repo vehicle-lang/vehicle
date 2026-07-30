@@ -2,6 +2,25 @@
 
 ## Next release
 
+### General
+
+* 50% speedup in compilation times across all backends.
+
+* Added the `transpose` operator on tensors.
+  See [tensors](docs/language/tensors.rst) for documentation.
+
+### ITP backends
+
+* Fixed bug where the Isabelle backend mis-compiled declarations referencing `@network`, `@dataset`, or `@parameter` resources (#1195).
+
+## v0.26.1
+
+### General
+
+* Fixed bug where comparisons of tensor inequalities underneath `exists` was being compiled incorrectly in both solver and loss backends.
+
+## v0.26.0
+
 ### Language
 
 * BREAKING: with the introduction of `infinity` to the language in `v0.25` all reduction operations have

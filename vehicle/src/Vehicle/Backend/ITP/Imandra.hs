@@ -22,6 +22,7 @@ import Data.Text qualified as Text
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -660,9 +661,25 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     Max MaxRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "pointwise_max_real" args
     CompareIndex op -> compileComparison moduleDefs CIndex op args
     CompareNat op -> compileComparison moduleDefs CNat op args
-    CompareRatTensorPointwise op -> compileTensorComparison moduleDefs CRatTensor op args
+    CompareRatTensor op -> case decideIfPointwiseOrReductionComparison args of
+      Pointwise as -> compileTensorComparison moduleDefs CRatTensor op as
+      Reduced as ->
+        annotateApp
+          moduleDefs
+          [RequireImport ImlVehicle]
+          ( case op of
+              Le -> "leq_tensor_reduced_real"
+              Lt -> "lt_tensor_reduced_real"
+              Ge -> "geq_tensor_reduced_real"
+              Gt -> "gt_tensor_reduced_real"
+              Eq -> "eq_tensor_reduced_real"
+              Ne -> "ne_tensor_reduced_real"
+          )
+          as
     FoldList -> annotateApp moduleDefs [] "List.fold_right" args
     MapList -> annotateApp moduleDefs [] "List.map" args
+    ReverseList -> annotateApp moduleDefs [] "List.rev" args
+    AppendList {} -> unsupportedError
     ReduceAndTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_and" args
     ReduceOrTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_or" args
     ReduceAddRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_sum" args
@@ -680,6 +697,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     If -> annotateNotation moduleDefs [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args
     StackTensor -> compileStack moduleDefs args
+    Transpose -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_transpose" args
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
     Iterate -> unsupportedError
@@ -696,7 +714,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     PropImplies -> annotateBinOp moduleDefs [] minPrecedence "==>" args
     PropCompareIndex op -> compileComparison moduleDefs CIndex op args
     PropCompareNat op -> compileComparison moduleDefs CNat op args
-    PropCompareRatTensorPointwise op -> compileTensorComparison moduleDefs CRatTensor op args
+    PropCompareRatTensor op -> compileTensorComparison moduleDefs CRatTensor op args
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
@@ -749,19 +767,6 @@ compileDerivedFunction moduleDefs fn args = case fn of
     Forall -> annotateApp moduleDefs [RequireImport ImlVehicle] "forall_index" args
   QuantifyInList {} -> unsupported
   TypeAnn -> annotateNotation moduleDefs [] minPrecedence "($1 : $0)" Nothing args
-  CompareRatTensorReduced op ->
-    annotateApp
-      moduleDefs
-      [RequireImport ImlVehicle]
-      ( case op of
-          Le -> "leq_tensor_reduced_real"
-          Lt -> "lt_tensor_reduced_real"
-          Ge -> "geq_tensor_reduced_real"
-          Gt -> "gt_tensor_reduced_real"
-          Eq -> "eq_tensor_reduced_real"
-          Ne -> "ne_tensor_reduced_real"
-      )
-      args
   where
     unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
 

@@ -3,15 +3,18 @@ module Vehicle.Backend.Solver.UserVariableElimination.PurifyAssertion
   )
 where
 
+import Vehicle.Compile.Normalise.Builtin
+import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Unblock
-import Vehicle.Data.Builtin.Interface.Normalise
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Code.BooleanExpr (IfTree (..), forIfTreeM)
+import Vehicle.Data.Code.BooleanExpr (IfTree (..), forIfTreeListM, forIfTreeM)
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (ExtendedRatTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
@@ -21,27 +24,25 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 type MonadPurify m =
   ( MonadLogger m,
     MonadFreeContext Builtin m,
-    MonadReadableNameContext m
+    MonadNameContext m
   )
 
 -- | Takes in a comparison over real tensors that possibly contains further
 -- boolean structure via `if`s and returns a tree of the possible assertions.
 purifyAssertion ::
-  ( MonadLogger m,
-    MonadFreeContext Builtin m,
-    MonadReadableNameContext m
+  ( MonadPurify m
   ) =>
   UnblockingActions m ->
   ComparisonOp ->
-  TensorOp2Args (Value Builtin) ->
-  m (IfTree (Value Builtin) (ComparisonOp, TensorOp2Args (Value Builtin)))
-purifyAssertion actions op (TensorOp2Args dims e1 e2) = do
-  let purifyFn = purifyRatTensorExpr actions 0
+  TensorComparisonArgs (Thunk Builtin) ->
+  m (IfTree (Thunk Builtin) (ComparisonOp, TensorComparisonArgs (Thunk Builtin)))
+purifyAssertion actions op (TensorComparisonArgs pDims rDims e1 e2) = do
+  let purifyFn = purifyExpr actions 0
   e1' <- purifyFn e1
   e2' <- purifyFn e2
   forIfTreeM e1' $ \e1'' ->
     forIfTreeM e2' $ \e2'' ->
-      return $ IfLeaf (op, TensorOp2Args dims e1'' e2'')
+      return $ IfLeaf (op, TensorComparisonArgs pDims rDims e1'' e2'')
 
 -- | The number of dimensions above the dimensions of the expression that
 -- we're currently trying to compile. We track this so that we only
@@ -49,97 +50,184 @@ purifyAssertion actions op (TensorOp2Args dims e1 e2) = do
 -- dimension than we're targeting.
 type IncreasedDimensions = Int
 
-purifyRatTensorExpr ::
+purifyExpr ::
   (MonadPurify m) =>
   UnblockingActions m ->
   IncreasedDimensions ->
-  Value Builtin ->
-  m (IfTree (Value Builtin) (Value Builtin))
-purifyRatTensorExpr actions@UnblockingActions {..} incrDims expr = do
-  showPurifyEntry expr
-  showPurifyExit =<< case toRatTensorValue expr of
-    -- Pure operations
-    VRatTensorLiteral {} -> return $ IfLeaf expr
-    VNegRatTensor args -> purifyTensorOp1 (recPurify incrDims) VNegRatTensor args
-    VAddRatTensor args -> purifyTensorOp2 (recPurify incrDims) VAddRatTensor args
-    VSubRatTensor args -> purifyTensorOp2 (recPurify incrDims) VSubRatTensor args
-    VMulRatTensor args -> purifyTensorOp2 (recPurify incrDims) VMulRatTensor args
-    VDivRatTensor args -> purifyTensorOp2 (recPurify incrDims) VDivRatTensor args
-    VPowRatTensor args -> purifyTensorOp2 (recPurify incrDims) VPowRatTensor args
-    VLogRatTensor args -> purifyTensorOp1 (recPurify incrDims) VLogRatTensor args
-    VExpRatTensor args -> purifyTensorOp1 (recPurify incrDims) VExpRatTensor args
-    -- Recursively purify
-    VRatConstTensor args -> purifyConstTensor args
-    VRatStackTensor args -> purifyStackTensor (recPurify (incrDims - 1)) args
-    VIfRatTensor args -> unblockIf (recPurify incrDims) args
-    VMinRatTensor args -> unblockMinRatTensor (recPurify incrDims) args
-    VMaxRatTensor args -> unblockMaxRatTensor (recPurify incrDims) args
-    VReduceAddRatTensor args -> unblockReduceTensor (recPurify (incrDims + 1)) evalReduceAddRatTensor args
-    VReduceMulRatTensor args -> unblockReduceTensor (recPurify (incrDims + 1)) evalReduceMulRatTensor args
-    VReduceMinRatTensor args -> unblockReduceTensor (recPurify (incrDims + 1)) evalReduceMinRatTensor args
-    VReduceMaxRatTensor args -> unblockReduceTensor (recPurify (incrDims + 1)) evalReduceMaxRatTensor args
-    VRatAtTensor args -> unblockAtTensor actions (recPurify (incrDims + 1)) args
-    VRatForeach args -> unblockForeachTensor args
-    VRatTensorBoundVar v
-      | incrDims == 0 -> return $ IfLeaf $ fromRatTensorValue $ VRatTensorBoundVar v
-      | otherwise -> recPurify incrDims =<< unblockRatTensorBoundVar v
-    VRatTensorNetworkApp n args -> unblockNetworkApp (recPurify incrDims) (unblockRecordValue actions) n args
-    VRatRecordAcc typ value fieldName _ -> unblockRecordAcc (recPurify incrDims) typ value fieldName
-    VRatAtVector args -> unblockAtVector actions (recPurify (incrDims + 1)) args
-    VDatasetOrParameter {} -> developerError "datasets and parameters should have been eliminated"
-  where
-    recPurify = purifyRatTensorExpr actions
+  Thunk Builtin ->
+  m (IfTree (Thunk Builtin) (Thunk Builtin))
+purifyExpr actions incrDims value = do
+  showPurifyEntry incrDims value
+  forcedValue <- forceAndRewriteTensor value
+  let purifyFn = case toRatTensorValue forcedValue of
+        VRatTensorLiteral t -> purifyRatTensor t
+        VNegRatTensor args -> purifyTensorOp1 accessNegRatTensor args
+        VLogRatTensor args -> purifyTensorOp1 accessLogRatTensor args
+        VExpRatTensor args -> purifyTensorOp1 accessExpRatTensor args
+        VAddRatTensor args -> purifyTensorOp2 accessAddRatTensor args
+        VSubRatTensor args -> purifyTensorOp2 accessSubRatTensor args
+        VMulRatTensor args -> purifyTensorOp2 accessMulRatTensor args
+        VDivRatTensor args -> purifyTensorOp2 accessDivRatTensor args
+        VPowRatTensor args -> purifyTensorOp2 accessPowRatTensor args
+        VRatConstTensor args -> purifyConstTensor args
+        VRatStackTensor args -> purifyStackTensor args
+        VIfRatTensor args -> purifyIf args
+        VMinRatTensor args -> purifyMinMax True args
+        VMaxRatTensor args -> purifyMinMax False args
+        VReduceAddRatTensor args -> purifyReduceTensor evalReduceAddRatTensor args
+        VReduceMulRatTensor args -> purifyReduceTensor evalReduceMulRatTensor args
+        VReduceMinRatTensor args -> purifyReduceTensor evalReduceMinRatTensor args
+        VReduceMaxRatTensor args -> purifyReduceTensor evalReduceMaxRatTensor args
+        VRatAtTensor args -> purifyAtTensor args
+        VRatForeach args -> purifyForeachTensor args
+        VRatTensorTranspose args -> purifyTransposeTensor args
+        VRatTensorBoundVar v -> purifyBoundVar v
+        VNetworkApplication ident args -> purifyNetworkVar ident args
+        VRatTensorRecordAcc typ record fieldName spine -> purifyRecordAcc typ record fieldName spine
+        VRatAtVector args -> purifyAtVector args
+        VParameterOrDataset {} -> developerError "datasets and parameters should have been eliminated"
+  showPurifyExit =<< purifyFn actions incrDims
 
-purifyTensorOp1 ::
-  TypeUnblockingFunction (Value Builtin) m ->
-  (TensorOp1Args (Value Builtin) -> RatTensorValue) ->
-  OperationUnblockingFunction TensorOp1Args (Value Builtin) m
-purifyTensorOp1 unblock mkOp1 (TensorOp1Args ds xs) = do
-  xs' <- unblock xs
-  forIfTreeM xs' $ \xs'' ->
-    return $
-      IfLeaf $
-        fromRatTensorValue $
-          mkOp1 $
-            TensorOp1Args ds xs''
+type PurifyFn m =
+  (MonadPurify m) =>
+  UnblockingActions m ->
+  IncreasedDimensions ->
+  m (IfTree (Thunk Builtin) (Thunk Builtin))
 
-purifyTensorOp2 ::
-  TypeUnblockingFunction (Value Builtin) m ->
-  (TensorOp2Args (Value Builtin) -> RatTensorValue) ->
-  OperationUnblockingFunction TensorOp2Args (Value Builtin) m
-purifyTensorOp2 unblock mkOp2 (TensorOp2Args ds xs ys) = do
-  xs' <- unblock xs
-  ys' <- unblock ys
-  forIfTreeM xs' $ \xs'' ->
-    forIfTreeM ys' $ \ys'' ->
-      return $
-        IfLeaf $
-          fromRatTensorValue $
-            mkOp2 $
-              TensorOp2Args ds xs'' ys''
+purifyRatTensor ::
+  ExtendedRatTensor ->
+  PurifyFn m
+purifyRatTensor tensor _actions _incrDims = do
+  return $ IfLeaf $ Forced $ IRatTensor tensor
+
+purifyBoundVar ::
+  Lv ->
+  PurifyFn m
+purifyBoundVar v actions@UnblockingActions {..} incrDims
+  | incrDims > 0 = purifyExpr actions incrDims =<< unblockRatTensorBoundVar v
+  | otherwise = return $ IfLeaf $ Forced $ VBoundVar v []
+
+purifyNetworkVar ::
+  Identifier ->
+  NetworkAppArgs (Thunk Builtin) ->
+  PurifyFn m
+purifyNetworkVar ident args actions@UnblockingActions {..} incrDims = do
+  unblockNetworkApp (purifyExpr actions incrDims) (unblockRecordValue actions) ident args
 
 purifyConstTensor ::
-  OperationUnblockingFunction ConstTensorArgs (Value Builtin) m
-purifyConstTensor args = do
-  return $ IfLeaf $ fromRatTensorValue $ VRatConstTensor args
+  ConstTensorArgs (Thunk Builtin) ->
+  PurifyFn m
+purifyConstTensor args actions _incrDims = do
+  unblockConstTensor (purifyExpr actions 0) actions args
 
 purifyStackTensor ::
-  TypeUnblockingFunction (Value Builtin) m ->
-  OperationUnblockingFunction StackTensorArgs (Value Builtin) m
-purifyStackTensor _unblock args = do
-  return $ IfLeaf $ fromRatTensorValue $ VRatStackTensor args
+  StackTensorArgs (Thunk Builtin) ->
+  PurifyFn m
+purifyStackTensor args actions incrDims
+  | incrDims > 1 = do
+      xs' <- traverse (purifyExpr actions (incrDims - 1)) $ stackElements args
+      forIfTreeListM xs' $ \xs'' ->
+        IfLeaf
+          <$> forceEvaluation accessStackTensor evalStackTensor (args {stackElements = xs''})
+  | otherwise = return $ IfLeaf $ Forced $ mkExpr accessStackTensor args
+
+purifyMinMax ::
+  Bool ->
+  TensorOp2Args (Thunk Builtin) ->
+  (MonadPurify m) =>
+  PurifyFn m
+purifyMinMax isMin (TensorOp2Args ds xs ys) actions incrDims = do
+  let typ = Forced $ ITensorType (Forced IRatType) ds
+  let conditionArgs = TensorComparisonArgs (Forced IDimNil) ds xs ys
+  let condition = Forced $ mkExpr accessCompareRatTensor (if isMin then Le else Ge, conditionArgs)
+  let expanded = Forced $ mkExpr accessIf $ IfArgs typ condition xs ys
+  purifyExpr actions incrDims expanded
+
+purifyTensorOp1 ::
+  TensorOp1Accessor ForcedValue Thunk Builtin ->
+  TensorOp1Args (Thunk Builtin) ->
+  PurifyFn m
+purifyTensorOp1 accessOp args actions incrDims = do
+  unblockTensorOp1
+    (purifyExpr actions incrDims)
+    (return . Forced . mkExpr accessOp)
+    args
+
+purifyTensorOp2 ::
+  TensorOp2Accessor ForcedValue Thunk Builtin ->
+  TensorOp2Args (Thunk Builtin) ->
+  PurifyFn m
+purifyTensorOp2 accessOp args actions incrDims = do
+  unblockTensorOp2
+    (purifyExpr actions incrDims)
+    (return . Forced . mkExpr accessOp)
+    args
+
+purifyIf :: IfArgs (Thunk Builtin) -> PurifyFn m
+purifyIf args actions incrDims = do
+  unblockIf (purifyExpr actions incrDims) args
+
+purifyReduceTensor ::
+  EvalSimple ForcedValue Thunk TensorReductionArgs Builtin m ->
+  TensorReductionArgs (Thunk Builtin) ->
+  PurifyFn m
+purifyReduceTensor eval args actions incrDims = do
+  unblockReduceTensor
+    (purifyExpr actions (incrDims + 1))
+    (forceEval eval)
+    args
+
+purifyTransposeTensor :: TransposeTensorArgs (Thunk Builtin) -> PurifyFn m
+purifyTransposeTensor args actions _incrDims = do
+  dimsSize <- getDimsSize $ transposeDims args
+  unblockTransposeTensor
+    (purifyExpr actions dimsSize)
+    args
+
+purifyRecordAcc ::
+  Thunk Builtin ->
+  Thunk Builtin ->
+  FieldName ->
+  UnforcedSpine Builtin ->
+  PurifyFn m
+purifyRecordAcc typ record fieldName spine actions _incrDims = do
+  unblockRecordAcc actions typ record fieldName spine
+
+purifyForeachTensor :: ForeachTensorArgs (Thunk Builtin) -> PurifyFn m
+purifyForeachTensor args _actions _incrDims = do
+  unblockForeachTensor args
+
+purifyAtTensor :: AtTensorArgs (Thunk Builtin) -> PurifyFn m
+purifyAtTensor args actions incrDims = do
+  unblockAtTensor
+    (purifyExpr actions incrDims)
+    (purifyExpr actions (incrDims + 1))
+    (unblockIndexValue actions)
+    args
+
+purifyAtVector :: AtVectorArgs (Thunk Builtin) -> PurifyFn m
+purifyAtVector args actions _incrDims = do
+  unblockAtVector
+    (unblockVectorValue actions)
+    (unblockIndexValue actions)
+    args
+
+getDimsSize :: (MonadPurify m) => Thunk Builtin -> m Int
+getDimsSize dims = do
+  let err = developerError "Unknown transpose dims"
+  either err length <$> getDimsExprs dims
 
 --------------------------------------------------------------------------------
 -- Utilities
 
-showPurifyEntry :: forall m. (MonadPurify m) => Value Builtin -> m ()
-showPurifyEntry e = do
+showPurifyEntry :: forall m. (MonadPurify m) => IncreasedDimensions -> Thunk Builtin -> m ()
+showPurifyEntry incrDims e = do
   ctx <- getNameContext
   -- logDebug MaxDetail $ "purify-entry" <+> prettyVerbose e
-  logDebug MaxDetail $ "purify-entry:" <+> prettyFriendly (WithContext e ctx)
+  logDebug MaxDetail $ "purify-entry" <> parens (pretty incrDims) <> ":" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
-showPurifyExit :: (MonadPurify m) => IfTree (Value Builtin) (Value Builtin) -> m (IfTree (Value Builtin) (Value Builtin))
+showPurifyExit :: (MonadPurify m) => IfTree (Thunk Builtin) (Thunk Builtin) -> m (IfTree (Thunk Builtin) (Thunk Builtin))
 showPurifyExit e = do
   ctx <- getNameContext
   decrCallDepth

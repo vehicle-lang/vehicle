@@ -6,6 +6,7 @@ module Vehicle.Data.Code.Interface.Args where
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Variable.Bound.Level (Lv)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -15,8 +16,9 @@ import Vehicle.Prelude
 class IsArgs args where
   accessSpine :: Accessor [GenericArg expr] (args expr)
 
-class HasLambdaConstructor expr exprLamBody where
-  accessLamC :: Accessor (expr builtin) (GenericBinder (expr builtin), exprLamBody builtin)
+class HasLambdaConstructor expr thunk closure | expr -> thunk, thunk -> expr, thunk -> closure where
+  accessForcedLamC :: Accessor (thunk builtin) (GenericBinder (thunk builtin), closure builtin)
+  accessBoundVarC :: Accessor (expr builtin) (Lv, [GenericArg (thunk builtin)])
 
 --------------------------------------------------------------------------------
 -- Op1Args
@@ -117,6 +119,9 @@ instance IsArgs TensorOp2Args where
 traverseTensorOp2Args :: (Applicative f) => (t -> f t) -> TensorOp2Args t -> f (TensorOp2Args t)
 traverseTensorOp2Args f (TensorOp2Args ds xs ys) = TensorOp2Args ds <$> f xs <*> f ys
 
+mapTensorOp2Args :: (t -> t) -> TensorOp2Args t -> TensorOp2Args t
+mapTensorOp2Args f (TensorOp2Args ds xs ys) = TensorOp2Args ds (f xs) (f ys)
+
 --------------------------------------------------------------------------------
 -- Tensor reduction args
 
@@ -136,8 +141,10 @@ instance IsArgs TensorReductionArgs where
       }
 
 traverseReductionArgs :: (Applicative f) => (t -> f t) -> TensorReductionArgs t -> f (TensorReductionArgs t)
-traverseReductionArgs f (TensorReductionArgs ds xs) =
-  TensorReductionArgs ds <$> f xs
+traverseReductionArgs f (TensorReductionArgs ds xs) = TensorReductionArgs ds <$> f xs
+
+mapReductionArgs :: (t -> t) -> TensorReductionArgs t -> TensorReductionArgs t
+mapReductionArgs f (TensorReductionArgs ds xs) = TensorReductionArgs ds (f xs)
 
 --------------------------------------------------------------------------------
 -- IndexComparisonArgs
@@ -159,10 +166,24 @@ instance IsArgs IndexComparisonArgs where
         mkExpr = \(IndexComparisonArgs n1 n2 x y) -> [implicitIrrelevant n1, implicitIrrelevant n2, explicit x, explicit y]
       }
 
---------------------------------------------------------------------------------
--- ComparisonArgs
+-- | Arguments for comparisons (e.g. ==, <= etc. ) over tensors
+data TensorComparisonArgs expr = TensorComparisonArgs
+  { tensorPointwiseDims :: expr, -- implicit irrelevant, shape of tensor at the end
+    tensorReduceDims :: expr, -- implicit relevant, dimensions reduction is performed on.
+    tensorOp2Arg1 :: expr, -- explicit, tensor
+    tensorOp2Arg2 :: expr -- explicit, tensor
+  }
 
--- | Arguments for binary tensor operations (e.g. +, -)
+instance IsArgs TensorComparisonArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [dims1, dims2, x, y]) -> Just $ TensorComparisonArgs dims1 dims2 x y
+          _ -> Nothing,
+        mkExpr = \(TensorComparisonArgs dims1 dims2 x y) -> [implicitIrrelevant dims1, implicit dims2, explicit x, explicit y]
+      }
+
+-- -- | Arguments for binary tensor operations (e.g. +, -)
 data TensorReduceComparisonArgs expr = TensorReduceComparisonArgs
   { tensorReduceOp2Dim :: expr,
     tensorReduceOp2Dims :: expr,
@@ -198,6 +219,9 @@ instance IsArgs IfArgs where
 
 traverseIfArgBranches :: (Applicative f) => (t -> f t) -> IfArgs t -> f (IfArgs t)
 traverseIfArgBranches f (IfArgs t c x y) = IfArgs t c <$> f x <*> f y
+
+mapIfArgBranches :: (t -> t) -> IfArgs t -> IfArgs t
+mapIfArgBranches f (IfArgs t c x y) = IfArgs t c (f x) (f y)
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -261,6 +285,9 @@ instance IsArgs AtTensorArgs where
 traverseAtTensorArg :: (Applicative f) => (t -> f t) -> AtTensorArgs t -> f (AtTensorArgs t)
 traverseAtTensorArg f (AtTensorArgs t d ds tensor i) = AtTensorArgs t d ds <$> f tensor <*> pure i
 
+mapAtTensorArg :: (t -> t) -> AtTensorArgs t -> AtTensorArgs t
+mapAtTensorArg f (AtTensorArgs t d ds tensor i) = AtTensorArgs t d ds (f tensor) i
+
 -- | Arguments for `ConstTensor`
 data ConstTensorArgs expr = ConstTensorArgs
   { constType :: expr,
@@ -285,6 +312,12 @@ traverseConstTensorValue f ConstTensorArgs {..} = do
   constValue' <- f constValue
   return $ ConstTensorArgs {constValue = constValue', ..}
 
+-- The trailing dims (@ds@) on 'StackTensorArgs', 'ForeachTensorArgs'
+-- and 'TransposeTensorArgs' below are 'implicit' rather than
+-- 'implicitIrrelevant': unification needs to solve the output shape
+-- from the input shape (e.g. reversing @ds@ for 'Transpose'), which
+-- requires the argument to participate in relevant elaboration.
+
 -- | Arguments for `StackTensor`
 data StackTensorArgs expr = StackTensorArgs
   { stackType :: expr,
@@ -299,7 +332,7 @@ instance IsArgs StackTensorArgs where
       { getExpr = \case
           (fmap argExpr -> t : d : ds : xs) -> Just $ StackTensorArgs t d ds xs
           _ -> Nothing,
-        mkExpr = \(StackTensorArgs t d ds xs) -> implicit t : implicit d : implicitIrrelevant ds : fmap explicit xs
+        mkExpr = \(StackTensorArgs t d ds xs) -> implicit t : implicit d : implicit ds : fmap explicit xs
       }
 
 mapStackTensorElements :: (expr -> expr) -> StackTensorArgs expr -> StackTensorArgs expr
@@ -324,8 +357,27 @@ instance IsArgs ForeachTensorArgs where
       { getExpr = \case
           (fmap argExpr -> [t, d, ds, fn]) -> Just $ ForeachTensorArgs t d ds fn
           _ -> Nothing,
-        mkExpr = \(ForeachTensorArgs t d ds fn) -> [implicit t, implicit d, implicitIrrelevant ds, explicit fn]
+        mkExpr = \(ForeachTensorArgs t d ds fn) -> [implicit t, implicit d, implicit ds, explicit fn]
       }
+
+-- | Arguments for `Transpose`
+data TransposeTensorArgs expr = TransposeTensorArgs
+  { transposeType :: expr,
+    transposeDims :: expr,
+    transposeTensor :: expr
+  }
+
+instance IsArgs TransposeTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, ds, xs]) -> Just $ TransposeTensorArgs t ds xs
+          _ -> Nothing,
+        mkExpr = \(TransposeTensorArgs t ds xs) -> [implicit t, implicit ds, explicit xs]
+      }
+
+traverseTransposeTensor :: (Applicative f) => (t -> f t) -> TransposeTensorArgs t -> f (TransposeTensorArgs t)
+traverseTransposeTensor f (TransposeTensorArgs t ds xs) = TransposeTensorArgs t ds <$> f xs
 
 -- | Arguments for `ForeachVector`
 data ForeachVectorArgs expr = ForeachVectorArgs
@@ -433,6 +485,49 @@ instance IsArgs MapListArgs where
       }
 
 --------------------------------------------------------------------------------
+-- ReverseList
+
+-- | Arguments for `ReverseList`
+data ReverseListArgs expr = ReverseListArgs
+  { reverseListElemType :: expr,
+    reverseListList :: expr
+  }
+
+instance IsArgs ReverseListArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, xs]) -> Just $ ReverseListArgs t xs
+          _ -> Nothing,
+        mkExpr = \(ReverseListArgs t xs) -> [implicit t, explicit xs]
+      }
+
+--------------------------------------------------------------------------------
+-- AppendList
+
+-- | Arguments for `AppendList`
+data AppendListArgs expr = AppendListArgs
+  { appendListType :: expr,
+    appendListOp1 :: expr,
+    appendListOp2 :: expr
+  }
+
+instance IsArgs AppendListArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, xs, ys]) -> Just $ AppendListArgs t xs ys
+          _ -> Nothing,
+        mkExpr = \(AppendListArgs t xs ys) -> [implicit t, explicit xs, explicit ys]
+      }
+
+traverseAppendListArgs :: (Monad m) => (expr -> m expr) -> AppendListArgs expr -> m (AppendListArgs expr)
+traverseAppendListArgs f AppendListArgs {..} = do
+  appendListOp1' <- f appendListOp1
+  appendListOp2' <- f appendListOp2
+  return $ AppendListArgs {appendListOp1 = appendListOp1', appendListOp2 = appendListOp2', ..}
+
+--------------------------------------------------------------------------------
 -- FoldList
 
 -- | Arguments for `MapList`
@@ -458,8 +553,8 @@ instance IsArgs FoldListArgs where
 
 -- | Arguments for `VectorToList`
 data VectorToListArgs expr = VectorToListArgs
-  { vectorToListElementType :: GenericArg expr,
-    vectorToListSize :: GenericArg expr,
+  { vectorToListElementType :: expr,
+    vectorToListSize :: expr,
     vectorToListArgs :: [expr]
   }
 
@@ -467,9 +562,9 @@ instance IsArgs VectorToListArgs where
   accessSpine =
     Access
       { getExpr = \case
-          t : n : xs -> Just $ VectorToListArgs t n (fmap argExpr xs)
+          t : n : xs -> Just $ VectorToListArgs (argExpr t) (argExpr n) (fmap argExpr xs)
           _ -> Nothing,
-        mkExpr = \(VectorToListArgs t n xs) -> t : n : fmap explicit xs
+        mkExpr = \(VectorToListArgs t n xs) -> implicit t : implicit n : fmap explicit xs
       }
 
 -- | Arguments for `Iterate`
@@ -514,18 +609,18 @@ data QuantifyRatTensorArgs expr body = QuantifyRatTensorArgs
   }
 
 accessQuantifyRatTensorSpine ::
-  (HasLambdaConstructor expr body) =>
-  Accessor [GenericArg (expr builtin)] (QuantifyRatTensorArgs (expr builtin) (body builtin))
+  (HasLambdaConstructor expr thunk closure) =>
+  Accessor [GenericArg (thunk builtin)] (QuantifyRatTensorArgs (thunk builtin) (closure builtin))
 accessQuantifyRatTensorSpine =
   Access
     { getExpr = \case
-        (fmap argExpr -> [dims, fn]) -> case getExpr accessLamC fn of
+        (fmap argExpr -> [dims, fn]) -> case getExpr accessForcedLamC fn of
           Just (binder, body) -> Just (QuantifyRatTensorArgs dims binder body)
           _ -> Nothing
         _ -> Nothing,
       mkExpr = \(QuantifyRatTensorArgs dims binder body) ->
         [ implicitIrrelevant dims,
-          explicit (mkExpr accessLamC (binder, body))
+          explicit (mkExpr accessForcedLamC (binder, body))
         ]
     }
 
@@ -537,18 +632,18 @@ data QuantifyRecordArgs expr body = QuantifyRecordArgs
   }
 
 accessQuantifyRecordSpine ::
-  (HasLambdaConstructor expr body) =>
-  Accessor [GenericArg (expr builtin)] (QuantifyRecordArgs (expr builtin) (body builtin))
+  (HasLambdaConstructor expr thunk closure) =>
+  Accessor [GenericArg (thunk builtin)] (QuantifyRecordArgs (thunk builtin) (closure builtin))
 accessQuantifyRecordSpine =
   Access
     { getExpr = \case
-        (fmap argExpr -> [typ, fn]) -> case getExpr accessLamC fn of
+        (fmap argExpr -> [typ, fn]) -> case getExpr accessForcedLamC fn of
           Just (binder, body) -> Just (QuantifyRecordArgs typ binder body)
           _ -> Nothing
         _ -> Nothing,
       mkExpr = \(QuantifyRecordArgs dims binder body) ->
         [ implicitIrrelevant dims,
-          explicit (mkExpr accessLamC (binder, body))
+          explicit (mkExpr accessForcedLamC (binder, body))
         ]
     }
 

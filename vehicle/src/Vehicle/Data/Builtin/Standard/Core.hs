@@ -118,22 +118,13 @@ compareNatAccessor =
       mkExpr = \op -> BuiltinFunction (CompareNat op)
     }
 
-compareRatTensorPointwiseAccessor :: Accessor Builtin ComparisonOp
-compareRatTensorPointwiseAccessor =
+compareRatTensorAccessor :: Accessor Builtin ComparisonOp
+compareRatTensorAccessor =
   Access
     { getExpr = \case
-        BuiltinFunction (CompareRatTensorPointwise op) -> Just op
+        BuiltinFunction (CompareRatTensor op) -> Just op
         _ -> Nothing,
-      mkExpr = \op -> BuiltinFunction (CompareRatTensorPointwise op)
-    }
-
-compareRatTensorReducedAccessor :: Accessor Builtin ComparisonOp
-compareRatTensorReducedAccessor =
-  Access
-    { getExpr = \case
-        DerivedFunction (CompareRatTensorReduced op) -> Just op
-        _ -> Nothing,
-      mkExpr = \op -> DerivedFunction (CompareRatTensorReduced op)
+      mkExpr = \op -> BuiltinFunction (CompareRatTensor op)
     }
 
 --------------------------------------------------------------------------------
@@ -161,8 +152,7 @@ instance BuiltinHasBoolLiterals Builtin where
 
   accessCompareIndexBuiltin = compareIndexAccessor
   accessCompareNatBuiltin = compareNatAccessor
-  accessCompareRatTensorPointwiseBuiltin = compareRatTensorPointwiseAccessor
-  accessCompareRatTensorReducedBuiltin = compareRatTensorReducedAccessor
+  accessCompareRatTensorBuiltin = compareRatTensorAccessor
 
   accessQuantifyRatTensorBuiltin =
     Access
@@ -274,8 +264,10 @@ instance BuiltinHasListLiterals Builtin where
         mkExpr = \() -> BuiltinConstructor Cons
       }
 
+  accessAppendListBuiltin = functionAccessor AppendList
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -304,6 +296,7 @@ instance BuiltinHasTensors Builtin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor AtTensor
+  accessTransposeBuiltin = functionAccessor Transpose
 
 --------------------------------------------------------------------------------
 -- Others
@@ -351,18 +344,18 @@ builtinCast :: BuiltinCast -> DSLExpr Builtin
 builtinCast = builtin . BuiltinCast
 
 accessFromNatToIndex ::
-  (HasBuiltinConstructor expr) =>
-  Accessor (expr Builtin) (FromNatToIndexArgs (expr Builtin))
+  (HasBuiltinConstructor expr thunk) =>
+  Accessor (expr Builtin) (FromNatToIndexArgs (thunk Builtin))
 accessFromNatToIndex = accessArgs (castAccessor (FromNat FromNatToRat))
 
 accessFromNatToRat ::
-  (HasBuiltinConstructor expr) =>
-  Accessor (expr Builtin) (FromNatToSimpleArgs (expr Builtin))
+  (HasBuiltinConstructor expr thunk) =>
+  Accessor (expr Builtin) (FromNatToSimpleArgs (thunk Builtin))
 accessFromNatToRat = accessArgs (castAccessor (FromNat FromNatToIndex))
 
 accessFromVectorToList ::
-  (HasBuiltinConstructor expr) =>
-  Accessor (expr Builtin) (VectorToListArgs (expr Builtin))
+  (HasBuiltinConstructor expr thunk) =>
+  Accessor (expr Builtin) (VectorToListArgs (thunk Builtin))
 accessFromVectorToList = accessArgs (castAccessor FromVectorToList)
 
 isTensorType :: DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin

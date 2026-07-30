@@ -1,54 +1,51 @@
--- | Record-handling cases for the loss backend, split out from
--- 'Vehicle.Backend.Loss.LossCompilation'.
 module Vehicle.Backend.Loss.RecordCompilation
   ( wrapQuantifyRecordForLoss,
   )
 where
 
 import Vehicle.Backend.Loss.Core
-import Vehicle.Compile.Normalise.NBE qualified as NBE
-import Vehicle.Compile.Normalise.Quote (unnormaliseInCtx)
+import Vehicle.Compile.Normalise.Force (forceThunk)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
+import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar, constructTensorisableDims)
+import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar)
 import Vehicle.Data.Builtin.Standard (Builtin)
-import Vehicle.Data.Code.DSL
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Value
-import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Bound.Context.Name (getFreshTensorBinderName)
 import Vehicle.Data.Variable.Bound.Context.Name.Class (getNameContext)
 import Vehicle.Data.Variable.Free.Context (getRecordFields, getRecordProvenance)
 
---------------------------------------------------------------------------------
--- Record quantifier compilation
-
--- | Mirror of 'Solver.wrapQuantifyRecord' for FM extraction: replaces the
--- record binder with a flat tensor binder and reconstructs the record in the
--- body via '_<Name>FromTensor'.
+-- | Loss-side counterpart of wrapQuantifyRecord in
+--  Vehicle.Backend.Solver.UserVariableElimination, which wraps the binder &
+--  body of a record quantifier in a tensor quantifier
+--  e.g. given Pair has fields { a : Real, b : Real }
+--  forall (r : Pair) . (body)
+--  becomes
+--  forall (_t0 : tensor Real [2]) . (body (_PairFromTensor _t0))
 wrapQuantifyRecordForLoss ::
   (MonadLogic m) =>
-  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
-  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
+  QuantifyRecordArgs (Thunk Builtin) (Closure Builtin) ->
+  m (QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin))
 wrapQuantifyRecordForLoss QuantifyRecordArgs {..} = do
   namedCtx <- getNameContext
-  recordTypeIdent <- case toTypeValue quantifyRecordType of
-    VFreeTypeVar v _spine -> pure v
+  forcedType <- forceThunk quantifyRecordType
+  recordTypeIdent <- case forcedType of
+    VFreeVar v _spine -> pure v
     _ -> developerError "Record binder is not of expected format."
 
-  recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody
+  let recordQLam = unnormalise (boundCtxLv namedCtx) $ VLam quantifyRecordBinder quantifyRecordBody
   fields <- getRecordFields recordTypeIdent
-  let shape = constructTensorisableDims fields
-  let dims = mkDims shape
+  shape <- getTensorRecordShape fields
+  let dims = Forced $ mkDims shape
 
   let Closure boundEnv _body = quantifyRecordBody
-  tensorType <- NBE.eval namedCtx boundEnv $ fromDSL mempty $ tTensor tRat (toDSL dims)
-  normalisedDims <- NBE.eval namedCtx boundEnv dims
+  let tensorType = Forced $ ITensorType (Forced IRatType) dims
   let tensorBinder = mkExplicitBinder tensorType (Just (mempty, getFreshTensorBinderName namedCtx))
 
   let tensorBoundVar = explicit $ BoundVar mempty 0
   recordTypeProv <- getRecordProvenance recordTypeIdent
-  let fromTensorExpr = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
+  let fromTensorExpr = App (FreeVar recordTypeProv $ constructFromTensorFreeVar recordTypeIdent) [tensorBoundVar]
 
   let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
-  return $ QuantifyRatTensorArgs normalisedDims tensorBinder (Closure boundEnv nestedBody)
+  return $ QuantifyRatTensorArgs dims tensorBinder (Closure boundEnv nestedBody)

@@ -5,17 +5,17 @@ module Vehicle.Data.Builtin.Loss
 where
 
 import GHC.Generics (Generic)
+import Vehicle.Compile.Normalise.Builtin
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Data.Builtin.Core.BasicOperations
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Builtin.Standard.Core qualified as S
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value (Value)
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor)
-import Vehicle.Prelude (Name, Pretty (..), developerError)
+import Vehicle.Prelude (Name, Pretty (..))
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -104,9 +104,12 @@ data LossBuiltinFunction
   | StackTensor
   | ConstTensor
   | ForeachTensor
+  | Transpose
   | -- List
     MapList
   | FoldList
+  | ReverseList
+  | AppendList
   | -- Vector
     ForeachVector
   | AtVector
@@ -132,8 +135,11 @@ lossToStandardBuiltinFunction = \case
   StackTensor {} -> S.StackTensor {}
   ConstTensor -> S.ConstTensor
   ForeachTensor -> S.ForeachTensor
+  Transpose -> S.Transpose
   MapList -> S.MapList
   FoldList -> S.FoldList
+  ReverseList -> S.ReverseList
+  AppendList -> S.AppendList
   ForeachVector -> S.ForeachVector
   AtVector -> S.AtVector
 
@@ -280,6 +286,8 @@ instance BuiltinHasListLiterals LossBuiltin where
   accessConsBuiltin = zeroArityConstructorAccessor Cons
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
+  accessAppendListBuiltin = functionAccessor AppendList
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -301,6 +309,7 @@ instance BuiltinHasTensors LossBuiltin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor AtTensor
+  accessTransposeBuiltin = functionAccessor Transpose
 
 instance BuiltinHasForeach LossBuiltin where
   accessForeachTensorBuiltin = functionAccessor ForeachTensor
@@ -309,56 +318,62 @@ instance BuiltinHasForeach LossBuiltin where
 --------------------------------------------------------------------------------
 -- Normalisation
 
-instance HasTensorLiterals Value LossBuiltin where
+instance (HasBuiltinConstructor expr thunk) => HasTensorLiterals expr LossBuiltin where
   tensorLiterals =
     [ Wrapper accessNatTensorLiteral,
       Wrapper accessRatTensorLiteral
     ]
 
-instance HasLiftableTensorOperations LossBuiltin where
+instance
+  (HasBuiltinConstructor expr thunk) =>
+  HasLiftableTensorOperations expr thunk LossBuiltin
+  where
   liftableTensorOp1s =
-    [ (getExpr accessNegRatTensor, evalNegRatTensor, IRatType)
+    [ (accessNegRatTensor, IRatType)
     ]
 
   liftableTensorOp2s =
-    [ (getExpr accessAddRatTensor, evalAddRatTensor, IRatType),
-      (getExpr accessMulRatTensor, evalMulRatTensor, IRatType),
-      (getExpr accessSubRatTensor, evalSubRatTensor, IRatType),
-      (getExpr accessDivRatTensor, evalDivRatTensor, IRatType),
-      (getExpr accessMinRatTensor, evalMinRatTensor, IRatType),
-      (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType)
+    [ (accessAddRatTensor, IRatType),
+      (accessMulRatTensor, IRatType),
+      (accessSubRatTensor, IRatType),
+      (accessDivRatTensor, IRatType),
+      (accessMinRatTensor, IRatType),
+      (accessMaxRatTensor, IRatType)
     ]
+
+  liftableTensorComparisons = []
 
 instance NormalisableBuiltin LossBuiltin where
   evalScheme = \case
     LossBuiltinFunction f -> case f of
-      Add AddNat -> Simple evalAddNat
-      Mul MulNat -> Simple evalMulNat
-      Neg NegRatTensor -> Simple evalNegRatTensor
-      Add AddRatTensor -> Simple evalAddRatTensor
-      Sub SubRatTensor -> Simple evalSubRatTensor
-      Mul MulRatTensor -> Simple evalMulRatTensor
-      Div DivRatTensor -> Simple evalDivRatTensor
-      Min MinRatTensor -> Simple evalMinRatTensor
-      Max MaxRatTensor -> Simple evalMaxRatTensor
-      Pow PowRatTensor -> Simple evalPowRatTensor
+      Add AddNat -> Eval evalAddNat
+      Mul MulNat -> Eval evalMulNat
+      Neg NegRatTensor -> Eval evalNegRatTensor
+      Add AddRatTensor -> Eval evalAddRatTensor
+      Sub SubRatTensor -> Eval evalSubRatTensor
+      Mul MulRatTensor -> Eval evalMulRatTensor
+      Div DivRatTensor -> Eval evalDivRatTensor
+      Min MinRatTensor -> Eval evalMinRatTensor
+      Max MaxRatTensor -> Eval evalMaxRatTensor
+      Pow PowRatTensor -> Eval evalPowRatTensor
       Log LogRatTensor -> None
       Exp ExpRatTensor -> None
-      ReduceAddRatTensor -> Simple evalReduceAddRatTensor
-      ReduceMulRatTensor -> Simple evalReduceMulRatTensor
-      ReduceMinRatTensor -> Simple evalReduceMinRatTensor
-      ReduceMaxRatTensor -> Simple evalReduceMaxRatTensor
-      AtTensor -> NonSimple evalAtTensor
-      StackTensor -> Simple evalStackTensor
-      ConstTensor -> Simple evalConstTensor
-      FoldList -> NonSimple evalFoldList
-      MapList -> NonSimple evalMapList
-      ForeachTensor -> NonSimple evalForeachTensor
-      ForeachVector -> NonSimple evalForeachVector
-      AtVector -> Simple evalAtVector
+      ReduceAddRatTensor -> Eval evalReduceAddRatTensor
+      ReduceMulRatTensor -> Eval evalReduceMulRatTensor
+      ReduceMinRatTensor -> Eval evalReduceMinRatTensor
+      ReduceMaxRatTensor -> Eval evalReduceMaxRatTensor
+      AtTensor -> Eval evalAtTensor
+      StackTensor -> Eval evalStackTensor
+      ConstTensor -> Eval evalConstTensor
+      Transpose -> Eval evalTransposeTensor
+      FoldList -> Eval evalFoldList
+      MapList -> Eval evalMapList
+      ReverseList -> Eval evalReverseList
+      AppendList -> Eval evalAppendList
+      ForeachTensor -> Eval evalForeachTensor
+      ForeachVector -> Eval evalForeachVector
+      AtVector -> Eval evalAtVector
     _ -> None
-
-  blockingStatus = developerError "Blocking arguments not yet implemented for LossBuiltin"
 
   isTypeClassOp _ = False
 

@@ -331,6 +331,13 @@ class SearchRatTensor(Expression):
 
 
 @dataclass(frozen=True)
+class Transpose(Expression):
+    """Transpose: reverses all axes of a tensor (numpy-style)."""
+
+    xs: Expression
+
+
+@dataclass(frozen=True)
 class Dimension(Expression):
 
     value: int
@@ -463,20 +470,20 @@ class FieldType(AST, metaclass=ABCMeta):
 
 
 @dataclass(frozen=True)
-class JFieldScalarReal(FieldType):
-    """Scalar Real field type: JFieldScalarReal"""
+class FieldScalarReal(FieldType):
+    """Scalar Real field type: FieldScalarReal"""
 
 
 @dataclass(frozen=True)
-class JFieldTensorReal(FieldType):
-    """Tensor Real field type: JFieldTensorReal shape - each entry is a concrete int or a symbolic dim name"""
+class FieldTensorReal(FieldType):
+    """Tensor Real field type: FieldTensorReal shape - each entry is a concrete int or a symbolic dim name"""
 
     shape: Sequence[Annotated[int | str, EitherWireForm]]
 
 
 @dataclass(frozen=True)
-class JFieldRecordRef(FieldType):
-    """Nested record field type: JFieldRecordRef schema"""
+class FieldRecordRef(FieldType):
+    """Nested record field type: FieldRecordRef schema"""
 
     schema: Name
 

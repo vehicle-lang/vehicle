@@ -68,8 +68,7 @@ def _check_types_module(
     types: ModuleType | None,
 ) -> None:
     """Raise if the spec declares @tensor records but no types module is provided."""
-    if not isinstance(program, vcl.Main):
-        return
+    assert isinstance(program, vcl.Main)
     schemas = [d for d in program.declarations if isinstance(d, vcl.DefRecordSchema)]
     if not schemas:
         return

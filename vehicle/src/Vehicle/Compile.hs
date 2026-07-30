@@ -8,7 +8,7 @@ module Vehicle.Compile
 where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Writer (MonadWriter (..), WriterT (..))
+import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
 import System.Directory (makeAbsolute)
 import Vehicle.Backend.ITP.Agda
 import Vehicle.Backend.ITP.Imandra
@@ -158,16 +158,15 @@ compileToLossFunction ::
   Prog Builtin ->
   OutputAsJSON ->
   m ()
-compileToLossFunction LossOptions {..} typedProg outputAsJSON =
-  logCompilerPass Loss $ do
-    lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
-    hoistedProg <- hoistInferableParameters lossTensorProg
-    functionalisedProg <- functionaliseResources hoistedProg
-    jsonProg <- convertToJSONProg functionalisedProg
-    let outputText
-          | outputAsJSON = prettyAsJSON jsonProg
-          | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
-    writeResultToFile Nothing outputFile outputText
+compileToLossFunction LossOptions {..} typedProg outputAsJSON = do
+  lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
+  hoistedProg <- hoistInferableParameters lossTensorProg
+  functionalisedProg <- functionaliseResources hoistedProg
+  jsonProg <- convertToJSONProg functionalisedProg
+  let outputText
+        | outputAsJSON = prettyAsJSON jsonProg
+        | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
+  writeResultToFile Nothing outputFile outputText
 
 hoistInferableParameters ::
   (MonadCompile m, PrintableBuiltin builtin) =>

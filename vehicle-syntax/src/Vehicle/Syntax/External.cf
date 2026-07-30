@@ -42,9 +42,11 @@ position token TokList      {"List"};
 position token TokVector    {"Vector"};
 position token TokTensor    {"Tensor"};
 position token TokNonCastingTensor   {"NonCastingTensor"};
+position token TokNonCastingReal   {"NonCastingReal"};
 position token TokForall    {"forall"};
 position token TokExists    {"exists"};
 position token TokForeach   {"foreach"};
+position token TokTranspose {"transpose"};
 position token TokImpl      {"=>"};
 position token TokAnd       {"and"};
 position token TokOr        {"or"};
@@ -115,8 +117,9 @@ position token TokSeqClose   {"]"};
 position token TokAt         {"!"};
 position token TokMap        {"map"};
 position token TokFold       {"fold"};
-position token TokConst      {"const"};
+position token TokAppend     {"append"};
 
+position token TokConst     {"const"};
 position token TokReduceOr  {"reduceOr"};
 position token TokReduceAnd {"reduceAnd"};
 position token TokReduceAdd {"reduceAdd"};
@@ -136,6 +139,8 @@ position token TokAnnDefaultOpt {"default"};
 position token Name         (letter (letter | digit | '_')*) ;
 position token FieldAccess  ({"."} letter (letter | digit | '_')*);
 position token HoleToken    ({"?"} (letter | digit | '_')*);
+
+separator nonempty Name ",";
 
 -- * Modalities
 
@@ -187,10 +192,6 @@ separator RecordFieldDef ",";
 
 FieldAssign. RecordFieldAssign ::= Name "=" Expr;
 separator RecordFieldAssign ",";
-
-Supports.   RecordSupports ::= "supports" [Name];
-NoSupports. RecordSupports ::= "";
-separator nonempty Name ",";
 
 -- * Literals
 
@@ -311,7 +312,9 @@ CompareRatTensorReducedGe.    Expr16 ::= TokCompareRatTensorReducedGe;
 CompareRatTensorReducedGt.    Expr16 ::= TokCompareRatTensorReducedGt;
 
 Nil.           Expr16 ::= TokNil;
+Append.        Expr16 ::= TokAppend;
 Const.         Expr16 ::= TokConst;
+Transpose.     Expr16 ::= TokTranspose;
 Map.           Expr16 ::= TokMap;
 Fold.          Expr16 ::= TokFold;
 ReduceOr.      Expr16 ::= TokReduceOr;
@@ -332,6 +335,7 @@ HasMap.        Expr16 ::= TokHasMap;
 HasFold.       Expr16 ::= TokHasFold;
 IsTensorType.  Expr16 ::= TokIsTensorType;
 NonCastingTensor. Expr16 ::= TokNonCastingTensor;
+NonCastingReal. Expr16 ::= TokNonCastingReal;
 
 coercions Expr 16;
 separator Expr ",";
@@ -357,6 +361,9 @@ DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
 DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}" RecordSupports;
+
+Supports.   RecordSupports ::= "supports" [Name];
+NoSupports. RecordSupports ::= "";
 
 separator Decl ";";
 

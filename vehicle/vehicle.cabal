@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.26.0
+version:            0.26.1
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -142,8 +142,8 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
+    Vehicle.Compile.Constants.ForcedValue
     Vehicle.Compile.Constants.Rational
-    Vehicle.Compile.Constants.Value
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
     Vehicle.Compile.ExpandResources
@@ -152,7 +152,6 @@ library
     Vehicle.Compile.ExpandResources.Network
     Vehicle.Compile.ExpandResources.Parameter
     Vehicle.Compile.Monomorphisation
-    Vehicle.Compile.Normalise.NBE
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
     Vehicle.Compile.Print
@@ -169,9 +168,9 @@ library
     Vehicle.Data.Builtin.Standard
     Vehicle.Data.Code.BooleanExpr
     Vehicle.Data.Code.DSL
+    Vehicle.Data.Code.ForcedValue
     Vehicle.Data.Code.Interface
     Vehicle.Data.Code.LinearExpr
-    Vehicle.Data.Code.Value
     Vehicle.Data.DSL
     Vehicle.Data.Hashing
     Vehicle.Data.MaybeTrivial
@@ -200,6 +199,7 @@ library
 
   other-modules:
     Paths_vehicle
+    Vehicle.Backend.ITP.Core
     Vehicle.Backend.Loss
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
@@ -222,8 +222,12 @@ library
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.LiftIf
-    Vehicle.Compile.LiftMinMax
     Vehicle.Compile.LowerNot
+    Vehicle.Compile.Normalise.Builtin
+    Vehicle.Compile.Normalise.Core
+    Vehicle.Compile.Normalise.Force
+    Vehicle.Compile.Normalise.RewriteRules
+    Vehicle.Compile.Normalise.TypedValue
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
     Vehicle.Compile.Property
@@ -243,7 +247,6 @@ library
     Vehicle.Compile.Type.Constraint.InstanceSolver
     Vehicle.Compile.Type.Constraint.UnificationSolver
     Vehicle.Compile.Type.Core
-    Vehicle.Compile.Type.Force
     Vehicle.Compile.Type.Generalise
     Vehicle.Compile.Type.Irrelevance
     Vehicle.Compile.Type.Meta
@@ -282,9 +285,7 @@ library
     Vehicle.Data.Builtin.Decidability
     Vehicle.Data.Builtin.Decidability.Instances
     Vehicle.Data.Builtin.Decidability.Type
-    Vehicle.Data.Builtin.Interface.Blocked
     Vehicle.Data.Builtin.Interface.InputOutputInsertion
-    Vehicle.Data.Builtin.Interface.Normalise
     Vehicle.Data.Builtin.Interface.Print
     Vehicle.Data.Builtin.Interface.Type
     Vehicle.Data.Builtin.Linearity
@@ -302,7 +303,6 @@ library
     Vehicle.Data.Code.Interface.Operations
     Vehicle.Data.Code.Interface.Patterns
     Vehicle.Data.Code.ModuleInterface
-    Vehicle.Data.Code.TypedView
     Vehicle.Data.DifferentiableLogic
     Vehicle.Data.Universe
     Vehicle.Data.Variable.Bound.Context.Core

@@ -1,0 +1,26 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s spec.vcl",
+    "needs": [
+      "spec.vcl"
+    ]
+  },
+  {
+    "name": "VNNLib",
+    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries/ --network g:fake.onnx",
+    "needs": [
+      "spec.vcl",
+      "fake.onnx"
+    ],
+    "produces": [
+      "VNNLib.queries/allTransposedBounded-query1.txt",
+      "VNNLib.queries/firstAxisSlice-query1.txt",
+      "VNNLib.queries/*.vcl-plan"
+    ],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "sizeOnly": ".vcl-plan"
+  }
+]

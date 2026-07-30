@@ -407,12 +407,14 @@ elabExpr expr = case expr of
   B.Vector tk -> builtinType V.VectorType tk []
   B.Tensor tk -> builtinTypeClassOp V.TensorTypeTC tk []
   B.NonCastingTensor tk -> builtinType V.TensorType tk []
+  B.NonCastingReal tk -> builtinType V.RatType tk []
   B.Nil tk -> constructor V.Nil tk []
   B.Cons e1 tk e2 -> constructor V.Cons tk [e1, e2]
   B.Not tk e -> builtinFunction V.Not tk [e]
   B.Impl e1 tk e2 -> builtinFunction V.Implies tk [e1, e2]
   B.And e1 tk e2 -> builtinFunction V.And tk [e1, e2]
   B.Or e1 tk e2 -> builtinFunction V.Or tk [e1, e2]
+  B.Transpose tk -> builtinFunction V.Transpose tk []
   B.If tk1 e1 _ e2 _ e3 -> builtinFunction V.If tk1 [e1, e2, e3]
   B.Eq e1 tk e2 -> standardLibComparison V.Eq tk e1 e2
   B.Ne e1 tk e2 -> standardLibComparison V.Ne tk e1 e2
@@ -420,12 +422,12 @@ elabExpr expr = case expr of
   B.Lt e1 tk e2 -> standardLibComparison V.Lt tk e1 e2
   B.Ge e1 tk e2 -> standardLibComparison V.Ge tk e1 e2
   B.Gt e1 tk e2 -> standardLibComparison V.Gt tk e1 e2
-  B.EqPoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Eq) tk [e1, e2]
-  B.NePoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Ne) tk [e1, e2]
-  B.LePoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Le) tk [e1, e2]
-  B.LtPoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Lt) tk [e1, e2]
-  B.GePoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Ge) tk [e1, e2]
-  B.GtPoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Gt) tk [e1, e2]
+  B.EqPoint e1 tk e2 -> elabComparePointwise V.Eq tk [e1, e2]
+  B.NePoint e1 tk e2 -> elabComparePointwise V.Ne tk [e1, e2]
+  B.LePoint e1 tk e2 -> elabComparePointwise V.Le tk [e1, e2]
+  B.LtPoint e1 tk e2 -> elabComparePointwise V.Lt tk [e1, e2]
+  B.GePoint e1 tk e2 -> elabComparePointwise V.Ge tk [e1, e2]
+  B.GtPoint e1 tk e2 -> elabComparePointwise V.Gt tk [e1, e2]
   B.Add e1 tk e2 -> standardLibFunction "addTC" tk [e1, e2]
   B.Sub e1 tk e2 -> standardLibFunction "subTC" tk [e1, e2]
   B.Mul e1 tk e2 -> standardLibFunction "mulTC" tk [e1, e2]
@@ -460,21 +462,22 @@ elabExpr expr = case expr of
   B.CompareNatLt tk -> builtinFunction (V.CompareNat V.Lt) tk []
   B.CompareNatGe tk -> builtinFunction (V.CompareNat V.Ge) tk []
   B.CompareNatGt tk -> builtinFunction (V.CompareNat V.Gt) tk []
-  B.CompareRatTensorPointwiseEq tk -> builtinFunction (V.CompareRatTensorPointwise V.Eq) tk []
-  B.CompareRatTensorPointwiseNe tk -> builtinFunction (V.CompareRatTensorPointwise V.Ne) tk []
-  B.CompareRatTensorPointwiseLe tk -> builtinFunction (V.CompareRatTensorPointwise V.Le) tk []
-  B.CompareRatTensorPointwiseLt tk -> builtinFunction (V.CompareRatTensorPointwise V.Lt) tk []
-  B.CompareRatTensorPointwiseGe tk -> builtinFunction (V.CompareRatTensorPointwise V.Ge) tk []
-  B.CompareRatTensorPointwiseGt tk -> builtinFunction (V.CompareRatTensorPointwise V.Gt) tk []
-  B.CompareRatTensorReducedEq tk -> derivedFunction (V.CompareRatTensorReduced V.Eq) tk []
-  B.CompareRatTensorReducedNe tk -> derivedFunction (V.CompareRatTensorReduced V.Ne) tk []
-  B.CompareRatTensorReducedLe tk -> derivedFunction (V.CompareRatTensorReduced V.Le) tk []
-  B.CompareRatTensorReducedLt tk -> derivedFunction (V.CompareRatTensorReduced V.Lt) tk []
-  B.CompareRatTensorReducedGe tk -> derivedFunction (V.CompareRatTensorReduced V.Ge) tk []
-  B.CompareRatTensorReducedGt tk -> derivedFunction (V.CompareRatTensorReduced V.Gt) tk []
+  B.CompareRatTensorPointwiseEq tk -> elabComparePointwise V.Eq tk []
+  B.CompareRatTensorPointwiseNe tk -> elabComparePointwise V.Ne tk []
+  B.CompareRatTensorPointwiseLe tk -> elabComparePointwise V.Le tk []
+  B.CompareRatTensorPointwiseLt tk -> elabComparePointwise V.Lt tk []
+  B.CompareRatTensorPointwiseGe tk -> elabComparePointwise V.Ge tk []
+  B.CompareRatTensorPointwiseGt tk -> elabComparePointwise V.Gt tk []
+  B.CompareRatTensorReducedEq tk -> elabCompareReduced V.Eq tk []
+  B.CompareRatTensorReducedNe tk -> elabCompareReduced V.Ne tk []
+  B.CompareRatTensorReducedLe tk -> elabCompareReduced V.Le tk []
+  B.CompareRatTensorReducedLt tk -> elabCompareReduced V.Lt tk []
+  B.CompareRatTensorReducedGe tk -> elabCompareReduced V.Ge tk []
+  B.CompareRatTensorReducedGt tk -> elabCompareReduced V.Gt tk []
   B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
+  B.Append tk -> builtinFunction V.AppendList tk []
   B.Const tk -> builtinFunction V.ConstTensor tk []
   B.ReduceOr tk -> builtinFunction V.ReduceOrTensor tk []
   B.ReduceAnd tk -> builtinFunction V.ReduceAndTensor tk []
@@ -567,6 +570,34 @@ elabTypeBinder elab folded = \case
   B.ImplicitTypeBinder modalities t -> mkBinder elab folded modalities (V.Implicit False) $ That t
   B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ That t
   B.BasicTypeBinder b -> elabBasicBinder elab folded b
+
+-- re: elabCompareReduced and elabComparePointwise, even though Pointwise and Reduced Tensor Comparisons are distinct in the frontend/user syntax,
+-- the compiler moves them to a single representation, V. CompareRatTensor, that is able to handle both pointwise and reduced comparisons
+elabCompareReduced :: (MonadElab m, IsToken token) => V.ComparisonOp -> token -> [B.Expr] -> m (V.Expr Builtin)
+elabCompareReduced op tk args = do
+  p <- mkProvenance tk
+  let fn = V.Builtin p (V.BuiltinFunction (V.CompareRatTensor op))
+  pDims <- elabExpr $ B.Nil $ mkToken B.TokNil "nil"
+  rDims <- elabExpr $ B.Hole $ mkToken B.HoleToken "_rDims"
+  let implArgs = [V.implicitIrrelevant pDims, V.implicit rDims]
+  explicitArgs <- fmap V.explicit <$> traverse elabExpr args
+  return $ V.normAppList fn (implArgs ++ explicitArgs)
+
+-- elabCompareReduced op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims", e1, e2]
+-- elabCompareReduced op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Nil $ mkToken B.TokNil "nil", B.Hole $ mkToken B.HoleToken "_rDims"]
+
+elabComparePointwise :: (MonadElab m, IsToken token) => V.ComparisonOp -> token -> [B.Expr] -> m (V.Expr Builtin)
+elabComparePointwise op tk args = do
+  p <- mkProvenance tk
+  let fn = V.Builtin p (V.BuiltinFunction (V.CompareRatTensor op))
+  pDims <- elabExpr $ B.Hole $ mkToken B.HoleToken "_pDims"
+  rDims <- elabExpr $ B.Nil $ mkToken B.TokNil "nil"
+  let implArgs = [V.implicitIrrelevant pDims, V.implicit rDims]
+  explicitArgs <- fmap V.explicit <$> traverse elabExpr args
+  return $ V.normAppList fn (implArgs ++ explicitArgs)
+
+-- elabComparePointwise op tk [e1, e2] = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil", e1, e2]
+-- elabComparePointwise op tk _ = builtinFunction (V.CompareRatTensor op) tk [B.Hole $ mkToken B.HoleToken "_pDims", B.Nil $ mkToken B.TokNil "nil"]
 
 findRelevance :: [B.Modality] -> V.Relevance
 findRelevance ms

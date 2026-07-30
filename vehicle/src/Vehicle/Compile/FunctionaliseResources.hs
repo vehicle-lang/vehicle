@@ -5,7 +5,7 @@ where
 
 import Control.Monad (when)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Control.Monad.Writer (MonadWriter (..), execWriterT)
+import Control.Monad.Writer.Strict (MonadWriter (..), execWriterT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList, insert, lookup)
@@ -118,7 +118,6 @@ functionaliseDecl d =
       logDebug MaxDetail $ prettyFriendly fun
       return (addResourceUsage i binderNames, Just fun)
     DefRecord {} ->
-      -- Register with empty usage so later decls can resolve the record name.
       return (addResourceUsage (identifierOf d) [], Just d)
 
 findResourceUses ::

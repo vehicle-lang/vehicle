@@ -136,6 +136,10 @@ class TensorFlowBuiltins(
         return tf.reduce_max(x)
 
     @override
+    def Transpose(self, xs: tf.Tensor) -> tf.Tensor:
+        return tf.transpose(xs)
+
+    @override
     def DimensionCons(self, head: int, tail: Sequence[int]) -> tuple[int, ...]:
         return (head, *tail)
 

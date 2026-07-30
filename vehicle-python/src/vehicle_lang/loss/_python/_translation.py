@@ -502,6 +502,14 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_Transpose(self, expression: vcl.Transpose) -> py.expr:
+        """Translate Transpose to builtin call."""
+        return py_app(
+            py_builtin("Transpose", provenance=vcl.MISSING),
+            self.translate_expression(expression.xs),
+            provenance=vcl.MISSING,
+        )
+
     def translate_AtTensor(self, expression: vcl.AtTensor) -> py.expr:
         """Translate AtTensor to builtin call."""
         return py_app(

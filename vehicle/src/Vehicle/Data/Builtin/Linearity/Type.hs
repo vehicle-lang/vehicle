@@ -80,10 +80,12 @@ typeOfBuiltinFunction p = \case
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxLinearity
   CompareIndex {} -> typeOfOp2 maxLinearity
-  CompareRatTensorPointwise {} -> typeOfOp2 maxLinearity
+  CompareRatTensor {} -> typeOfOp2 maxLinearity
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
+  ReverseList -> typeOfOp1
+  AppendList -> typeOfOp2 maxLinearity
   AtVector -> typeOfAt
   AtTensor -> typeOfAt
   StackTensor -> typeOfStack
@@ -91,6 +93,7 @@ typeOfBuiltinFunction p = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Transpose -> typeOfOp1
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case

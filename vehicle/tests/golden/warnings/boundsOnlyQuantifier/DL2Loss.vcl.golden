@@ -1,7 +1,7 @@
 @property;
 prop1 : Tensor Real;
-prop1 = search[x] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x -> 0.0)
+prop1 = search[x] nil (\ dims -> \ xs -> reduceMul xs) 0.0 1.0 (\ x -> 0.0)
 
 @property;
 prop2 : Tensor Real;
-prop2 = search[x] (\ dims -> \ xs -> reduceMul xs) nil 0.5 1.5 (\ x -> 0.0) * search[x] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x -> 0.0)
+prop2 = search[x] nil (\ dims -> \ xs -> reduceMul xs) 0.5 1.5 (\ x -> 0.0) * search[x] nil (\ dims -> \ xs -> reduceMul xs) 0.0 1.0 (\ x -> 0.0)

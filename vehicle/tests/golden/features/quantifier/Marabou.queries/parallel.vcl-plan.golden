@@ -144,17 +144,14 @@
                       "vehicleVariableCtx": [
                         "f₀[output]",
                         "f₀[input]",
-                        "y",
-                        "f₀[output]",
-                        "f₀[input]",
-                        "x"
+                        "y"
                       ],
                       "userVariables": [
-                        3
+                        0
                       ],
                       "queryVariableMapping": {
-                        "y0": 5,
-                        "x0": 4
+                        "y0": 2,
+                        "x0": 1
                       }
                     },
                     "variableCompilationTrace": {
@@ -167,7 +164,7 @@
                                 "tag": "UniModal",
                                 "contents": []
                               },
-                              "nestedStartingVariable": 4
+                              "nestedStartingVariable": 1
                             },
                             "AllDimensions"
                           ]
@@ -180,7 +177,7 @@
                                 "tag": "UniModal",
                                 "contents": []
                               },
-                              "nestedStartingVariable": 5
+                              "nestedStartingVariable": 2
                             },
                             "AllDimensions"
                           ]
@@ -193,7 +190,7 @@
                                 "tag": "UniModal",
                                 "contents": []
                               },
-                              "nestedStartingVariable": 3
+                              "nestedStartingVariable": 0
                             },
                             {
                               "constantValue": {
@@ -208,7 +205,7 @@
                               },
                               "coefficients": [
                                 [
-                                  4,
+                                  1,
                                   {
                                     "numerator": 1,
                                     "denominator": 1

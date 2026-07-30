@@ -7,10 +7,10 @@ import Data.List.NonEmpty
 import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Vehicle.Compile.Normalise.Builtin (evalIterate)
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (..), functionBlockingStatus)
-import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.DSL
@@ -197,6 +197,8 @@ instance BuiltinHasListLiterals LinearityBuiltin where
 
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
+  accessAppendListBuiltin = functionAccessor AppendList
 
 instance BuiltinHasIterate LinearityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate
@@ -219,15 +221,12 @@ instance PrintableBuiltin LinearityBuiltin where
 
 instance NormalisableBuiltin LinearityBuiltin where
   evalScheme b = case b of
-    LinearityFunction Iterate -> NonSimple evalIterate
+    LinearityFunction Iterate -> Eval evalIterate
     LinearityFunction _ -> None
     _ -> None
 
-  blockingStatus b spine = case b of
-    LinearityFunction f -> functionBlockingStatus f spine
-    _ -> DoesNotReduce
-
   isTypeClassOp _ = False
+
   isCast _ _ = Nothing
 
 --------------------------------------------------------------------------------

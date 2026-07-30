@@ -20,31 +20,6 @@ existsInList : (A -> Bool) -> List A -> Bool
 existsInList f xs = fold (\x y -> x or y) False (map f xs)
 
 --------------------------------------------------------------------------------
--- Tensor
---------------------------------------------------------------------------------
--- These operations have non-zero dimensions so that we have a unique
--- representation of relationships between zero-dimensional tensors
--- (i.e. pointwise comparison).
-
-eqRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-eqRatTensorReduced xs ys = reduceAnd (xs ==. ys)
-
-neRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-neRatTensorReduced xs ys = not (eqRatTensorReduced xs ys)
-
-leRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-leRatTensorReduced xs ys = reduceAnd (xs <=. ys)
-
-ltRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-ltRatTensorReduced xs ys = reduceAnd (xs <. ys)
-
-geRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-geRatTensorReduced xs ys = reduceAnd (xs >=. ys)
-
-gtRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-gtRatTensorReduced xs ys = reduceAnd (xs >. ys)
-
---------------------------------------------------------------------------------
 -- Index
 --------------------------------------------------------------------------------
 
@@ -215,7 +190,7 @@ natHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Nat
 natHasValidDatasetTensorElementType = {}
 
 @instance(default=0)
-realHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Real
+realHasValidDatasetTensorElementType : HasValidDatasetTensorElementType NonCastingReal
 realHasValidDatasetTensorElementType = {}
 
 -- Dataset list element types
@@ -231,7 +206,7 @@ vectorHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> H
 vectorHasValidDatasetListElementType = {}
 
 @instance
-tensorHasValidDatasetListElementType : {{HasValidDatasetTensorElementType t}} -> {{ IsTensorType t dims }} -> HasValidDatasetListElementType (Tensor t dims)
+tensorHasValidDatasetListElementType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetListElementType (NonCastingTensor t dims)
 tensorHasValidDatasetListElementType = {}
 
 @instance
@@ -255,7 +230,7 @@ vectorHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidData
 vectorHasValidDatasetType = {}
 
 @instance
-tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} ->  {{ IsTensorType t dims }} -> HasValidDatasetType (Tensor t dims)
+tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetType (NonCastingTensor t dims)
 tensorHasValidDatasetType = {}
 
 

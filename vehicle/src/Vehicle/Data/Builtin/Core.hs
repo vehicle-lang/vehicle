@@ -12,6 +12,9 @@ import Prettyprinter (Pretty (..))
 import Vehicle.Data.Builtin.Core.BasicOperations as X
 import Vehicle.Data.Builtin.Core.Derived as X
 import Vehicle.Data.Builtin.Core.TypeClass as X
+  ( TypeClass (..),
+    TypeClassOp (..),
+  )
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor
 
@@ -78,7 +81,7 @@ instance Pretty BuiltinConstructor where
     UnitLiteral -> "()"
     NatLiteral n -> pretty n
     IndexLiteral n -> pretty n
-    VectorLiteral -> "vec"
+    VectorLiteral -> "vecLit"
     BoolTensorLiteral x -> pretty x
     NatTensorLiteral x -> pretty x
     RatTensorLiteral x -> pretty x
@@ -97,7 +100,7 @@ data BuiltinFunction
   | If
   | CompareIndex ComparisonOp
   | CompareNat ComparisonOp
-  | CompareRatTensorPointwise ComparisonOp
+  | CompareRatTensor ComparisonOp
   | ReduceAndTensor
   | ReduceOrTensor
   | -- Rat operations
@@ -121,12 +124,15 @@ data BuiltinFunction
   | ConstTensor
   | Iterate
   | ForeachTensor
+  | Transpose
   | -- Vector operations
     AtVector
   | ForeachVector
   | -- List operations
     FoldList
   | MapList
+  | ReverseList
+  | AppendList
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -164,9 +170,11 @@ instance Pretty BuiltinFunction where
     ReduceMaxRatTensor -> "reduceMaxRatTensor"
     CompareIndex op -> comparisonOpName op <> "Index"
     CompareNat op -> comparisonOpName op <> "Nat"
-    CompareRatTensorPointwise op -> comparisonOpName op <> "RatTensorPointwise"
+    CompareRatTensor op -> comparisonOpName op <> "RatTensor"
     FoldList -> "foldList"
     MapList -> "mapList"
+    ReverseList -> "reverseList"
+    AppendList -> "appendList"
     ForeachTensor -> "foreachTensor"
     ForeachVector -> "foreachVector"
     Iterate -> "iterate"
@@ -174,6 +182,7 @@ instance Pretty BuiltinFunction where
     AtVector -> "atVector"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
+    Transpose -> "transpose"
 
 data BuiltinCast
   = -- Cast operations

@@ -20,16 +20,13 @@ def generate(spec_path: str | Path, output: TextIO | Path) -> None:
         ["--json", "list", "records", f"--specification={spec_path}"]
     )
     if raw is None:
-        raise VehicleInternalError("vehicle compile records produced no output")
+        raise VehicleInternalError("vehicle list records produced no output")
     program = vcl.Program.from_json(raw)
-    if not isinstance(program, vcl.Main):
-        raise RuntimeError(
-            f"unexpected Program shape from {spec_path}: {type(program).__name__}"
-        )
+    assert isinstance(program, vcl.Main)
     schemas = [d for d in program.declarations if isinstance(d, vcl.DefRecordSchema)]
 
     buf = io.StringIO()
-    _emit_module(buf, Path(str(spec_path)).name, schemas)
+    _emit_module(buf, Path(spec_path).name, schemas)
     text = buf.getvalue()
 
     if isinstance(output, (str, Path)):
@@ -38,7 +35,7 @@ def generate(spec_path: str | Path, output: TextIO | Path) -> None:
         output.write(text)
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="vehicle compile python-types",
         description="Emit a typed Python module with torch.Tensor subclasses for each @tensor record in the spec.",
@@ -52,7 +49,7 @@ def main() -> int:
         required=True,
         help="path to the output .py file, or '-' for stdout",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.output == "-":
         generate(args.specification, sys.stdout)
@@ -61,7 +58,7 @@ def main() -> int:
     return 0
 
 
-def _dq_tuple(names: list[str]) -> str:
+def _quoted_tuple(names: list[str]) -> str:
     inner = ", ".join(f'"{n}"' for n in names)
     if len(names) == 1:
         return f"({inner},)"
@@ -102,7 +99,7 @@ def _emit_schema(
     out.write("    # Make torch.* ops return plain Tensor, not this subclass.\n")
     out.write("    __torch_function__ = torch._C._disabled_torch_function_impl\n")
     out.write("\n")
-    out.write(f"    _FIELDS: tuple[str, ...] = {_dq_tuple(field_names)}\n")
+    out.write(f"    _FIELDS: tuple[str, ...] = {_quoted_tuple(field_names)}\n")
     out.write(f"    _FLAT_WIDTH: int = {total}\n")
     out.write("    _FIELD_SLOTS: dict[str, tuple[int, int]] = {\n")
     for fname, off, w in zip(field_names, offsets, field_widths):
@@ -121,25 +118,21 @@ def _emit_schema(
     out.write("        slabs = []\n")
     for fname, ftype in schema.fields:
         match ftype:
-            case vcl.JFieldScalarReal():
+            case vcl.FieldScalarReal():
                 out.write(f'        v_{fname} = torch.as_tensor(fields["{fname}"])\n')
                 out.write(
                     f"        slabs.append(v_{fname}.reshape(*v_{fname}.shape, 1))\n"
                 )
-            case vcl.JFieldTensorReal(shape):
+            case vcl.FieldTensorReal(shape):
                 out.write(f'        v_{fname} = torch.as_tensor(fields["{fname}"])\n')
                 width = _prod_shape(shape)
                 out.write(
                     f"        slabs.append(v_{fname}.reshape(*v_{fname}.shape[:-{len(shape)}], {width}))\n"
                 )
-            case vcl.JFieldRecordRef(_):
+            case vcl.FieldRecordRef(_):
                 out.write(f'        v_{fname} = fields["{fname}"]\n')
                 out.write(
                     f"        slabs.append(v_{fname}.as_subclass(torch.Tensor))\n"
-                )
-            case _:
-                raise NotImplementedError(
-                    f"unsupported FieldType: {type(ftype).__name__}"
                 )
     out.write(
         "        return torch.cat(slabs, dim=-1).as_subclass(cls)  # type: ignore[no-any-return]\n"
@@ -160,30 +153,26 @@ def _emit_schema(
         out.write(f'        lo, hi = {name}._FIELD_SLOTS["{fname}"]\n')
         out.write("        base = self.as_subclass(torch.Tensor)[..., lo:hi]\n")
         match ftype:
-            case vcl.JFieldScalarReal():
+            case vcl.FieldScalarReal():
                 out.write("        return base.reshape(self.shape[:-1])\n")
-            case vcl.JFieldTensorReal(shape):
+            case vcl.FieldTensorReal(shape):
                 shape_tuple = tuple(shape)
                 out.write(
                     f"        return base.reshape((*self.shape[:-1], *{shape_tuple!r}))\n"
                 )
-            case vcl.JFieldRecordRef(ref):
+            case vcl.FieldRecordRef(ref):
                 out.write(f"        return {ref}.from_tensor(base)\n")
-            case _:
-                raise NotImplementedError(
-                    f"unsupported FieldType: {type(ftype).__name__}"
-                )
 
 
 def _flat_width(ftype: vcl.FieldType, widths: dict[str, int]) -> int:
     match ftype:
-        case vcl.JFieldScalarReal():
+        case vcl.FieldScalarReal():
             return 1
-        case vcl.JFieldTensorReal(shape):
+        case vcl.FieldTensorReal(shape):
             return _prod_shape(shape)
-        case vcl.JFieldRecordRef(ref):
+        case vcl.FieldRecordRef(ref):
             if ref not in widths:
-                raise RuntimeError(
+                raise VehicleInternalError(
                     f"record schema {ref!r} referenced before definition; "
                     f"schemas must be emitted in topological order"
                 )
@@ -204,11 +193,11 @@ def _prod_shape(shape: Sequence[int | str]) -> int:
 
 def _field_annotation(ftype: vcl.FieldType) -> str:
     match ftype:
-        case vcl.JFieldScalarReal():
+        case vcl.FieldScalarReal():
             return 'Float[Tensor, ""]'
-        case vcl.JFieldTensorReal(shape):
+        case vcl.FieldTensorReal(shape):
             return f'Float[Tensor, "{" ".join(str(d) for d in shape)}"]'
-        case vcl.JFieldRecordRef(schema):
+        case vcl.FieldRecordRef(schema):
             return schema
         case _:
             raise NotImplementedError(f"unsupported FieldType: {type(ftype).__name__}")

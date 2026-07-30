@@ -96,6 +96,8 @@ class ABCTranslation(
                 return self.translate_DimensionNil(expression)
             case vcl_ast.ConstTensor():
                 return self.translate_ConstTensor(expression)
+            case vcl_ast.Transpose():
+                return self.translate_Transpose(expression)
             case vcl_ast.StackTensor():
                 return self.translate_StackTensor(expression)
             case vcl_ast.AtTensor():
@@ -245,6 +247,11 @@ class ABCTranslation(
     def translate_DefRecordSchema(
         self, declaration: vcl_ast.DefRecordSchema
     ) -> vcl_var.Declaration: ...
+
+    @abstractmethod
+    def translate_Transpose(
+        self, expression: vcl_ast.Transpose
+    ) -> vcl_var.Expression: ...
 
     @abstractmethod
     def translate_AtTensor(
