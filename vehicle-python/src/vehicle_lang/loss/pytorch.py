@@ -31,9 +31,9 @@ def load_specification(
     path: str | Path,
     *,
     logic: DifferentiableLogic = DL2DifferentiableLogic(),
-    samplers: Mapping[str, Any] | None = None,
+    samplers: dict[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
-    declaration_context: MutableMapping[str, Any] | None = None,
+    declaration_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Load a loss function compiled for PyTorch."""
 
@@ -53,7 +53,7 @@ def search(
     *,
     logic: DifferentiableLogic = DL2DifferentiableLogic(),
     declarations: Iterable[DeclarationName] = (),
-    declaration_context: MutableMapping[str, Any] | None = None,
+    declaration_context: dict[str, Any] | None = None,
     networks: dict[DeclarationName, Any] = {},
     datasets: dict[DeclarationName, Any] = {},
     parameters: dict[DeclarationName, Any] = {},

@@ -85,19 +85,16 @@ liftQuantifierDecl decl = case decl of
           runFreshNameBoundContextT $
             flip runReaderT (ident, p) $
               liftQuantifierProperty (Unforced emptyBoundEnv expr, 0)
-        logDebugM MinDetail $ do
-          printValue <- runFreshNameBoundContextT $ reconstructProperty quantifiers value
-          return $ prettyFriendlyEmptyCtx printValue
         ((newQuantifiers, newValue), findCounterExample) <- runReaderT (flipForall (quantifiers, value)) (ident, p)
         liftedValue <- runFreshNameBoundContextT $ reconstructProperty newQuantifiers newValue
-        logDebug MinDetail $ do
+        logDebug MaxDetail $ do
           prettyFriendlyEmptyCtx liftedValue
         tell (Map.singleton (identifierName ident) findCounterExample)
         return $ DefFunction p ident ann typ $ unnormalise 0 liftedValue
       else return decl
 
--- | Returns a Bool representing whether performing a search on the property would produce a counter-example
--- True = example input found will be a counter-example to the property
+-- | Returns a Bool representing whether performing a search on the property would produce an adversarial example
+-- True = example input found will be an adversarial example to the property
 -- False = example input found will not be a counter-example
 flipForall ::
   ( MonadCompile m,

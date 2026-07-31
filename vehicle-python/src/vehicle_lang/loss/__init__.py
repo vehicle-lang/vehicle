@@ -23,7 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover - import-time only typing aid
 def load_ast(
     path: str | Path,
     *,
-    mode: LossMode,
+    mode: LossMode = LossMode.Training,
     declarations: Iterable[DeclarationName] = (),
     target: DifferentiableLogic = VehicleDifferentiableLogic(),
 ) -> _nodes.Program:

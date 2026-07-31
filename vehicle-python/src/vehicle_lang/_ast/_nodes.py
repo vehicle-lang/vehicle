@@ -319,7 +319,7 @@ class SearchRatTensor(Expression):
     dims: Expression
     lower_bound: Expression
     upper_bound: Expression
-    search_lambda: Expression
+    search_lambda: Lam
     minimise: bool
 
 

@@ -62,7 +62,7 @@ def separate_quantifiers_binders(
     quantifiers = []
     binders = []
 
-    def traverse(node):
+    def traverse(node: Expression) -> None:
         all_nodes_traversed.append(node)
         if isinstance(node, SearchRatTensor):
             quantifiers.append(node)
@@ -71,11 +71,7 @@ def separate_quantifiers_binders(
         else:
             return
 
-    # If the loss contains a neural network, the top node will always be a Lam, not a SearchRatTensor
-    if isinstance(decl.body, Lam):
-        traverse(decl.body.body)
-    else:
-        traverse(decl.body)
+    traverse(decl.body)
 
     if len(all_nodes_traversed) == 0:
         raise TypeError("There should be at least one node in the loss AST.")

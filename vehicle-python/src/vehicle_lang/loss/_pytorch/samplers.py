@@ -41,8 +41,6 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         self,
         bound_vars: Sequence[BoundVar],
         loss_fn: Callable[..., torch.Tensor],
-        num_samples: int,
-        num_steps: int,  # number of steps per bound variable
     ) -> Sequence[Sample]: ...
 
 

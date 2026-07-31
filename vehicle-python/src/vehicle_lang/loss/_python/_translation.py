@@ -3,10 +3,11 @@ from dataclasses import asdict, dataclass, field
 from fractions import Fraction
 from functools import reduce
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Sequence
+from types import CodeType
+from typing import Any, Iterator, Sequence
 
 from ..._ast import _nodes as vcl
-from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
+from .._abc import ABCTranslation, AnyBuiltins, Index, Tensor
 
 
 # Helper to convert Vehicle provenance to Python AST kwargs
@@ -19,7 +20,7 @@ def py_provenance(provenance: vcl.Provenance) -> dict[str, Any]:
 
 
 # Helper to raise a TypeError while compiling
-def invalid_type(py_ast: py.expr, error: TypeError):
+def invalid_type(py_ast: py.Module | py.Expression, error: TypeError) -> TypeError:
     py_ast_str: str
     try:
         py_ast_str = py.unparse(py_ast)
@@ -52,19 +53,21 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     module_footer: Sequence[py.stmt] = field(default_factory=tuple)
     ignored_types: list[str] = field(init=False, default_factory=list)
 
-    def compile(self, py_ast: py.expr, path: str | Path, mode: str) -> dict[str, Any]:
+    def compile(
+        self, py_ast: py.Module | py.Expression, path: str | Path, mode: str
+    ) -> CodeType:
         try:
             py_bytecode = compile(py_ast, filename=str(path), mode=mode)
-            return py_bytecode
         except TypeError as e:
             invalid_type(py_ast, e)
+        return py_bytecode
 
     def compile_program(
         self,
         program: vcl.Program,
         path: str | Path,
         declaration_context: dict[str, Any],
-        samplers: Mapping[str, ABCSampler[Index, Tensor]],
+        samplers: dict[str, Any],
     ) -> dict[str, Any]:
         py_ast = self.translate_program(program)
 
@@ -76,14 +79,14 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
 
         try:
             exec(py_bytecode, declaration_context)
-            return {
-                key: value
-                for key, value in declaration_context.items()
-                if key not in _IGNORED_RETURN_KEYS
-                and (key not in before_exec or before_exec[key] is not value)
-            }
         except TypeError as e:
             invalid_type(py_ast, e)
+        return {
+            key: value
+            for key, value in declaration_context.items()
+            if key not in _IGNORED_RETURN_KEYS
+            and (key not in before_exec or before_exec[key] is not value)
+        }
 
     def compile_expression(
         self,

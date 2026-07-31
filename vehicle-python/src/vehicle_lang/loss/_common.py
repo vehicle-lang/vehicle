@@ -9,14 +9,14 @@ from typing import (
     Any,
     Callable,
     Iterable,
+    List,
     Mapping,
     MutableMapping,
     Protocol,
-    Sequence,
     cast,
 )
 
-from .._ast._nodes import Program
+from .._ast._nodes import Program, SearchProgram
 from ..loss import load_ast
 from ..loss._python._translation import PythonTranslation
 from ..typing import DeclarationName, DifferentiableLogic, LossMode
@@ -60,8 +60,8 @@ def load_loss_ast(
 def translate_loss(
     path: str | Path,
     program: Program,
-    samplers: Mapping[str, Any] | None,
-    declaration_context: MutableMapping[str, Any] | None,
+    samplers: dict[str, Any],
+    declaration_context: dict[str, Any],
     translator: PythonTranslation,
 ) -> dict[str, Any]:
     """Translate a loss function using a provided backend factory."""
@@ -72,15 +72,15 @@ def translate_loss(
         declaration_context=declaration_context,
         samplers=samplers,
     )
-    return cast(dict[str, Any], compiled)
+    return compiled
 
 
 def translate_search_bounds(
     path: str | Path,
     quantifiers: dict[str, Quantifiers],
-    declaration_context: MutableMapping[str, Any] | None,
+    declaration_context: dict[str, Any],
     translator: PythonTranslation,
-) -> dict[str, Sequence[BoundVar]]:
+) -> dict[str, List[BoundVar]]:
     """Translate quantifier bounds for search using a backend factory."""
 
     bound_var_data = {}
@@ -110,9 +110,9 @@ def load_training_loss(
     path: str | Path,
     *,
     logic: DifferentiableLogic,
-    samplers: Mapping[str, Any] | None,
+    samplers: dict[str, Any] | None,
     declarations: Iterable[DeclarationName],
-    declaration_context: MutableMapping[str, Any] | None,
+    declaration_context: dict[str, Any] | None,
     translation_factory: TranslationFactory,
     default_sampler_factory: SamplerFactory,
 ) -> dict[str, Any]:
@@ -148,7 +148,7 @@ def load_search_loss(
     *,
     logic: DifferentiableLogic,
     declarations: Iterable[DeclarationName],
-    declaration_context: MutableMapping[str, Any] | None,
+    declaration_context: dict[str, Any] | None,
     networks: dict[DeclarationName, Any] = {},
     datasets: dict[DeclarationName, Any] = {},
     parameters: dict[DeclarationName, Any] = {},
@@ -162,6 +162,7 @@ def load_search_loss(
     search_program = load_loss_ast(
         path, mode=LossMode.Search, logic=logic, declarations=declarations
     )
+    search_program = cast(SearchProgram, search_program)
 
     quantifiers, restructured_program = restructure_search_loss(
         search_program.program,

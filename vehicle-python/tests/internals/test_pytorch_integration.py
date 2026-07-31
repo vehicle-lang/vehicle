@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Type
 
 import pytest
+
 from vehicle_lang._ast._nodes import Program
 
 torch = pytest.importorskip(
@@ -62,7 +63,7 @@ def test_pytorch_simple_spec() -> None:
     json_data = json.loads(json_output)
     program = Program.from_dict(json_data)
     pytorch_translation = PyTorchTranslation()
-    pytorch_functions = pytorch_translation.compile(
+    pytorch_functions = pytorch_translation.compile_program(
         program, path=spec_path, declaration_context={}, samplers={}
     )
 
@@ -92,10 +93,10 @@ def test_pytorch_vs_tensorflow_equivalence() -> None:
     pytorch_translation = PyTorchTranslation()
     tensorflow_translation = TensorFlowTranslation()
 
-    pytorch_functions = pytorch_translation.compile(
+    pytorch_functions = pytorch_translation.compile_program(
         program, path=spec_path, declaration_context={}, samplers={}
     )
-    tensorflow_functions = tensorflow_translation.compile(
+    tensorflow_functions = tensorflow_translation.compile_program(
         program, path=spec_path, declaration_context={}, samplers={}
     )
 
@@ -122,7 +123,7 @@ def test_pytorch_compile_specifications(spec_name: str) -> None:
         json_data = json.loads(json_output)
         program = Program.from_dict(json_data)
         pytorch_translation = PyTorchTranslation()
-        pytorch_functions = pytorch_translation.compile(
+        pytorch_functions = pytorch_translation.compile_program(
             program, path=spec_path, declaration_context={}, samplers={}
         )
         assert len(pytorch_functions) > 0, f"Should generate functions for {spec_name}"
