@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
+
 from vehicle_lang.typing import DL2DifferentiableLogic, VehicleDifferentiableLogic
 
 from .config import HASKELL_GOLDEN_TESTS_PATH
@@ -26,16 +27,16 @@ def require_pytorch() -> Tuple[Any, Any]:
 def test_pytorch_search_single_input() -> None:
     """Test gradient-based search for properties with a single input."""
     torch, loss_pt = require_pytorch()
-    spec_path = GOLDEN_SPECS_BASE / "windController" / "spec.vcl"
+    spec_path = GOLDEN_SPECS_BASE / "bounded" / "spec.vcl"
 
     # Create a random network (in future, tailor it to the spec)
     model = torch.nn.Sequential(
-        torch.nn.Linear(2, 8), torch.nn.ReLU(), torch.nn.Linear(8, 1)
+        torch.nn.Linear(1, 8), torch.nn.ReLU(), torch.nn.Linear(8, 1)
     )
-    networks = {"controller": model}
+    networks = {"f": model}
 
     search_results = loss_pt.search(
-        spec_path, logic=VehicleDifferentiableLogic(), networks=networks, num_samples=10
+        spec_path, logic=DL2DifferentiableLogic(), networks=networks, num_samples=10
     )
 
     # Check that the single property in the specification is searched
@@ -43,7 +44,7 @@ def test_pytorch_search_single_input() -> None:
 
     result = search_results[0]
 
-    assert result.property == "safe"
+    assert result.property == "bounded"
     # Check that the search produced adversarial examples, not witnesses
     # to the property as it contains only universal quantifiers
     assert len(result.witnesses) == 0
@@ -77,7 +78,7 @@ def test_pytorch_search_multiple_inputs() -> None:
     networks = {"f": model}
 
     search_results = loss_pt.search(
-        spec_path, logic=VehicleDifferentiableLogic(), networks=networks, num_samples=10
+        spec_path, logic=DL2DifferentiableLogic(), networks=networks, num_samples=10
     )
 
     # Check that the single property in the specification is searched
