@@ -86,11 +86,11 @@ compileNetworkApp networkName networkType appIndex = do
   let networkVarName = compileNetworkName networkName appIndex
   let networkInputDocs = case networkTensor networkName networkType appIndex Input of
         (name, UniModal shape) -> compileNetworkInput name shape
-        (_name, MultiModal _shapes) -> error "MultiModal IO is unimplemented"
+        (_name, MultiModal _typ _shapes) -> error "MultiModal IO is unimplemented"
 
   let networkOutputDocs = case networkTensor networkName networkType appIndex Output of
         (name, UniModal shape) -> compileNetworkOutput name shape
-        (_name, MultiModal _shapes) -> error "MultiModal IO is unimplemented"
+        (_name, MultiModal _typ _shapes) -> error "MultiModal IO is unimplemented"
 
   "(declare-network" <+> networkVarName
     <> line

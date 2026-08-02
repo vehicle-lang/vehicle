@@ -34,7 +34,7 @@ type NetworkIOType = NetworkModality NetworkIOBase
 
 data NetworkModality a
   = UniModal a
-  | MultiModal [(Name, a)]
+  | MultiModal Identifier [(Name, a)]
   deriving (Eq, Ord, Show, Generic)
 
 instance (NFData a) => NFData (NetworkModality a)
@@ -44,12 +44,12 @@ instance (ToJSON a) => ToJSON (NetworkModality a)
 instance (FromJSON a) => FromJSON (NetworkModality a)
 
 instance (Pretty a) => Pretty (NetworkModality a) where
-  pretty (UniModal e) = pretty e
-  pretty (MultiModal es) = pretty es
+  pretty (UniModal e) = "UniModal" <+> pretty e
+  pretty (MultiModal _ es) = "MultiModal" <+> pretty es
 
 instance Functor NetworkModality where
   fmap f (UniModal a) = UniModal (f a)
-  fmap f (MultiModal as) = MultiModal (fmap applyRight as)
+  fmap f (MultiModal ty as) = MultiModal ty (fmap applyRight as)
     where
       applyRight (a, b) = (a, f b)
 

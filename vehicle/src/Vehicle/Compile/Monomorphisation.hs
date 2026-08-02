@@ -123,6 +123,11 @@ monomorphiseDecl rootDecls decl =
     modify (Map.delete ident)
     return result
 
+-- TODO:
+--  * Update branch to latest
+--  * in Typcheck.hs 'checkDeclarationNamesPresent' decides whether declarations are unused
+--  * add an `||` clause that preserves the instance
+--  * just check it's an instance that ends with `HasComparison` for now
 handleUsedDecl ::
   (MonadCollect builtin m) =>
   NonEmpty [Arg builtin] ->

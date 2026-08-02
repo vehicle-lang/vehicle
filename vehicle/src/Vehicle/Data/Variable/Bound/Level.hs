@@ -231,7 +231,7 @@ instance Pretty NestedSliceVariable where
 instance HasShape NestedSliceVariable where
   shapeOf (NestedSliceVariable shapeOrShapes _) = case shapeOrShapes of
     UniModal shape -> shape
-    MultiModal _shapes -> error "MultiModal IO is not implemented yet"
+    MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
 
 instance VariableLike NestedSliceVariable where
   toLv = toLv . nestedStartingVariable
@@ -245,7 +245,7 @@ numberOfSliceVariablesIn shape = sum $ NonEmpty.scanl (*) 1 shape
 childVariablesOf :: NestedSliceVariable -> Maybe [NestedSliceVariable]
 childVariablesOf (NestedSliceVariable shapeOrShapes startingVar) = case shapeOrShapes of
   UniModal shape -> getChildrenOf shape
-  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
+  MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
   where
     getChildrenOf :: TensorShape -> Maybe [NestedSliceVariable]
     getChildrenOf s = case s of
@@ -267,7 +267,7 @@ elementVariablesOf = go mempty
 findSliceShape :: NestedSliceVariable -> SliceVariable -> NetworkModality TensorShape
 findSliceShape (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
   UniModal shape -> UniModal (go startIndex shape)
-  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
+  MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
   where
     startIndex :: Int
     startIndex = unLv $ toLv var - toLv lv
@@ -283,7 +283,7 @@ findSliceShape (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes o
 findSliceIndices :: (SliceVariableLike variable) => NestedSliceVariable -> variable -> TensorIndices
 findSliceIndices (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
   UniModal shape -> go mempty startIndex shape
-  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
+  MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
   where
     startIndex :: Int
     startIndex = unLv $ toLv var - toLv lv

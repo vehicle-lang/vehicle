@@ -15,6 +15,9 @@ import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.Map qualified as Map
+{- constructToTensorFreeVar -}
+
+import Data.Text qualified as Text
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
 import Vehicle.Backend.Solver.UserVariableElimination.LinearExpr (LinearityError (..), compileLinearAssertion)
@@ -29,7 +32,7 @@ import Vehicle.Compile.Normalise.Quote (unnormaliseInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar, constructTensorisableDims, constructToTensorFreeVar)
+import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar, constructTensorisableDims)
 import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..))
 import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
@@ -46,6 +49,7 @@ import Vehicle.Data.Variable.Bound.Context.Name (getFreshTensorBinderName, getNa
 import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStackedChildren)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields, getRecordProvenance)
+import Vehicle.Libraries.StandardLibrary (standardLibIdent)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Vehicle.Verify.Specification (CompilationStep (..))
@@ -290,12 +294,13 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
   ctx <- getNameContext
 
+  {-
+
   -- If our network outputs a tensorisable, convert our output expression to a record
   transformedOutputVarExpr <- case networkOutputType typ of
     UniModal (RecordIOType (NetworkRecordType _ recordTyp _ _)) -> do
       fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
       evalApp ctx fromTensorFn [explicit outputVarExpr]
-    MultiModal _ -> error "Multimodal IO is not implemented yet"
     _ -> return outputVarExpr
 
   -- Create our input equality in terms of tensors (as record equality just converts to tensor equality anyway)
@@ -304,27 +309,59 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
     UniModal (RecordIOType (NetworkRecordType _ recordTyp _ _)) -> do
       toTensorFn <- eval ctx emptyBoundEnv (constructToTensorFreeVar recordTyp mempty)
       evalApp ctx toTensorFn [explicit arg]
-    MultiModal _ -> error "Multimodal IO is not implemented yet"
     _ -> return arg
+  -}
 
-  let inputEquality = case inputShape networkInfo of
-        MultiModal _ -> error "MultiModal IO is not implemented yet"
-        UniModal shape ->
-          fromBoolValue $
-            VCompareRatTensor
-              ( Eq,
-                TensorOp2Args
-                  { tensorOp2Dims = mkDims shape,
-                    tensorOp2Arg1 = inputVarExpr,
-                    tensorOp2Arg2 = transformedArg
-                  }
-              )
+  -- Need to manually resolve the `HasComparison` instances for each
+  -- field in order to fully apply our actual instance. This should
+  -- be doable, given we know everything is either a Tensor or is a
+  -- TensorLike, in which case it carries its type with it anyway.
+  --
+  -- Since `HasComparison` is a type, we need to actually construct
+  -- the instance by hand using the generated `recordXyzHasComparison`
+  -- instances that we generated during scoping.
+
+  let realTensorEq :: Expr Builtin
+      realTensorEq = FreeVar mempty . standardLibIdent $ Text.pack "realTensorHasComparison"
+
+  let mkComparisonInstance :: Identifier -> [Expr Builtin] -> Expr Builtin
+      mkComparisonInstance recordIdent argExprs = do
+        let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasComparison"
+        let instanceIdent = Identifier (modulePath recordIdent) instanceName
+        normAppList (FreeVar mempty instanceIdent) $ map explicit argExprs
+
+  let mkRecordEqTypeFromTensorLike :: NetworkRecordType -> Expr Builtin
+      mkRecordEqTypeFromTensorLike t = do
+        let fieldComparisonInstances = replicate (length . recordFields $ t) realTensorEq
+        mkComparisonInstance (recordTypeIdent t) fieldComparisonInstances
+
+  let mkRecordEqTypeFromMultiModal :: Identifier -> [(Name, NetworkIOBase)] -> Expr Builtin
+      mkRecordEqTypeFromMultiModal recordTy fields = do
+        let fieldCompInstances = flip map fields $ \(_, baseTy) -> case baseTy of
+              RecordIOType tl -> mkRecordEqTypeFromTensorLike tl
+              TensorIOType {} -> realTensorEq
+        mkComparisonInstance recordTy fieldCompInstances
+
+  inputEquality <- case networkInputType typ of
+    UniModal (TensorIOType (NetworkTensorType _ shape)) -> do
+      let dimensions = mkDims shape
+      let comparisonArgs = TensorOp2Args dimensions inputVarExpr arg
+      return . fromBoolValue $ VCompareRatTensor (Eq, comparisonArgs)
+    other -> do
+      let recordEq = case other of
+            UniModal (RecordIOType tl) -> mkRecordEqTypeFromTensorLike tl
+            MultiModal recordTyp fields -> mkRecordEqTypeFromMultiModal recordTyp fields
+
+      logDebug MinDetail $ prettyVerbose recordEq
+      equalityFn <- eval ctx emptyBoundEnv recordEq -- ctxToBoundEnv
+      -- project out the equality fn
+      evalApp ctx equalityFn [explicit arg, explicit inputVarExpr]
 
   tell [inputEquality]
 
   logDebugM MaxDetail $ do
     inputEqualityDoc <- prettyFriendlyInCtx inputEquality
-    replacementExprDoc <- prettyFriendlyInCtx transformedOutputVarExpr
+    replacementExprDoc <- prettyFriendlyInCtx outputVarExpr
     return $
       "note-input-equality" <+> inputEqualityDoc
         <> line
@@ -332,9 +369,9 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
 
   case networkOutputType typ of
     -- Unblock depending on the type of the output expression from our network
-    UniModal (RecordIOType (NetworkRecordType {})) -> unblockFnRecord transformedOutputVarExpr
-    UniModal (TensorIOType (NetworkTensorType {})) -> unblockFnTensor transformedOutputVarExpr
-    MultiModal _ -> error "Multimodal IO is not implemented yet"
+    UniModal (RecordIOType (NetworkRecordType {})) -> unblockFnRecord outputVarExpr
+    UniModal (TensorIOType (NetworkTensorType {})) -> unblockFnTensor outputVarExpr
+    MultiModal _ _ -> error "Multimodal IO is not implemented yet"
 
 --------------------------------------------------------------------------------
 -- Elimination operations

@@ -90,7 +90,7 @@ appendTensorVariableToNestedCtx binder shape (NestedTensorVariableCtx ctx nameCt
 variableNamesForAllSlices :: Name -> NetworkModality TensorShape -> [Name]
 variableNamesForAllSlices parentName = \case
   UniModal shape -> reverse (fmap mkName (allIndicesForShape shape))
-  MultiModal _shapes -> error "MultiModal IO is not implemented yet"
+  MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
   where
     mkName :: TensorIndices -> Name
     mkName indices = parentName <> Text.pack (showTensorIndices indices)

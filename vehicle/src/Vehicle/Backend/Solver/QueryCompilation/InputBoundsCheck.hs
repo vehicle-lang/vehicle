@@ -194,7 +194,7 @@ checkAllBoundsPresent (Partial allPartialbounds assertions) = do
         let partialShapeOrShapes = flip toPartialShape Nothing <$> varShape
         missingIndicesOrFlattenedBounds <- case partialShapeOrShapes of
           UniModal partialShape -> fourierMotzkinTensorBoundsElimination partialShape partialBounds
-          MultiModal _partialShapes -> error "MultiModal IO is not implmeneted yet"
+          MultiModal _typ _partialShapes -> error "MultiModal IO is not implmeneted yet"
         case missingIndicesOrFlattenedBounds of
           Right bounds -> return $ Right (BoundedValue var bounds)
           Left missingIndices -> errorCase missingIndices

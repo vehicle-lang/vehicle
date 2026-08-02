@@ -64,7 +64,7 @@ getNetworkType decl networkType = case normalised networkType of
         sort <- getRecordSort ident
         case sort of
           Just AnnTensor -> mkUniModalNetwork ident fields
-          _ -> mkMultiModalNetwork io fields
+          _ -> mkMultiModalNetwork io ident fields
       _ -> typingError
 
     mkUniModalNetwork :: Identifier -> GenericRecordFields (Value Builtin) -> m NetworkIOType
@@ -74,15 +74,15 @@ getNetworkType decl networkType = case normalised networkType of
       let recordTyp = NetworkRecordType NetworkRatType ident shape (NonEmpty.toList fieldNames)
       return . UniModal . RecordIOType $ recordTyp
 
-    mkMultiModalNetwork :: InputOrOutput -> GenericRecordFields (Value Builtin) -> m NetworkIOType
-    mkMultiModalNetwork io fields = do
+    mkMultiModalNetwork :: InputOrOutput -> Identifier -> GenericRecordFields (Value Builtin) -> m NetworkIOType
+    mkMultiModalNetwork io ident fields = do
       let mkShape (FieldName _ name, typ) = do
             shape <- mkNetworkIoType io typ
             case shape of
               UniModal v -> return (name, v)
               MultiModal {} -> error "Impossible: Non-tensorisable records should never appear inside another record."
       shapes <- mapM mkShape fields
-      return . MultiModal $ shapes
+      return . MultiModal ident $ shapes
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
     tensorDimensions io dims = case toDimensionsValue dims of
