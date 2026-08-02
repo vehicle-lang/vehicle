@@ -163,8 +163,8 @@ reduceDomain (BoundedValue inputTensorVar bounds) = go (toSliceVar inputTensorVa
           return [BoundedValue elementVar domain]
         _ : _ -> do
           childVars <- lookupChildVariablesCertain var
-          let lowerBounds = unstackBounds lowerBound
-          let upperBounds = unstackBounds upperBound
+          lowerBounds <- unstackBounds lowerBound
+          upperBounds <- unstackBounds upperBound
           let domains = zipWith Domain lowerBounds upperBounds
           concat <$> zipWithM (curry go) childVars domains
 

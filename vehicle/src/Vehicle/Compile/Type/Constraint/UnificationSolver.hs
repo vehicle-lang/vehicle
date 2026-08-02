@@ -21,19 +21,18 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (sep)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (null, singleton)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Variable.Bound.Context.Generic
+import Vehicle.Data.Variable.Bound.Context.Name (runNameBoundContextT)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 
@@ -64,8 +63,8 @@ type MonadUnify builtin m =
 
 type UnificationProblem builtin =
   ( BoundCtx (Type builtin),
-    Value builtin,
-    Value builtin
+    ThunkWithMetas builtin,
+    ThunkWithMetas builtin
   )
 
 type ConstraintInfo builtin =
@@ -115,23 +114,24 @@ unify ::
   forall builtin m.
   (MonadUnify builtin m) =>
   BoundCtx (Type builtin) ->
-  Value builtin ->
-  Value builtin ->
+  ThunkWithMetas builtin ->
+  ThunkWithMetas builtin ->
   m (UnificationResult builtin)
 unify ctx e1 e2 = do
   -- Force the heads of both expressions
   let namedCtx = toNamedBoundCtx ctx
-  (ne1, e1BlockingMetas) <- forceHead namedCtx e1
-  (ne2, e2BlockingMetas) <- forceHead namedCtx e2
-
-  -- Construct the new constraint information
-  let blockingMetas = e1BlockingMetas <> e2BlockingMetas
-  let constraintInfo = ((ctx, ne1, ne2), blockingMetas)
-
-  -- Perform the unification
   let prettyExpr e = prettyExternal (WithContext e namedCtx)
-  let passDoc = "unifying" <+> prettyExpr ne1 <+> "~" <+> prettyExpr ne2 -- <+> "in context" <+> prettyVerbose ctx
+  let passDoc = "unifying" <+> prettyExpr e1 <+> "~" <+> prettyExpr e2 -- <+> "in context" <+> prettyVerbose ctx
   logIndent MaxDetail passDoc $ do
+    (ne1, e1BlockingMetas) <- forceThunkWithMetas namedCtx e1
+    (ne2, e2BlockingMetas) <- forceThunkWithMetas namedCtx e2
+    logDebug MaxDetail $ "forced-lhs:" <+> prettyExpr (Forced ne1)
+    logDebug MaxDetail $ "forced-rhs:" <+> prettyExpr (Forced ne2)
+    -- Construct the new constraint information
+    let blockingMetas = e1BlockingMetas <> e2BlockingMetas
+    let constraintInfo = ((ctx, Forced ne1, Forced ne2), blockingMetas)
+
+    -- Perform the unification
     unification constraintInfo (ne1, ne2)
 
 instance Semigroup (UnificationResult builtin) where
@@ -150,8 +150,8 @@ instance Monoid (UnificationResult builtin) where
 subUnify ::
   (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
-  Value builtin ->
-  Value builtin ->
+  ThunkWithMetas builtin ->
+  ThunkWithMetas builtin ->
   m (UnificationResult builtin)
 subUnify info = unify (infoBoundCtx info)
 
@@ -172,7 +172,7 @@ pattern x :~: y = (x, y)
 unification ::
   (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
-  (Value builtin, Value builtin) ->
+  (ForcedValueWithMetas builtin, ForcedValueWithMetas builtin) ->
   m (UnificationResult builtin)
 unification info = \case
   -----------------------
@@ -225,7 +225,7 @@ solveTrivially = do
 solveArg ::
   (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
-  (VArg builtin, VArg builtin) ->
+  (UnforcedArgWithMetas builtin, UnforcedArgWithMetas builtin) ->
   m (UnificationResult builtin)
 solveArg info (arg1, arg2)
   | not (visibilityMatches arg1 arg2) = hardFail info
@@ -236,8 +236,8 @@ solveArg info (arg1, arg2)
 solveSpine ::
   (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
-  Spine builtin ->
-  Spine builtin ->
+  UnforcedSpineWithMetas builtin ->
+  UnforcedSpineWithMetas builtin ->
   m (UnificationResult builtin)
 solveSpine info args1 args2
   | length args1 /= length args2 = hardFail info
@@ -246,8 +246,8 @@ solveSpine info args1 args2
 solveRecords ::
   (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
-  SearchableRecordFields (Value builtin) ->
-  SearchableRecordFields (Value builtin) ->
+  SearchableRecordFields (ThunkWithMetas builtin) ->
+  SearchableRecordFields (ThunkWithMetas builtin) ->
   m (UnificationResult builtin)
 solveRecords info fields1 fields2 = do
   -- Note we don't need to check that the fields align as scope checking should have
@@ -259,17 +259,17 @@ solveRecords info fields1 fields2 = do
 solveClosure ::
   (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
-  (VBinder builtin, Closure builtin) ->
-  (VBinder builtin, Closure builtin) ->
+  (UnforcedBinderWithMetas builtin, ClosureWithMetas builtin) ->
+  (UnforcedBinderWithMetas builtin, ClosureWithMetas builtin) ->
   m (UnificationResult builtin)
-solveClosure info (binder1, Closure env1 body1) (binder2, Closure env2 body2) = do
+solveClosure info (binder1, closure1) (binder2, closure2) = do
   -- Unify binder constraints
   binderConstraint <- subUnify info (typeOf binder1) (typeOf binder2)
 
   -- Evaluate the normalised bodies of the lambdas
   let lv = boundCtxLv $ infoBoundCtx info
-  nbody1 <- eval (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder1 env1) body1
-  nbody2 <- eval (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder2 env2) body2
+  let nbody1 = extendClosureWithBound closure1 binder1 lv
+  let nbody2 = extendClosureWithBound closure2 binder2 lv
 
   -- Update the context.
   let updatedInfo = updateInfoUnderBinder info (binder1, binder2)
@@ -284,8 +284,8 @@ solveFlexFlex ::
   forall builtin m.
   (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
-  (MetaID, Spine builtin) ->
-  (MetaID, Spine builtin) ->
+  (MetaID, UnforcedSpineWithMetas builtin) ->
+  (MetaID, UnforcedSpineWithMetas builtin) ->
   m (UnificationResult builtin)
 solveFlexFlex info (meta1, spine1) (meta2, spine2) = do
   let proxy = Proxy @builtin
@@ -299,12 +299,12 @@ solveFlexFlex info (meta1, spine1) (meta2, spine2) = do
       -- This is a massive hack assuming that the meta is always an injective function.
       -- This is to allow the instance unification to work in the `Decidable` typing
       -- subsystem when inferring if `(Tensor Bool) ds` -> `(\_ds -> Type)` or `Tensor Bool`)
-      metaResult <- subUnify info (VMeta meta1 ctx1Args) (VMeta meta2 ctx2Args)
+      metaResult <- subUnify info (Forced $ VMeta meta1 ctx1Args) (Forced $ VMeta meta2 ctx2Args)
       spineResults <- solveSpine info extraArgs1 extraArgs2
       return $ metaResult <> spineResults
     else do
       -- It may be that only one of the two spines is invertible
-      maybeRenaming <- invert (boundCtxLv (infoBoundCtx info)) (meta1, spine1)
+      maybeRenaming <- invert (infoBoundCtx info) (meta1, spine1)
       case maybeRenaming of
         Nothing -> solveFlexRigid info (meta2, spine2) (VMeta meta1 spine1)
         Just renaming -> solveFlexRigidWithRenaming (infoBoundCtx info) (meta1, spine1) renaming (VMeta meta2 spine2)
@@ -312,14 +312,14 @@ solveFlexFlex info (meta1, spine1) (meta2, spine2) = do
 solveFlexRigid ::
   (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
-  (MetaID, Spine builtin) ->
-  Value builtin ->
+  (MetaID, UnforcedSpineWithMetas builtin) ->
+  ForcedValueWithMetas builtin ->
   m (UnificationResult builtin)
 solveFlexRigid info (metaID, spine) solution = do
   let ctx = infoBoundCtx info
   -- Check that 'spine' is a pattern and try to calculate a substitution
   -- that renames the variables in `solution` to ones available to `meta`
-  maybeRenaming <- invert (boundCtxLv ctx) (metaID, spine)
+  maybeRenaming <- invert ctx (metaID, spine)
   case maybeRenaming of
     Just renaming -> solveFlexRigidWithRenaming ctx (metaID, spine) renaming solution
     -- This constraint is stuck because it is not pattern; shelve
@@ -331,9 +331,9 @@ solveFlexRigidWithRenaming ::
   forall builtin m.
   (MonadUnify builtin m) =>
   BoundCtx (Type builtin) ->
-  (MetaID, Spine builtin) ->
+  (MetaID, UnforcedSpineWithMetas builtin) ->
   Renaming ->
-  Value builtin ->
+  ForcedValueWithMetas builtin ->
   m (UnificationResult builtin)
 solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
   prunedSolution <-
@@ -350,61 +350,80 @@ pruneMetaDependencies ::
   forall builtin m.
   (MonadUnify builtin m) =>
   BoundCtx (Type builtin) ->
-  (MetaID, Spine builtin) ->
-  Value builtin ->
-  m (Value builtin)
+  (MetaID, UnforcedSpineWithMetas builtin) ->
+  ForcedValueWithMetas builtin ->
+  m (ForcedValueWithMetas builtin)
 pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = do
-  go attemptedSolution
+  goForcedValue attemptedSolution
   where
-    go ::
+    goThunk ::
       (MonadUnify builtin m) =>
-      Value builtin ->
-      m (Value builtin)
-    go expr = case expr of
-      VMeta m spine
-        | m == solvingMetaID ->
-            -- If `i` is inside the term we're trying to unify it with then error.
-            -- Unsure if this should be a user or a developer error.
-            compilerDeveloperError $
-              "Meta variable"
-                <+> pretty m
-                <+> "found in own solution"
-                <+> squotes (prettyVerbose attemptedSolution)
-        | otherwise -> do
-            metaInfo <- getMetaInfo m
-            case metaSolution metaInfo of
-              Just solution -> do
-                go =<< normaliseApp (toNamedBoundCtx ctx) (normalised solution) spine
-              Nothing -> do
-                (deps, _) <- getNormMetaDependencies solvingMetaID solvingMetaSpine
-                (jDeps, remainingSpine) <- getNormMetaDependencies m spine
-                let sharedDependencies = deps `intersect` jDeps
-                if sharedDependencies /= jDeps
-                  then createMetaWithRestrictedDependencies ctx m sharedDependencies remainingSpine
-                  else return $ VMeta m spine
-      VUniverse {} -> return expr
-      VBuiltin b spine -> VBuiltin b <$> traverse (traverse go) spine
-      VBoundVar v spine -> VBoundVar v <$> traverse (traverse go) spine
-      VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
-      VRecord ident fields -> VRecord ident <$> traverse go fields
+      ThunkWithMetas builtin ->
+      m (ThunkWithMetas builtin)
+    goThunk value = do
+      (forcedValue, _) <- forceThunkWithMetas (toNamedBoundCtx ctx) value
+      Forced <$> goForcedValue forcedValue
+
+    goForcedValue ::
+      (MonadUnify builtin m) =>
+      ForcedValueWithMetas builtin ->
+      m (ForcedValueWithMetas builtin)
+    goForcedValue = \case
+      VMeta m spine -> pruneMeta m spine
+      VUniverse l -> return $ VUniverse l
+      VBuiltin b spine -> VBuiltin b <$> traverse (traverse goThunk) spine
+      VBoundVar v spine -> VBoundVar v <$> traverse (traverse goThunk) spine
+      VFreeVar v spine -> VFreeVar v <$> traverse (traverse goThunk) spine
+      VRecord ident fields -> VRecord ident <$> traverse goThunk fields
       VRecordAcc recordType record field spine ->
-        VRecordAcc <$> go recordType <*> go record <*> pure field <*> traverse (traverse go) spine
+        VRecordAcc <$> goThunk recordType <*> goThunk record <*> pure field <*> traverse (traverse goThunk) spine
       -- Definitely going to have come back and fix this one later.
       -- Can't inspect the metas in the environment, as not every variable
       -- in the environment will be used?
       -- The elaboration zoo has pruning and renaming actually return an `Expr`
       -- rather than a `Val`?
-      VPi binder body -> VPi <$> traverse go binder <*> pure body
-      VLam binder body -> VLam <$> traverse go binder <*> pure body
+      VPi binder body -> VPi <$> traverse goThunk binder <*> pure body
+      VLam binder body -> VLam <$> traverse goThunk binder <*> pure body
 
-    getNormMetaDependencies :: MetaID -> Spine builtin -> m ([Lv], Spine builtin)
+    pruneMeta ::
+      MetaID ->
+      UnforcedSpineWithMetas builtin ->
+      m (ForcedValueWithMetas builtin)
+    pruneMeta m spine
+      | m == solvingMetaID =
+          -- If `i` is inside the term we're trying to unify it with then error.
+          -- Unsure if this should be a user or a developer error.
+          compilerDeveloperError $
+            "Meta variable"
+              <+> pretty m
+              <+> "found in own solution"
+              <+> squotes (prettyVerbose attemptedSolution)
+      | otherwise = do
+          metaInfo <- getMetaInfo m
+          case metaSolution metaInfo of
+            Just solution -> do
+              forceApplicationWithMetas (toNamedBoundCtx ctx) (normalised solution) spine
+            Nothing -> do
+              (deps, _) <- getNormMetaDependencies solvingMetaID solvingMetaSpine
+              (jDeps, remainingSpine) <- getNormMetaDependencies m spine
+              let sharedDependencies = deps `intersect` jDeps
+              if sharedDependencies /= jDeps
+                then createMetaWithRestrictedDependencies ctx m sharedDependencies remainingSpine
+                else return $ VMeta m spine
+
+    getNormMetaDependencies ::
+      MetaID ->
+      UnforcedSpineWithMetas builtin ->
+      m ([Lv], UnforcedSpineWithMetas builtin)
     getNormMetaDependencies meta spine = do
       metaCtx <- getMetaCtx (Proxy @builtin) meta
       let (deps, remainingArgs) = splitAt (length metaCtx) spine
-      let getLv arg = case arg of
-            ExplicitArg _ (VBoundVar i []) -> i
-            _ -> developerError $ "Meta variable" <+> pretty meta <+> "has none index arg"
-      return (fmap getLv deps, remainingArgs)
+      forcedDeps <- traverse (\a -> fst <$> forceThunkWithMetas (toNamedBoundCtx metaCtx) (argExpr a)) deps
+      let getLv a = case a of
+            VBoundVar i [] -> i
+            _ -> developerError $ "Meta variable" <+> pretty meta <+> "has non-index arg"
+      let lvs = fmap getLv forcedDeps
+      return (lvs, remainingArgs)
 
 createMetaWithRestrictedDependencies ::
   forall builtin m.
@@ -412,8 +431,8 @@ createMetaWithRestrictedDependencies ::
   BoundCtx (Type builtin) ->
   MetaID ->
   [Lv] ->
-  Spine builtin ->
-  m (Value builtin)
+  UnforcedSpineWithMetas builtin ->
+  m (ForcedValueWithMetas builtin)
 createMetaWithRestrictedDependencies ctx meta newDependencies spine = do
   p <- getMetaProvenance (Proxy @builtin) meta
   metaType <- getMetaType meta
@@ -433,12 +452,12 @@ createMetaWithRestrictedDependencies ctx meta newDependencies spine = do
     let substMetaExpr = substDBAll 0 (\v -> unIx v `IntMap.lookup` substitution) newMetaExpr
     solveMeta meta substMetaExpr ctx
 
-    normMetaExpr <- eval (toNamedBoundCtx ctx) (boundContextToEnv restrictedContext) newMetaExpr
-    normaliseApp (toNamedBoundCtx ctx) normMetaExpr spine
+    let normMetaExpr = Unforced (boundContextToEnv restrictedContext) newMetaExpr
+    runNameBoundContextT (toNamedBoundCtx ctx) $ forceApplicationWithMetas (toNamedBoundCtx ctx) normMetaExpr spine
 
 updateInfoUnderBinder ::
   ConstraintInfo builtin ->
-  (VBinder builtin, VBinder builtin) ->
+  (UnforcedBinderWithMetas builtin, UnforcedBinderWithMetas builtin) ->
   ConstraintInfo builtin
 updateInfoUnderBinder ((ctx, e1, e2), blockingMetas) (binder1, _binder2) = do
   -- Update the context.
@@ -461,24 +480,32 @@ type Renaming = IntMap Ix
 
 -- | TODO: explain what this means:
 -- [i2 i4 i1] --> [2 -> 2, 4 -> 1, 1 -> 0]
-invert :: forall builtin m. (MonadUnify builtin m) => Lv -> (MetaID, Spine builtin) -> m (Maybe Renaming)
-invert ctxSize (metaID, spine) = do
+invert ::
+  forall builtin m.
+  (MonadUnify builtin m) =>
+  BoundCtx (Type builtin) ->
+  (MetaID, UnforcedSpineWithMetas builtin) ->
+  m (Maybe Renaming)
+invert ctx (metaID, spine) = do
   metaCtxSize <- length <$> getMetaCtx (Proxy @builtin) metaID
-  return $
-    if metaCtxSize < length spine
-      then Nothing
-      else go (metaCtxSize - 1) IntMap.empty spine
+  if metaCtxSize < length spine
+    then return Nothing
+    else go (metaCtxSize - 1) IntMap.empty spine
   where
-    go :: Int -> IntMap Ix -> Spine builtin -> Maybe Renaming
+    go :: Int -> IntMap Ix -> UnforcedSpineWithMetas builtin -> m (Maybe Renaming)
     go i revMap = \case
-      [] -> Just revMap
-      (ExplicitArg _ (VBoundVar j []) : restArgs) -> do
-        -- TODO: we could eta-reduce arguments too, if possible
-        let jIndex = dbLevelToIndex ctxSize j
-        if IntMap.member (unIx jIndex) revMap
-          then -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
-          -- but then we should make sure the solution is well-typed
-            Nothing
-          else go (i - 1) (IntMap.insert (unIx jIndex) (Ix i) revMap) restArgs
+      [] -> return $ Just revMap
+      (ExplicitArg _ arg : restArgs) -> do
+        (fArg, _) <- forceThunkWithMetas (toNamedBoundCtx ctx) arg
+        case fArg of
+          (VBoundVar j []) -> do
+            -- TODO: we could eta-reduce arguments too, if possible
+            let jIndex = dbLevelToIndex (boundCtxLv ctx) j
+            if IntMap.member (unIx jIndex) revMap
+              then -- TODO: mark 'j' as ambiguous, and remove ambiguous entries before returning;
+              -- but then we should make sure the solution is well-typed
+                return Nothing
+              else go (i - 1) (IntMap.insert (unIx jIndex) (Ix i) revMap) restArgs
+          _ -> return Nothing
       -- Not a pattern so return nothing.
-      _ -> Nothing
+      _ -> return Nothing

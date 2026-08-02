@@ -9,11 +9,10 @@ import Data.Map qualified as Map
 import Prettyprinter
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue (GenericThunk (..), Thunk, emptyBoundEnv)
 import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadTensorBoundContext)
 import Vehicle.Data.Variable.Bound.Context.Tensor.Instance (TensorBoundContextT, runFreshTensorBoundContextT)
@@ -39,18 +38,18 @@ type MonadLogicCore m =
 type MonadLogic m =
   ( MonadLogicCore m,
     MonadError CompileError m,
-    MonadFreeContext LossBuiltin m
+    MonadFreeContext LossBuiltin m,
+    MonadFreeContext Builtin m
   )
 
 runMonadLogicT ::
   (MonadLogger m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
-  VDecl Builtin ->
+  DeclProvenance ->
   TensorBoundContextT (ReaderT LossCtx m) a ->
   m a
-runMonadLogicT logicID logic decl action = do
-  let declProv = (identifierOf decl, provenanceOf decl)
+runMonadLogicT logicID logic declProv action = do
   runReaderT (runFreshTensorBoundContextT action) (declProv, logicID, logic)
 
 getLogic :: (MonadLogic m) => m DifferentiableLogicImplementation
@@ -68,8 +67,8 @@ getLogicField field = do
   (logic, _) <- getLogic
   return $ lookupLogicField field logic
 
-getLogicFieldValue :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Value LossBuiltin)
-getLogicFieldValue field = eval mempty emptyBoundEnv =<< getLogicField field
+getLogicFieldValue :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Thunk LossBuiltin)
+getLogicFieldValue field = Unforced emptyBoundEnv <$> getLogicField field
 
 getLogicDirection :: (MonadLogic m) => m Bool
 getLogicDirection = do

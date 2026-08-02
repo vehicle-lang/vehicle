@@ -1,73 +1,28 @@
 module Vehicle.Data.Tensor.Traversal where
 
-import Control.Monad.Reader (MonadReader (..), Reader, ReaderT (..), asks, runReader)
-import Data.Bifunctor (Bifunctor (..))
-import Data.Maybe (fromMaybe)
-import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 
---------------------------------------------------------------------------------
--- PartiallyKnownTensorShape
-
--- | Represents the dimensions of a tensor where we know the leading dimensions
--- but the trailing dimensions are still unknown (i.e. depends on external
--- resources, see MNIST robustness specification for an example)
-data PartiallyKnownTensorShape = PartiallyKnownTensorShape
-  { knownPrefix :: TensorShape,
-    unknownSuffix :: Value Builtin
-  }
-
-toPartialShape :: TensorShape -> Maybe (Value Builtin) -> PartiallyKnownTensorShape
-toPartialShape knownDims maybeUnknownDims =
-  PartiallyKnownTensorShape
-    { knownPrefix = knownDims,
-      unknownSuffix = fromMaybe IDimNil maybeUnknownDims
-    }
-
-emptyPartialShape :: PartiallyKnownTensorShape
-emptyPartialShape = toPartialShape [] Nothing
-
-extractPartialShape :: Value Builtin -> PartiallyKnownTensorShape
-extractPartialShape v = uncurry PartiallyKnownTensorShape $ go v
-  where
-    go :: Value Builtin -> (TensorShape, Value Builtin)
-    go = \case
-      IDimCons (INatLiteral d) ds -> first (d :) $ go ds
-      value -> ([], value)
-
-calculateCurrentDimensions :: PartiallyKnownTensorShape -> TensorIndices -> Value Builtin
-calculateCurrentDimensions PartiallyKnownTensorShape {..} reverseIndices = do
-  let remainingShapePrefix = drop (length reverseIndices) knownPrefix
-  foldr (\i -> IDimCons (INatLiteral i)) unknownSuffix remainingShapePrefix
+-- | We may not be able to calculate the exact dimensions a tensor, but this
+-- value represents the prefix that of the shape that is known, e.g.
+-- [1,2,n] would have a prefix of [1,2]
+type KnownPrefixOfTensorShape = TensorShape
 
 --------------------------------------------------------------------------------
 -- Tensor traversal
 
-type MonadTraverseTensor m =
-  (MonadReader (PartiallyKnownTensorShape, TensorIndices) m)
+type MonadTraverseTensor m = MonadReader TensorIndices m
 
 traverseTensorRows :: (MonadTraverseTensor m) => (a -> m b) -> [a] -> m [b]
 traverseTensorRows f rows = do
-  let fLocal (i, v) = local (second (i :)) (f v)
+  let fLocal (i, v) = local (i :) (f v)
   traverse fLocal (zip [0 ..] rows)
 
-currentDimensions :: (MonadTraverseTensor m) => m (Value Builtin)
-currentDimensions = asks (uncurry calculateCurrentDimensions)
-
-childDimensions :: (MonadTraverseTensor m) => m (Value Builtin)
-childDimensions = local (second (0 :)) currentDimensions
-
 currentIndices :: (MonadTraverseTensor m) => m TensorIndices
-currentIndices = asks (reverse . snd)
+currentIndices = asks reverse
 
 runTraverseTensorT ::
   (Monad m) =>
-  PartiallyKnownTensorShape ->
-  ReaderT (PartiallyKnownTensorShape, TensorIndices) m a ->
+  ReaderT TensorIndices m a ->
   m a
-runTraverseTensorT shape action = runReaderT action (shape, mempty)
-
-runTraverseTensor :: PartiallyKnownTensorShape -> Reader (PartiallyKnownTensorShape, TensorIndices) a -> a
-runTraverseTensor shape action = runReader action (shape, mempty)
+runTraverseTensorT action = runReaderT action mempty

@@ -14,7 +14,7 @@ import Control.Monad.State
     gets,
     modify,
   )
-import Control.Monad.Writer (MonadWriter (..), runWriterT)
+import Control.Monad.Writer.Strict (MonadWriter (..), runWriterT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (Foldable (..), traverse_)
 import Data.HashMap.Strict (HashMap)

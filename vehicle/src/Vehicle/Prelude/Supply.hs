@@ -6,17 +6,16 @@ module Vehicle.Prelude.Supply
     runSupplyT,
     mapSupplyT,
     Supply,
-    runSupply,
   )
 where
 
 import Control.Monad.Except (ExceptT, MonadError (..))
 import Control.Monad.IO.Class
-import Control.Monad.Identity (Identity, runIdentity)
+import Control.Monad.Identity (Identity)
 import Control.Monad.Reader (MonadReader (..), ReaderT)
 import Control.Monad.State (MonadState (..), StateT, evalStateT, mapStateT)
 import Control.Monad.Trans (MonadTrans (..))
-import Control.Monad.Writer (WriterT)
+import Control.Monad.Writer.Strict (WriterT)
 import Vehicle.Prelude.IO
 
 class (Monad m) => MonadSupply s m where
@@ -37,9 +36,6 @@ mapSupplyT ::
 mapSupplyT f m = SupplyT (mapStateT f (unsupplyT m))
 
 type Supply s a = SupplyT s Identity a
-
-runSupply :: [s] -> Supply s a -> a
-runSupply s m = runIdentity $ runSupplyT s m
 
 instance (Monad m) => MonadSupply s (SupplyT s m) where
   demand = SupplyT $ do

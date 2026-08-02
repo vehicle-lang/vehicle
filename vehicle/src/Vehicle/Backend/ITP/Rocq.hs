@@ -20,6 +20,7 @@ import Data.Text.Internal.Read qualified as Text.Read
 import Data.Version (makeVersion)
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -30,7 +31,6 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VectorLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
-import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -559,6 +559,7 @@ compileBuiltin b args = case b of
           as
     FoldList -> compileApplication [MathcompImport Boot] "foldr" args
     MapList -> compileApplication [MathcompImport Boot] "map" args
+    ReverseList -> compileApplication [MathcompImport Boot] "rev" args
     AppendList {} -> unsupportedError
     ReduceAndTensor -> compileApplication [VehicleImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> compileApplication [VehicleImport VehicleUtils] "reduceOr" args
@@ -572,6 +573,7 @@ compileBuiltin b args = case b of
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 200) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
     StackTensor -> compileStack args
+    Transpose -> compileApplication [VehicleImport VehicleUtils] "transpose_t" args
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyRecord q -> compileQuantifierFunction q args

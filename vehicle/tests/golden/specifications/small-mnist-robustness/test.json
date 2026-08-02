@@ -1,0 +1,25 @@
+[
+  {
+    "name": "VNNLib",
+    "run": "vehicle compile queries -s spec2.vcl -f VNNLibQueries -o VNNLib.queries/ --network classifier:fake.onnx --parameter epsilon:0.1",
+    "needs": ["spec2.vcl", "fake.onnx"],
+    "produces": ["VNNLib.queries/*.txt", "VNNLib.queries/robust*.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    }
+  },
+  {
+    "name": "DL2Loss",
+    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl --logging MaxDetail --loggingPass Loss",
+    "needs": ["spec.vcl"],
+    "produces": ["DL2Loss.vcl"],
+    "enabled": false
+  },
+  {
+    "name": "VehicleLoss",
+    "run": "vehicle compile -s spec.vcl -t VehicleLoss -o VehicleLoss.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["VehicleLoss.vcl"],
+    "enabled": false
+  }
+]

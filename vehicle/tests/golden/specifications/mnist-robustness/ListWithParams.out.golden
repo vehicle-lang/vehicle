@@ -2,7 +2,7 @@
   "tag": "SpecificationSummary",
   "properties": [
     {
-      "typeText": "Vector Bool 2",
+      "typeText": "Vector Bool n",
       "tag": "PropertySummary",
       "quantifiedVariables": {
         "tag": "MultiProperty",
@@ -64,7 +64,7 @@
   "parameters": [],
   "networks": [
     {
-      "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
+      "typeText": "Image -> Tensor Real [10]",
       "tag": "NetworkSummary",
       "provenance": {
         "tag": "Provenance",

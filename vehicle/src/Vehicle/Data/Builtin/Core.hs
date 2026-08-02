@@ -81,7 +81,7 @@ instance Pretty BuiltinConstructor where
     UnitLiteral -> "()"
     NatLiteral n -> pretty n
     IndexLiteral n -> pretty n
-    VectorLiteral -> "vec"
+    VectorLiteral -> "vecLit"
     BoolTensorLiteral x -> pretty x
     NatTensorLiteral x -> pretty x
     RatTensorLiteral x -> pretty x
@@ -101,8 +101,7 @@ data BuiltinFunction
   | CompareIndex ComparisonOp
   | CompareNat ComparisonOp
   | CompareRatTensor ComparisonOp
-  | -- | CompareRatTensorPointwise ComparisonOp
-    ReduceAndTensor
+  | ReduceAndTensor
   | ReduceOrTensor
   | -- Rat operations
     Add AddDomain
@@ -125,12 +124,14 @@ data BuiltinFunction
   | ConstTensor
   | Iterate
   | ForeachTensor
+  | Transpose
   | -- Vector operations
     AtVector
   | ForeachVector
   | -- List operations
     FoldList
   | MapList
+  | ReverseList
   | AppendList
   deriving (Eq, Ord, Show, Generic)
 
@@ -170,9 +171,9 @@ instance Pretty BuiltinFunction where
     CompareIndex op -> comparisonOpName op <> "Index"
     CompareNat op -> comparisonOpName op <> "Nat"
     CompareRatTensor op -> comparisonOpName op <> "RatTensor"
-    -- CompareRatTensorPointwise op -> comparisonOpName op <> "RatTensorPointwise"
     FoldList -> "foldList"
     MapList -> "mapList"
+    ReverseList -> "reverseList"
     AppendList -> "appendList"
     ForeachTensor -> "foreachTensor"
     ForeachVector -> "foreachVector"
@@ -181,6 +182,7 @@ instance Pretty BuiltinFunction where
     AtVector -> "atVector"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
+    Transpose -> "transpose"
 
 data BuiltinCast
   = -- Cast operations

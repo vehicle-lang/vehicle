@@ -24,10 +24,12 @@ import Vehicle.Prelude
 class IsRelation relation where
   isRelated :: relation -> RatTensor -> RatTensor -> Bool
 
-evalTrivialRelation :: (IsRelation relation, ConstantLike constant) => relation -> constant -> Maybe Bool
-evalTrivialRelation rel constant = case toRatTensor constant of
-  Just tensor -> Just $ isRelated rel tensor (ConstantTensor (shapeOf tensor) 0)
-  Nothing -> Nothing
+evalTrivialRelation :: (IsRelation relation, ConstantLike constant m) => relation -> constant -> m (Maybe Bool)
+evalTrivialRelation rel constant = do
+  maybeRatTensor <- toRatTensor constant
+  return $ case maybeRatTensor of
+    Just tensor -> Just $ isRelated rel tensor (ConstantTensor (shapeOf tensor) 0)
+    Nothing -> Nothing
 
 --------------------------------------------------------------------------------
 -- Relations
@@ -192,7 +194,7 @@ inequalityToNormRelation r = case relation r of
 type Assertion expr = NormalisedRelation Relation expr
 
 comparisonToAssertion ::
-  (Monad m, VariableLike variable, ConstantLike constant) =>
+  (Monad m, VariableLike variable, ConstantLike constant m) =>
   ComparisonOp ->
   LinearExpr variable constant ->
   LinearExpr variable constant ->
@@ -206,12 +208,14 @@ comparisonToAssertion op e1 e2 = do
     Gt -> return (OLt, e2, e1)
     Ge -> return (OLe, e2, e1)
 
-  let constantOrExpr = addExprs 1 (-1) x y
-  return $ case constantOrExpr of
-    Left constant -> case evalTrivialRelation rel constant of
-      Just trivialValue -> Trivial trivialValue
-      Nothing -> NonTrivial $ NormalisedRelation rel (constantExpr constant)
-    Right expr -> NonTrivial $ NormalisedRelation rel expr
+  constantOrExpr <- addExprs 1 (-1) x y
+  case constantOrExpr of
+    Left constant -> do
+      maybeTrivialValue <- evalTrivialRelation rel constant
+      case maybeTrivialValue of
+        Just trivialValue -> return $ Trivial trivialValue
+        Nothing -> return $ NonTrivial $ NormalisedRelation rel (constantExpr constant)
+    Right expr -> return $ NonTrivial $ NormalisedRelation rel expr
 
 type LinearSubstitution variable = Map variable (LinearExpr variable RatTensor)
 

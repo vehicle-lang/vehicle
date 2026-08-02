@@ -7,7 +7,6 @@ import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core (InstanceDatabase, emptyInstanceDatabase)
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Code.Value
 
 --------------------------------------------------------------------------------
 --- ScopingState
@@ -64,7 +63,7 @@ instance Serialize (ModuleInterface Builtin)
 --------------------------------------------------------------------------------
 -- ModuleContext
 
-type ImportedModuleContext builtin = [(ModulePath, ModuleInterface builtin, FreeEnv builtin)]
+type ImportedModuleContext builtin = [(ModulePath, ModuleInterface builtin, FreeCtx builtin)]
 
 lookupInCombinedContext ::
   (ModuleInterface builtin -> interface) ->
@@ -89,5 +88,5 @@ concatInCombinedContext ::
 concatInCombinedContext getInterface getValue currentInterface importedCtx = do
   mconcat $ fmap getValue (currentInterface : fmap (\(_, interface, _) -> getInterface interface) importedCtx)
 
-mergeImportedFreeEnvs :: ImportedModuleContext builtin -> FreeEnv builtin
-mergeImportedFreeEnvs ctx = mconcat $ fmap (\(_, _, env) -> env) ctx
+mergeImportedFreeCtxs :: ImportedModuleContext builtin -> FreeCtx builtin
+mergeImportedFreeCtxs ctx = mconcat $ fmap (\(_, _, env) -> env) ctx

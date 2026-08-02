@@ -4,6 +4,7 @@ module Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
 where
 
 import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
+import Control.Monad.Identity (Identity (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (coerce)
 import Data.Foldable (foldlM)
@@ -175,7 +176,7 @@ reconstructTensorViaEquality ::
   MixedVariableAssignment ->
   m (NonEmpty (SliceVariable, RatTensor))
 reconstructTensorViaEquality variable equality assignment = do
-  let errorOrValue = evaluateExpr assignment equality
+  errorOrValue <- evaluateExpr assignment equality
   case errorOrValue of
     Left missingVar -> throwError (toSliceVar variable, MissingVariable missingVar)
     Right value -> return $ go value variable
@@ -213,11 +214,11 @@ reconstructFourierMotzkinVariableValue ::
   Map variable RatTensor ->
   Either variable RatTensor
 reconstructFourierMotzkinVariableValue solution assignment = do
-  lowerBoundValues <- traverse (traverse (evaluateExpr assignment)) (lowerBounds solution)
-  upperBoundValues <- traverse (traverse (evaluateExpr assignment)) (upperBounds solution)
+  lowerBoundValues <- traverse (traverse (runIdentity . evaluateExpr assignment)) (lowerBounds solution)
+  upperBoundValues <- traverse (traverse (runIdentity . evaluateExpr assignment)) (upperBounds solution)
 
-  let maybeLowerBound = andBoundList lowerBoundValues
-  let maybeUpperBound = andBoundList upperBoundValues
+  maybeLowerBound <- andBoundList lowerBoundValues
+  maybeUpperBound <- andBoundList upperBoundValues
 
   return $ case (maybeLowerBound, maybeUpperBound) of
     (Nothing, Nothing) -> ZeroDimTensor 0

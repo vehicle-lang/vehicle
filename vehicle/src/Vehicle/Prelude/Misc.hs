@@ -334,6 +334,12 @@ unzipF = F.unzip
 unzipF = NonEmpty.unzip
 #endif
 
+foldrM1 :: (Monad m) => (t -> t -> m t) -> NonEmpty t -> m t
+foldrM1 _ (x :| []) = pure x
+foldrM1 f (x :| z : xs) = do
+  y <- foldrM1 f (z :| xs)
+  f x y
+
 --------------------------------------------------------------------------------
 -- Constants
 

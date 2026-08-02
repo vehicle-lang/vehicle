@@ -14,7 +14,7 @@ import Vehicle.Compile.Print (PrettyVerbose, prettyVerbose)
 import Vehicle.Compile.Type.Constraint.InstanceSolver (acceptCandidate)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Meta.Variable
+import Vehicle.Compile.Type.Meta.Substitution (HasMetas)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
@@ -60,7 +60,6 @@ getDefaultableConstraints proxy possibleConstraints = do
   maybeDecl <- getCurrentDeclAndUnused @builtin
   result <- case maybeDecl of
     Just (DefFunction _ _ _ t _, declIsUnused) | not declIsUnused -> do
-      logDebug MaxDetail $ pretty declIsUnused
       -- We only want to generate default solutions for constraints
       -- that *don't* appear in the type of the declaration, as those will be
       -- quantified over later. However, if the declaration is unused then
@@ -73,7 +72,7 @@ getDefaultableConstraints proxy possibleConstraints = do
         return $ "Metas transitively related to type-signature:" <+> lineIndent unsolvedMetasInTypeDoc
 
       flip filterM possibleConstraints $ \tc -> do
-        let constraintMetas = metasIn (objectIn tc)
+        constraintMetas <- metasIn (Proxy @builtin) (objectIn tc)
         return $ MetaSet.disjoint constraintMetas typeMetas
     _ -> return possibleConstraints
 

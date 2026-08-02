@@ -22,6 +22,7 @@ import Data.Text qualified as Text
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -32,7 +33,6 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
-import Vehicle.Data.Code.TypedView (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
@@ -678,6 +678,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
           as
     FoldList -> annotateApp moduleDefs [] "List.fold_right" args
     MapList -> annotateApp moduleDefs [] "List.map" args
+    ReverseList -> annotateApp moduleDefs [] "List.rev" args
     AppendList {} -> unsupportedError
     ReduceAndTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_and" args
     ReduceOrTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_or" args
@@ -696,6 +697,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     If -> annotateNotation moduleDefs [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args
     StackTensor -> compileStack moduleDefs args
+    Transpose -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_transpose" args
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
     Iterate -> unsupportedError

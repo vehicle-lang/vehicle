@@ -6,7 +6,6 @@
       "spec.vcl"
     ],
     "produces": [
-      "DL2Loss.vcl"
     ]
   }
 ]

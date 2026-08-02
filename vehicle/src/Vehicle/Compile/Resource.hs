@@ -5,9 +5,34 @@ import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import GHC.Generics
 import Prettyprinter
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Core (BuiltinType (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Prelude
+
+--------------------------------------------------------------------------------
+-- Parameters
+
+data ParameterType sizeType
+  = ParameterBoolType
+  | ParameterRealType
+  | ParameterNatType
+  | ParameterIndexType sizeType
+
+--------------------------------------------------------------------------------
+-- Dataset
+
+data DatasetType sizeType
+  = DatasetVectorType (DatasetType sizeType) sizeType
+  | DatasetListType (DatasetType sizeType)
+  | DatasetTensorType (DatasetElementType sizeType) sizeType
+  | DatasetRecordType Identifier (GenericRecordFields (DatasetType sizeType))
+  | DatasetElementType (DatasetElementType sizeType)
+
+data DatasetElementType sizeType
+  = DatasetRealType
+  | DatasetNatType
+  | DatasetIndexType sizeType
+  deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Networks

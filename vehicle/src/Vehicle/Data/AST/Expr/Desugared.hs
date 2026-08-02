@@ -28,6 +28,7 @@ module Vehicle.Data.AST.Expr.Desugared
     isTypeSynonym,
     mkHole,
     normAppList,
+    headOf,
   )
 where
 
@@ -142,6 +143,11 @@ pattern App f xs <- UnsafeApp f xs
     App f xs = normApp f xs
 
 {-# COMPLETE Universe, App, Pi, Builtin, Var, Hole, Let, Lam, Record, RecordAcc #-}
+
+headOf :: Expr builtin -> Expr builtin
+headOf = \case
+  UnsafeApp f _ -> f
+  e -> e
 
 --------------------------------------------------------------------------------
 -- Instances

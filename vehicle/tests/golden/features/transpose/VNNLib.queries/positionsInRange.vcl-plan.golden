@@ -1,0 +1,252 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Conjunct",
+      "contents": {
+        "unConjunctAll": [
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]"
+                      ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "f_Y[2, 1]": 12,
+                        "f_Y[2, 0]": 11,
+                        "f_Y[1, 1]": 9,
+                        "f_Y[1, 0]": 8,
+                        "f_Y[0, 1]": 6,
+                        "f_Y[0, 0]": 5,
+                        "f_X[1]": 2,
+                        "f_X[0]": 1
+                      }
+                    },
+                    "variableCompilationTrace": {
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": {
+                                "tag": "UniModal",
+                                "contents": [
+                                  2
+                                ]
+                              },
+                              "nestedStartingVariable": 0
+                            },
+                            "AllDimensions"
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": {
+                                "tag": "UniModal",
+                                "contents": [
+                                  3,
+                                  2
+                                ]
+                              },
+                              "nestedStartingVariable": 3
+                            },
+                            "AllDimensions"
+                          ]
+                        }
+                      ]
+                    },
+                    "queryAddress": {
+                      "tag": "QueryAddress",
+                      "queryID": 1,
+                      "property": {
+                        "tag": "PropertyAddress",
+                        "propertyName": "positionsInRange",
+                        "propertyIndices": []
+                      }
+                    },
+                    "metaNetwork": [
+                      [
+                        "f",
+                        {
+                          "networkType": {
+                            "networkOutputType": {
+                              "tag": "UniModal",
+                              "contents": {
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    3,
+                                    2
+                                  ],
+                                  "baseType": []
+                                }
+                              }
+                            },
+                            "networkInputType": {
+                              "tag": "UniModal",
+                              "contents": {
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    2
+                                  ],
+                                  "baseType": []
+                                }
+                              }
+                            }
+                          },
+                          "networkFilepath": "fake.onnx"
+                        },
+                        1
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "negated": false
+            }
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]"
+                      ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "f_Y[2, 1]": 12,
+                        "f_Y[2, 0]": 11,
+                        "f_Y[1, 1]": 9,
+                        "f_Y[1, 0]": 8,
+                        "f_Y[0, 1]": 6,
+                        "f_Y[0, 0]": 5,
+                        "f_X[1]": 2,
+                        "f_X[0]": 1
+                      }
+                    },
+                    "variableCompilationTrace": {
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": {
+                                "tag": "UniModal",
+                                "contents": [
+                                  2
+                                ]
+                              },
+                              "nestedStartingVariable": 0
+                            },
+                            "AllDimensions"
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": {
+                                "tag": "UniModal",
+                                "contents": [
+                                  3,
+                                  2
+                                ]
+                              },
+                              "nestedStartingVariable": 3
+                            },
+                            "AllDimensions"
+                          ]
+                        }
+                      ]
+                    },
+                    "queryAddress": {
+                      "tag": "QueryAddress",
+                      "queryID": 2,
+                      "property": {
+                        "tag": "PropertyAddress",
+                        "propertyName": "positionsInRange",
+                        "propertyIndices": []
+                      }
+                    },
+                    "metaNetwork": [
+                      [
+                        "f",
+                        {
+                          "networkType": {
+                            "networkOutputType": {
+                              "tag": "UniModal",
+                              "contents": {
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    3,
+                                    2
+                                  ],
+                                  "baseType": []
+                                }
+                              }
+                            },
+                            "networkInputType": {
+                              "tag": "UniModal",
+                              "contents": {
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    2
+                                  ],
+                                  "baseType": []
+                                }
+                              }
+                            }
+                          },
+                          "networkFilepath": "fake.onnx"
+                        },
+                        1
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "negated": false
+            }
+          }
+        ]
+      }
+    }
+  }
+}

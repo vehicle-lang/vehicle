@@ -35,16 +35,17 @@ import Data.Void (Void)
 import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
 import Vehicle.Backend.Prelude
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkName)
+import Vehicle.Compile.Resource (NetworkIOType, NetworkName)
 import Vehicle.Compile.Type.Core
 import Vehicle.Data.Bound (UnboundedIndices)
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue (ForcedValue, Thunk, ThunkWithMetas, UnforcedBinder, UnforcedType, UnforcedTypeWithMetas)
+import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
@@ -118,7 +119,7 @@ data TypingError builtin
   | FailedUnificationConstraints (FailedUnificationConstraintsError builtin)
   | FailedInstanceConstraint (FailedInstanceConstraintError builtin)
   | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
-  | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
+  | FailedIndexConstraintUnknown (ConstraintContext builtin) (ThunkWithMetas builtin) (UnforcedTypeWithMetas builtin)
   | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
   | UnsolvedMetas (Proxy builtin) (NonEmpty (MetaID, Provenance))
   | InvalidInstanceHead DeclProvenance (Expr builtin)
@@ -129,11 +130,11 @@ data TypingError builtin
 -- MultiPropertyTraveralError
 
 data MultiPropertyTraveralError
-  = UnsupportedVectorDimension (Value Builtin)
-  | UnsupportedVectorValue (Value Builtin)
-  | UnsupportedTensorDimensions (Value Builtin)
-  | UnreducableTensorValue (Value Builtin)
-  | UnreducableType (VType Builtin)
+  = UnsupportedVectorDimension (Thunk Builtin)
+  | UnsupportedVectorValue (ForcedValue Builtin)
+  | UnsupportedTensorDimensions (Thunk Builtin)
+  | UnreducableTensorValue (ForcedValue Builtin)
+  | UnreducableType (Thunk Builtin)
   deriving (Show)
 
 type MissingResource = (ExternalResource, DeclProvenance)
@@ -194,17 +195,18 @@ data CompileError
   | UnsupportedResourceFormat DeclProvenance ExternalResource String
   | UnableToParseResource DeclProvenance ExternalResource String
   | -- Unsupported networks
-    NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin) InputOrOutput
-  | NetworkTypeHasImplicitSizeTensor DeclProvenance (GluedType Builtin) Identifier InputOrOutput
+    NetworkTypeHasVariableSizeTensor DeclProvenance (Forced.GluedType Builtin) (UnforcedType Builtin) InputOrOutput
+  | NetworkTypeHasImplicitSizeTensor DeclProvenance (Forced.GluedType Builtin) Identifier InputOrOutput
   | -- Unsupported datasets
-    DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin)
+    DatasetVariableSizeTensor DeclProvenance (Forced.GluedType Builtin) (Thunk Builtin)
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int Int
-  | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorShape
-  | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (VType Builtin) (Doc Void)
+  | DatasetDimensionsMismatch DeclProvenance FilePath (Forced.GluedType Builtin) TensorShape
+  | DatasetTypeVariableSizeIndex DeclProvenance (Forced.GluedType Builtin) (ForcedValue Builtin)
+  | DatasetTypeMismatch DeclProvenance FilePath (Forced.GluedType Builtin) (Thunk Builtin) (Doc Void)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
   | -- Unsupported parameters
-    ParameterTypeVariableSizeIndex DeclProvenance (GluedType Builtin) (Value Builtin)
+    ParameterTypeVariableSizeIndex DeclProvenance (Forced.GluedType Builtin) (ForcedValue Builtin)
   | ParameterTypeInferableParameterIndex DeclProvenance Identifier
   | ParameterValueUnparsable DeclProvenance String BuiltinType
   | ParameterValueInvalidIndex DeclProvenance Int Int
@@ -215,22 +217,20 @@ data CompileError
     ZeroFieldTensorLike DeclProvenance
   | -- Query backend
     NoPropertiesFound
-  | HigherOrderVectors DeclProvenance NamedBoundCtx (VType Builtin) (VType Builtin)
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | DuplicateQuantifierNames DeclProvenance Name
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearityProof)
-  | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Value Builtin)]
-  | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (VBinder Builtin) (VType Builtin)
+  | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Thunk Builtin)]
+  | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (UnforcedBinder Builtin) (UnforcedType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
-  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, Value Builtin, [Lv], UnboundedIndices))
+  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, NetworkIOType, Thunk Builtin, [Lv], UnboundedIndices))
   | -- Loss backend errors
     UnknownDifferentiableLogic Name [Name]
   | UnreducableDifferentiableLogic DeclProvenance
   | UnsupportedLossOperation DeclProvenance (Doc Void)
-  | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value Builtin)
-  | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
-  | NoQuantifierDomainFound DeclProvenance (VBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
-  | UnorderableDifferentiableLogic DeclProvenance (Value Builtin)
+  | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Thunk Builtin) NamedBoundCtx (Thunk Builtin)
+  | NoQuantifierDomainFound DeclProvenance (UnforcedBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
+  | UnorderableDifferentiableLogic DeclProvenance (ForcedValue Builtin)
   | -- ITP backend errors
     UnimplementedFeature Provenance (Doc Void)
   | UnusedMonomorphisableDeclaration Provenance Identifier

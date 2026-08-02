@@ -1,0 +1,82 @@
+{
+  "tag": "SpecificationSummary",
+  "properties": [
+    {
+      "typeText": "Vector Bool n",
+      "tag": "PropertySummary",
+      "quantifiedVariables": {
+        "tag": "MultiProperty",
+        "contents": [
+          {
+            "tag": "SingleProperty",
+            "contents": [
+              {
+                "typeText": "Tensor Real [28, 28]",
+                "tag": "QuantifiedVariableSummary",
+                "quantifier": "Forall",
+                "provenance": {
+                  "tag": "Provenance",
+                  "contents": [
+                    49,
+                    35,
+                    49,
+                    47
+                  ]
+                },
+                "name": "perturbation"
+              }
+            ]
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": [
+              {
+                "typeText": "Tensor Real [28, 28]",
+                "tag": "QuantifiedVariableSummary",
+                "quantifier": "Forall",
+                "provenance": {
+                  "tag": "Provenance",
+                  "contents": [
+                    49,
+                    35,
+                    49,
+                    47
+                  ]
+                },
+                "name": "perturbation"
+              }
+            ]
+          }
+        ]
+      },
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          92,
+          1,
+          92,
+          7
+        ]
+      },
+      "name": "robust"
+    }
+  ],
+  "parameters": [],
+  "networks": [
+    {
+      "typeText": "Image -> Tensor Real [10]",
+      "tag": "NetworkSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          22,
+          1,
+          22,
+          11
+        ]
+      },
+      "name": "classifier"
+    }
+  ],
+  "datasets": []
+}

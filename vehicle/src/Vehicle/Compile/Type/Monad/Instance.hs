@@ -59,13 +59,13 @@ mapTypeCheckerT f m = TypeCheckerT (mapStateT f (unTypeCheckerT m))
 instance (PrintableBuiltin builtin, MonadCompile m) => MonadFreeContext builtin (TypeCheckerT builtin m) where
   addDeclEntryToContext decl action = TypeCheckerT $ do
     modify $ \typeCheckerState ->
-      typeCheckerState {currentFreeEnv = Map.insert (identifierOf decl) decl (currentFreeEnv typeCheckerState)}
+      typeCheckerState {currentFreeCtx = Map.insert (identifierOf decl) decl (currentFreeCtx typeCheckerState)}
     unTypeCheckerT action
 
-  getFreeCtx _proxy = TypeCheckerT $ gets currentFreeEnv
+  getFreeCtx _proxy = TypeCheckerT $ gets currentFreeCtx
 
   getDeclEntry _proxy ident = TypeCheckerT $ do
-    gets (lookupInFreeCtx ident . currentFreeEnv)
+    gets (lookupInFreeCtx ident . currentFreeCtx)
 
 instance (TypableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
   getTypeCheckerState = TypeCheckerT get

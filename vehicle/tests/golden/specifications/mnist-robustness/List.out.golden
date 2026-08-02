@@ -51,7 +51,7 @@
   ],
   "networks": [
     {
-      "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
+      "typeText": "Image -> Tensor Real [10]",
       "tag": "NetworkSummary",
       "provenance": {
         "tag": "Provenance",
@@ -67,7 +67,7 @@
   ],
   "datasets": [
     {
-      "typeText": "Vector (Tensor Real [28, 28]) n",
+      "typeText": "Vector Image n",
       "tag": "DatasetSummary",
       "provenance": {
         "tag": "Provenance",
@@ -81,7 +81,7 @@
       "name": "trainingImages"
     },
     {
-      "typeText": "Vector (Index 10) n",
+      "typeText": "Vector Label n",
       "tag": "DatasetSummary",
       "provenance": {
         "tag": "Provenance",

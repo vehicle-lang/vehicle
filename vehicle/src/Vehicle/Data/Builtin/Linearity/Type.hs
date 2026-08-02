@@ -84,6 +84,7 @@ typeOfBuiltinFunction p = \case
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
+  ReverseList -> typeOfOp1
   AppendList -> typeOfOp2 maxLinearity
   AtVector -> typeOfAt
   AtTensor -> typeOfAt
@@ -92,6 +93,7 @@ typeOfBuiltinFunction p = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Transpose -> typeOfOp1
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case

@@ -229,6 +229,16 @@ The following operations over tensors are currently supported:
      - | ``Tensor A ds → A``
        | (if ``A`` supports ``max``)
      - |backendall_full|
+   * - Transpose
+     - ``transpose t``
+     - | ``Tensor A ds →``
+       | ``Tensor A (reverse ds)``
+     - | |backendloss_full|
+       | |backendverification_full|
+       | |backendagda_full|
+       | |backendrocq_part| (:ref:`⤴ <exporting-rocq-transpose-limitation>`)
+       | |backendimandra_full|
+       | |backendisabelle_full|
 
 
 

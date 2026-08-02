@@ -13,7 +13,6 @@ import Data.Graph (graphFromEdges, topSort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Text qualified as Text
-import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -25,9 +24,8 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Variable.Bound.Context.Generic
 
 --------------------------------------------------------------------------------
@@ -131,7 +129,7 @@ mergeInstanceConstraints constraints = do
     forM_ otherConstraints $ \otherConstraint -> do
       let secDoc = "Merging" <+> prettyExternal otherConstraint <+> "into" <> line <> prettyExternal masterConstraint
       logCompilerSection MaxDetail secDoc $ do
-        result <- unify mempty mainGoal (getGoal otherConstraint)
+        result <- unify mempty (Forced mainGoal) (Forced $ getGoal otherConstraint)
         case result of
           Success -> return ()
           _ -> developerError "Unable to unify identical goal constraints"
@@ -152,7 +150,7 @@ updateSolutionMeta constraint = do
   metaCtx <- metaVariableCtx <$> getTypeCheckerDeclState @builtin
   newMeta <- findUltimateUnsolvedMeta metaCtx originalMeta
   -- This is a hack that should disappear when we get records?
-  updateMetaType newMeta (Quote.unnormalise @(Value builtin) @(Expr builtin) 0 $ goalExpr $ instanceGoal constraint)
+  updateMetaType @builtin newMeta (Quote.unnormalise 0 $ goalExpr $ instanceGoal constraint)
   return $ constraint {instanceSolution = newMeta}
 
 --------------------------------------------------------------------------------
@@ -187,12 +185,13 @@ generaliseOverUnsolvedMetas decl = do
   return generalisedDecl
 
 sortGeneralisableMetas ::
-  (MonadCompile m, PrintableBuiltin builtin) =>
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
   MetaVariableContext builtin ->
   m [MetaID]
 sortGeneralisableMetas unsolvedMetas = do
   logCompilerSection2 MaxDetail "sorting generalisable constraints" $ do
-    let adjacencyMap = MetaMap.map (metasIn . metaType) unsolvedMetas
+    adjacencyMap <- traverse (metasIn (Proxy @builtin) . metaType) unsolvedMetas
     let adjacencyList = (\(x, ys) -> (x, x, MetaSet.toList ys)) <$> MetaMap.toList adjacencyMap
 
     let (graph, nodeFromVertex, _) = graphFromEdges adjacencyList

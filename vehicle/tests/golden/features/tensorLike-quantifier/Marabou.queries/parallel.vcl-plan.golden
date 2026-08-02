@@ -239,27 +239,18 @@
                         "f₀[input]!1",
                         "f₀[input]!0",
                         "f₀[input]",
-                        "_t1!1",
-                        "_t1!0",
-                        "_t1",
-                        "f₀[output]!1",
-                        "f₀[output]!0",
-                        "f₀[output]",
-                        "f₀[input]!1",
-                        "f₀[input]!0",
-                        "f₀[input]",
                         "_t0!1",
                         "_t0!0",
                         "_t0"
                       ],
                       "userVariables": [
-                        9
+                        0
                       ],
                       "queryVariableMapping": {
-                        "y1": 17,
-                        "y0": 16,
-                        "x1": 14,
-                        "x0": 13
+                        "y1": 8,
+                        "y0": 7,
+                        "x1": 5,
+                        "x0": 4
                       }
                     },
                     "variableCompilationTrace": {
@@ -274,7 +265,7 @@
                                   2
                                 ]
                               },
-                              "nestedStartingVariable": 12
+                              "nestedStartingVariable": 3
                             },
                             "AllDimensions"
                           ]
@@ -289,7 +280,7 @@
                                   2
                                 ]
                               },
-                              "nestedStartingVariable": 15
+                              "nestedStartingVariable": 6
                             },
                             "AllDimensions"
                           ]
@@ -297,7 +288,7 @@
                         {
                           "tag": "ConvertQuantifiedTensorLike",
                           "contents": [
-                            "_t1",
+                            "_t0",
                             "y",
                             [
                               "a",
@@ -313,7 +304,7 @@
                                 "tag": "UniModal",
                                 "contents": []
                               },
-                              "nestedStartingVariable": 11
+                              "nestedStartingVariable": 2
                             },
                             {
                               "constantValue": {
@@ -328,7 +319,7 @@
                               },
                               "coefficients": [
                                 [
-                                  14,
+                                  5,
                                   {
                                     "numerator": 1,
                                     "denominator": 1
@@ -346,7 +337,7 @@
                                 "tag": "UniModal",
                                 "contents": []
                               },
-                              "nestedStartingVariable": 10
+                              "nestedStartingVariable": 1
                             },
                             {
                               "constantValue": {
@@ -361,7 +352,7 @@
                               },
                               "coefficients": [
                                 [
-                                  13,
+                                  4,
                                   {
                                     "numerator": 1,
                                     "denominator": 1
@@ -381,7 +372,7 @@
                                   2
                                 ]
                               },
-                              "nestedStartingVariable": 9
+                              "nestedStartingVariable": 0
                             },
                             "OneDimension"
                           ]

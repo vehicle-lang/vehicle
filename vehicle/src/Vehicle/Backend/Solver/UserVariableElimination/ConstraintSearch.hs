@@ -215,9 +215,9 @@ findAllBoundsConjunct conjuncts = return $ combineConjuncts conjuncts
     combineConjuncts = foldr1 $ conjunctDisjuncts (\(a, b) (c, d) -> (andBounds a c, unionMaybeWith andBoolExpr b d))
 
 tryConvertAssertionToSliceBounds ::
-  (MonadLogger m, MonadReadableNameContext m, ConstantLike constant) =>
+  (MonadLogger m, MonadReadableNameContext m, ConstantLike constant m) =>
   SliceVariable ->
   Assertion (LinearExpr SliceVariable constant) ->
   m (Maybe (SliceBounds (LinearExpr SliceVariable constant)))
 tryConvertAssertionToSliceBounds var assertion = do
-  return (maybeBoundsToSliceBounds <$> tryConvertAssertionToBound var assertion)
+  (maybeBoundsToSliceBounds <$>) <$> tryConvertAssertionToBound var assertion

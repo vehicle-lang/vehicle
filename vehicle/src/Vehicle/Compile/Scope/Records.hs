@@ -12,11 +12,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
-import Vehicle.Data.Code.Interface (getDims)
-import Vehicle.Data.Code.TypedView (TypeValue (VRatTensorType), toTypeValue)
-import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Libraries.StandardLibrary
 import Prelude hiding (pi)
 
@@ -521,33 +517,19 @@ deriveArithmeticOp2 typeclassIdent typeclassOp p recordIdent telescope fields = 
 -- Record/Tensorisable util functions
 -- Not sure if these should go here or if they are at the right level of abstraction
 
-constructTensorisableDims ::
-  GenericRecordFields (Value Builtin) ->
-  TensorShape
-constructTensorisableDims [] = []
-constructTensorisableDims fields@((_n, typ) : _fs) =
-  case toTypeValue typ of
-    (VRatTensorType dims) ->
-      case getDims dims of
-        Just d -> length fields : d
-        Nothing -> [length fields]
-    _ -> [length fields]
-
 constructFromTensorFreeVar ::
   Identifier ->
-  Provenance ->
-  Expr Builtin
-constructFromTensorFreeVar ident p = do
+  Identifier
+constructFromTensorFreeVar ident = do
   let name = Text.pack "_" <> identifierName ident <> "FromTensor"
-  FreeVar p (Identifier (modulePath ident) name)
+  Identifier (modulePath ident) name
 
 constructToTensorFreeVar ::
   Identifier ->
-  Provenance ->
-  Expr Builtin
-constructToTensorFreeVar ident p = do
+  Identifier
+constructToTensorFreeVar ident = do
   let name = Text.pack "_" <> identifierName ident <> "ToTensor"
-  FreeVar p (Identifier (modulePath ident) name)
+  Identifier (modulePath ident) name
 
 createImplicitTelescope :: Telescope Builtin -> Telescope Builtin
 createImplicitTelescope = fmap (flip setBinderVisibility $ Implicit True)

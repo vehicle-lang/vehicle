@@ -345,7 +345,7 @@
   "parameters": [],
   "networks": [
     {
-      "typeText": "Tensor Real [5] -> OutputVector",
+      "typeText": "InputVector -> OutputVector",
       "tag": "NetworkSummary",
       "provenance": {
         "tag": "Provenance",

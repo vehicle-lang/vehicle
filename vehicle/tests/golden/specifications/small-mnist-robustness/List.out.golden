@@ -1,0 +1,98 @@
+{
+  "tag": "SpecificationSummary",
+  "properties": [
+    {
+      "typeText": "Vector Bool n",
+      "tag": "PropertySummary",
+      "quantifiedVariables": null,
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          92,
+          1,
+          92,
+          7
+        ]
+      },
+      "name": "robust"
+    }
+  ],
+  "parameters": [
+    {
+      "typeText": "Real",
+      "tag": "ParameterSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          37,
+          1,
+          37,
+          8
+        ]
+      },
+      "name": "epsilon",
+      "inferable": false
+    },
+    {
+      "typeText": "Nat",
+      "tag": "ParameterSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          72,
+          1,
+          72,
+          2
+        ]
+      },
+      "name": "n",
+      "inferable": true
+    }
+  ],
+  "networks": [
+    {
+      "typeText": "Image -> Tensor Real [10]",
+      "tag": "NetworkSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          22,
+          1,
+          22,
+          11
+        ]
+      },
+      "name": "classifier"
+    }
+  ],
+  "datasets": [
+    {
+      "typeText": "Vector Image n",
+      "tag": "DatasetSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          78,
+          1,
+          78,
+          15
+        ]
+      },
+      "name": "trainingImages"
+    },
+    {
+      "typeText": "Vector Label n",
+      "tag": "DatasetSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          81,
+          1,
+          81,
+          15
+        ]
+      },
+      "name": "trainingLabels"
+    }
+  ]
+}

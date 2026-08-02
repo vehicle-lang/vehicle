@@ -29,6 +29,7 @@ module Vehicle.Data.AST.Expr.Scoped
     substituteDB,
     getBuiltinApp,
     boundVariablesIn,
+    traverseBoundVariables_,
     calculateRarameterisedRecordFieldType,
   )
 where
@@ -37,7 +38,7 @@ import Control.DeepSeq (NFData)
 import Control.Monad (when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..), runReader)
-import Control.Monad.Writer (MonadWriter (..), execWriter)
+import Control.Monad.Writer.Strict (MonadWriter (..), execWriter)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -322,9 +323,14 @@ freeVarsIn =
       )
 
 boundVariablesIn :: Lv -> Expr builtin -> Set Lv
-boundVariablesIn ctxSize value = execWriter (go ctxSize value)
+boundVariablesIn ctxSize value = do
+  let noteVar depth ix = tell $ Set.singleton (dbIndexToLevel depth ix)
+  execWriter (traverseBoundVariables_ noteVar ctxSize value)
+
+traverseBoundVariables_ :: forall builtin m. (Monad m) => (Lv -> Ix -> m ()) -> Lv -> Expr builtin -> m ()
+traverseBoundVariables_ f ctxSize = go ctxSize
   where
-    go :: (MonadWriter (Set Lv) m) => Lv -> Expr builtin -> m ()
+    go :: Lv -> Expr builtin -> m ()
     go depth = \case
       FreeVar {} -> return ()
       Meta {} -> return ()
@@ -333,9 +339,8 @@ boundVariablesIn ctxSize value = execWriter (go ctxSize value)
       Universe {} -> return ()
       App fun args -> do go depth fun; traverse_ (traverse (go depth)) args
       BoundVar _ ix -> do
-        let lv = dbIndexToLevel depth ix
-        when (lv >= ctxSize) $
-          tell (Set.singleton lv)
+        when (dbIndexToLevel depth ix < ctxSize) $
+          f ctxSize ix
       Pi _ binder body -> do
         traverse_ (go depth) binder
         go (depth + 1) body
@@ -391,12 +396,13 @@ getLastArgLambda = \case
       _ -> Nothing
   _ -> Nothing
 
-instance HasBuiltinConstructor Expr where
+instance HasBuiltinConstructor Expr Expr where
   accessBuiltinC =
     Access
       { getExpr = getBuiltinApp,
         mkExpr = \(b, args) -> normAppList (Builtin mempty b) args
       }
+  exprToThunk = id
 
 --------------------------------------------------------------------------------
 -- DeBruijin substitution
@@ -497,5 +503,5 @@ substArgs (Lam _ _ body) (arg : args) = do
   substArgs (argExpr arg `substDBInto` body) args
 substArgs e args = normAppList e args
 
-calculateRarameterisedRecordFieldType :: Telescope builtin -> Type builtin -> [Arg builtin] -> Type builtin
-calculateRarameterisedRecordFieldType telescope fieldType = substArgs (foldr (Lam mempty) fieldType telescope)
+calculateRarameterisedRecordFieldType :: Telescope builtin -> [Arg builtin] -> Type builtin -> Type builtin
+calculateRarameterisedRecordFieldType telescope args fieldType = substArgs (foldr (Lam mempty) fieldType telescope) args
