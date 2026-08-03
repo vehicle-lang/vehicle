@@ -602,6 +602,8 @@ instance IsArgs NetworkAppArgs where
       }
 
 -- | Arguments for `QuantifyRatTensor`
+-- Pointwise dims are not present/supplied in the frontend, and users don't directly interact with it.
+-- They are instantiated to nil in the frontend, but will be used in the solver & loss backends.
 data QuantifyRatTensorArgs expr body = QuantifyRatTensorArgs
   { quantifyPointwiseDims :: expr,
     quantifyBaseDims :: expr,
