@@ -237,8 +237,8 @@ convertToDecidabilityBuiltins p b args = return $
         AtTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldAtTensor)
         CompareIndex op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareIndex op)
         CompareNat op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
+        QuantifyRatTensor q -> quantifier q
         -- Nothing needs to change
-        QuantifyRatTensor {} -> sameFunction f
         QuantifyRecord {} -> sameFunction f
         If -> sameFunction f
         Neg {} -> sameFunction f
@@ -284,6 +284,10 @@ convertToDecidabilityBuiltins p b args = return $
     -- Nothing changes
     sameDerivedFunction f = normAppList (Builtin p (StandardBuiltinDerivedFunction f)) args
     sameFunction f = normAppList (Builtin p (StandardBuiltinFunction f)) args
+    quantifier q = case args of
+      [] -> developerError "unexpected quantifier args"
+      -- We remove the extra unused _pDims in this pass as we don't need it in the decidability backend.
+      _pDims : as -> normAppList (Builtin p (StandardBuiltinFunction $ QuantifyRatTensor q)) as
 
     -- Apply a cast
     castWith f original = normAppList (Builtin p $ DecidabilityBuiltinTypeClassOp f) [explicit original]

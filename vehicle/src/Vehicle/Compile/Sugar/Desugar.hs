@@ -596,8 +596,12 @@ elabComparePointwise op tk args = do
 -- the only thing we need to add when desugaring is the pointwise dims, which is always nil
 elabQuantifyRatTensor :: (MonadElab m, IsToken token) => V.Quantifier -> token -> [B.Expr] -> m (V.Expr Builtin)
 elabQuantifyRatTensor quant tk args = do
-  let pDims = B.Nil $ mkToken B.TokNil "nil"
-  builtinFunction (V.QuantifyRatTensor quant) tk (pDims : args)
+  p <- mkProvenance tk
+  let fn = V.Builtin p (V.BuiltinFunction (V.QuantifyRatTensor quant))
+  pDims <- elabExpr $ B.Nil $ mkToken B.TokNil "nil"
+  let implArgs = [V.implicitIrrelevant pDims]
+  explicitArgs <- fmap V.explicit <$> traverse elabExpr args
+  return $ V.normAppList fn (implArgs ++ explicitArgs)
 
 findRelevance :: [B.Modality] -> V.Relevance
 findRelevance ms
