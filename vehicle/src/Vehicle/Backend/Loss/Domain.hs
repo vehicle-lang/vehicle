@@ -94,14 +94,14 @@ compileExists ::
   (MonadLogic m) =>
   QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin) ->
   m (MaybeTrivial Partitions)
-compileExists (QuantifyRatTensorArgs dims binder closure) =
+compileExists (QuantifyRatTensorArgs _pDims bDims binder closure) =
   logCompilerSection2 MaxDetail "convert-exists" $ do
     -- Extract the domain for the search
     lv <- getBinderDepth
     let body = extendClosureWithBound closure binder lv
     finalCtx <- getShrunkenContext
 
-    shapePrefix <- extractKnownShapePrefix dims
+    shapePrefix <- extractKnownShapePrefix bDims
     result <- addTensorBinderToContextLocally shapePrefix binder $ do
       maybePartitions <- compileBool body
       case maybePartitions of
@@ -111,7 +111,7 @@ compileExists (QuantifyRatTensorArgs dims binder closure) =
         NonTrivial partitions -> do
           logDebug MaxDetail $ "number-of-partitions:" <+> pretty (numberOfPartitions partitions)
           userTensorVar <- lookupNestedTensorVariable $ UserTensorVariable $ TensorVariable $ SliceVariable lv
-          xs <- traverse (compileConstraints finalCtx dims binder userTensorVar) (partitionsToDisjuncts partitions)
+          xs <- traverse (compileConstraints finalCtx bDims binder userTensorVar) (partitionsToDisjuncts partitions)
           disjunctMaybeTrivialPartitions xs
 
     return result
