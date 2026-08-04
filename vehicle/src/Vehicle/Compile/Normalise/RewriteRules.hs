@@ -415,10 +415,11 @@ negateQuantifierBody ::
   (RewritableBuiltin builtin) =>
   QuantifyRatTensorArgs (Thunk builtin) (Closure builtin) ->
   QuantifyRatTensorArgs (Thunk builtin) (Closure builtin)
-negateQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
+negateQuantifierBody (QuantifyRatTensorArgs pDims bDims binder (Closure env body)) = do
   let newBody = mkExpr accessNotTensor $ TensorOp1Args IDimNil body
   QuantifyRatTensorArgs
-    { quantifyDimensions = dims,
+    { quantifyPointwiseDims = pDims,
+      quantifyBaseDims = bDims,
       quantifyBinder = binder,
       quantifyBody = Closure env newBody
     }

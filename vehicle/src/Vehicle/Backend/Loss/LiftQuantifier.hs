@@ -38,7 +38,7 @@ type OldContextValue = Thunk Builtin
 
 type NewContextValue = Thunk Builtin
 
-type QuantifierData = (Quantifier, Either (UnforcedDims Builtin) (UnforcedType Builtin), UnforcedBinder Builtin)
+type QuantifierData = (Quantifier, Either (UnforcedDims Builtin, UnforcedDims Builtin) (UnforcedType Builtin), UnforcedBinder Builtin)
 
 type PropertyData = Map Name Bool
 
@@ -148,7 +148,7 @@ reconstructProperty quantifiers value = case quantifiers of
       return $ unnormalise lv reconstructed
     newEnv <- namedBoundContextToEnv <$> getNameContext
     case dimsOrType of
-      Left dims -> return (Forced $ mkExpr accessQuantifyRatTensor (quantifier, QuantifyRatTensorArgs dims binder (Closure newEnv newBody)))
+      Left (pDims, bDims) -> return (Forced $ mkExpr accessQuantifyRatTensor (quantifier, QuantifyRatTensorArgs pDims bDims binder (Closure newEnv newBody)))
       Right typ -> return (Forced $ mkExpr accessQuantifyRecord (quantifier, QuantifyRecordArgs typ binder (Closure newEnv newBody)))
 
 liftQuantifierProperty ::
@@ -171,11 +171,11 @@ liftQuantifierProperty (value, ctxDelta) = do
     VNot (TensorOp1Args dims arg) -> do
       ((quantifiers, arg'), ctxSize) <- liftQuantifierProperty (arg, ctxDelta)
       return ((quantifiers, Forced $ mkExpr accessNotTensor (TensorOp1Args dims arg')), ctxSize)
-    VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs dims binder closure) -> do
+    VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs pDims bDims binder closure) -> do
       lv <- getBinderDepth
       let normBody = extendClosureWithBound closure binder lv
       ((quantifiers, body'), ctxSize) <- addNameToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
-      return (((quantifier, Left dims, binder) : quantifiers, body'), ctxSize + 1)
+      return (((quantifier, Left (pDims, bDims), binder) : quantifiers, body'), ctxSize + 1)
     VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder closure) -> do
       lv <- getBinderDepth
       let normBody = extendClosureWithBound closure binder lv
