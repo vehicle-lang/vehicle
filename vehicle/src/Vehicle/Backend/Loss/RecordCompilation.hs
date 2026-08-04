@@ -48,4 +48,4 @@ wrapQuantifyRecordForLoss QuantifyRecordArgs {..} = do
   let fromTensorExpr = App (FreeVar recordTypeProv $ constructFromTensorFreeVar recordTypeIdent) [tensorBoundVar]
 
   let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
-  return $ QuantifyRatTensorArgs dims tensorBinder (Closure boundEnv nestedBody)
+  return $ QuantifyRatTensorArgs (Forced IDimNil) dims tensorBinder (Closure boundEnv nestedBody)
