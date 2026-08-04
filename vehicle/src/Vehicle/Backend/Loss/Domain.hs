@@ -12,7 +12,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Vehicle.Backend.Loss.Core
-import Vehicle.Backend.Loss.Domain.PurifyAssertion (BlockingReason, tryPurifyAssertion, unblockingActions)
+import Vehicle.Backend.Loss.Domain.PurifyAssertion (tryPurifyAssertion, unblockingActions)
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
 import Vehicle.Compile.Constants.ForcedValue

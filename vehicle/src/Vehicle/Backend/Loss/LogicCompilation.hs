@@ -6,7 +6,7 @@ module Vehicle.Backend.Loss.LogicCompilation
 where
 
 import Control.Monad (foldM)
-import Control.Monad.Except (MonadError (..))
+import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.State (MonadState, StateT, execStateT, modify)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -158,10 +158,11 @@ calculateLogicDirection declProv fields = do
         let args = TensorComparisonArgs (Forced IDimNil) (Forced IDimNil) trueValue falseValue
         Forced $ mkExpr accessCompareRatTensor (Le, args)
 
-  result <- runFreshNameBoundContextT $ forceThunk =<< unblockBoolExpr noUnblocking expr
-  case result of
-    IBoolLiteral b -> return b
-    _ -> throwError $ UnorderableDifferentiableLogic declProv result
+  errorOrResult <- runExceptT $ runFreshNameBoundContextT $ forceThunk =<< unblockBoolExpr noUnblocking expr
+  case errorOrResult of
+    Left blockingErr -> throwError $ UnorderableDifferentiableLogic declProv expr (Left blockingErr)
+    Right (IBoolLiteral b) -> return b
+    Right result -> throwError $ UnorderableDifferentiableLogic declProv expr (Right result)
 
 compileLogicField ::
   (MonadLoss m) =>

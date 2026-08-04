@@ -14,6 +14,7 @@ import Control.Applicative (liftA2)
 import Control.Monad (liftM2)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Vehicle.Compile.Constants.ForcedValue (TensorValueLinearExpr)
+import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
@@ -280,10 +281,6 @@ tryAndUnblock dims expr = do
     Left BlockingDatasetOrParameter {} -> compileAsConstantExpr dims expr
     Right unblocked -> forIfTreeM unblocked $ \unblockedExpr ->
       compileLinearExpr dims unblockedExpr
-
-data BlockingReason
-  = BlockingNetwork Identifier
-  | BlockingDatasetOrParameter Identifier
 
 unblockingActions ::
   (MonadPurifyAssertion m, MonadError BlockingReason m) =>

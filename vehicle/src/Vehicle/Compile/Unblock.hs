@@ -24,7 +24,9 @@ module Vehicle.Compile.Unblock
   )
 where
 
+import Control.Monad.Except (MonadError (..))
 import GHC.Stack (HasCallStack)
+import Vehicle.Compile.Error (BlockingReason (..))
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Core
@@ -73,12 +75,12 @@ data UnblockingActions m = UnblockingActions
       m (IfTree (Thunk Builtin) (Thunk Builtin))
   }
 
-noUnblocking :: (Monad m) => UnblockingActions m
+noUnblocking :: (MonadError BlockingReason m) => UnblockingActions m
 noUnblocking =
   UnblockingActions
     { unblockRatTensorBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v [],
-      unblockNetworkApp = \_ _ ident args -> return $ IfLeaf $ Forced $ VFreeVar ident (mkExpr accessSpine args),
-      unblockDatasetOrParameter = \_ ident -> return $ IfLeaf $ Forced $ VFreeVar ident [],
+      unblockNetworkApp = \_ _ ident _args -> throwError $ BlockingNetwork ident,
+      unblockDatasetOrParameter = \_ ident -> throwError $ BlockingDatasetOrParameter ident,
       unblockRecordBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v []
     }
 
