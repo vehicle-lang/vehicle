@@ -3,6 +3,9 @@ module Vehicle.Backend.Loss.LossCompilation
     convertBoolTensorLiteral,
     convertQuantifierlessExprToLoss,
     convertBooleanOp,
+    orLossValue,
+    andLossValue,
+    notLossValue,
   )
 where
 
@@ -265,6 +268,24 @@ convertBoolTensorLiteral tensor = do
         let args = implicit (INatLiteral dim) : dims : implicit INatType : fmap explicit elems
         VBuiltin (LossBuiltinFunction StackTensor) (fmap (fmap Forced) args)
   return $ foldMapTensor convertBool foldLayer tensor
+
+--------------------------------------------------------------------------------
+-- Utils
+
+orLossValue :: (MonadLogic m) => Thunk LossBuiltin -> Thunk LossBuiltin -> m (Thunk LossBuiltin)
+orLossValue e1 e2 =
+  convertBooleanOp PointwiseDisjunction $
+    mkExpr accessSpine (TensorOp2Args (Forced IDimNil) e1 e2)
+
+andLossValue :: (MonadLogic m) => Thunk LossBuiltin -> Thunk LossBuiltin -> m (Thunk LossBuiltin)
+andLossValue e1 e2 =
+  convertBooleanOp PointwiseConjunction $
+    mkExpr accessSpine (TensorOp2Args (Forced IDimNil) e1 e2)
+
+notLossValue :: (MonadLogic m) => Thunk LossBuiltin -> Thunk LossBuiltin -> m (Thunk LossBuiltin)
+notLossValue dims e =
+  convertBooleanOp PointwiseNegation $
+    mkExpr accessSpine (TensorOp1Args dims e)
 
 --------------------------------------------------------------------------------
 -- Utils
