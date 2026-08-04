@@ -18,6 +18,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
+import Vehicle.Data.Code.BooleanExpr (unDisjunctAll)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Variable.Bound.Context.Tensor (TensorBoundContextT)
@@ -111,4 +112,8 @@ convertDeclType :: (MonadLogic m) => UnforcedType Builtin -> m (Type LossBuiltin
 convertDeclType typ = unnormalise 0 <$> convertThunk Nothing typ
 
 convertMultiProperty :: (MonadLogic m) => Thunk Builtin -> m (Expr LossBuiltin)
-convertMultiProperty body = unnormalise 0 <$> convertThunk (Just compileQuantifier) body
+convertMultiProperty body = do
+  let compQuantifier args = do
+        disjuncts <- compileQuantifier args
+        foldrM1 orLossValue $ unDisjunctAll disjuncts
+  unnormalise 0 <$> convertThunk (Just compQuantifier) body
