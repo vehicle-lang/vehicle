@@ -19,6 +19,7 @@ module Vehicle.Compile.Unblock
     unblockTensorOp2,
     unblockTensorOp1,
     unblockRecordAcc,
+    noUnblocking,
     forceEval,
   )
 where
@@ -54,20 +55,32 @@ type MonadPurify m = MonadUnblock m
 
 data UnblockingActions m = UnblockingActions
   { unblockRatTensorBoundVar ::
+      TypeUnblockingFunction (Thunk Builtin) m ->
       Lv ->
-      m (Thunk Builtin),
+      m (IfTree (Thunk Builtin) (Thunk Builtin)),
     unblockNetworkApp ::
       TypeUnblockingFunction (Thunk Builtin) m ->
       TypeUnblockingFunction (Thunk Builtin) m ->
       Identifier ->
       OperationUnblockingFunction NetworkAppArgs (Thunk Builtin) m,
     unblockDatasetOrParameter ::
+      TypeUnblockingFunction (Thunk Builtin) m ->
       Identifier ->
-      m (Thunk Builtin),
+      m (IfTree (Thunk Builtin) (Thunk Builtin)),
     unblockRecordBoundVar ::
+      TypeUnblockingFunction (Thunk Builtin) m ->
       Lv ->
-      m (Thunk Builtin)
+      m (IfTree (Thunk Builtin) (Thunk Builtin))
   }
+
+noUnblocking :: (Monad m) => UnblockingActions m
+noUnblocking =
+  UnblockingActions
+    { unblockRatTensorBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v [],
+      unblockNetworkApp = \_ _ ident args -> return $ IfLeaf $ Forced $ VFreeVar ident (mkExpr accessSpine args),
+      unblockDatasetOrParameter = \_ ident -> return $ IfLeaf $ Forced $ VFreeVar ident [],
+      unblockRecordBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v []
+    }
 
 -- | Lifts all `if`s in the provided expression `e` to the top-level, while
 -- preserving the guarantee that the expression is normalised as much as
@@ -148,9 +161,9 @@ unblockRatTensorValue actions@UnblockingActions {..} expr =
       VReduceMaxRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMaxRatTensor) args
       VMinRatTensor args -> unblockMinRatTensor unblock args
       VMaxRatTensor args -> unblockMaxRatTensor unblock args
-      VRatTensorBoundVar v -> unblock =<< unblockRatTensorBoundVar v
+      VRatTensorBoundVar v -> unblockRatTensorBoundVar unblock v
       VNetworkApplication n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
-      VParameterOrDataset ident -> unblock =<< unblockDatasetOrParameter ident
+      VParameterOrDataset ident -> unblockDatasetOrParameter unblock ident
       VRatAtTensor args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
       VRatAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
       VRatForeach args -> unblockForeachTensor args
@@ -168,7 +181,7 @@ unblockRecordValue actions@UnblockingActions {..} expr = showEntry expr $ do
     VRecordRecord {} -> return $ IfLeaf expr
     -- VRecordNetworkApp n args -> unblockNetworkApp unblockTensor unblockRecord n args
     VRecordBoundVar v spine -> case spine of
-      [] -> unblockRecord =<< unblockRecordBoundVar v
+      [] -> unblockRecordBoundVar unblockRecord v
       _ -> unexpectedExprError currentPass "record boundVar with args"
     VRecordNetworkApp n args -> unblockNetworkApp (unblockRatTensorValue actions) unblockRecord n args
     VRecordMeta {} -> unexpectedExprError currentPass "record meta"

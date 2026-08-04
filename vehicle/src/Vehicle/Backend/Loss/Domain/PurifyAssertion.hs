@@ -293,18 +293,19 @@ unblockingActions =
     { unblockRatTensorBoundVar = purifyBoundVar,
       unblockRecordBoundVar = purifyBoundVar,
       unblockNetworkApp = \_ _ ident _ -> throwError $ BlockingNetwork ident,
-      unblockDatasetOrParameter = \ident -> throwError $ BlockingDatasetOrParameter ident
+      unblockDatasetOrParameter = \_ ident -> throwError $ BlockingDatasetOrParameter ident
     }
 
 purifyBoundVar ::
-  (MonadLogger m, MonadReadableTensorBoundContext m) =>
+  (MonadPurifyAssertion m) =>
+  TypeUnblockingFunction (Thunk Builtin) m ->
   Lv ->
-  m (Thunk Builtin)
-purifyBoundVar lv = do
+  m (IfTree (Thunk Builtin) (Thunk Builtin))
+purifyBoundVar unblock lv = do
   (_, maybeChildVars) <- lookupVariableInNestedCtx lv
   case maybeChildVars of
-    Nothing -> return $ Forced $ VBoundVar lv []
-    Just (_tensorVar, sliceVar) -> replaceTensorVariableWithStackedChildren sliceVar
+    Nothing -> return $ IfLeaf $ Forced $ VBoundVar lv []
+    Just (_tensorVar, sliceVar) -> unblock =<< replaceTensorVariableWithStackedChildren sliceVar
 
 --------------------------------------------------------------------------------
 -- Utility functions

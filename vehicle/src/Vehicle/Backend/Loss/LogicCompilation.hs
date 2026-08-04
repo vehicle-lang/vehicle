@@ -17,12 +17,11 @@ import Vehicle.Backend.Loss.Core hiding (lookupLogicField)
 import Vehicle.Backend.Loss.LossCompilation (convertQuantifierlessExprToLoss)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin
-import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Compile.Unblock (noUnblocking, unblockBoolExpr)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LogicDirection, LossBuiltin)
 import Vehicle.Data.Builtin.Standard (Builtin)
@@ -153,13 +152,16 @@ calculateLogicDirection ::
   OMap FieldName (Thunk Builtin) ->
   m LogicDirection
 calculateLogicDirection declProv fields = do
-  let trueValue = lookupLogicField TruthityElement fields
-  let falseValue = lookupLogicField FalsityElement fields
-  let args = TensorComparisonArgs (Forced IDimNil) (Forced IDimNil) trueValue falseValue
-  result <- runFreshNameBoundContextT $ evalCompareRatTensor @ForcedValue Le args
+  let expr = do
+        let trueValue = lookupLogicField TruthityElement fields
+        let falseValue = lookupLogicField FalsityElement fields
+        let args = TensorComparisonArgs (Forced IDimNil) (Forced IDimNil) trueValue falseValue
+        Forced $ mkExpr accessCompareRatTensor (Le, args)
+
+  result <- runFreshNameBoundContextT $ forceThunk =<< unblockBoolExpr noUnblocking expr
   case result of
-    Evaluated (Forced (IBoolLiteral b)) -> return b
-    _ -> throwError $ UnorderableDifferentiableLogic declProv (mkExpr accessCompareRatTensor (Le, args))
+    IBoolLiteral b -> return b
+    _ -> throwError $ UnorderableDifferentiableLogic declProv result
 
 compileLogicField ::
   (MonadLoss m) =>
