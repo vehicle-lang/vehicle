@@ -8,6 +8,7 @@
       - [Dependencies](#dependencies)
         - [Installing GHC and Cabal](#installing-ghc-and-cabal)
         - [The preferred version of GHC](#the-preferred-version-of-ghc)
+        - [Pre-commit hooks](#pre-commit-hooks)
       - [Building](#building)
       - [Testing](#testing)
         - [Running specific tests](#running-specific-tests)
@@ -30,7 +31,6 @@
         - [The pygments tests](#the-pygments-tests)
       - [Installing from source](#installing-from-source-1)
       - [Installing in editable mode](#installing-in-editable-mode)
-  - [Pre-commit hooks](#pre-commit-hooks)
   - [Editor support](#editor-support)
 - [Publishing a release](#publishing-a-release)
 
@@ -55,9 +55,8 @@ pip install vehicle-lang --upgrade
 The `vehicle_lang` package keeps deep-learning frameworks behind optional extras so you only install what you need:
 
 ```sh
-
-    pip install "vehicle_lang[pytorch]"
-    pip install "vehicle_lang[tensorflow]"
+pip install "vehicle_lang[pytorch]"
+pip install "vehicle_lang[tensorflow]"
 ```
 
 Install both extras or combine them with any others to only install what is needed for you.
@@ -141,6 +140,64 @@ If you'd like to use a different version of GHC, you can find the list of versio
 
 The preferred version of GHC is currently _GHC 9.4.8_, which is the version of GHC we recommend you use, and which is required to build the Python bindings.
 
+#### Setting up the Pre-commit hooks
+
+The Vehicle repository has a variety of pre-commit hooks that check and ensure code quality, managed by [pre-commit]. The pre-commit hooks require [pre-commit], [cabal-fmt] and [ormolu].
+
+We recommend that you install these hooks.
+
+1. Ensure that you have installed GHC and Cabal.
+
+2. Install pre-commit following the instruction on the website: <https://pre-commit.com/#install>
+
+3. Install cabal-fmt.
+
+   Run the following command:
+
+   ```sh
+   cabal install cabal-fmt --ignore-project --overwrite-policy=always
+   ```
+
+4. Install ormolu.
+
+   Run the following command:
+
+   ```sh
+   cabal install ormolu-0.7.1.0 --ignore-project --overwrite-policy=always
+   ```
+
+5. Navigate to your local copy of the Vehicle repository.
+
+   ```sh
+   cd path/to/vehicle
+   ```
+
+6. Install the pre-commit hooks.
+
+   Run the following command:
+
+   ```sh
+   pre-commit install
+   ```
+
+   This should print:
+
+   ```sh
+   pre-commit installed at .git/hooks/pre-commit
+   ```
+
+   If you ever clone a fresh copy of the Vehicle repository, you'll have to rerun this command.
+
+7. Test the pre-commit hooks.
+
+   Run the following command:
+
+   ```sh
+   pre-commit run --all-files
+   ```
+
+The hooks run every time you run `git commit`. You can skip the hooks by adding the `--no-verify` flag to your Git command.
+
 #### Building
 
 Ensure that you have the source code and that you have installed GHC and Cabal.
@@ -175,7 +232,7 @@ Ensure that you can successfully build the Vehicle compiler.
 
 The tests for the Vehicle compiler are in the `vehicle/tests/` subdirectory and use [the Tasty testing framework] as well as a custom driver for golden file tests—see `vehicle/tests/golden/Vehicle/Test/Golden.hs`.
 
-There are three test suites for the Vehicle compiler:
+There are two test suites for the Vehicle compiler:
 
 - [The unit tests](#the-unit-tests) (`unit-tests`)
 - [The golden tests](#the-golden-tests) (`golden-tests`)
@@ -483,7 +540,7 @@ Ensure that you have the source code and that you have installed GHC and Cabal.
    vehicle --version
    ```
 
-   This should print `0.24.1`.
+   This should print `0.26.1`.
 
 ### Building the Vehicle Python bindings
 
@@ -556,7 +613,7 @@ package, recreate your virtual environment.
 
 It means that Vehicle's testing framework is using the system installation of Python, but that the package for creating virtual environments is missing. The solution is to install it using your system package manager, as suggested by the text of the error message.
 
-#### Building
+#### Setup
 
 Ensure that you have the source code and that you have installed GHC/Cabal plus `uv`.
 
@@ -576,48 +633,6 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
 
   ```sh
   uv sync --extra test --extra pytorch --extra tensorflow
-  ```
-
-4. Build the Vehicle Python bindings:
-
-  ```sh
-  uv build
-  ```
-
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.24.1-cp311-cp311-macosx_13_0_arm64`:
-
-```sh
-#   Supported
-#   Python   _____
-#   versions      \
-#                  vvvvvvvvvvv
-vehicle_lang-0.24.1-cp311-cp311-macosx_13_0_arm64
-#                              ^^^^^^^^^^^^^^^^^
-#   Supported                /
-#   Operating System  ______/
-#   and Architecture
-```
-
-On Linux, the operating system will be a [manylinux] platform tag, such as `manylinux2014` or `manylinux_2_28`. The `manylinux_2_28` tag means that the wheel is compatible with any Linux distribution based on libc 2.28 or later. The `manylinux2014` tag is an alias for `manylinux_2_17`.
-
-`uv build` uses the interpreter that was pinned for the project (or the system default if none has been pinned). If you'd prefer to build with a different Python version, run `uv python install <version>` followed by `uv python pin <version>` and rebuild. For Linux builds that need delocation, use the helper script:
-
-```sh
-uv run --extra wheel scripts/build-wheel.sh
-```
-
-`scripts/build-wheel.sh` mirrors the CI behaviour and may prompt you to install a few additional build-time utilities.
-
-**Warning**: The binary distributions built following these instructions are less portable than those that are built by the CI:
-
-- The macOS wheels built following these instructions will require _at least_ your version of macOS, whereas the wheels built on CI are backwards compatible to macOS 10.10 (Yosemite).
-
-- The Linux wheels built following these instructions will require _at least_ your system version of libc, whereas the wheels built on CI are backwards compatible to libc 2.17 (Ubuntu 18.04).
-
-  You can determine your system's libc version via Python by running:
-
-  ```sh
-  python -c 'import platform; print(platform.libc_ver())'
   ```
 
 #### Testing
@@ -714,32 +729,57 @@ The pygments tests verify the integration with [the Pygments syntax highlighter]
 Run the following command:
 
 ```sh
-uv run --extra test --extra pygments python -m pytest tests/test_pygments.py
+uv run --extra test --extra pygments python -m pytest tests/internals/test_pygments.py
 ```
 
-#### Installing from source
 
-Ensure that you have the source code and that you have installed GHC/Cabal plus `uv`.
+#### Building Wheels and installing from source
 
-1. Navigate to your local copy of the Vehicle repository.
+Follow the Python setup instructions above and then:
 
-  ```sh
-  cd path/to/vehicle
-  ```
-
-1. Navigate to the `vehicle-python` subdirectory.
-
-  ```sh
-  cd vehicle-python
-  ```
-
-1. Build distributable artifacts (wheel + sdist):
+1. Build the Vehicle Python bindings:
 
   ```sh
   uv build
   ```
 
-1. Install the resulting wheel into whichever interpreter you plan to use (outside the uv-managed project):
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.26.1-cp311-cp311-macosx_13_0_arm64`:
+
+```sh
+#   Supported
+#   Python   _____
+#   versions      \
+#                  vvvvvvvvvvv
+vehicle_lang-0.26.1-cp311-cp311-macosx_13_0_arm64
+#                              ^^^^^^^^^^^^^^^^^
+#   Supported                /
+#   Operating System  ______/
+#   and Architecture
+```
+
+On Linux, the operating system will be a [manylinux] platform tag, such as `manylinux2014` or `manylinux_2_28`. The `manylinux_2_28` tag means that the wheel is compatible with any Linux distribution based on libc 2.28 or later. The `manylinux2014` tag is an alias for `manylinux_2_17`.
+
+`uv build` uses the interpreter that was pinned for the project (or the system default if none has been pinned). If you'd prefer to build with a different Python version, run `uv python install <version>` followed by `uv python pin <version>` and rebuild. For Linux builds that need delocation, use the helper script:
+
+```sh
+uv run --extra wheel scripts/build-wheel.sh
+```
+
+`scripts/build-wheel.sh` mirrors the CI behaviour and may prompt you to install a few additional build-time utilities.
+
+**Warning**: The binary distributions built following these instructions are less portable than those that are built by the CI:
+
+- The macOS wheels built following these instructions will require _at least_ your version of macOS, whereas the wheels built on CI are backwards compatible to macOS 10.10 (Yosemite).
+
+- The Linux wheels built following these instructions will require _at least_ your system version of libc, whereas the wheels built on CI are backwards compatible to libc 2.17 (Ubuntu 18.04).
+
+  You can determine your system's libc version via Python by running:
+
+  ```sh
+  python -c 'import platform; print(platform.libc_ver())'
+  ```
+
+2. Install the resulting wheel into whichever interpreter you plan to use (outside the uv-managed project):
 
   ```sh
   python -m pip install dist/vehicle_lang-<version>-py3-none-any.whl
@@ -747,7 +787,7 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
 
   Replace `<version>` with the current version string from `dist/`.
 
-1. Check if your installation of the Vehicle compiler was successful.
+3. Check if your installation of the Vehicle compiler was successful.
 
    Run the following command:
 
@@ -755,9 +795,9 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
    vehicle --version
    ```
 
-   This should print `0.24.1`.
+   This should print `0.26.1`.
 
-1. Check if your installation of the `vehicle_lang` package was successful.
+4. Check if your installation of the `vehicle_lang` package was successful.
 
    Run the following command:
 
@@ -769,71 +809,18 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
 
 #### Installing in editable mode
 
-If you are developing the Python bindings it can be cumbersome to rebuild the Vehicle compiler from source on every test run. Rely on the uv-managed project environment instead of a separate editable install—`uv sync` automatically installs the local project in editable mode whenever the lockfile changes. After syncing (for example with `uv sync --extra test --extra pytorch`), you can run pytest directly via `uv run`:
+If you are developing the Python bindings it can be cumbersome to rebuild the Vehicle compiler from source on every test run. Rely on the uv-managed project environment instead of a separate editable install—`uv sync` automatically installs the local project in editable mode whenever the lockfile changes.
 
+If the Haskell code changes then run:
+```sh
+uv sync --extra test --extra pytorch --extra tensorflow --reinstall-package vehicle_lang
+```
+and then run pytest directly via `uv run`:
 ```sh
 uv run python -m pytest
 ```
 
 You'll need to re-run `uv sync` whenever the dependency graph (or the preferred GHC version) changes so that the editable install stays aligned with the lockfile.
-
-## Pre-commit hooks
-
-The Vehicle repository has a variety of pre-commit hooks that check and ensure code quality, managed by [pre-commit]. The pre-commit hooks require [pre-commit], [cabal-fmt] and [ormolu].
-
-We recommend that you install these hooks.
-
-1. Ensure that you have installed GHC and Cabal.
-
-2. Install pre-commit following the instruction on the website: <https://pre-commit.com/#install>
-
-3. Install cabal-fmt.
-
-   Run the following command:
-
-   ```sh
-   cabal install cabal-fmt --ignore-project --overwrite-policy=always
-   ```
-
-4. Install ormolu.
-
-   Run the following command:
-
-   ```sh
-   cabal install ormolu --ignore-project --overwrite-policy=always
-   ```
-
-5. Navigate to your local copy of the Vehicle repository.
-
-   ```sh
-   cd path/to/vehicle
-   ```
-
-6. Install the pre-commit hooks.
-
-   Run the following command:
-
-   ```sh
-   pre-commit install
-   ```
-
-   This should print:
-
-   ```sh
-   pre-commit installed at .git/hooks/pre-commit
-   ```
-
-   If you ever clone a fresh copy of the Vehicle repository, you'll have to rerun this command.
-
-7. Test the pre-commit hooks.
-
-   Run the following command:
-
-   ```sh
-   pre-commit run --all-files
-   ```
-
-The hooks run every time you run `git commit`. You can skip the hooks by adding the `--no-verify` flag to your Git command.
 
 ## Editor support
 
@@ -964,11 +951,11 @@ The procedure to create a new release is:
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.24.1-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.24.1-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.24.1-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.24.1-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.24.1-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.26.1-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.26.1-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.26.1-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.26.1-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.26.1-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -989,7 +976,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.24.1>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.26.1>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

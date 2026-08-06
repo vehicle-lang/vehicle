@@ -1,1 +1,1 @@
-Error in file 'spec.vcl' at Line 1, Columns 1-8: Loss functions do not yet support compilation of 'Unit-typed declarations' .
+Error in file 'unknown' at Line 0, Columns 0-0: Loss functions do not yet support compilation of 'LossBuiltinType UnitType' .

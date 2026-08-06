@@ -19,8 +19,7 @@ import Data.Set qualified as Set
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (AdjacencyGraph, emptyAdjacencyGraph, insertEdge, insertNode, topologicalSort)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Monomorphisation (monomorphise)
-import Vehicle.Compile.Normalise.NBE (evalDecl)
+import Vehicle.Compile.Monomorphisation (DeclarationFilter, monomorphise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error
@@ -35,11 +34,8 @@ import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Instances (standardBuiltinInstances)
-import Vehicle.Data.Builtin.Standard.Scoping ()
 import Vehicle.Data.Builtin.Standard.Type ()
-import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeEnvs, typedModule)
-import Vehicle.Data.Code.Value (FreeEnv)
-import Vehicle.Data.Variable.Free.Context (runFreeContextT)
+import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeCtxs, typedModule)
 import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
 import Vehicle.Libraries.Core (ResolvedLibrary (..))
 import Vehicle.Libraries.StandardLibrary (standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
@@ -68,7 +64,7 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
 -- Useful functions that apply to multiple compiler passes
 
 typeCheckUserProg ::
-  (MonadIO m, MonadCompile m) =>
+  (MonadStdIO m, MonadCompile m) =>
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
@@ -80,15 +76,16 @@ typeCheckUserProg TypeCheckOptions {..} = do
   -- Post-process the program to simplify it
   keepUnusedDeclarationFn <- checkDeclarationNamesPresent userProg declarationsToCompile
   monomorphisedProg <- monomorphise userProg keepUnusedDeclarationFn
-  castFreeProgram <- resolveInstanceArgumentsAndCasts monomorphisedProg
 
-  flattenProgram castFreeProgram importedModules moduleGraph
+  prog <- flattenProgram monomorphisedProg importedModules moduleGraph
+  castFreeProg <- resolveInstanceArgumentsAndCasts prog
+  return castFreeProg
 
 checkDeclarationNamesPresent ::
   (MonadCompile m) =>
   Prog Builtin ->
   DeclarationNames ->
-  m (Identifier -> Bool)
+  m (DeclarationFilter Builtin)
 checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
   let actualDeclNames = Set.fromList $ fmap nameOf decls
   let missingNames = Set.toList $ Set.fromList requestedDeclNames `Set.difference` actualDeclNames
@@ -98,12 +95,19 @@ checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
       throwError $
         MissingRequestedDeclarations (n :| ns)
 
-  return $
-    if null requestedDeclNames
-      then isUserCode
-      else do
-        let declsToCompile = Set.fromList requestedDeclNames
-        \ident -> Set.member (nameOf ident) declsToCompile
+  let isRootDecl :: Decl Builtin -> Bool
+      isRootDecl
+        | null requestedDeclNames = \d -> isUserCode d
+        | otherwise = do
+            let declsToCompile = Set.fromList requestedDeclNames
+            \d -> Set.member (nameOf $ identifierOf d) declsToCompile
+
+  return $ \d ->
+    -- Keep the declarations the users requested
+    isRootDecl d
+      ||
+      -- Keep tensor coercions as they may be inserted by Loss or Solver backends.
+      isTensorCoercionDecl d
 
 printPropertyTypes ::
   (MonadStdIO m, MonadCompile m, PrintableBuiltin builtin) =>
@@ -151,7 +155,7 @@ instance Semigroup ModuleStatus where
 
 data ModuleInfo = ModuleInfo
   { moduleInterface :: ModuleInterface Builtin,
-    moduleFreeEnv :: FreeEnv Builtin,
+    moduleFreeCtx :: FreeCtx Builtin,
     moduleStatus :: ModuleStatus
   }
 
@@ -193,7 +197,7 @@ data ModuleStack = ModuleStack
 type MonadTCMProg m =
   ( MonadState ProgramContext m,
     MonadReader ModuleStack m,
-    MonadIO m,
+    MonadStdIO m,
     MonadCompile m
   )
 
@@ -242,7 +246,7 @@ storeModule modulePath moduleInfo =
 -- Algorithm
 
 loadUserSpecification ::
-  (MonadCompile m, MonadIO m) =>
+  (MonadCompile m, MonadStdIO m) =>
   FilePath ->
   m (Prog Builtin, Map ModulePath [Decl Builtin], AdjacencyGraph ModulePath)
 loadUserSpecification specificationFile = do
@@ -324,11 +328,11 @@ loadCachedModule moduleFile implicitImports moduleText moduleInterface = do
   case status of
     Changed -> parseAndTypeCheckModule moduleFile implicitImports moduleText
     Unchanged -> do
-      freeEnv <- calculateModuleEnv importedCtx decls
+      freeCtx <- calculateModuleCtx importedCtx decls
       return $
         ModuleInfo
           { moduleInterface = moduleInterface,
-            moduleFreeEnv = freeEnv,
+            moduleFreeCtx = freeCtx,
             moduleStatus = Unchanged
           }
 
@@ -340,7 +344,7 @@ loadImports imports = do
   results <- forM imports $ \importStatement -> do
     let modulePath = importPath importStatement
     ModuleInfo {..} <- loadModule modulePath
-    return (moduleStatus, (modulePath, moduleInterface, moduleFreeEnv))
+    return (moduleStatus, (modulePath, moduleInterface, moduleFreeCtx))
 
   let (statuses, importedCtx) = unzipF results
   let finalStatus = foldr (<>) Unchanged statuses
@@ -379,24 +383,22 @@ parseAndTypeCheckModule moduleFile implicitImports moduleText = do
   return $
     ModuleInfo
       { moduleInterface = moduleInterface,
-        moduleFreeEnv = moduleEnv,
+        moduleFreeCtx = moduleEnv,
         moduleStatus = Changed
       }
 
-calculateModuleEnv ::
+calculateModuleCtx ::
   forall m.
   (MonadCompile m) =>
   ImportedModuleContext Builtin ->
   [Decl Builtin] ->
-  m (FreeEnv Builtin)
-calculateModuleEnv importedCtx = go (mergeImportedFreeEnvs importedCtx)
+  m (FreeCtx Builtin)
+calculateModuleCtx importedCtx = go (mergeImportedFreeCtxs importedCtx)
   where
-    go :: FreeEnv Builtin -> [Decl Builtin] -> m (FreeEnv Builtin)
+    go :: FreeCtx Builtin -> [Decl Builtin] -> m (FreeCtx Builtin)
     go env = \case
       [] -> return env
-      d : ds -> do
-        normDecl <- runFreeContextT env $ evalDecl d
-        go (Map.insert (identifierOf normDecl) normDecl env) ds
+      d : ds -> go (Map.insert (identifierOf d) d env) ds
 
 cyclicImportsError :: (MonadTCMProg m) => ModulePath -> [ModulePath] -> m a
 cyclicImportsError newModule previousModules =

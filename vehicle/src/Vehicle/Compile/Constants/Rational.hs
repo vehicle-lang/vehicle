@@ -2,6 +2,7 @@
 
 module Vehicle.Compile.Constants.Rational where
 
+import Control.Monad.Identity (Identity (..))
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound (SliceBounds)
 import Vehicle.Data.Code.BooleanExpr
@@ -28,35 +29,29 @@ type LinearAssertionTree = BooleanExpr LinearAssertion
 
 type LinearBounds = SliceBounds LinearExpression
 
-instance ConstantLike RatTensor where
-  addConstants :: Coefficient -> Coefficient -> RatTensor -> RatTensor -> RatTensor
-  addConstants a b = zipWithTensor (\x y -> a * x + b * y)
+instance (Monad m) => ConstantLike RatTensor m where
+  addConstants a b xs ys = return $ zipWithTensor (\x y -> a * x + b * y) xs ys
 
-  scaleConstant :: Coefficient -> RatTensor -> RatTensor
-  scaleConstant a = mapTensor (\x -> a * x)
+  scaleConstant a xs = return $ mapTensor (\x -> a * x) xs
 
-  toRatTensor :: RatTensor -> Maybe RatTensor
-  toRatTensor = Just
+  toRatTensor = return . Just
 
-  minConstants :: RatTensor -> RatTensor -> RatTensor
-  minConstants = zipWithTensor min
+  minConstants xs ys = return $ zipWithTensor min xs ys
 
-  maxConstants :: RatTensor -> RatTensor -> RatTensor
-  maxConstants = zipWithTensor max
+  maxConstants xs ys = return $ zipWithTensor max xs ys
 
-  stackConstants :: [RatTensor] -> RatTensor
   stackConstants = \case
     [] -> developerError "Cannot stack zero tensors"
-    ts@(t : _) -> stack (shapeOf t) ts
+    ts@(t : _) -> return $ stack (shapeOf t) ts
 
-  unstackConstants :: RatTensor -> [RatTensor]
-  unstackConstants = unstack
+  unstackConstants xs = return $ unstack xs
 
 eliminateVarsInComparison ::
   LinearSubstitution SliceVariable ->
   LinearAssertion ->
   MaybeTrivial LinearAssertion
-eliminateVarsInComparison f NormalisedRelation {..} =
-  case eliminateVars f expression of
+eliminateVarsInComparison f NormalisedRelation {..} = do
+  let constantOrExpr = runIdentity $ eliminateVars f expression
+  case constantOrExpr of
     Right newExpr -> NonTrivial $ NormalisedRelation {expression = newExpr, ..}
     Left tensor -> Trivial (isRelated relation tensor (ConstantTensor (shapeOf tensor) 0))

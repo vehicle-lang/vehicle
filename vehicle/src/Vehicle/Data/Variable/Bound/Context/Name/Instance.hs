@@ -77,6 +77,15 @@ instance (MonadReader s m) => MonadReader s (NameBoundContextT m) where
   ask = lift ask
   local = mapNameBoundContextT . local
 
+instance (MonadIO m) => MonadIO (NameBoundContextT m) where
+  liftIO = lift . liftIO
+
+instance (MonadStdIO m) => MonadStdIO (NameBoundContextT m) where
+  writeStdout = lift . writeStdout
+  writeStderr = lift . writeStderr
+  writeStdoutLn = lift . writeStdoutLn
+  writeStderrLn = lift . writeStderrLn
+
 instance (Monad m) => MonadReadableNameContext (NameBoundContextT m) where
   getNameContext = NameBoundContextT ask
 

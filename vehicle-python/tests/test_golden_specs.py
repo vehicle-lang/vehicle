@@ -4,15 +4,11 @@ from pathlib import Path
 
 import pytest
 import vehicle_lang as vcl
-from vehicle_lang.loss import _ast as loss_ast
+import vehicle_lang.loss as loss
 
-GOLDEN_SPECS_BASE = (
-    Path(__file__).parent.parent.parent
-    / "vehicle"
-    / "tests"
-    / "golden"
-    / "specifications"
-)
+from .config import HASKELL_GOLDEN_TESTS_PATH
+
+GOLDEN_SPECS_BASE = HASKELL_GOLDEN_TESTS_PATH / "specifications"
 
 GOLDEN_SPEC_FILES = [
     GOLDEN_SPECS_BASE / "reachability" / "spec.vcl",
@@ -24,14 +20,7 @@ GOLDEN_SPEC_FILES = [
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[untyped-decorator]
 def test_golden_spec_load(spec_path: Path) -> None:
     """Test that golden specs can be loaded into AST."""
-    loss_ast.load(spec_path, target=vcl.DifferentiableLogic.DL2)
-
-
-@pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[untyped-decorator]
-def test_golden_spec_list_decode(spec_path: Path) -> None:
-    """Test that golden specs can be listed and decoded into structured entities."""
-    entities = vcl.list(spec_path)
-    assert isinstance(entities, list)
+    loss.load_ast(spec_path, target=vcl.DL2DifferentiableLogic())
 
 
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[untyped-decorator]
@@ -43,8 +32,7 @@ def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
     )
     output = loss_tf.load_specification(
         spec_path,
-        logic=vcl.DifferentiableLogic.DL2,
-        samplers={},
+        logic=vcl.DL2DifferentiableLogic(),
     )
 
     assert isinstance(output, dict)
@@ -62,8 +50,7 @@ def test_golden_spec_pytorch_compile(spec_path: Path) -> None:
     )
     output = loss_pt.load_specification(
         spec_path,
-        logic=vcl.DifferentiableLogic.DL2,
-        samplers={},
+        logic=vcl.DL2DifferentiableLogic(),
     )
 
     assert isinstance(output, dict)

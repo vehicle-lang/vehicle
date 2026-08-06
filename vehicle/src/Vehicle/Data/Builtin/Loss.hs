@@ -5,16 +5,17 @@ module Vehicle.Data.Builtin.Loss
 where
 
 import GHC.Generics (Generic)
+import Vehicle.Compile.Normalise.Builtin
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Data.Builtin.Core.BasicOperations
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Builtin.Standard.Core qualified as S
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value (Value)
+import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor)
-import Vehicle.Prelude (Name, Pretty (..), developerError)
+import Vehicle.Prelude (Name, Pretty (..))
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -27,17 +28,22 @@ data LossBuiltinType
   | NatType
   | RatType
   | ListType
+  | VectorType
   | TensorType
   deriving (Eq, Ord, Show)
 
+lossToStandardBuiltinType :: LossBuiltinType -> S.BuiltinType
+lossToStandardBuiltinType = \case
+  UnitType -> S.UnitType
+  IndexType -> S.IndexType
+  NatType -> S.NatType
+  RatType -> S.RatType
+  ListType -> S.ListType
+  VectorType -> S.VectorType
+  TensorType -> S.TensorType
+
 instance Pretty LossBuiltinType where
-  pretty = \case
-    UnitType -> "Unit"
-    IndexType -> "Index"
-    NatType -> "Nat"
-    RatType -> "RatElement"
-    ListType -> "List"
-    TensorType -> "Tensor"
+  pretty = pretty . lossToStandardBuiltinType
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -50,19 +56,24 @@ data LossBuiltinConstructor
   | UnitLiteral
   | IndexLiteral Int
   | NatLiteral Int
+  | VectorLiteral
   | NatTensorLiteral (Tensor Int)
-  | RatTensorLiteral (Tensor Rational)
+  | RatTensorLiteral (Tensor ExtendedRational)
   deriving (Eq, Ord, Show, Generic)
 
+lossToStandardBuiltinConstructor :: LossBuiltinConstructor -> S.BuiltinConstructor
+lossToStandardBuiltinConstructor = \case
+  Nil -> S.Nil
+  Cons -> S.Cons
+  UnitLiteral -> S.UnitLiteral
+  IndexLiteral x -> S.IndexLiteral x
+  NatLiteral x -> S.NatLiteral x
+  VectorLiteral -> S.VectorLiteral
+  NatTensorLiteral x -> S.NatTensorLiteral x
+  RatTensorLiteral x -> S.RatTensorLiteral x
+
 instance Pretty LossBuiltinConstructor where
-  pretty = \case
-    Nil -> "nil"
-    Cons -> "::"
-    UnitLiteral -> "()"
-    IndexLiteral x -> pretty x
-    NatLiteral x -> pretty x
-    NatTensorLiteral x -> pretty x
-    RatTensorLiteral x -> pretty x
+  pretty = pretty . lossToStandardBuiltinConstructor
 
 --------------------------------------------------------------------------------
 -- Functions
@@ -80,43 +91,71 @@ data LossBuiltinFunction
   | Div DivDomain
   | Min MinDomain
   | Max MaxDomain
-  | PowRat
+  | Pow PowDomain
+  | Log LogDomain
+  | Exp ExpDomain
   | -- Rat tensor operations
     ReduceAddRatTensor
   | ReduceMulRatTensor
   | ReduceMinRatTensor
   | ReduceMaxRatTensor
   | -- Generic tensor operations
-    At
+    AtTensor
   | StackTensor
   | ConstTensor
-  | SearchRatTensor Name LogicDirection
-  | MapList
+  | ForeachTensor
+  | Transpose
+  | -- List
+    MapList
   | FoldList
+  | ReverseList
+  | AppendList
+  | -- Vector
+    ForeachVector
+  | AtVector
   deriving (Eq, Ord, Show, Generic)
 
--- TODO all the show instances should really be obtainable from the grammar
--- somehow.
+lossToStandardBuiltinFunction :: LossBuiltinFunction -> S.BuiltinFunction
+lossToStandardBuiltinFunction = \case
+  Add dom -> S.Add dom
+  Mul dom -> S.Mul dom
+  Neg dom -> S.Neg dom
+  Sub dom -> S.Sub dom
+  Div dom -> S.Div dom
+  Min dom -> S.Min dom
+  Max dom -> S.Max dom
+  Pow dom -> S.Pow dom
+  Log dom -> S.Log dom
+  Exp dom -> S.Exp dom
+  ReduceAddRatTensor -> S.ReduceAddRatTensor
+  ReduceMulRatTensor -> S.ReduceMulRatTensor
+  ReduceMinRatTensor -> S.ReduceMinRatTensor
+  ReduceMaxRatTensor -> S.ReduceMaxRatTensor
+  AtTensor -> S.AtTensor
+  StackTensor {} -> S.StackTensor {}
+  ConstTensor -> S.ConstTensor
+  ForeachTensor -> S.ForeachTensor
+  Transpose -> S.Transpose
+  MapList -> S.MapList
+  FoldList -> S.FoldList
+  ReverseList -> S.ReverseList
+  AppendList -> S.AppendList
+  ForeachVector -> S.ForeachVector
+  AtVector -> S.AtVector
+
 instance Pretty LossBuiltinFunction where
+  pretty = pretty . lossToStandardBuiltinFunction
+
+--------------------------------------------------------------------------------
+-- Extra loss builtin functions
+
+data LossBuiltinExtraFunction
+  = SearchRatTensor Name LogicDirection
+  deriving (Show, Eq, Ord, Generic)
+
+instance Pretty LossBuiltinExtraFunction where
   pretty = \case
-    Add dom -> "add" <> pretty dom
-    Mul dom -> "mul" <> pretty dom
-    Neg dom -> "neg" <> pretty dom
-    Sub dom -> "sub" <> pretty dom
-    Div dom -> "div" <> pretty dom
-    Min dom -> "min" <> pretty dom
-    Max dom -> "max" <> pretty dom
-    PowRat -> "**"
-    ReduceAddRatTensor -> "reduceAddRatTensor"
-    ReduceMulRatTensor -> "reduceMulRatTensor"
-    ReduceMinRatTensor -> "reduceMinRatTensor"
-    ReduceMaxRatTensor -> "reduceMaxRatTensor"
-    At -> "!"
-    StackTensor {} -> "stack"
-    ConstTensor -> "const"
-    SearchRatTensor name _minimise -> "search[" <> pretty name <> "]"
-    MapList -> "mapList"
-    FoldList -> "foldList"
+    SearchRatTensor name _direction -> "search[" <> pretty name <> "]"
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -127,6 +166,7 @@ data LossBuiltin
   = LossBuiltinFunction LossBuiltinFunction
   | LossBuiltinType LossBuiltinType
   | LossBuiltinConstructor LossBuiltinConstructor
+  | LossBuiltinExtraFunction LossBuiltinExtraFunction
   deriving (Show, Eq, Ord, Generic)
 
 instance Pretty LossBuiltin where
@@ -134,6 +174,15 @@ instance Pretty LossBuiltin where
 
 --------------------------------------------------------------------------------
 -- Accessors
+
+zeroArityConstructorAccessor :: LossBuiltinConstructor -> Accessor LossBuiltin ()
+zeroArityConstructorAccessor b =
+  Access
+    { getExpr = \case
+        LossBuiltinConstructor b1 | b == b1 -> Just ()
+        _ -> Nothing,
+      mkExpr = \() -> LossBuiltinConstructor b
+    }
 
 typeAccessor :: LossBuiltinType -> Accessor LossBuiltin ()
 typeAccessor b =
@@ -212,13 +261,15 @@ instance BuiltinHasRatLiterals LossBuiltin where
       }
 
   accessNegRatTensorBuiltin = functionAccessor $ Neg NegRatTensor
+  accessLogRatTensorBuiltin = functionAccessor $ Log LogRatTensor
+  accessExpRatTensorBuiltin = functionAccessor $ Exp ExpRatTensor
   accessAddRatTensorBuiltin = functionAccessor $ Add AddRatTensor
   accessMulRatTensorBuiltin = functionAccessor $ Mul MulRatTensor
   accessSubRatTensorBuiltin = functionAccessor $ Sub SubRatTensor
   accessDivRatTensorBuiltin = functionAccessor $ Div DivRatTensor
   accessMinRatTensorBuiltin = functionAccessor $ Min MinRatTensor
   accessMaxRatTensorBuiltin = functionAccessor $ Max MaxRatTensor
-  accessPowRatTensorBuiltin = functionAccessor PowRat
+  accessPowRatTensorBuiltin = functionAccessor $ Pow PowRatTensor
   accessReduceAddRatBuiltin = functionAccessor ReduceAddRatTensor
   accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
   accessReduceMinRatBuiltin = functionAccessor ReduceMinRatTensor
@@ -231,24 +282,22 @@ instance BuiltinHasListType LossBuiltin where
   accessListTypeBuiltin = typeAccessor ListType
 
 instance BuiltinHasListLiterals LossBuiltin where
-  accessNilBuiltin =
-    Access
-      { getExpr = \case
-          LossBuiltinConstructor Nil -> Just ()
-          _ -> Nothing,
-        mkExpr = \() -> LossBuiltinConstructor Nil
-      }
-
-  accessConsBuiltin =
-    Access
-      { getExpr = \case
-          LossBuiltinConstructor Cons -> Just ()
-          _ -> Nothing,
-        mkExpr = \() -> LossBuiltinConstructor Cons
-      }
-
+  accessNilBuiltin = zeroArityConstructorAccessor Nil
+  accessConsBuiltin = zeroArityConstructorAccessor Cons
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
+  accessAppendListBuiltin = functionAccessor AppendList
+
+--------------------------------------------------------------------------------
+-- Vector
+
+instance BuiltinHasVectorType LossBuiltin where
+  accessVectorTypeBuiltin = typeAccessor VectorType
+
+instance BuiltinHasVectors LossBuiltin where
+  accessVecLitBuiltin = zeroArityConstructorAccessor VectorLiteral
+  accessAtVectorBuiltin = functionAccessor AtVector
 
 --------------------------------------------------------------------------------
 -- Tensor
@@ -259,61 +308,72 @@ instance BuiltinHasTensorType LossBuiltin where
 instance BuiltinHasTensors LossBuiltin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
-  accessAtTensorBuiltin = functionAccessor At
+  accessAtTensorBuiltin = functionAccessor AtTensor
+  accessTransposeBuiltin = functionAccessor Transpose
 
 instance BuiltinHasForeach LossBuiltin where
-  accessForeachTensorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
-  accessForeachVectorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
+  accessForeachTensorBuiltin = functionAccessor ForeachTensor
+  accessForeachVectorBuiltin = functionAccessor ForeachVector
 
 --------------------------------------------------------------------------------
 -- Normalisation
 
-instance HasTensorLiterals Value LossBuiltin where
+instance (HasBuiltinConstructor expr thunk) => HasTensorLiterals expr LossBuiltin where
   tensorLiterals =
     [ Wrapper accessNatTensorLiteral,
       Wrapper accessRatTensorLiteral
     ]
 
-instance HasLiftableTensorOperations LossBuiltin where
+instance
+  (HasBuiltinConstructor expr thunk) =>
+  HasLiftableTensorOperations expr thunk LossBuiltin
+  where
   liftableTensorOp1s =
-    [ (getExpr accessNegRatTensor, evalNegRatTensor, IRatType)
+    [ (accessNegRatTensor, IRatType)
     ]
 
   liftableTensorOp2s =
-    [ (getExpr accessAddRatTensor, evalAddRatTensor, IRatType),
-      (getExpr accessMulRatTensor, evalMulRatTensor, IRatType),
-      (getExpr accessSubRatTensor, evalSubRatTensor, IRatType),
-      (getExpr accessDivRatTensor, evalDivRatTensor, IRatType),
-      (getExpr accessMinRatTensor, evalMinRatTensor, IRatType),
-      (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType)
+    [ (accessAddRatTensor, IRatType),
+      (accessMulRatTensor, IRatType),
+      (accessSubRatTensor, IRatType),
+      (accessDivRatTensor, IRatType),
+      (accessMinRatTensor, IRatType),
+      (accessMaxRatTensor, IRatType)
     ]
+
+  liftableTensorComparisons = []
 
 instance NormalisableBuiltin LossBuiltin where
   evalScheme = \case
     LossBuiltinFunction f -> case f of
-      Add AddNat -> Simple evalAddNat
-      Mul MulNat -> Simple evalMulNat
-      Neg NegRatTensor -> Simple evalNegRatTensor
-      Add AddRatTensor -> Simple evalAddRatTensor
-      Sub SubRatTensor -> Simple evalSubRatTensor
-      Mul MulRatTensor -> Simple evalMulRatTensor
-      Div DivRatTensor -> Simple evalDivRatTensor
-      Min MinRatTensor -> Simple evalMinRatTensor
-      Max MaxRatTensor -> Simple evalMaxRatTensor
-      PowRat -> Simple evalPowRat
-      ReduceAddRatTensor -> Simple evalReduceAddRatTensor
-      ReduceMulRatTensor -> Simple evalReduceMulRatTensor
-      ReduceMinRatTensor -> Simple evalReduceMinRatTensor
-      ReduceMaxRatTensor -> Simple evalReduceMaxRatTensor
-      At -> NonSimple evalAtTensor
-      StackTensor -> Simple evalStackTensor
-      ConstTensor -> Simple evalConstTensor
-      FoldList -> NonSimple evalFoldList
-      MapList -> NonSimple evalMapList
-      SearchRatTensor {} -> None
+      Add AddNat -> Eval evalAddNat
+      Mul MulNat -> Eval evalMulNat
+      Neg NegRatTensor -> Eval evalNegRatTensor
+      Add AddRatTensor -> Eval evalAddRatTensor
+      Sub SubRatTensor -> Eval evalSubRatTensor
+      Mul MulRatTensor -> Eval evalMulRatTensor
+      Div DivRatTensor -> Eval evalDivRatTensor
+      Min MinRatTensor -> Eval evalMinRatTensor
+      Max MaxRatTensor -> Eval evalMaxRatTensor
+      Pow PowRatTensor -> Eval evalPowRatTensor
+      Log LogRatTensor -> None
+      Exp ExpRatTensor -> None
+      ReduceAddRatTensor -> Eval evalReduceAddRatTensor
+      ReduceMulRatTensor -> Eval evalReduceMulRatTensor
+      ReduceMinRatTensor -> Eval evalReduceMinRatTensor
+      ReduceMaxRatTensor -> Eval evalReduceMaxRatTensor
+      AtTensor -> Eval evalAtTensor
+      StackTensor -> Eval evalStackTensor
+      ConstTensor -> Eval evalConstTensor
+      Transpose -> Eval evalTransposeTensor
+      FoldList -> Eval evalFoldList
+      MapList -> Eval evalMapList
+      ReverseList -> Eval evalReverseList
+      AppendList -> Eval evalAppendList
+      ForeachTensor -> Eval evalForeachTensor
+      ForeachVector -> Eval evalForeachVector
+      AtVector -> Eval evalAtVector
     _ -> None
-
-  blockingStatus = developerError "Blocking arguments not yet implemented for LossBuiltin"
 
   isTypeClassOp _ = False
 
@@ -323,45 +383,16 @@ instance NormalisableBuiltin LossBuiltin where
 -- Printing
 
 instance ConvertableBuiltin LossBuiltinType Builtin where
-  convertBuiltin p =
-    convertBuiltin p . \case
-      UnitType -> S.UnitType
-      IndexType -> S.IndexType
-      NatType -> S.NatType
-      RatType -> S.RatType
-      ListType -> S.ListType
-      TensorType -> S.TensorType
+  convertBuiltin p = convertBuiltin p . lossToStandardBuiltinType
 
 instance ConvertableBuiltin LossBuiltinConstructor Builtin where
-  convertBuiltin p =
-    convertBuiltin p . \case
-      Nil -> S.Nil
-      Cons -> S.Cons
-      UnitLiteral -> S.UnitLiteral
-      IndexLiteral x -> S.IndexLiteral x
-      NatLiteral x -> S.NatLiteral x
-      NatTensorLiteral x -> S.NatTensorLiteral x
-      RatTensorLiteral x -> S.RatTensorLiteral x
+  convertBuiltin p = convertBuiltin p . lossToStandardBuiltinConstructor
 
 instance ConvertableBuiltin LossBuiltinFunction Builtin where
+  convertBuiltin p = convertBuiltin p . lossToStandardBuiltinFunction
+
+instance ConvertableBuiltin LossBuiltinExtraFunction Builtin where
   convertBuiltin p b = case b of
-    Neg dom -> convertBuiltin p (S.Neg dom)
-    Sub dom -> convertBuiltin p (S.Sub dom)
-    Div dom -> convertBuiltin p (S.Div dom)
-    Min dom -> convertBuiltin p (S.Min dom)
-    Max dom -> convertBuiltin p (S.Max dom)
-    Add dom -> convertBuiltin p (S.Add dom)
-    Mul dom -> convertBuiltin p (S.Mul dom)
-    PowRat -> convertBuiltin p S.PowRat
-    ReduceAddRatTensor -> convertBuiltin p S.ReduceAddRatTensor
-    ReduceMulRatTensor -> convertBuiltin p S.ReduceMulRatTensor
-    ReduceMinRatTensor -> convertBuiltin p S.ReduceMinRatTensor
-    ReduceMaxRatTensor -> convertBuiltin p S.ReduceMaxRatTensor
-    At -> convertBuiltin p S.AtTensor
-    StackTensor -> convertBuiltin p S.StackTensor
-    ConstTensor -> convertBuiltin p S.ConstTensor
-    MapList -> convertBuiltin p S.MapList
-    FoldList -> convertBuiltin p S.FoldList
     SearchRatTensor {} -> cheatConvertBuiltin p $ pretty b
 
 instance ConvertableBuiltin LossBuiltin Builtin where
@@ -369,6 +400,7 @@ instance ConvertableBuiltin LossBuiltin Builtin where
     LossBuiltinType op -> convertBuiltin p op
     LossBuiltinConstructor op -> convertBuiltin p op
     LossBuiltinFunction op -> convertBuiltin p op
+    LossBuiltinExtraFunction op -> convertBuiltin p op
 
 instance PrintableBuiltin LossBuiltin where
   coercionArgs = const Nothing

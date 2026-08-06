@@ -1,65 +1,57 @@
-[
-  {
-    "tag": "Network",
-    "contents": {
-      "tag": "NetworkSummary",
-      "sharedData": {
-        "typeText": "Tensor Real [2] -> OutputVector",
-        "tag": "SharedData",
-        "provenance": {
-          "tag": "Provenance",
-          "contents": [
-            17,
-            1,
-            17,
-            11
-          ]
-        },
-        "name": "controller"
-      }
-    }
-  },
-  {
-    "tag": "Property",
-    "contents": {
+{
+  "tag": "SpecificationSummary",
+  "properties": [
+    {
+      "typeText": "Bool",
       "tag": "PropertySummary",
-      "subcomponents": {
+      "quantifiedVariables": {
         "tag": "SingleProperty",
         "contents": [
           {
+            "typeText": "Tensor Real [2]",
             "tag": "QuantifiedVariableSummary",
-            "sharedData": {
-              "typeText": "Tensor Real [2]",
-              "tag": "SharedData",
-              "provenance": {
-                "tag": "Provenance",
-                "contents": [
-                  35,
-                  15,
-                  35,
-                  16
-                ]
-              },
-              "name": "x"
+            "quantifier": "Forall",
+            "provenance": {
+              "tag": "Provenance",
+              "contents": [
+                35,
+                15,
+                35,
+                16
+              ]
             },
-            "quantifier": "Forall"
+            "name": "x"
           }
         ]
       },
-      "sharedData": {
-        "typeText": "Bool",
-        "tag": "SharedData",
-        "provenance": {
-          "tag": "Provenance",
-          "contents": [
-            34,
-            1,
-            34,
-            5
-          ]
-        },
-        "name": "safe"
-      }
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          34,
+          1,
+          34,
+          5
+        ]
+      },
+      "name": "safe"
     }
-  }
-]
+  ],
+  "parameters": [],
+  "networks": [
+    {
+      "typeText": "InputVector -> OutputVector",
+      "tag": "NetworkSummary",
+      "provenance": {
+        "tag": "Provenance",
+        "contents": [
+          17,
+          1,
+          17,
+          11
+        ]
+      },
+      "name": "controller"
+    }
+  ],
+  "datasets": []
+}

@@ -20,39 +20,14 @@ existsInList : (A -> Bool) -> List A -> Bool
 existsInList f xs = fold (\x y -> x or y) False (map f xs)
 
 --------------------------------------------------------------------------------
--- Tensor
---------------------------------------------------------------------------------
--- These operations have non-zero dimensions so that we have a unique
--- representation of relationships between zero-dimensional tensors
--- (i.e. pointwise comparison).
-
-eqRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-eqRatTensorReduced xs ys = reduceAnd True (xs ==. ys)
-
-neRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-neRatTensorReduced xs ys = not (eqRatTensorReduced xs ys)
-
-leRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-leRatTensorReduced xs ys = reduceAnd True (xs <=. ys)
-
-ltRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-ltRatTensorReduced xs ys = reduceAnd True (xs <. ys)
-
-geRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-geRatTensorReduced xs ys = reduceAnd True (xs >=. ys)
-
-gtRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
-gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
-
---------------------------------------------------------------------------------
 -- Index
 --------------------------------------------------------------------------------
 
 existsIndex : forallT {n} . (Index n -> Bool) -> Bool
-existsIndex f = reduceOr False (foreach i . f i)
+existsIndex f = reduceOr (foreach i . f i)
 
 forallIndex : forallT {n} . (Index n -> Bool) -> Bool
-forallIndex f = reduceAnd True (foreach i . f i)
+forallIndex f = reduceAnd (foreach i . f i)
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -164,43 +139,101 @@ record HasComparison t1 t2 where
 
 @instance
 indexHasComparison : HasComparison (Index n1) (Index n2)
-indexHasComparison =  { leTC = compareIndexLe
-                      , ltTC = compareIndexLt
-                      , geTC = compareIndexGe
-                      , gtTC = compareIndexGt
-                      , eqTC = compareIndexEq
-                      , neTC = compareIndexNe
-                      }
+indexHasComparison =
+  { leTC = compareIndexLe
+  , ltTC = compareIndexLt
+  , geTC = compareIndexGe
+  , gtTC = compareIndexGt
+  , eqTC = compareIndexEq
+  , neTC = compareIndexNe
+  }
 
 @instance
 natHasComparison : HasComparison Nat Nat
-natHasComparison =  { leTC = compareNatLe
-                    , ltTC = compareNatLt
-                    , geTC = compareNatGe
-                    , gtTC = compareNatGt
-                    , eqTC = compareNatEq
-                    , neTC = compareNatNe
-                    }
+natHasComparison =
+  { leTC = compareNatLe
+  , ltTC = compareNatLt
+  , geTC = compareNatGe
+  , gtTC = compareNatGt
+  , eqTC = compareNatEq
+  , neTC = compareNatNe
+  }
 
 @instance
 realTensorEmptyDimsHasComparison : HasComparison (Tensor Real []) (Tensor Real [])
-realTensorEmptyDimsHasComparison = { leTC = compareRatTensorPointwiseLe
-                                   , ltTC = compareRatTensorPointwiseLt
-                                   , geTC = compareRatTensorPointwiseGe
-                                   , gtTC = compareRatTensorPointwiseGt
-                                   , eqTC = compareRatTensorPointwiseEq
-                                   , neTC = compareRatTensorPointwiseNe
-                                   }
+realTensorEmptyDimsHasComparison =
+  { leTC = compareRatTensorPointwiseLe
+  , ltTC = compareRatTensorPointwiseLt
+  , geTC = compareRatTensorPointwiseGe
+  , gtTC = compareRatTensorPointwiseGt
+  , eqTC = compareRatTensorPointwiseEq
+  , neTC = compareRatTensorPointwiseNe
+  }
 
 @instance
 realTensorHasComparison : HasComparison (Tensor Real (dim :: dims)) (Tensor Real (dim :: dims))
-realTensorHasComparison = { leTC = compareRatTensorReducedLe
-                          , ltTC = compareRatTensorReducedLt
-                          , geTC = compareRatTensorReducedGe
-                          , gtTC = compareRatTensorReducedGt
-                          , eqTC = compareRatTensorReducedEq
-                          , neTC = compareRatTensorReducedNe
-                          }
+realTensorHasComparison =
+  { leTC = compareRatTensorReducedLe
+  , ltTC = compareRatTensorReducedLt
+  , geTC = compareRatTensorReducedGe
+  , gtTC = compareRatTensorReducedGt
+  , eqTC = compareRatTensorReducedEq
+  , neTC = compareRatTensorReducedNe
+  }
+
+-- Dataset tensor element types
+@typeclass
+record HasValidDatasetTensorElementType (t : Type) where {}
+
+@instance
+natHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Nat
+natHasValidDatasetTensorElementType = {}
+
+@instance(default=0)
+realHasValidDatasetTensorElementType : HasValidDatasetTensorElementType NonCastingReal
+realHasValidDatasetTensorElementType = {}
+
+-- Dataset list element types
+@typeclass
+record HasValidDatasetListElementType (t : Type) where {}
+
+@instance
+listHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (List t)
+listHasValidDatasetListElementType = {}
+
+@instance
+vectorHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (Vector t dim)
+vectorHasValidDatasetListElementType = {}
+
+@instance
+tensorHasValidDatasetListElementType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetListElementType (NonCastingTensor t dims)
+tensorHasValidDatasetListElementType = {}
+
+@instance
+indexHasValidDatasetListElementType : HasValidDatasetListElementType (Index n)
+indexHasValidDatasetListElementType = {}
+
+@instance
+natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
+natHasValidDatasetListElementType = {}
+
+-- Dataset types
+@typeclass
+record HasValidDatasetType (t : Type) where {}
+
+@instance
+listHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (List t)
+listHasValidDatasetType = {}
+
+@instance
+vectorHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (Vector t dim)
+vectorHasValidDatasetType = {}
+
+@instance
+tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetType (NonCastingTensor t dims)
+tensorHasValidDatasetType = {}
+
+
 
 --------------------------------------------------------------------------------
 -- Loss logics
@@ -234,14 +267,14 @@ record DifferentiableTensorLogic where
   , pointwiseGreaterEqualThan : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseEqual            : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseNotEqual         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
-  , reduceConjunction         : Real -> Tensor Real dims -> Real
-  , reduceDisjunction         : Real -> Tensor Real dims -> Real
+  , reduceConjunction         : Tensor Real dims -> Real
+  , reduceDisjunction         : Tensor Real dims -> Real
   }
 
 VehicleLoss : DifferentiableTensorLogic
 VehicleLoss =
-  { trueElement                = -1000000
-  , falseElement               = 1000000
+  { trueElement                = -infinity
+  , falseElement               = infinity
   , pointwiseNegation          = \x -> -x
   , pointwiseConjunction       = \x y -> max x y
   , pointwiseDisjunction       = \x y -> min x y
@@ -251,14 +284,14 @@ VehicleLoss =
   , pointwiseGreaterEqualThan  = \x y -> y - x
   , pointwiseEqual             = \x y -> min (x - y) (y - x)
   , pointwiseNotEqual          = \x y -> max (x - y) (y - x)
-  , reduceConjunction          = \e xs -> reduceMax e xs
-  , reduceDisjunction          = \e xs -> reduceMin e xs
+  , reduceConjunction          = \xs -> reduceMax xs
+  , reduceDisjunction          = \xs -> reduceMin xs
   }
 
 DL2Loss : DifferentiableTensorLogic
 DL2Loss =
   { trueElement                = 0
-  , falseElement               = 1000000 -- TODO should be infinity
+  , falseElement               = infinity
   , pointwiseNegation          = \{dims} x -> (const 1 dims) / x
   , pointwiseConjunction       = \x y -> x + y
   , pointwiseDisjunction       = \x y -> x * y
@@ -268,6 +301,6 @@ DL2Loss =
   , pointwiseGreaterEqualThan  = \{dims} x y -> max (const 0 dims) (y - x)
   , pointwiseEqual             = \{dims} x y -> - (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
   , pointwiseNotEqual          = \{dims} x y -> (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
-  , reduceConjunction          = \e xs -> reduceAdd e xs
-  , reduceDisjunction          = \e xs -> reduceMul e xs
+  , reduceConjunction          = \xs -> reduceAdd xs
+  , reduceDisjunction          = \xs -> reduceMul xs
   }

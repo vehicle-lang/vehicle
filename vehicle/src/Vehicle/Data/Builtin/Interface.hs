@@ -1,7 +1,8 @@
 module Vehicle.Data.Builtin.Interface where
 
+import Control.Monad ((<=<))
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Tensor (Tensor)
+import Vehicle.Data.Tensor (BoolTensor, ExtendedRatTensor, NatTensor)
 
 --------------------------------------------------------------------------------
 -- Interface to standard builtins
@@ -25,6 +26,13 @@ data Accessor expr v = Access
     mkExpr :: Construct expr v
   }
 
+applyAccessor :: (Eq op) => Accessor expr (op, x) -> op -> Accessor expr x
+applyAccessor accessor op =
+  Access
+    { getExpr = (\(op1, x) -> if op1 == op then Just x else Nothing) <=< getExpr accessor,
+      mkExpr = \v -> mkExpr accessor (op, v)
+    }
+
 --------------------------------------------------------------------------------
 -- Accessor classes for builtins
 --------------------------------------------------------------------------------
@@ -39,7 +47,7 @@ class BuiltinHasBoolType builtin where
   accessBoolTypeBuiltin :: Accessor builtin ()
 
 class BuiltinHasBoolLiterals builtin where
-  accessBoolTensorLitBuiltin :: Accessor builtin (Tensor Bool)
+  accessBoolTensorLitBuiltin :: Accessor builtin BoolTensor
 
   accessNotBuiltin :: Accessor builtin ()
   accessAndBuiltin :: Accessor builtin ()
@@ -51,8 +59,7 @@ class BuiltinHasBoolLiterals builtin where
 
   accessCompareIndexBuiltin :: Accessor builtin ComparisonOp
   accessCompareNatBuiltin :: Accessor builtin ComparisonOp
-  accessCompareRatTensorPointwiseBuiltin :: Accessor builtin ComparisonOp
-  accessCompareRatTensorReducedBuiltin :: Accessor builtin ComparisonOp
+  accessCompareRatTensorBuiltin :: Accessor builtin ComparisonOp
 
   accessQuantifyRatTensorBuiltin :: Accessor builtin Quantifier
   accessQuantifyRecordBuiltin :: Accessor builtin Quantifier
@@ -74,7 +81,7 @@ class BuiltinHasNatType builtin where
 
 class BuiltinHasNatLiterals builtin where
   accessNatLitBuiltin :: Accessor builtin Int
-  accessNatTensorLitBuiltin :: Accessor builtin (Tensor Int)
+  accessNatTensorLitBuiltin :: Accessor builtin NatTensor
 
   accessAddNatBuiltin :: Accessor builtin ()
   accessMulNatBuiltin :: Accessor builtin ()
@@ -86,9 +93,11 @@ class BuiltinHasRatType builtin where
   accessRatTypeBuiltin :: Accessor builtin ()
 
 class (BuiltinHasTensors builtin) => BuiltinHasRatLiterals builtin where
-  accessRatTensorLitBuiltin :: Accessor builtin (Tensor Rational)
+  accessRatTensorLitBuiltin :: Accessor builtin ExtendedRatTensor
 
   accessNegRatTensorBuiltin :: Accessor builtin ()
+  accessLogRatTensorBuiltin :: Accessor builtin ()
+  accessExpRatTensorBuiltin :: Accessor builtin ()
   accessAddRatTensorBuiltin :: Accessor builtin ()
   accessMulRatTensorBuiltin :: Accessor builtin ()
   accessSubRatTensorBuiltin :: Accessor builtin ()
@@ -113,6 +122,8 @@ class BuiltinHasListLiterals builtin where
 
   accessMapListBuiltin :: Accessor builtin ()
   accessFoldListBuiltin :: Accessor builtin ()
+  accessReverseListBuiltin :: Accessor builtin ()
+  accessAppendListBuiltin :: Accessor builtin ()
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -134,6 +145,7 @@ class BuiltinHasTensors builtin where
   accessStackTensorBuiltin :: Accessor builtin ()
   accessConstTensorBuiltin :: Accessor builtin ()
   accessAtTensorBuiltin :: Accessor builtin ()
+  accessTransposeBuiltin :: Accessor builtin ()
 
 class BuiltinHasForeach builtin where
   accessForeachTensorBuiltin :: Accessor builtin ()

@@ -22,6 +22,7 @@ import Data.Text qualified as Text
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -31,7 +32,8 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
     TensorShape,
@@ -361,7 +363,8 @@ compileDecl _opts moduleDefs = \case
     FunctionDecl _ (Just AnnProperty) -> developerError "Properties should have been filtered out"
     FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Imandra"
     ProjectionDecl {} -> developerError "ProjectionDecl should have been filtered out"
-  DefRecord p n _ telescope fields -> compileRecordDecl moduleDefs p n telescope fields
+    TensorCoercionDecl binderCount -> compileFunctionDecl moduleDefs n binderCount t e
+  DefRecord p n _ telescope fields _supports -> compileRecordDecl moduleDefs p n telescope fields
 
 filterRelevantDecls :: Decl DecidabilityBuiltin -> Bool
 filterRelevantDecls = \case
@@ -640,7 +643,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     NatLiteral n -> return $ compileNatLiteral n
     NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
     BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
-    RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
+    RatTensorLiteral t -> return $ compileTensorLiteral compileRealLiteral t
     VectorLiteral -> compileVecLiteral moduleDefs args
   StandardBuiltinFunction f -> case f of
     And -> annotateBinOp moduleDefs [] 40 "&&" args
@@ -658,9 +661,25 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     Max MaxRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "pointwise_max_real" args
     CompareIndex op -> compileComparison moduleDefs CIndex op args
     CompareNat op -> compileComparison moduleDefs CNat op args
-    CompareRatTensorPointwise op -> compileTensorComparison moduleDefs CRatTensor op args
+    CompareRatTensor op -> case decideIfPointwiseOrReductionComparison args of
+      Pointwise as -> compileTensorComparison moduleDefs CRatTensor op as
+      Reduced as ->
+        annotateApp
+          moduleDefs
+          [RequireImport ImlVehicle]
+          ( case op of
+              Le -> "leq_tensor_reduced_real"
+              Lt -> "lt_tensor_reduced_real"
+              Ge -> "geq_tensor_reduced_real"
+              Gt -> "gt_tensor_reduced_real"
+              Eq -> "eq_tensor_reduced_real"
+              Ne -> "ne_tensor_reduced_real"
+          )
+          as
     FoldList -> annotateApp moduleDefs [] "List.fold_right" args
     MapList -> annotateApp moduleDefs [] "List.map" args
+    ReverseList -> annotateApp moduleDefs [] "List.rev" args
+    AppendList {} -> unsupportedError
     ReduceAndTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_and" args
     ReduceOrTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_or" args
     ReduceAddRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "reduce_sum" args
@@ -678,10 +697,13 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     If -> annotateNotation moduleDefs [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args
     StackTensor -> compileStack moduleDefs args
-    Iterate -> unsupportedError
-    PowRat -> unsupportedError
+    Transpose -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_transpose" args
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
+    Iterate -> unsupportedError
+    Pow {} -> unsupportedError
+    Log {} -> unsupportedError
+    Exp {} -> unsupportedError
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return "bool"
     PropTrue -> return "true"
@@ -692,7 +714,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     PropImplies -> annotateBinOp moduleDefs [] minPrecedence "==>" args
     PropCompareIndex op -> compileComparison moduleDefs CIndex op args
     PropCompareNat op -> compileComparison moduleDefs CNat op args
-    PropCompareRatTensorPointwise op -> compileTensorComparison moduleDefs CRatTensor op args
+    PropCompareRatTensor op -> compileTensorComparison moduleDefs CRatTensor op args
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
@@ -745,19 +767,6 @@ compileDerivedFunction moduleDefs fn args = case fn of
     Forall -> annotateApp moduleDefs [RequireImport ImlVehicle] "forall_index" args
   QuantifyInList {} -> unsupported
   TypeAnn -> annotateNotation moduleDefs [] minPrecedence "($1 : $0)" Nothing args
-  CompareRatTensorReduced op ->
-    annotateApp
-      moduleDefs
-      [RequireImport ImlVehicle]
-      ( case op of
-          Le -> "leq_tensor_reduced_real"
-          Lt -> "lt_tensor_reduced_real"
-          Ge -> "geq_tensor_reduced_real"
-          Gt -> "gt_tensor_reduced_real"
-          Eq -> "eq_tensor_reduced_real"
-          Ne -> "ne_tensor_reduced_real"
-      )
-      args
   where
     unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
 
@@ -799,15 +808,16 @@ compileBoolLiteral = \case
   True -> "true"
   False -> "false"
 
-compileRatLiteral :: Rational -> Code
-compileRatLiteral r = parens $ annotate ([], minPrecedence) rat
-  where
-    num = pretty $ numerator r
-    denom = pretty $ denominator r
-    rat =
-      if denominator r == 1
-        then "Real.(" <> num <> ".0)"
-        else "Real.(" <> num <> ".0 /. " <> denom <> ".0)"
+compileRealLiteral :: ExtendedRational -> Code
+compileRealLiteral = \case
+  Finite r -> do
+    let num = pretty $ numerator r
+    let denom = pretty $ denominator r
+    let rat
+          | denominator r == 1 = "Real.(" <> num <> ".0)"
+          | otherwise = "Real.(" <> num <> ".0 /. " <> denom <> ".0)"
+    parens $ annotate ([], minPrecedence) rat
+  _ -> developerError "Compiling infinite values to Imandra not supported"
 
 compileLam :: (MonadImandraCompile m) => [ModuleDef] -> Binder DecidabilityBuiltin -> Expr DecidabilityBuiltin -> m Code
 compileLam moduleDefs binder expr = do
@@ -855,7 +865,7 @@ compileStack moduleDefs args = do
 
 compileVecLiteral :: (MonadImandraCompile m) => [ModuleDef] -> [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral moduleDefs xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse (compileExpr False moduleDefs) ds
+  Just (VectorLitArgs _t _d ds) -> toVec <$> traverse (compileExpr False moduleDefs) ds
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: [Code] -> Code

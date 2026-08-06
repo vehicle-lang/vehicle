@@ -3,6 +3,7 @@ module Vehicle.Backend.Loss
   )
 where
 
+import Control.Monad.Reader (ReaderT)
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
 import Data.Set (Set)
@@ -14,18 +15,16 @@ import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Loss.LossCompilation qualified as Loss ()
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (evalDecl, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Loss (LossBuiltin)
+import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
-import Vehicle.Data.Code.Interface.Patterns
-import Vehicle.Data.Code.TypedView
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.BooleanExpr (unDisjunctAll)
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.DifferentiableLogic
-import Vehicle.Data.Variable.Bound.Context.Tensor (addNonTensorBinderToContext)
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
+import Vehicle.Data.Variable.Bound.Context.Tensor (TensorBoundContextT)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), addDeclEntryToContext, addDeclToContext, runFreshFreeContextT)
 
 convertToLossTensors ::
   (MonadCompile m) =>
@@ -33,17 +32,18 @@ convertToLossTensors ::
   Set Name ->
   Prog Builtin ->
   m (Prog LossBuiltin)
-convertToLossTensors logicID requestedDecls prog@(Main ds) =
-  logCompilerSection2 MinDetail currentPass $ do
-    logic <- findAndCompileLogic logicID prog
-    runFreshFreeContextT (Proxy @Builtin) $ do
-      Main <$> convertDecls logicID logic requestedDecls ds
+convertToLossTensors logicID requestedDecls prog@(Main ds) = do
+  -- First find and compile the logic
+  logic <- logCompilerPass LossLogic $ findAndCompileLogic logicID prog
 
---------------------------------------------------------------------------------
--- Program conversion
+  -- Then compile the program using that logic
+  runFreshFreeContextT (Proxy @Builtin) $ do
+    runFreshFreeContextT (Proxy @LossBuiltin) $
+      logCompilerPass Loss $ do
+        Main <$> convertDecls logicID logic requestedDecls ds
 
 convertDecls ::
-  (MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadCompile m, MonadFreeContext Builtin m, MonadFreeContext LossBuiltin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   Set Name ->
@@ -52,41 +52,46 @@ convertDecls ::
 convertDecls logicID logic requestedDecls = \case
   [] -> return []
   decl : decls -> do
-    normDecl <- evalDecl decl
-    maybeLossDecl <- convertDecl logicID logic requestedDecls normDecl
-    decls' <- addDeclEntryToContext normDecl $ convertDecls logicID logic requestedDecls decls
+    maybeLossDecl <- convertDecl logicID logic requestedDecls decl
+    decls' <-
+      maybe id addDeclToContext maybeLossDecl $
+        addDeclEntryToContext decl $
+          convertDecls logicID logic requestedDecls decls
     return $ maybeToList maybeLossDecl ++ decls'
 
-shouldEmit :: Set Name -> GenericDecl expr -> Bool
-shouldEmit requestedDecls decl
-  | Set.null requestedDecls = isPropertyDecl decl
-  | otherwise = Set.member (nameOf (identifierOf decl)) requestedDecls
-
 convertDecl ::
-  (MonadCompile m, MonadFreeContext Builtin m) =>
+  forall m.
+  (MonadCompile m, MonadFreeContext Builtin m, MonadFreeContext LossBuiltin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   Set Name ->
-  VDecl Builtin ->
+  Decl Builtin ->
   m (Maybe (Decl LossBuiltin))
-convertDecl logicID logic requestedDecls decl = do
-  logCompilerSection2 MinDetail ("declaration" <+> quotePretty (identifierOf decl)) $ do
-    runMonadLogicT logicID logic decl $ do
-      case decl of
-        DefAbstract p ident sort typ
-          | isExternalResourceDecl decl -> Just <$> convertResourceDecl p ident sort typ
-          | otherwise -> return Nothing
-        DefFunction p ident ann typ expr
-          | shouldEmit requestedDecls decl -> Just <$> convertValueDecl p ident ann typ expr
-          | otherwise -> return Nothing
-        DefRecord {} -> return Nothing
+convertDecl logicID logic requestedDecls decl = case decl of
+  DefAbstract p ident sort typ
+    | isAnnotatedAsExternalResource sort -> do
+        let normType = Unforced emptyBoundEnv typ
+        runConversion $ convertResourceDecl p ident sort normType
+    | otherwise -> return Nothing
+  DefFunction p ident ann typ expr
+    | isAnnotatedAsProperty ann || nameOf decl `Set.member` requestedDecls -> do
+        let normType = Unforced emptyBoundEnv typ
+        let normExpr = Unforced emptyBoundEnv expr
+        runConversion $ convertPropertyDecl p ident ann normType normExpr
+    | otherwise -> return Nothing
+  DefRecord {} -> return Nothing
+  where
+    runConversion :: TensorBoundContextT (ReaderT LossCtx m) (Decl LossBuiltin) -> m (Maybe (Decl LossBuiltin))
+    runConversion action = do
+      logCompilerSection2 MidDetail ("translation of" <+> quotePretty (identifierOf decl)) $ do
+        Just <$> runMonadLogicT logicID logic (identifierOf decl, provenanceOf decl) action
 
 convertResourceDecl ::
   (MonadLogic m) =>
   Provenance ->
   Identifier ->
   DefAbstractSort ->
-  VType Builtin ->
+  UnforcedType Builtin ->
   m (Decl LossBuiltin)
 convertResourceDecl p ident sort typ = do
   -- Keep resource declarations, converting their type appropriately.
@@ -94,100 +99,25 @@ convertResourceDecl p ident sort typ = do
   typ' <- convertDeclType typ
   return $ DefAbstract p ident sort typ'
 
-convertValueDecl ::
+convertPropertyDecl ::
   (MonadLogic m) =>
   Provenance ->
   Identifier ->
   DefFunctionSort ->
-  VType Builtin ->
-  Value Builtin ->
+  UnforcedType Builtin ->
+  Thunk Builtin ->
   m (Decl LossBuiltin)
-convertValueDecl p ident ann typ value = do
-  lossValue <- convertTypedValue p ident typ value
+convertPropertyDecl p ident ann typ body = do
   lossType <- convertDeclType typ
-  return $ DefFunction p ident ann lossType (unnormalise 0 lossValue)
+  lossBody <- convertMultiProperty body
+  return $ DefFunction p ident ann lossType lossBody
 
-convertDeclType :: (MonadLogic m) => VType Builtin -> m (Type LossBuiltin)
-convertDeclType typ = unnormalise 0 <$> convertType typ
+convertDeclType :: (MonadLogic m) => UnforcedType Builtin -> m (Type LossBuiltin)
+convertDeclType typ = unnormalise 0 <$> convertThunk Nothing typ
 
-convertTypedValue ::
-  (MonadLogic m) =>
-  Provenance ->
-  Identifier ->
-  VType Builtin ->
-  Value Builtin ->
-  m (Value LossBuiltin)
-convertTypedValue p ident typ value = case toTypeValue typ of
-  VPiType binder closure -> case value of
-    VLam vBinder vClosure -> do
-      vBinder' <- traverse convertType vBinder
-      let convertBody v = do
-            body <- normaliseClosure binder closure
-            addNonTensorBinderToContext binder $ convertTypedValue p ident body v
-      vClosure' <- convertClosure convertBody vBinder vClosure
-      return $ VLam vBinder' vClosure'
-    _ -> do
-      body <- normaliseClosure binder closure
-      addNonTensorBinderToContext binder $ convertTypedValue p ident body value
-  VBoolType -> convertBoolTensorValue value
-  VRatType -> convertRatTensor value
-  VNatType -> convertNatValue value
-  VIndexType _ -> convertIndexValue value
-  VBoolTensorType _ -> convertBoolTensorValue value
-  VRatTensorType _ -> convertRatTensor value
-  VNatTensorType _ -> convertNatTensor value
-  VIndexTensorType _ _ -> convertIndexTensor value
-  VVectorType tElem _d -> convertVectorValue p ident tElem value
-  VListType tElem -> convertListValue (convertTypedValue p ident tElem) value
-  VUnitType {} -> unsupportedOperation "Unit-typed declarations"
-  VRecordType {} -> developerError "Records in loss functions are not supported yet"
-  VFreeTypeVar {} -> unexpectedExprError currentPass "free type variable in decl type"
-  VBoundTypeVar {} -> unexpectedExprError currentPass "bound type variable in decl type"
-
-convertVectorValue ::
-  (MonadLogic m) =>
-  Provenance ->
-  Identifier ->
-  VType Builtin ->
-  Value Builtin ->
-  m (Value LossBuiltin)
-convertVectorValue p ident elemType value = do
-  let dims = getVectorDims elemType
-  let convertElem = convertTypedValue p ident elemType
-  case toVectorValue value of
-    VVectorBoundVar lv spine -> convertBoundVar lv spine
-    VVectorDataset name -> return $ VFreeVar name []
-    VVectorLiteral args -> convertVecLiteralArgs convertElem (IBoolType, dims) args
-    VVectorIf args -> convertIf args
-    VVectorForeach args -> convertVecForeachArgs convertElem (IBoolType, dims) args
-
-getVectorDims :: VType Builtin -> VDims Builtin
-getVectorDims typ = case toTypeValue typ of
-  VBoolTensorType ds -> ds
-  VRatTensorType ds -> ds
-  VNatTensorType ds -> ds
-  VIndexTensorType _ ds -> ds
-  VVectorType t d -> IDimCons d (getVectorDims t)
-  _ -> developerError "non-tensor element type in vector unwrap"
-
--- Like `LossCompilation.convertBoolTensor`, but accepts top-level
--- `VBoolTensorQuantifyRat`, which the shared version rejects.
-convertBoolTensorValue :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
-convertBoolTensorValue value = case toBoolTensorValue value of
-  VBoolTensorLiteral bs -> convertBoolTensorLiteral bs
-  VBoolConstTensor args -> convertConstTensor convertBoolTensorValue args
-  VBoolStackTensor args -> convertStackTensor convertBoolTensorValue args
-  VBoolTensorAnd args -> convertAnd =<< convertTensorOp2 convertBoolTensorValue args
-  VBoolTensorOr args -> convertOr =<< convertTensorOp2 convertBoolTensorValue args
-  VBoolTensorNot args -> convertNot =<< convertTensorOp1 convertBoolTensorValue args
-  VBoolTensorCompareNat args -> convertNatComparison args
-  VBoolTensorCompareIndex args -> convertIndexComparison args
-  VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args
-  VBoolTensorCompareRatReduced args -> convertRatTensorReducedComparison args
-  VBoolTensorQuantifyRat args -> compileQuantifier args
-  VBoolTensorQuantifyRecord {} -> developerError "Quantifying records not yet supported in loss backend"
-  VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertBoolTensorValue args
-  VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertBoolTensorValue args
-  VBoolTensorIf args -> convertIf args
-  VBoolTensorAt args -> convertAtTensor convertBoolTensorValue args
-  VBoolTensorForeach args -> convertForeachTensor convertBoolTensorValue args
+convertMultiProperty :: (MonadLogic m) => Thunk Builtin -> m (Expr LossBuiltin)
+convertMultiProperty body = do
+  let compQuantifier args = do
+        disjuncts <- compileQuantifier args
+        foldrM1 orLossValue $ unDisjunctAll disjuncts
+  unnormalise 0 <$> convertThunk (Just compQuantifier) body

@@ -4,11 +4,14 @@ import Control.Monad.State
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Proxy (Proxy (..))
+import Data.Void (Void)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkName)
+import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Resource (DatasetElementType (..), DatasetType (..), NetworkName, ParameterType (..))
 import Vehicle.Data.Builtin.Standard (Builtin)
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue
+import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Variable.Free.Context (FreeContextT, MonadFreeContext, runFreshFreeContextT)
 import Vehicle.Verify.Core
 
@@ -28,9 +31,9 @@ lookupNetworkInfo name ctx = do
 
 type InferableParameterEntry = (DeclProvenance, ExternalResource, Int)
 
-type InferableParameterContext = Map Identifier (Provenance, GluedType Builtin, Maybe InferableParameterEntry)
+type InferableParameterContext = Map Identifier (Provenance, Type Builtin, Maybe InferableParameterEntry)
 
-type ExplicitParameterContext = Map Identifier (Value Builtin)
+type ExplicitParameterContext = Map Identifier (Thunk Builtin)
 
 --------------------------------------------------------------------------------
 -- The resource monad
@@ -89,7 +92,7 @@ noteInferableParameter ::
   (MonadExpandResources m) =>
   Provenance ->
   Identifier ->
-  GluedType Builtin ->
+  Type Builtin ->
   m ()
 noteInferableParameter p ident paramType =
   modify $ \ExpandResourcesState {..} ->
@@ -126,7 +129,7 @@ findNonInferableParameterValue p ident = do
 noteNonInferableParameter ::
   (MonadExpandResources m) =>
   Identifier ->
-  Value Builtin ->
+  Thunk Builtin ->
   m ()
 noteNonInferableParameter ident value =
   modify $ \ExpandResourcesState {..} ->
@@ -189,7 +192,7 @@ addPossibleInferableParameterSolution ::
   (MonadExpandResources m) =>
   Identifier ->
   Provenance ->
-  GluedType Builtin ->
+  Type Builtin ->
   InferableParameterEntry ->
   m ()
 addPossibleInferableParameterSolution ident p declType entry =
@@ -210,3 +213,33 @@ noteNetwork ident details =
       { networkCtx = Map.insert (nameOf ident) details networkCtx,
         ..
       }
+
+resourceTypingError :: (MonadCompile m) => Doc Void -> ForcedType Builtin -> m b
+resourceTypingError doc invalidType =
+  compilerDeveloperError $
+    "Invalid"
+      <+> doc
+      <+> "type"
+      <+> squotes (prettyVerbose invalidType)
+      <+> "should have been caught during type-checking"
+
+fromParameterType :: ParameterType (Thunk Builtin) -> Thunk Builtin
+fromParameterType typ = Forced $ case typ of
+  ParameterBoolType -> IBoolType
+  ParameterIndexType size -> IIndexType size
+  ParameterRealType -> IRatType
+  ParameterNatType -> INatType
+
+fromDatasetType :: DatasetType (Thunk Builtin) -> Thunk Builtin
+fromDatasetType typ = case typ of
+  DatasetVectorType tElem n -> Forced $ IVectorType (fromDatasetType tElem) n
+  DatasetListType tElem -> Forced $ IListType (fromDatasetType tElem)
+  DatasetTensorType tElem sizeType -> Forced $ ITensorType (fromDatasetElementType tElem) sizeType
+  DatasetRecordType ident _fields -> Forced $ VFreeVar ident []
+  DatasetElementType t -> fromDatasetElementType t
+
+fromDatasetElementType :: DatasetElementType (Thunk Builtin) -> Thunk Builtin
+fromDatasetElementType typ = Forced $ case typ of
+  DatasetRealType -> IRatType
+  DatasetNatType -> INatType
+  DatasetIndexType size -> IIndexType size

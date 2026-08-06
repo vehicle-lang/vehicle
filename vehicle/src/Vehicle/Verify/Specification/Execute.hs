@@ -13,6 +13,7 @@ import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.IDX (encodeIDXFile)
 import Data.IDX.Internal
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.Set qualified as Set (difference, fromList, null)
 import Data.Vector qualified as BoxedVector
@@ -26,7 +27,7 @@ import Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction (re
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
-import Vehicle.Data.Tensor as Tensor (HasShape (..), toVector)
+import Vehicle.Data.Tensor as Tensor (HasShape (..), stack, toVector)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Specification
@@ -54,8 +55,8 @@ verifySpecification ::
   VerificationSettings ->
   m ()
 verifySpecification outputAsJSON verifierSettings
-  | outputAsJSON = runJSONProgressReporterT $ runReaderT verifySpecificationActual verifierSettings
-  | otherwise = runTextProgressReporterT $ runReaderT verifySpecificationActual verifierSettings
+  | outputAsJSON = runReaderT (runJSONProgressReporterT verifySpecificationActual) verifierSettings
+  | otherwise = runReaderT (runTextProgressReporterT verifySpecificationActual) verifierSettings
 
 verifySpecificationActual :: (MonadVerify m) => m ()
 verifySpecificationActual = do
@@ -90,7 +91,7 @@ verifyProperty address = do
   PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
 
   -- Determine number of queries and initialise progress bar
-  result <- reportProperty settings address (propertySize queryMetaData) $ case queryMetaData of
+  result <- reportProperty address (propertySize queryMetaData) $ case queryMetaData of
     Trivial status ->
       return $ PropertyCompleted (Trivial status)
     NonTrivial structure -> do
@@ -324,10 +325,23 @@ writeWitnessToFile :: (MonadVerify m) => FilePath -> PropertyAddress -> UserVari
 writeWitnessToFile verificationCache address (UserVariableAssignment assignments) = do
   let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
   liftIO $ createDirectoryIfMissing True witnessFolder
-  forM_ assignments $ \(var, tensor) -> do
-    let file = witnessFolder </> layoutAsString (pretty var)
-    let dims = Vector.fromList (shapeOf tensor)
-    -- TODO got to be a better way to do this conversion...
-    let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac (Tensor.toVector tensor))
-    let idxData = IDXDoubles IDXDouble dims unboxedVector
-    liftIO $ encodeIDXFile idxData file
+  forM_ assignments $ \assignment -> do
+    handleAssignment assignment witnessFolder
+  where
+    handleAssignment a folder = case a of
+      (var, TensorValue tensor) -> handleTensorAssignment var tensor folder
+      (var, RecordValue recordFields) -> handleRecordAssignment var recordFields folder
+
+    handleTensorAssignment var tensor folder = do
+      let file = folder </> layoutAsString (pretty var)
+      let dims = Vector.fromList (shapeOf tensor)
+      -- TODO got to be a better way to do this conversion...
+      let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac (Tensor.toVector tensor))
+      let idxData = IDXDoubles IDXDouble dims unboxedVector
+      liftIO $ encodeIDXFile idxData file
+
+    handleRecordAssignment var recordFields folder = do
+      let fieldValues = fmap snd recordFields
+      let dims = shapeOf $ NonEmpty.head fieldValues
+      let tensorValue = (var, TensorValue $ stack dims (NonEmpty.toList fieldValues))
+      handleAssignment tensorValue folder

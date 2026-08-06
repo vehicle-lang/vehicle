@@ -1,11 +1,11 @@
 module Vehicle.Data.Builtin.Interface.Type where
 
 import Data.Proxy (Proxy)
+import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Type.Core (InstanceHead)
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Data.AST.Expr.Scoped (Type)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
@@ -44,8 +44,10 @@ typeOfBuiltinFunction = \case
   And -> typeOfTensorOp2 tBool
   Or -> typeOfTensorOp2 tBool
   Implies -> typeOfTensorOp2 tBool
-  QuantifyRatTensor _ -> forAllDims $ \ds -> typeOfQuantifier (tRatTensor ds)
-  QuantifyRecord _ -> forAllTypes $ \ts -> typeOfQuantifier ts
+  QuantifyRatTensor _ -> forAllDims $ \pointwiseDims ->
+    forAllDims $ \baseDims ->
+      typeOfQuantifier (tRatTensor (append tNat pointwiseDims baseDims)) pointwiseDims
+  QuantifyRecord _ -> forAllTypes $ \ts -> typeOfQuantifier ts dimNil
   If -> typeOfIf
   ReduceAndTensor -> typeOfTensorBoolReduceOp
   ReduceOrTensor -> typeOfTensorBoolReduceOp
@@ -66,7 +68,12 @@ typeOfBuiltinFunction = \case
     MinRatTensor -> typeOfTensorOp2 tRat
   Max dom -> case dom of
     MaxRatTensor -> typeOfTensorOp2 tRat
-  PowRat -> forAllDims $ \dims -> tRatTensor dims ~> tNat ~> tRatTensor dims
+  Pow dom -> case dom of
+    PowRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRat ~> tRatTensor dims
+  Log dom -> case dom of
+    LogRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dims
+  Exp dom -> case dom of
+    ExpRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dims
   ReduceAddRatTensor -> typeOfTensorRatReduceOp
   ReduceMulRatTensor -> typeOfTensorRatReduceOp
   ReduceMinRatTensor -> typeOfTensorRatReduceOp
@@ -77,12 +84,15 @@ typeOfBuiltinFunction = \case
         tIndex n1 ~> tIndex n2 ~> tBoolTensor dimNil
   CompareNat {} ->
     tNat ~> tNat ~> tBoolTensor dimNil
-  CompareRatTensorPointwise {} ->
-    forAllDims $ \dims ->
-      tRatTensor dims ~> tRatTensor dims ~> tBoolTensor dims
+  CompareRatTensor {} ->
+    forAllDims $ \pointwiseDims ->
+      forAllDims $ \reduceDims ->
+        tRatTensor (append tNat pointwiseDims reduceDims) ~> tRatTensor (append tNat pointwiseDims reduceDims) ~> tBoolTensor pointwiseDims
   -- Container functions
   FoldList -> typeOfFold tListRaw
   MapList -> typeOfMap tListRaw
+  ReverseList -> typeOfReverseList
+  AppendList -> forAllTypes $ \t -> tList t ~> tList t ~> tList t
   AtVector -> typeOfAtVector
   AtTensor -> typeOfAtTensor
   StackTensor -> typeOfStackTensor
@@ -90,6 +100,7 @@ typeOfBuiltinFunction = \case
   ForeachTensor -> typeOfForeachTensor
   ForeachVector -> typeOfForeachVector
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
+  Transpose -> typeOfTranspose
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case
@@ -132,7 +143,7 @@ typeOfTensorReduceOp ::
   DSLExpr builtin ->
   DSLExpr builtin
 typeOfTensorReduceOp tElem =
-  forAllDims $ \dims -> tTensor tElem dimNil ~> tTensor tElem dims ~> tTensor tElem dimNil
+  forAllDims $ \dims -> tTensor tElem dims ~> tTensor tElem dimNil
 
 typeOfTensorRatReduceOp :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin
 typeOfTensorRatReduceOp = typeOfTensorReduceOp tRat
@@ -155,6 +166,11 @@ typeOfCons =
   forAll "A" type0 $ \tElem ->
     tElem ~> tList tElem ~> tList tElem
 
+typeOfReverseList :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfReverseList =
+  forAll "A" type0 $ \tElem ->
+    tList tElem ~> tList tElem
+
 typeOfAtVector :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfAtVector =
   forAll "A" type0 $ \tElem ->
@@ -167,6 +183,12 @@ typeOfAtTensor =
     forAllDim Irrelevant $ \d ->
       forAllDims $ \ds ->
         tTensor tElem (dimCons d ds) ~> tIndex d ~> tTensor tElem ds
+
+typeOfTranspose :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfTranspose =
+  forAll "A" type0 $ \tElem ->
+    forAllDims $ \ds ->
+      tTensor tElem ds ~> tTensor tElem (reverseDims ds)
 
 typeOfVecLiteralCast :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfVecLiteralCast tCont tElem d =
@@ -214,5 +236,5 @@ typeOfFold f =
     forAll "B" type0 $ \b ->
       (a ~> b ~> b) ~> b ~> f @@ [a] ~> b
 
-typeOfQuantifier :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
-typeOfQuantifier t = (t ~> tBoolTensor dimNil) ~> tBoolTensor dimNil
+typeOfQuantifier :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+typeOfQuantifier t dims = (t ~> tBoolTensor dims) ~> tBoolTensor dims

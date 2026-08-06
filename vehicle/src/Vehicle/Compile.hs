@@ -7,8 +7,8 @@ module Vehicle.Compile
   )
 where
 
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Writer (MonadWriter (..), WriterT (..))
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
 import Data.Set qualified as Set
 import System.Directory (makeAbsolute)
 import Vehicle.Backend.ITP.Agda
@@ -123,23 +123,23 @@ compileToITP ::
   Prog Builtin ->
   m ()
 compileToITP ITPOptions {..} typedProg = do
-  let resources = Resources specification networkLocations datasetLocations parameterValues
+  resources <- mkExternalResources specification networkLocations datasetLocations parameterValues
   (expandedProg, _, _, _, _) <- expandResources resources typedProg
   -- Analyse the program to find out which `Bool`s are decidable and which aren't.
   decProg <- decidabilityTypeCheck expandedProg
+
+  -- Make the cache path absolute so that `compile` can be invoked
+  -- from any working directory.
+  absCache <- liftIO $ traverse makeAbsolute verificationCache
 
   -- Compile depending on the ITP
   logCompilerPass ITP $
     case itp of
       Agda -> do
-        let agdaOptions = AgdaOptions verificationCache outputFile moduleName
+        let agdaOptions = AgdaOptions absCache outputFile moduleName
         agdaCode <- compileProgToAgda decProg agdaOptions
         writeAgdaFile outputFile agdaCode
       Rocq -> do
-        -- Make the cache path absolute so that `rocq compile` can be invoked
-        -- from any working directory; the path is embedded verbatim in the
-        -- generated `vehicle_validate "..."` tactic call.
-        absCache <- liftIO $ traverse makeAbsolute verificationCache
         let rocqOptions = RocqOptions absCache outputFile moduleName constructiveReals
         rocqCode <- compileProgToRocq decProg rocqOptions
         writeRocqFile outputFile rocqCode
@@ -159,25 +159,26 @@ compileToLossFunction ::
   Prog Builtin ->
   OutputAsJSON ->
   m ()
-compileToLossFunction LossOptions {..} typedProg outputAsJSON =
-  logCompilerPass Loss $ do
-    let requestedDecls = Set.fromList declarationsToCompile
-    lossTensorProg <- convertToLossTensors differentiableLogicID requestedDecls typedProg
-    hoistedProg <- hoistInferableParameters lossTensorProg
-    functionalisedProg <- functionaliseResources hoistedProg
-    jsonProg <- convertToJSONProg functionalisedProg
-    let outputText
-          | outputAsJSON = prettyAsJSON jsonProg
-          | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
-    writeResultToFile Nothing outputFile outputText
+compileToLossFunction LossOptions {..} typedProg outputAsJSON = do
+  let requestedDecls = Set.fromList declarationsToCompile
+  lossTensorProg <- convertToLossTensors differentiableLogicID requestedDecls typedProg
+  hoistedProg <- hoistInferableParameters lossTensorProg
+  functionalisedProg <- functionaliseResources hoistedProg
+  jsonProg <- convertToJSONProg functionalisedProg
+  let outputText
+        | outputAsJSON = prettyAsJSON jsonProg
+        | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
+  writeResultToFile Nothing outputFile outputText
 
 hoistInferableParameters ::
   (MonadCompile m, PrintableBuiltin builtin) =>
   Prog builtin ->
   m (Prog builtin)
-hoistInferableParameters (Main ds) = do
-  (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
-  return $ Main (inferableParameters <> otherDecls)
+hoistInferableParameters (Main ds) =
+  logCompilerSection2 MinDetail "hoisting inferable parameters" $ do
+    (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
+    logDebug MaxDetail $ "Hoisted parameters:" <> lineIndent (vsep $ fmap prettyFriendly inferableParameters)
+    return $ Main (inferableParameters <> otherDecls)
   where
     goDecls :: (MonadWriter [Decl builtin] m) => [Decl builtin] -> m [Decl builtin]
     goDecls [] = return []
@@ -188,3 +189,16 @@ hoistInferableParameters (Main ds) = do
           tell [decl]
           return decls'
         _ -> return $ decl : decls'
+
+mkExternalResources ::
+  (MonadIO m) =>
+  FilePath ->
+  NetworkLocations ->
+  DatasetLocations ->
+  ParameterValues ->
+  m Resources
+mkExternalResources specification networkLocations datasetLocations parameterValues = do
+  absSpecificationLocation <- liftIO $ makeAbsolute specification
+  absNetworkLocations <- liftIO $ traverse makeAbsolute networkLocations
+  absDatasetLocations <- liftIO $ traverse makeAbsolute datasetLocations
+  return $ Resources absSpecificationLocation absNetworkLocations absDatasetLocations parameterValues

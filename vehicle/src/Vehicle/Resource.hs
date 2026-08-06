@@ -2,7 +2,7 @@
 
 module Vehicle.Resource where
 
-import Control.Exception (IOException, catch)
+import Control.Exception (IOException, catch, try)
 import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, ToJSON)
@@ -13,8 +13,9 @@ import Data.Map (Map, assocs)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import System.Directory (makeAbsolute)
 import Vehicle.Prelude (Name)
-import Vehicle.Prelude.IO (fatalError)
+import Vehicle.Prelude.IO (MonadStdIO, fatalError)
 import Vehicle.Prelude.Prettyprinter
 
 --------------------------------------------------------------------------------
@@ -136,29 +137,31 @@ hashFileContents filePath = do
   fileContents <- liftIO $ ByteString.readFile filePath
   return $ hash fileContents
 
-generateResourceIntegrityInfo :: (MonadIO m) => (Name, FilePath) -> m ResourceIntegrityInfo
+generateResourceIntegrityInfo :: (MonadStdIO m) => (Name, FilePath) -> m ResourceIntegrityInfo
 generateResourceIntegrityInfo (name, filePath) = do
-  fileHash <-
+  errorOrfileHash <-
     liftIO $
-      catch @IOException
+      try @IOException
         (hashFileContents filePath)
-        ( \e ->
-            fatalError $
-              "Error occured while reading"
-                <+> quotePretty filePath
-                <> ":"
-                <> line
-                <> indent 2 (pretty (show e))
-        )
 
-  return $
-    ResourceIntegrityInfo
-      { name = name,
-        filePath = filePath,
-        fileHash = fileHash
-      }
+  case errorOrfileHash of
+    Left err -> do
+      fatalError $
+        "Error occured while reading"
+          <+> quotePretty filePath
+          <> ":"
+          <> line
+          <> indent 2 (pretty (show err))
+    Right fileHash -> do
+      absFilePath <- liftIO $ makeAbsolute filePath
+      return $
+        ResourceIntegrityInfo
+          { name = name,
+            filePath = absFilePath,
+            fileHash = fileHash
+          }
 
-generateResourcesIntegrityInfo :: (MonadIO m) => Resources -> m ResourcesIntegrityInfo
+generateResourcesIntegrityInfo :: (MonadStdIO m) => Resources -> m ResourcesIntegrityInfo
 generateResourcesIntegrityInfo Resources {..} = do
   specificationSummary <- generateResourceIntegrityInfo ("specification", specification)
   networkSummaries <- forM (assocs networks) generateResourceIntegrityInfo

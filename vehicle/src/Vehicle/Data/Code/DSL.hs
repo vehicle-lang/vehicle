@@ -4,6 +4,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DSL
+import Vehicle.Data.Real
 import Vehicle.Data.Tensor as T (Tensor, shapeOf, pattern ZeroDimTensor)
 import Vehicle.Prelude
 import Prelude hiding (pi)
@@ -79,7 +80,7 @@ natLit n = builtinConstructor (NatLiteral n)
 boolLit :: (BuiltinHasStandardData builtin) => Bool -> DSLExpr builtin
 boolLit b = builtinConstructor (BoolTensorLiteral (ZeroDimTensor b))
 
-ratLit :: (BuiltinHasStandardData builtin) => Rational -> DSLExpr builtin
+ratLit :: (BuiltinHasStandardData builtin) => ExtendedRational -> DSLExpr builtin
 ratLit r = builtinConstructor (RatTensorLiteral (ZeroDimTensor r))
 
 unitLit :: (BuiltinHasStandardData builtin) => DSLExpr builtin
@@ -120,9 +121,6 @@ builtinTypeClass = builtin . mkBuiltinTypeClass
 
 typeClass :: (BuiltinHasStandardTypeClasses builtin) => TypeClass -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 typeClass tc args = builtinTypeClass tc @@ args
-
-hasCompare :: (BuiltinHasStandardTypeClasses builtin) => ComparisonOp -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasCompare eq t1 t2 t3 = typeClass (HasCompare eq) [t1, t2, t3]
 
 hasQuantifier :: (BuiltinHasStandardTypeClasses builtin) => Quantifier -> DSLExpr builtin -> DSLExpr builtin
 hasQuantifier q t = typeClass (HasQuantifier q) [t]
@@ -175,15 +173,6 @@ validNonInferableParameterType t = typeClass (ValidParameterType NonInferable) [
 validNetworkTensorType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validNetworkTensorType t = typeClass ValidNetworkTensorType [t]
 
-validDatasetType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validDatasetType t = typeClass ValidDatasetType [t]
-
-validDatasetListElementType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validDatasetListElementType t = typeClass ValidDatasetListElementType [t]
-
-validDatasetTensorElementType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validDatasetTensorElementType t = typeClass ValidDatasetTensorElementType [t]
-
 validTensorLikeType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validTensorLikeType t = typeClass ValidTensorLikeType [t]
 
@@ -235,7 +224,13 @@ stackTensor t d ds xs = builtinFunction StackTensor @@@ [t, d, ds] @@ xs
 atTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 atTensor t d ds tens idx = builtinFunction AtTensor @@@ [t] .@@@ [d, ds] @@ [tens, idx]
 
+reverseDims :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin
+reverseDims ds = builtinFunction ReverseList @@@ [tNat] @@ [ds]
+
 iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 iterate t f n e = do
   let fn = explLam "f" (t ~> t) $ \iterFn -> explLam "e" t $ \resultSoFar -> f iterFn resultSoFar
   builtinFunction Iterate @@@ [t] @@ [fn, n, e]
+
+append :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+append t xs ys = builtinFunction AppendList @@@ [t] @@ [xs, ys]

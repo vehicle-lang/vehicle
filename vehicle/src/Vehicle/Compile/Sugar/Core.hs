@@ -5,6 +5,7 @@ module Vehicle.Compile.Sugar.Core where
 import Data.Text (Text, pack)
 import Vehicle.Compile.Prelude (Provenance)
 import Vehicle.Data.AST.Expr.Desugared (Expr)
+import Vehicle.Data.Real
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Token (mkToken)
 
@@ -12,7 +13,7 @@ class DesugarableBuiltin builtin where
   elabUnitLiteral :: Provenance -> Expr builtin
   elabBoolLiteral :: Provenance -> Bool -> Expr builtin
   elabNatLiteral :: Provenance -> Int -> Expr builtin
-  elabDecimalLiteral :: Provenance -> Rational -> Expr builtin
+  elabDecimalLiteral :: Provenance -> ExtendedRational -> Expr builtin
 
 {-
   foreachBuiltin :: Expr builtin
@@ -107,6 +108,8 @@ tokExists = mkToken B.TokExists "exists"
 
 tokForeach = mkToken B.TokForeach "foreach"
 
+tokTranspose = mkToken B.TokTranspose "transpose"
+
 tokImpl = mkToken B.TokImpl "=>"
 
 tokAnd = mkToken B.TokAnd "and"
@@ -195,9 +198,15 @@ tokMul = mkToken B.TokMul "*"
 
 tokDiv = mkToken B.TokDiv "/"
 
+tokPow = mkToken B.TokPow "^"
+
 tokMin = mkToken B.TokMin "min"
 
 tokMax = mkToken B.TokMax "max"
+
+tokLog = mkToken B.TokLog "log"
+
+tokExp = mkToken B.TokExp "exp"
 
 tokAddNat = mkToken B.TokAddNat "addNat"
 
@@ -223,6 +232,8 @@ tokAt = mkToken B.TokAt "!"
 
 tokConst = mkToken B.TokConst "const"
 
+tokAppend = mkToken B.TokAppend "append"
+
 tokMap = mkToken B.TokMap "map"
 
 tokFold = mkToken B.TokFold "fold"
@@ -238,12 +249,6 @@ tokReduceMul = mkToken B.TokReduceMul "reduceMul"
 tokReduceMin = mkToken B.TokReduceMin "reduceMin"
 
 tokReduceMax = mkToken B.TokReduceMax "reduceMax"
-
-tokHasEq = mkToken B.TokHasEq "HasEq"
-
-tokHasNotEq = mkToken B.TokHasNotEq "HasNotEq"
-
-tokHasLeq = mkToken B.TokHasLeq "HasLeq"
 
 tokHasMap = mkToken B.TokHasMap "HasMap"
 

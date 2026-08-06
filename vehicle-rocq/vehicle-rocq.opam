@@ -1,6 +1,9 @@
 opam-version: "2.0"
 version: "0.1.0"
-maintainer: "Joshua Smart <josh@thesmarts.co.uk>"
+maintainer: [
+  "Alessandro Bruni <brun@itu.dk>"
+  "Alistair Sirman <A.Sirman@soton.ac.uk>"
+]
 
 homepage: "https://github.com/vehicle-lang/vehicle"
 bug-reports: "https://github.com/vehicle-lang/vehicle/issues"
@@ -17,17 +20,37 @@ It also provides the vehicle_validate tactic, which invokes
 """
 
 build: [
+  [ "sh" "-c" "cd utils && coq_makefile -f _CoqProject -o Makefile" ]
+  [ make "-C" "utils" "-j" jobs]
   [ "dune" "build" "-p" name "-j" jobs ]
 ]
 install: [
+  [make "-C" "utils" "install"]
   [ "dune" "install" "-p" name ]
 ]
 depends: [
   "dune" {>= "3.13"}
   "rocq-core" {>= "9.0"}
-  "coq-mathcomp-ssreflect" { >= "2.6.0" }
-  "coq-mathcomp-algebra" { >= "2.6.0" }
-  "coq-mathcomp-reals" { >= "1.14.0" }
+  "rocq-mathcomp-ssreflect" { >= "2.6.0" }
+  "rocq-mathcomp-algebra" { >= "2.6.0" }
+  "rocq-mathcomp-reals" { >= "1.14.0" }
 ]
 
-authors: [ "Joshua Smart" ]
+# Pin math-comp / finmap / analysis to the commits vehicle-rocq is built
+# against. Bump once math-comp 2.6.0 is released and remove this section.
+pin-depends: [
+  [ "rocq-mathcomp-boot.dev"          "git+https://github.com/math-comp/math-comp.git#072513312e0cd7ce1301d9d9d8ebdc3168e1e8c6" ]
+  [ "rocq-mathcomp-ssreflect.dev"     "git+https://github.com/math-comp/math-comp.git#072513312e0cd7ce1301d9d9d8ebdc3168e1e8c6" ]
+  [ "rocq-mathcomp-order.dev"         "git+https://github.com/math-comp/math-comp.git#072513312e0cd7ce1301d9d9d8ebdc3168e1e8c6" ]
+  [ "rocq-mathcomp-fingroup.dev"      "git+https://github.com/math-comp/math-comp.git#072513312e0cd7ce1301d9d9d8ebdc3168e1e8c6" ]
+  [ "rocq-mathcomp-finite-group.dev"  "git+https://github.com/math-comp/math-comp.git#072513312e0cd7ce1301d9d9d8ebdc3168e1e8c6" ]
+  [ "rocq-mathcomp-algebra.dev"       "git+https://github.com/math-comp/math-comp.git#072513312e0cd7ce1301d9d9d8ebdc3168e1e8c6" ]
+  [ "rocq-mathcomp-finmap.dev"        "git+https://github.com/math-comp/finmap.git#53239c7997b1143592d7814ec51a0e3404844b54" ]
+  [ "rocq-mathcomp-classical.dev"     "git+https://github.com/math-comp/analysis.git#b185302d6efc5ba942adffebe27534acb85027d4" ]
+  [ "rocq-mathcomp-reals.dev"         "git+https://github.com/math-comp/analysis.git#b185302d6efc5ba942adffebe27534acb85027d4" ]
+]
+
+authors: [
+  "Joshua Smart"
+  "Alessandro Bruni"
+]

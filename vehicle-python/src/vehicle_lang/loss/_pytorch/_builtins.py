@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import TYPE_CHECKING, Any, Sequence, cast
+from typing import TYPE_CHECKING, Any, Callable, List, Sequence, Tuple, cast
 
 from typing_extensions import override
 
@@ -17,9 +17,9 @@ else:  # pragma: no cover - exercised implicitly
         feature="The PyTorch loss backend",
     )
 
+from ..._ast import _nodes
+from ...error import VehicleInternalError
 from .._abc import ABCBuiltins
-from .._ast import _nodes
-from ..error import VehicleInternalError  # type: ignore[attr-defined]
 
 ################################################################################
 ### Type-safe PyTorch wrappers
@@ -29,6 +29,18 @@ from ..error import VehicleInternalError  # type: ignore[attr-defined]
 def _torch_tensor(*args: Any, **kwargs: Any) -> torch.Tensor:
     """Type-safe wrapper for torch.tensor that casts complex return type to torch.Tensor."""
     return cast(torch.Tensor, torch.tensor(*args, **kwargs))
+
+
+def _extended_rational_to_float(value: _nodes.ExtendedFraction) -> float:
+    match value:
+        case _nodes.Finite(value=inner):
+            return float(inner)
+        case _nodes.PosInfinity():
+            return float("inf")
+        case _nodes.NegInfinity():
+            return float("-inf")
+        case _:
+            raise ValueError(f"Unknown extended rational type: {type(value)}")
 
 
 ################################################################################
@@ -42,6 +54,7 @@ class PyTorchBuiltins(
         int,
         float,
         torch.Tensor,
+        List[Any],
     ]
 ):
     dtype_index: torch.dtype = torch.int32
@@ -54,14 +67,14 @@ class PyTorchBuiltins(
     @override
     def RatTensor(self, value: _nodes.Tensor) -> torch.Tensor:
         match value.value:
-            case Fraction():
+            case _nodes.ExtendedFraction():
                 # Single value - expand to tensor shape
-                float_value = float(value.value)
+                float_value = _extended_rational_to_float(value.value)
                 return _torch_tensor(data=float_value, dtype=self.dtype_rat)
             case _:
                 # Sequence of values
                 return _torch_tensor(
-                    data=tuple(float(val) for val in value.value),
+                    data=tuple(_extended_rational_to_float(val) for val in value.value),
                     dtype=self.dtype_rat,
                 )
 
@@ -94,51 +107,32 @@ class PyTorchBuiltins(
         return torch.maximum(torch.as_tensor(x), torch.as_tensor(y))
 
     @override
-    def ReduceAddRatTensor(
-        self, e: float, xs: torch.Tensor | Sequence[torch.Tensor]
-    ) -> torch.Tensor:
-        xs = torch.stack(list(xs))
-        return torch.add(torch.sum(xs), e)
+    def PowRatTensor(self, x: torch.Tensor, y: float) -> torch.Tensor:
+        return torch.pow(torch.as_tensor(x), torch.as_tensor(y))
 
     @override
-    def ReduceMulRatTensor(
-        self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
-    ) -> torch.Tensor:
-        x = torch.stack(list(x))
-        return torch.mul(torch.prod(x), e)
+    def LogRatTensor(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.log(torch.as_tensor(x))
 
     @override
-    def ReduceMinRatTensor(
-        self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
-    ) -> torch.Tensor:
-        x = torch.stack([torch.Tensor(e)] + list(x))
+    def ExpRatTensor(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.exp(torch.as_tensor(x))
+
+    @override
+    def ReduceAddRatTensor(self, xs: torch.Tensor) -> torch.Tensor:
+        return torch.sum(xs)
+
+    @override
+    def ReduceMulRatTensor(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.prod(x)
+
+    @override
+    def ReduceMinRatTensor(self, x: torch.Tensor) -> torch.Tensor:
         return torch.min(x)
 
     @override
-    def ReduceMaxRatTensor(
-        self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
-    ) -> torch.Tensor:
-        x = torch.stack([torch.Tensor(e)] + list(x))
+    def ReduceMaxRatTensor(self, x: torch.Tensor) -> torch.Tensor:
         return torch.max(x)
-
-    @override
-    def DimensionLookup(
-        self, xs: torch.Tensor | tuple[torch.Tensor, ...] | list[torch.Tensor], i: int
-    ) -> torch.Tensor:
-        # Despite the name, this implements element indexing (At operator in Haskell)
-        # The JSON AST uses 'DimensionLookup' but semantics are element access
-
-        # Handle tuple/sequence case (from StackTensor or similar)
-        if isinstance(xs, (tuple, list)):
-            return xs[i]
-
-        if xs.ndim == 0:
-            raise VehicleInternalError(
-                "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
-            )
-
-        # Use direct indexing which works for all tensor ranks >= 1
-        return xs[i]
 
     @override
     def DimensionCons(self, head: int, tail: Sequence[int]) -> tuple[int, ...]:
@@ -161,5 +155,47 @@ class PyTorchBuiltins(
         return _torch_tensor(data=float_values, dtype=self.dtype_rat).reshape(shape)
 
     @override
+    def Transpose(self, xs: torch.Tensor) -> torch.Tensor:
+        # Note: torch.transpose only works for 2D tensors, so we use permute for generality
+        return xs.permute(*reversed(range(xs.ndim)))
+
+    @override
     def StackTensor(self, tensors: Sequence[torch.Tensor]) -> torch.Tensor:
         return torch.stack(cast(tuple[torch.Tensor], tensors))
+
+    @override
+    def AtTensor(
+        self, xs: torch.Tensor | tuple[torch.Tensor, ...] | list[torch.Tensor], i: int
+    ) -> torch.Tensor:
+        if isinstance(xs, torch.Tensor) and xs.ndim == 0:
+            raise VehicleInternalError(
+                "Cannot index into a scalar tensor in AtTensor, make an issue in GitHub."
+            )
+
+        return xs[i]
+
+    @override
+    def ForeachTensor(
+        self, size: int, function: Callable[[int], torch.Tensor]
+    ) -> torch.Tensor:
+        # Apply the function to each index and stack the results
+        return torch.stack([function(i) for i in range(size)])
+
+    @override
+    def VectorLiteral(self, xs: Sequence[Any]) -> List[Any]:
+        return list(xs)
+
+    @override
+    def AtVector(self, xs: torch.Tensor | Tuple[Any, ...] | List[Any], i: int) -> Any:
+        if isinstance(xs, torch.Tensor) and xs.ndim == 0:
+            raise VehicleInternalError(
+                "Cannot index into a scalar tensor in AtVector, make an issue in GitHub."
+            )
+
+        # Use direct indexing which works for all tensor ranks >= 1
+        return xs[i]
+
+    @override
+    def ForeachVector(self, size: int, function: Callable[[int], Any]) -> List[Any]:
+        # Apply the function to each index and stack the results
+        return [function(i) for i in range(size)]

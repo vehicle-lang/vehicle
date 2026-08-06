@@ -35,6 +35,7 @@ data GenericDecl expr
       (Maybe DefRecordSort) -- List of annotations.
       (GenericTelescope expr) -- Type parameters.
       (GenericRecordFields expr) -- Fields.
+      [DerivableRecordOperation] -- Operations
   deriving (Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericDecl expr)
@@ -45,13 +46,13 @@ instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
     DefAbstract p _ _ _ -> p
     DefFunction p _ _ _ _ -> p
-    DefRecord p _ _ _ _ -> p
+    DefRecord p _ _ _ _ _ -> p
 
 instance HasIdentifier (GenericDecl expr) where
   identifierOf = \case
     DefAbstract _ i _ _ -> i
     DefFunction _ i _ _ _ -> i
-    DefRecord _ i _ _ _ -> i
+    DefRecord _ i _ _ _ _ -> i
 
 instance HasName (GenericDecl expr) Name where
   nameOf = nameOf . identifierOf
@@ -63,7 +64,7 @@ mapIdentifier ::
 mapIdentifier f = \case
   DefAbstract p n r t -> DefAbstract p (f n) r t
   DefFunction p n b t e -> DefFunction p (f n) b t e
-  DefRecord p n b t e -> DefRecord p (f n) b t e
+  DefRecord p n b t e s -> DefRecord p (f n) b t e s
 
 isPropertyDecl :: GenericDecl expr -> Bool
 isPropertyDecl = \case
@@ -80,7 +81,7 @@ isTypeClassDecl :: GenericDecl expr -> Bool
 isTypeClassDecl = \case
   DefAbstract {} -> False
   DefFunction {} -> False
-  DefRecord _ _ anns _ _ -> isAnnotatedAsTypeClass anns
+  DefRecord _ _ anns _ _ _ -> isAnnotatedAsTypeClass anns
 
 isInstanceDecl :: GenericDecl expr -> Bool
 isInstanceDecl = \case
@@ -90,6 +91,11 @@ isInstanceDecl = \case
 isProjectionDecl :: GenericDecl expr -> Bool
 isProjectionDecl = \case
   DefFunction _ _ ProjectionDecl {} _ _ -> True
+  _ -> False
+
+isTensorCoercionDecl :: GenericDecl expr -> Bool
+isTensorCoercionDecl = \case
+  DefFunction _ _ TensorCoercionDecl {} _ _ -> True
   _ -> False
 
 isAbstractDecl :: GenericDecl expr -> Bool
@@ -151,6 +157,13 @@ isInferable = \case
   Inferable -> True
   NonInferable -> False
 
+isAnnotatedAsExternalResource :: DefAbstractSort -> Bool
+isAnnotatedAsExternalResource = \case
+  NetworkDef -> True
+  DatasetDef -> True
+  ParameterDef {} -> True
+  BuiltinDef {} -> False
+
 --------------------------------------------------------------------------------
 -- DefFunction
 
@@ -172,6 +185,8 @@ data DefFunctionSort
     FunctionDecl LHSBinderCount (Maybe FunctionDeclAnnotation)
   | -- | The function was generated as a projection from a record
     ProjectionDecl LHSBinderCount
+  | -- | The function was generated as a tensor coercion
+    TensorCoercionDecl LHSBinderCount
   deriving (Eq, Show, Generic)
 
 instance NFData DefFunctionSort
@@ -234,3 +249,18 @@ isAnnotatedAsTypeClass :: Maybe DefRecordSort -> Bool
 isAnnotatedAsTypeClass = \case
   Just AnnTypeClass -> True
   _ -> False
+
+--------------------------------------------------------------------------------
+-- Supports operation
+
+data DerivableRecordOperation
+  = Addition
+  | Multiplication
+  deriving (Show, Eq, Ord, Bounded, Enum, Generic)
+
+instance NFData DerivableRecordOperation
+
+instance Serialize DerivableRecordOperation
+
+instance Pretty DerivableRecordOperation where
+  pretty = pretty . show

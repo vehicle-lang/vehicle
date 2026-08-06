@@ -6,7 +6,6 @@ module Vehicle.Data.Builtin.Decidability.Type
 where
 
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -54,7 +53,8 @@ typeDecidabilityBuiltin = \case
   StandardBuiltinType t -> typeOfBuiltinType t
   StandardBuiltinConstructor c -> typeOfBuiltinConstructor c
   StandardBuiltinFunction f -> case f of
-    QuantifyRatTensor {} -> forAllDims $ \_dims -> forAllTypes $ \t -> (t ~> tProp) ~> tProp
+    QuantifyRatTensor {} -> forAllDims $ \dims -> (tRatTensor dims ~> tProp) ~> tProp
+    QuantifyRecord {} -> forAllTypes $ \t -> (t ~> tProp) ~> tProp
     _ -> typeOfBuiltinFunction f
   StandardBuiltinDerivedFunction f -> typeOfDerivedFunction f
   DecidabilityBuiltinTypeClass t -> typeDecidableTypeClass t
@@ -66,10 +66,6 @@ typeOfDerivedFunction = \case
   TypeAnn -> forAllExpl "t" type0 $ \t -> t ~> t
   QuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tBool) ~> tBool
   QuantifyInList {} -> forAllTypes $ \t -> (t ~> tBool) ~> tList t ~> tBool
-  CompareRatTensorReduced {} ->
-    forAllDim Irrelevant $ \d ->
-      forAllDims $ \ds ->
-        tRatTensor (dimCons d ds) ~> tRatTensor (dimCons d ds) ~> tBoolTensor dimNil
 
 typeDecidableTypeClass :: DecidabilityBuiltinTypeClass -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClass = \case
@@ -78,7 +74,6 @@ typeDecidableTypeClass = \case
   HasTensorTypeClassField _f -> absTensorType ~> type0
   HasVectorTypeClassField _f -> absVectorType ~> type0
   ValidPropertyType -> type0 ~> type0
-  ValidNetworkType -> type0 ~> type0
 
 typeDecidableTypeClassOp :: DecidabilityBuiltinTypeClassOp -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClassOp = \case
@@ -113,14 +108,18 @@ typeDecidableTypeClassOp = \case
               FieldAnd -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
               FieldOr -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
               FieldImplies -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
-              FieldReduceAnd -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
-              FieldReduceOr -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
+              FieldReduceAnd -> forAllDims $ \ds -> tensor tBool ds ~> tensor tBool dimNil
+              FieldReduceOr -> forAllDims $ \ds -> tensor tBool ds ~> tensor tBool dimNil
               FieldForeachTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> (tIndex d ~> tensor tElem ds) ~> tensor tElem (dimCons d ds)
               FieldAtTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> tensor tElem (dimCons d ds) ~> (tIndex d ~> tensor tElem ds)
               FieldCompareIndex {} -> typeOfCompareIndex (tensor tBool dimNil)
               FieldCompareNat {} -> typeOfCompareNat (tensor tBool dimNil)
-              FieldCompareRatTensorPointwise {} -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tensor tBool ds
-              FieldCompareRatTensorReduced {} -> forAllDim Irrelevant $ \d -> forAllDims $ \ds -> tTensor tRat (dimCons d ds) ~> tTensor tRat (dimCons d ds) ~> tensor tBool dimNil
+              FieldCompareRatTensor {} ->
+                forAllDims $ \pointwiseDims ->
+                  forAllDims $ \reducedDims ->
+                    tTensor tRat (append tDims pointwiseDims reducedDims)
+                      ~> tTensor tRat (append tDims pointwiseDims reducedDims)
+                      ~> tensor tBool pointwiseDims
               FieldQuantifyInList {} -> typeOfQuantifyInList tensorSol
               FieldQuantifyIndex {} -> typeOfQuantifyIndex tensorSol
 
@@ -143,7 +142,12 @@ typeDecidableFunction = \case
   PropImplies -> typeOp2 tProp
   PropCompareIndex _op -> typeOfCompareIndex tProp
   PropCompareNat _op -> typeOfCompareNat tProp
-  PropCompareRatTensorPointwise _op -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tProp
+  PropCompareRatTensor _op ->
+    forAllDims $ \pointwiseDims ->
+      forAllDims $ \reducedDims ->
+        tTensor tRat (append tDims pointwiseDims reducedDims)
+          ~> tTensor tRat (append tDims pointwiseDims reducedDims)
+          ~> tProp
   PropQuantifyIndex _q -> typeOfQuantifyIndex propTensor
   PropQuantifyInList _q -> typeOfQuantifyInList propTensor
   PropNaryProduct -> developerError "PropNaryProduct not supported"
@@ -201,12 +205,14 @@ convertToDecidabilityFreeVars f p ident args = do
   finalArgs <- insertNewArgs args' declType
   return $ normAppList (FreeVar p ident) finalArgs
   where
+    -- For each leading auto-generalised implicit Pi binder, consume the
+    -- matching implicit from the spine.
     insertNewArgs :: [Arg DecidabilityBuiltin] -> Type DecidabilityBuiltin -> m [Arg DecidabilityBuiltin]
     insertNewArgs as = \case
-      Pi _ binder result -> do
-        if wasInsertedByCompiler binder && isImplicit binder
-          then (argFromBinder binder (Hole p "_") :) <$> insertNewArgs as result
-          else return as
+      Pi _ binder result | wasInsertedByCompiler binder && isImplicit binder ->
+        case as of
+          a : rest -> (a :) <$> insertNewArgs rest result
+          [] -> return as
       _ -> return as
 
 convertToDecidabilityBuiltins ::
@@ -222,7 +228,7 @@ convertToDecidabilityBuiltins p b args = return $
         And -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldAnd)
         Or -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldOr)
         Implies -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldImplies)
-        CompareRatTensorPointwise op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareRatTensorPointwise op)
+        CompareRatTensor op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareRatTensor op)
         ForeachTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldForeachTensor)
         ReduceAndTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldReduceAnd)
         ReduceOrTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldReduceOr)
@@ -231,9 +237,9 @@ convertToDecidabilityBuiltins p b args = return $
         AtTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldAtTensor)
         CompareIndex op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareIndex op)
         CompareNat op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
+        QuantifyRatTensor q -> quantifier q
         -- Nothing needs to change
-        QuantifyRatTensor {} -> sameFunction f
-        QuantifyRecord _ -> unsupportedTensorLikeQuantifier
+        QuantifyRecord {} -> sameFunction f
         If -> sameFunction f
         Neg {} -> sameFunction f
         Add {} -> sameFunction f
@@ -242,14 +248,19 @@ convertToDecidabilityBuiltins p b args = return $
         Div {} -> sameFunction f
         Min {} -> sameFunction f
         Max {} -> sameFunction f
-        PowRat -> sameFunction f
+        Pow {} -> sameFunction f
+        Exp {} -> sameFunction f
+        Log {} -> sameFunction f
         ReduceAddRatTensor -> sameFunction f
         ReduceMulRatTensor -> sameFunction f
         ReduceMinRatTensor -> sameFunction f
         ReduceMaxRatTensor -> sameFunction f
         FoldList -> sameFunction f
         MapList -> sameFunction f
+        ReverseList -> sameFunction f
+        AppendList -> sameFunction f
         Iterate -> sameFunction f
+        Transpose -> sameFunction f
         StackTensor -> sameFunction f
         ConstTensor -> sameFunction f
     BuiltinConstructor c -> do
@@ -268,12 +279,15 @@ convertToDecidabilityBuiltins p b args = return $
       TypeAnn -> sameDerivedFunction f
       QuantifyIndex q -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldQuantifyIndex q)
       QuantifyInList q -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldQuantifyInList q)
-      CompareRatTensorReduced op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareRatTensorReduced op)
     _ -> monomorphisationError b args
   where
     -- Nothing changes
     sameDerivedFunction f = normAppList (Builtin p (StandardBuiltinDerivedFunction f)) args
     sameFunction f = normAppList (Builtin p (StandardBuiltinFunction f)) args
+    quantifier q = case args of
+      [] -> developerError "unexpected quantifier args"
+      -- We remove the extra unused _pDims in this pass as we don't need it in the decidability backend.
+      _pDims : as -> normAppList (Builtin p (StandardBuiltinFunction $ QuantifyRatTensor q)) as
 
     -- Apply a cast
     castWith f original = normAppList (Builtin p $ DecidabilityBuiltinTypeClassOp f) [explicit original]
@@ -292,7 +306,6 @@ restrictDecidabilityDeclType ::
 restrictDecidabilityDeclType declSort (ident, p) declType = do
   let maybeTypeClass = case declSort of
         RestrictedProperty -> Just ValidPropertyType
-        RestrictedNetwork -> Just ValidNetworkType
         _ -> Nothing
 
   case maybeTypeClass of

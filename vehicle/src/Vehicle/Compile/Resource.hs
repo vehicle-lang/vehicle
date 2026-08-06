@@ -5,9 +5,34 @@ import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import GHC.Generics
 import Prettyprinter
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Core (BuiltinType (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Prelude
+
+--------------------------------------------------------------------------------
+-- Parameters
+
+data ParameterType sizeType
+  = ParameterBoolType
+  | ParameterRealType
+  | ParameterNatType
+  | ParameterIndexType sizeType
+
+--------------------------------------------------------------------------------
+-- Dataset
+
+data DatasetType sizeType
+  = DatasetVectorType (DatasetType sizeType) sizeType
+  | DatasetListType (DatasetType sizeType)
+  | DatasetTensorType (DatasetElementType sizeType) sizeType
+  | DatasetRecordType Identifier (GenericRecordFields (DatasetType sizeType))
+  | DatasetElementType (DatasetElementType sizeType)
+
+data DatasetElementType sizeType
+  = DatasetRealType
+  | DatasetNatType
+  | DatasetIndexType sizeType
+  deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Networks
@@ -29,6 +54,29 @@ instance FromJSON NetworkType
 instance Pretty NetworkType where
   pretty (NetworkType input output) =
     pretty input <+> "->" <+> pretty output
+
+type NetworkIOType = NetworkModality NetworkIOBase
+
+data NetworkModality a
+  = UniModal a
+  | MultiModal [(Name, a)]
+  deriving (Eq, Ord, Show, Generic)
+
+instance (NFData a) => NFData (NetworkModality a)
+
+instance (ToJSON a) => ToJSON (NetworkModality a)
+
+instance (FromJSON a) => FromJSON (NetworkModality a)
+
+instance (Pretty a) => Pretty (NetworkModality a) where
+  pretty (UniModal e) = pretty e
+  pretty (MultiModal es) = pretty es
+
+instance Functor NetworkModality where
+  fmap f (UniModal a) = UniModal (f a)
+  fmap f (MultiModal as) = MultiModal (fmap applyRight as)
+    where
+      applyRight (a, b) = (a, f b)
 
 data NetworkTensorType = NetworkTensorType
   { baseType :: NetworkBaseType,
@@ -56,18 +104,18 @@ instance ToJSON NetworkRecordType
 
 instance FromJSON NetworkRecordType
 
-data NetworkIOType
+data NetworkIOBase
   = TensorIOType NetworkTensorType
   | RecordIOType NetworkRecordType
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData NetworkIOType
+instance NFData NetworkIOBase
 
-instance ToJSON NetworkIOType
+instance ToJSON NetworkIOBase
 
-instance FromJSON NetworkIOType
+instance FromJSON NetworkIOBase
 
-instance Pretty NetworkIOType where
+instance Pretty NetworkIOBase where
   pretty = \case
     (TensorIOType (NetworkTensorType t dims)) -> "Tensor" <+> pretty t <+> pretty dims
     (RecordIOType (NetworkRecordType t ident dims fields)) ->
@@ -81,6 +129,10 @@ instance Pretty NetworkIOType where
           [] -> pretty t
           [_x] -> pretty t
           (_x : xs) -> "Tensor" <+> pretty t <+> pretty xs
+
+getIODims :: NetworkIOBase -> TensorShape
+getIODims (TensorIOType (NetworkTensorType _ dims)) = dims
+getIODims (RecordIOType (NetworkRecordType _ _ dims _)) = dims
 
 data NetworkBaseType
   = NetworkRatType

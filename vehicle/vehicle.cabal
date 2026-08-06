@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.24.1
+version:            0.26.1
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -141,8 +141,8 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
+    Vehicle.Compile.Constants.ForcedValue
     Vehicle.Compile.Constants.Rational
-    Vehicle.Compile.Constants.Value
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
     Vehicle.Compile.ExpandResources
@@ -151,7 +151,6 @@ library
     Vehicle.Compile.ExpandResources.Network
     Vehicle.Compile.ExpandResources.Parameter
     Vehicle.Compile.Monomorphisation
-    Vehicle.Compile.Normalise.NBE
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
     Vehicle.Compile.Print
@@ -168,13 +167,14 @@ library
     Vehicle.Data.Builtin.Standard
     Vehicle.Data.Code.BooleanExpr
     Vehicle.Data.Code.DSL
+    Vehicle.Data.Code.ForcedValue
     Vehicle.Data.Code.Interface
     Vehicle.Data.Code.LinearExpr
-    Vehicle.Data.Code.Value
     Vehicle.Data.DSL
     Vehicle.Data.Hashing
     Vehicle.Data.MaybeTrivial
     Vehicle.Data.Meta
+    Vehicle.Data.Real
     Vehicle.Data.Tensor
     Vehicle.Data.Tensor.Traversal
     Vehicle.Data.Variable.Bound.Index
@@ -197,6 +197,7 @@ library
 
   other-modules:
     Paths_vehicle
+    Vehicle.Backend.ITP.Core
     Vehicle.Backend.Loss
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
@@ -210,6 +211,7 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch
     Vehicle.Backend.Solver.UserVariableElimination.Core
     Vehicle.Backend.Solver.UserVariableElimination.EliminateExists
+    Vehicle.Backend.Solver.UserVariableElimination.LinearExpr
     Vehicle.Backend.Solver.UserVariableElimination.PurifyAssertion
     Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
@@ -218,15 +220,18 @@ library
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.LiftIf
-    Vehicle.Compile.LiftMinMax
     Vehicle.Compile.LowerNot
+    Vehicle.Compile.Normalise.Builtin
+    Vehicle.Compile.Normalise.Core
+    Vehicle.Compile.Normalise.Force
+    Vehicle.Compile.Normalise.RewriteRules
+    Vehicle.Compile.Normalise.TypedValue
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
     Vehicle.Compile.Property
-    Vehicle.Compile.Rational.LinearExpr
     Vehicle.Compile.Scope.Core
     Vehicle.Compile.Scope.Generalise
-    Vehicle.Compile.Scope.RecordInstances
+    Vehicle.Compile.Scope.Records
     Vehicle.Compile.Serialise
     Vehicle.Compile.Sugar.Binders
     Vehicle.Compile.Sugar.Core
@@ -240,7 +245,6 @@ library
     Vehicle.Compile.Type.Constraint.InstanceSolver
     Vehicle.Compile.Type.Constraint.UnificationSolver
     Vehicle.Compile.Type.Core
-    Vehicle.Compile.Type.Force
     Vehicle.Compile.Type.Generalise
     Vehicle.Compile.Type.Irrelevance
     Vehicle.Compile.Type.Meta
@@ -279,9 +283,7 @@ library
     Vehicle.Data.Builtin.Decidability
     Vehicle.Data.Builtin.Decidability.Instances
     Vehicle.Data.Builtin.Decidability.Type
-    Vehicle.Data.Builtin.Interface.Blocked
     Vehicle.Data.Builtin.Interface.InputOutputInsertion
-    Vehicle.Data.Builtin.Interface.Normalise
     Vehicle.Data.Builtin.Interface.Print
     Vehicle.Data.Builtin.Interface.Type
     Vehicle.Data.Builtin.Linearity
@@ -294,13 +296,11 @@ library
     Vehicle.Data.Builtin.Standard.IndexSolver
     Vehicle.Data.Builtin.Standard.Instances
     Vehicle.Data.Builtin.Standard.Normalise
-    Vehicle.Data.Builtin.Standard.Scoping
     Vehicle.Data.Builtin.Standard.Type
     Vehicle.Data.Code.Interface.Args
     Vehicle.Data.Code.Interface.Operations
     Vehicle.Data.Code.Interface.Patterns
     Vehicle.Data.Code.ModuleInterface
-    Vehicle.Data.Code.TypedView
     Vehicle.Data.DifferentiableLogic
     Vehicle.Data.Universe
     Vehicle.Data.Variable.Bound.Context.Core
@@ -316,6 +316,7 @@ library
     Vehicle.Data.Variable.Bound.Context.Tensor.Class
     Vehicle.Data.Variable.Bound.Context.Tensor.Core
     Vehicle.Data.Variable.Bound.Context.Tensor.Instance
+    Vehicle.Data.Variable.Bound.Level.Core
     Vehicle.Data.Variable.Free.Context.Class
     Vehicle.Data.Variable.Free.Context.Core
     Vehicle.Data.Variable.Free.Context.Instance

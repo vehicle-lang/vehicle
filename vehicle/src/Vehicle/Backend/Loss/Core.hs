@@ -1,7 +1,9 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Backend.Loss.Core where
 
 import Control.Monad.Error.Class (MonadError (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.Reader (MonadReader (..), MonadTrans (..), ReaderT (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Prettyprinter
@@ -10,11 +12,12 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Code.ForcedValue (GenericThunk (..), Thunk, emptyBoundEnv)
 import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadTensorBoundContext)
 import Vehicle.Data.Variable.Bound.Context.Tensor.Instance (TensorBoundContextT, runFreshTensorBoundContextT)
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
+import Vehicle.Data.Variable.Free.Context.Instance
 
 --------------------------------------------------------------------------------
 -- MonadLogic
@@ -34,18 +37,19 @@ type MonadLogicCore m =
 
 type MonadLogic m =
   ( MonadLogicCore m,
-    MonadError CompileError m
+    MonadError CompileError m,
+    MonadFreeContext LossBuiltin m,
+    MonadFreeContext Builtin m
   )
 
 runMonadLogicT ::
   (MonadLogger m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
-  VDecl Builtin ->
+  DeclProvenance ->
   TensorBoundContextT (ReaderT LossCtx m) a ->
   m a
-runMonadLogicT logicID logic decl action = do
-  let declProv = (identifierOf decl, provenanceOf decl)
+runMonadLogicT logicID logic declProv action = do
   runReaderT (runFreshTensorBoundContextT action) (declProv, logicID, logic)
 
 getLogic :: (MonadLogic m) => m DifferentiableLogicImplementation
@@ -58,10 +62,13 @@ getDeclProvenance = do
   (prov, _, _) <- ask
   return prov
 
-getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Value LossBuiltin)
+getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Expr LossBuiltin)
 getLogicField field = do
   (logic, _) <- getLogic
   return $ lookupLogicField field logic
+
+getLogicFieldValue :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Thunk LossBuiltin)
+getLogicFieldValue field = Unforced emptyBoundEnv <$> getLogicField field
 
 getLogicDirection :: (MonadLogic m) => m Bool
 getLogicDirection = do
@@ -91,4 +98,10 @@ missingLogicError names = \case
   CustomLogic name -> throwError $ UnknownDifferentiableLogic name names
 
 currentPass :: Doc a
-currentPass = "loss compilation"
+currentPass = "loss translation"
+
+-- This is a massive hack and we should get this fixed when we sort out the normalisation story.
+instance (MonadFreeContext Builtin m) => MonadFreeContext Builtin (FreeContextT LossBuiltin m) where
+  addDeclEntryToContext = mapFreeContextT . addDeclEntryToContext
+  getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy

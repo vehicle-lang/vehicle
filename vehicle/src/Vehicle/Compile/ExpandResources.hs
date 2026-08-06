@@ -5,7 +5,7 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Writer (MonadWriter (..), WriterT (..))
+import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
@@ -15,13 +15,12 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
-import Vehicle.Compile.Normalise.NBE (evalInEmptyEnv)
 import Vehicle.Compile.Normalise.Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.ForcedValue (GenericThunk (..), Thunk)
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Free.Context
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
@@ -29,7 +28,7 @@ import Vehicle.Prelude.Warning (CompileWarning (..))
 -- inferring the values of inferable parameters.
 expandResources ::
   forall m.
-  (MonadIO m, MonadCompile m) =>
+  (MonadStdIO m, MonadCompile m) =>
   Resources ->
   Prog Builtin ->
   m (Prog Builtin, NetworkContext, ResourcesIntegrityInfo, [MissingResource], [UninferableParameter])
@@ -45,7 +44,12 @@ expandResources resources prog =
     integrityInfo <- generateResourcesIntegrityInfo resources
     return (finalProg, networkCtx, integrityInfo, missingResources, uninferableParameters)
 
-mkFunctionDefFromResource :: Provenance -> Identifier -> Type Builtin -> Value Builtin -> Decl Builtin
+mkFunctionDefFromResource ::
+  Provenance ->
+  Identifier ->
+  Type Builtin ->
+  Thunk Builtin ->
+  Decl Builtin
 mkFunctionDefFromResource p ident typ normValue = do
   let sort = FunctionDecl 0 Nothing
   let body = unnormalise 0 normValue
@@ -71,13 +75,11 @@ readResourcesInDecls = \case
 readResourceInDecl :: (MonadIO m, MonadExpandResources m) => Decl Builtin -> m (Decl Builtin)
 readResourceInDecl decl = case decl of
   DefAbstract p ident defType declType -> do
-    normDeclType <- evalInEmptyEnv declType
-    let gluedType = Glued declType normDeclType
     maybeNewDecl <- case defType of
       BuiltinDef {} -> return Nothing
-      ParameterDef sort -> readParameter p ident gluedType sort
-      DatasetDef -> readDataset p ident gluedType
-      NetworkDef -> readNetwork p ident gluedType
+      ParameterDef sort -> readParameter p ident declType sort
+      DatasetDef -> readDataset p ident declType
+      NetworkDef -> readNetwork p ident declType
     return $ fromMaybe decl maybeNewDecl
   _ -> return decl
 
@@ -85,44 +87,44 @@ readParameter ::
   (MonadIO m, MonadExpandResources m) =>
   Provenance ->
   Identifier ->
-  GluedType Builtin ->
+  Type Builtin ->
   ParameterSort ->
   m (Maybe (Decl Builtin))
-readParameter p ident gluedType = \case
+readParameter p ident typ = \case
   Inferable -> do
-    noteInferableParameter p ident gluedType
+    noteInferableParameter p ident typ
     return Nothing
   NonInferable -> do
     maybeParameterString <- findNonInferableParameterValue p ident
     forM maybeParameterString $ \parameterString -> do
-      parameterValue <- parseParameterValue (ident, p) gluedType parameterString
+      parameterValue <- parseParameterValue (ident, p) typ parameterString
       noteNonInferableParameter ident parameterValue
-      return $ mkFunctionDefFromResource p ident (unnormalised gluedType) parameterValue
+      return $ mkFunctionDefFromResource p ident typ parameterValue
 
 readDataset ::
   (MonadIO m, MonadExpandResources m) =>
   Provenance ->
   Identifier ->
-  GluedType Builtin ->
+  Type Builtin ->
   m (Maybe (Decl Builtin))
-readDataset p ident gluedType = do
+readDataset p ident typ = do
   maybeFile <- findDatasetValue p ident
   forM maybeFile $ \file -> do
-    datasetExpr <- parseDataset (ident, p) gluedType file
-    return $ mkFunctionDefFromResource p ident (unnormalised gluedType) datasetExpr
+    datasetExpr <- parseDataset (ident, p) typ file
+    return $ mkFunctionDefFromResource p ident typ datasetExpr
 
 readNetwork ::
   (MonadIO m, MonadExpandResources m) =>
   Provenance ->
   Identifier ->
-  GluedType Builtin ->
+  Type Builtin ->
   m (Maybe (Decl Builtin))
-readNetwork p ident gluedType = do
+readNetwork p ident typ = do
   maybeFile <- findNetworkValue p ident
   case maybeFile of
     Nothing -> return Nothing
     Just file -> do
-      networkType <- checkNetwork (ident, p) gluedType file
+      networkType <- checkNetwork (ident, p) typ file
       noteNetwork ident networkType
       return Nothing
 
@@ -147,7 +149,7 @@ fillInInferableParametersInDecl ctx decl = case decl of
     case Map.lookup ident ctx of
       Just (_, _, Just ((_, inferProv), _, v)) -> do
         logDebug MaxDetail $ "Inferred" <+> quotePretty ident <+> "as" <+> quotePretty v
-        return $ mkFunctionDefFromResource inferProv ident declType (INatLiteral v)
+        return $ mkFunctionDefFromResource inferProv ident declType (Forced $ INatLiteral v)
       _ -> do
         tell [(ident, p)]
         return decl

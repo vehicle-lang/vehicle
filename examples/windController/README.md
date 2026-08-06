@@ -3,7 +3,7 @@
 A simple car controller that is formally proven to always keep the car on the road in the face of noisy sensor data and an unpredictable cross-wind. The
 specification is verified in Marabou and can then be exported to Agda and Rocq and
 combined with a larger proof to prove that the car never leaves the road. A full
-description of the setup can be found in Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf)).
+description of the setup can be found in Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf).
 
 This folder contains the following files:
 
@@ -11,9 +11,9 @@ This folder contains the following files:
 
 - `windController.vcl` - the specification describing the desired behaviour.
 
-- `agdaProof/SafetyProof.agda` - the Agda proof the car never leaves the road.
-
 - `rocqProof/SafetyProof.v` - the Rocq proof the car never leaves the road.
+
+- `isabelleProof/SafetyProof.v` - the Isabelle proof the car never leaves the road.
 
 ## Verifying using Marabou
 
@@ -34,24 +34,9 @@ The intermediate Marabou queries can be found in `examples/windController/verifi
 
 ## Compiling to specification to an ITP backend
 
-### Agda
-
-The (verified) specification may then be compiled to Agda by running the command:
-
-```bash
-vehicle export \
-  --target Agda \
-  --cache examples/windController/verificationResult \
-  --output examples/windController/agdaProof/WindControllerSpec.agda
-```
-
-The full proof of safety which makes use of the generated Agda version of the
-specification in `agdaProof/WindControllerSpec.agda` is found in
-`agdaProof/SafetyProof.agda`.
-
 ### Rocq
 
-The same is supported for Rocq:
+The (verified) specification may then be compiled to Rocq by running the command:
 
 ```bash
 vehicle compile itp \
@@ -92,10 +77,3 @@ make
 
 See [`vehicle-rocq/README.md`](../../vehicle-rocq/README.md) for details
 on the plugin.
-
-## Generated files
-
-The outputs of the above Vehicle commands can be found in the test suite:
-
-- [Automatically generated Marabou queries](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden/windController/windController-output-marabou)
-- [Automatically generated Agda code](https://github.com/vehicle-lang/vehicle/blob/dev/test/Test/Compile/Golden/windController/windController-output.agda)

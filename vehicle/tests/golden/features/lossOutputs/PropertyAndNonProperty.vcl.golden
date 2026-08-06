@@ -1,7 +1,7 @@
 @property;
 predicted : (Tensor Real -> Tensor Real) -> Tensor Real;
-predicted = \ f -> f [ 0.0, 0.0, 0.0, 0.0 ]
+predicted = \ f -> f (const 0.0 [4])
 
 @property;
 belowOne : (Tensor Real -> Tensor Real) -> Tensor Real;
-belowOne = \ f -> 1.0 / search[x] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ x -> max 0.0 (1.0 - f [x, x, x, x] ! 0))
+belowOne = \ f -> const 1.0 nil / search[x] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x -> max (const 0.0 nil) (1.0 - f [x, x, x, x] ! 0))

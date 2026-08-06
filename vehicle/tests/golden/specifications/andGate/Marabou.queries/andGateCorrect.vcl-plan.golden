@@ -48,9 +48,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 2
                       },
                       "AllDimensions"
@@ -60,9 +63,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 5
                       },
                       "AllDimensions"
@@ -72,9 +78,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 10
                       },
                       {
@@ -106,9 +115,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 7
                       },
                       {
@@ -140,9 +152,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 15
                       },
                       {
@@ -174,9 +189,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 12
                       },
                       {
@@ -208,9 +226,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 20
                       },
                       {
@@ -242,9 +263,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 17
                       },
                       {
@@ -276,7 +300,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 0
                       },
                       {
@@ -306,7 +333,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -334,35 +364,42 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "andGateCorrect",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                1
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "andGate",
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "dimensions": [
-                            1
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              1
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "dimensions": [
-                            2
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              2
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },
@@ -414,9 +451,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 2
                       },
                       "AllDimensions"
@@ -426,9 +466,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 5
                       },
                       "AllDimensions"
@@ -438,9 +481,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 10
                       },
                       {
@@ -472,9 +518,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 7
                       },
                       {
@@ -506,9 +555,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 15
                       },
                       {
@@ -540,9 +592,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 12
                       },
                       {
@@ -574,9 +629,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 20
                       },
                       {
@@ -608,9 +666,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 17
                       },
                       {
@@ -642,7 +703,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 0
                       },
                       {
@@ -672,7 +736,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -700,35 +767,42 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 2,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "andGateCorrect",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                2
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "andGate",
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "dimensions": [
-                            1
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              1
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "dimensions": [
-                            2
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              2
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },
@@ -780,9 +854,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 2
                       },
                       "AllDimensions"
@@ -792,9 +869,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 5
                       },
                       "AllDimensions"
@@ -804,9 +884,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 10
                       },
                       {
@@ -838,9 +921,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 7
                       },
                       {
@@ -872,9 +958,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 15
                       },
                       {
@@ -906,9 +995,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 12
                       },
                       {
@@ -940,9 +1032,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 20
                       },
                       {
@@ -974,9 +1069,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 17
                       },
                       {
@@ -1008,7 +1106,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 0
                       },
                       {
@@ -1038,7 +1139,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -1066,35 +1170,42 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 3,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "andGateCorrect",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                3
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "andGate",
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "dimensions": [
-                            1
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              1
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "dimensions": [
-                            2
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              2
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },
@@ -1146,9 +1257,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 2
                       },
                       "AllDimensions"
@@ -1158,9 +1272,12 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 5
                       },
                       "AllDimensions"
@@ -1170,9 +1287,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 10
                       },
                       {
@@ -1204,9 +1324,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 7
                       },
                       {
@@ -1238,9 +1361,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 15
                       },
                       {
@@ -1272,9 +1398,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 12
                       },
                       {
@@ -1306,9 +1435,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
                         "nestedStartingVariable": 20
                       },
                       {
@@ -1340,9 +1472,12 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          2
-                        ],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2
+                          ]
+                        },
                         "nestedStartingVariable": 17
                       },
                       {
@@ -1374,7 +1509,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 0
                       },
                       {
@@ -1404,7 +1542,10 @@
                     "tag": "SolveEquality",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": []
+                        },
                         "nestedStartingVariable": 1
                       },
                       {
@@ -1432,35 +1573,42 @@
                   }
                 ]
               },
-              "queryAddress": [
-                {
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 4,
+                "property": {
+                  "tag": "PropertyAddress",
                   "propertyName": "andGateCorrect",
-                  "propertyIndices": [],
-                  "propertyID": 0
-                },
-                4
-              ],
+                  "propertyIndices": []
+                }
+              },
               "metaNetwork": [
                 [
                   "andGate",
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "dimensions": [
-                            1
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              1
+                            ],
+                            "baseType": []
+                          }
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "UniModal",
                         "contents": {
-                          "dimensions": [
-                            2
-                          ],
-                          "baseType": []
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              2
+                            ],
+                            "baseType": []
+                          }
                         }
                       }
                     },

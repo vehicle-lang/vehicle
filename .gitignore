@@ -16,8 +16,10 @@ examples/**/.vcl-cache-index
 examples/**/*.vclplan
 examples/**/*.vclresult
 examples/**/*-query*.txt
-examples/windController/agdaProof/WindControllerSpec.agda
+examples/windController-newStyle/verificationResult/*
+examples/windController-newStyle/agdaProof/WindControllerSpec.agda
 examples/windController/verificationResult/*
+examples/windController/rocqProof/WindControllerSpec.v
 
 # Wheels
 wheelhouselocal/
@@ -57,6 +59,7 @@ CoqMakefile
 CoqMakefile.conf
 .Makefile.d
 Makefile.conf
+vehicle-rocq/utils/Makefile
 
 # dune
 _build/
@@ -576,6 +579,3 @@ TSWLatexianTemp*
 ################################################################################
 
 !/vehicle/lib
-
-# Vehicle-generated example specs
-examples/windController/rocqProof/WindControllerSpec.v
