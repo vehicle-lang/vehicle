@@ -48,6 +48,28 @@ class ABCTranslation(
                 return self.translate_Lam(expression)
             case vcl_ast.Pi():
                 return self.translate_Pi(expression)
+            case vcl_ast.BoolTensor():
+                return self.translate_BoolTensor(expression)
+            case vcl_ast.BoolNot():
+                return self.translate_BoolNot(expression)
+            case vcl_ast.BoolAnd():
+                return self.translate_BoolAnd(expression)
+            case vcl_ast.BoolOr():
+                return self.translate_BoolOr(expression)
+            case vcl_ast.BoolImplies():
+                return self.translate_BoolImplies(expression)
+            case vcl_ast.BoolCompareIndex():
+                return self.translate_BoolCompareIndex(expression)
+            case vcl_ast.BoolCompareNat():
+                return self.translate_BoolCompareNat(expression)
+            case vcl_ast.BoolCompareRatTensor():
+                return self.translate_BoolCompareRatTensor(expression)
+            case vcl_ast.BoolReduceAnd():
+                return self.translate_BoolReduceAnd(expression)
+            case vcl_ast.BoolReduceOr():
+                return self.translate_BoolReduceOr(expression)
+            case vcl_ast.BoolIf():
+                return self.translate_BoolIf(expression)
             case vcl_ast.RatTensor():
                 return self.translate_RatTensor(expression)
             case vcl_ast.AddRatTensor():
@@ -118,6 +140,53 @@ class ABCTranslation(
 
     @abstractmethod
     def translate_Pi(self, expression: vcl_ast.Pi) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolTensor(
+        self, expression: vcl_ast.BoolTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolNot(self, expression: vcl_ast.BoolNot) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolAnd(self, expression: vcl_ast.BoolAnd) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolOr(self, expression: vcl_ast.BoolOr) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolImplies(
+        self, expression: vcl_ast.BoolImplies
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolCompareIndex(
+        self, expression: vcl_ast.BoolCompareIndex
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolCompareNat(
+        self, expression: vcl_ast.BoolCompareNat
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolCompareRatTensor(
+        self, expression: vcl_ast.BoolCompareRatTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolReduceAnd(
+        self, expression: vcl_ast.BoolReduceAnd
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolReduceOr(
+        self, expression: vcl_ast.BoolReduceOr
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_BoolIf(self, expression: vcl_ast.BoolIf) -> vcl_var.Expression: ...
 
     @abstractmethod
     def translate_RatTensor(

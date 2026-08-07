@@ -26,7 +26,7 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
-import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
+import Vehicle.Data.Builtin.Interface.Print (ConvertableBuiltin (..), PrintableBuiltin)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
@@ -164,11 +164,15 @@ compileToLossFunction LossOptions {..} typedProg outputAsJSON = do
   lossTensorProg <- convertToLossTensors differentiableLogicID requestedDecls typedProg
   hoistedProg <- hoistInferableParameters lossTensorProg
   functionalisedProg <- functionaliseResources hoistedProg
-  jsonProg <- convertToJSONProg functionalisedProg
+  builtinProg <- traverse (traverseBuiltinsM toStandardBuiltins) functionalisedProg
+  jsonProg <- convertToJSONProg builtinProg
   let outputText
         | outputAsJSON = prettyAsJSON jsonProg
         | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
   writeResultToFile Nothing outputFile outputText
+  where
+    toStandardBuiltins p b args =
+      return $ normAppList (convertBuiltin p b :: Expr Builtin) args
 
 hoistInferableParameters ::
   (MonadCompile m, PrintableBuiltin builtin) =>

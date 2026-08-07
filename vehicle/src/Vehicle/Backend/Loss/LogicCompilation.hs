@@ -368,6 +368,7 @@ isLiftableOp = \case
   ForeachVector -> False
   Iterate -> False
   Transpose -> False
+  SearchRatTensor {} -> False
 
 reduceOp :: BuiltinFunction -> Maybe BuiltinFunction
 reduceOp = \case
@@ -411,6 +412,7 @@ reduceOp = \case
   ForeachVector -> Nothing
   Iterate -> Nothing
   Transpose -> Nothing
+  SearchRatTensor {} -> Nothing
 
 type MonadCompileBody m =
   ( MonadLogger m,

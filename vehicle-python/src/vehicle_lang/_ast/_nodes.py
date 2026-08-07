@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Generic, Literal, Optional, Sequence
 
 from typing_extensions import Self, TypeAlias
 from typing_extensions import TypeVar as TypingTypeVar
@@ -13,6 +13,7 @@ from ._decode import JsonValue, decode
 
 Name: TypeAlias = str
 UniverseLevel: TypeAlias = int
+ComparisonOp: TypeAlias = Literal["Eq", "Ne", "Le", "Lt", "Ge", "Gt"]
 
 
 @dataclass(frozen=True, init=False)
@@ -95,24 +96,23 @@ DType = TypingTypeVar("DType", bool, float, int, ExtendedFraction)
 
 
 @dataclass(frozen=True)
-class Tensor(AST):
+class Tensor(AST, Generic[DType]):
     shape: Sequence[int]
-    value: Sequence[ExtendedFraction] | ExtendedFraction
 
     def __init__(self) -> None:
         raise TypeError("Cannot instantiate abstract class Tensor")
 
 
 @dataclass(frozen=True)
-class DenseTensor(Tensor):
+class DenseTensor(Tensor[DType], Generic[DType]):
     shape: Sequence[int]
-    value: Sequence[ExtendedFraction]
+    values: Sequence[DType]
 
 
 @dataclass(frozen=True)
-class ConstantTensor(Tensor):
+class ConstantTensor(Tensor[DType], Generic[DType]):
     shape: Sequence[int]
-    value: ExtendedFraction
+    value: DType
 
 
 ################################################################################
@@ -137,6 +137,11 @@ class Pi(BuiltinType):
 @dataclass(frozen=True)
 class RatType(BuiltinType):
     """Rational number type: RatType"""
+
+
+@dataclass(frozen=True)
+class BoolType(BuiltinType):
+    """Boolean type: BoolType"""
 
 
 @dataclass(frozen=True)
@@ -214,9 +219,76 @@ class Var(Expression):
 
 
 @dataclass(frozen=True)
-class RatTensor(Expression):
+class BoolTensor(Expression):
+    contents: Tensor[bool]
 
-    contents: Tensor
+
+@dataclass(frozen=True)
+class BoolNot(Expression):
+    x: Expression
+
+
+@dataclass(frozen=True)
+class BoolAnd(Expression):
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class BoolOr(Expression):
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class BoolImplies(Expression):
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class BoolCompareIndex(Expression):
+    op: ComparisonOp
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class BoolCompareNat(Expression):
+    op: ComparisonOp
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class BoolCompareRatTensor(Expression):
+    op: ComparisonOp
+    p_dims: Expression
+    r_dims: Expression
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class BoolReduceAnd(Expression):
+    x: Expression
+
+
+@dataclass(frozen=True)
+class BoolReduceOr(Expression):
+    x: Expression
+
+
+@dataclass(frozen=True)
+class BoolIf(Expression):
+    c: Expression
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class RatTensor(Expression):
+    contents: Tensor[ExtendedFraction]
 
 
 @dataclass(frozen=True)

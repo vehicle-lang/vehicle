@@ -870,6 +870,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     StackTensor -> compileStack localeAssms args
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
+    SearchRatTensor {} -> unsupportedError
     Iterate -> unsupportedError
     Pow {} -> unsupportedError
     Log {} -> unsupportedError

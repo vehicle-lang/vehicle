@@ -116,6 +116,7 @@ convertThunk quantifiers = go
         S.MapList -> mkFunction MapList
         S.ReverseList -> mkFunction ReverseList
         S.AppendList -> mkFunction AppendList
+        S.SearchRatTensor -> mkFunction SearchRatTensor
         S.If -> unsupportedOperation "if"
         S.Implies -> unexpected
         S.Iterate -> unexpected

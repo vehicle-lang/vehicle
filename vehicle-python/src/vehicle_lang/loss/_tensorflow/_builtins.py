@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections.abc
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import TYPE_CHECKING, Any, Callable, List, Sequence, Tuple, cast
@@ -43,6 +44,32 @@ def _extended_rational_to_float(value: _nodes.ExtendedFraction) -> float:
             raise ValueError(f"Unknown extended rational type: {type(value)}")
 
 
+def _value_to_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, _nodes.ExtendedFraction):
+        return bool(_extended_rational_to_float(value))
+    return bool(value)
+
+
+def _comparison(op: str, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+    match op:
+        case "Eq":
+            return tf.equal(x, y)
+        case "Ne":
+            return tf.not_equal(x, y)
+        case "Le":
+            return tf.less_equal(x, y)
+        case "Lt":
+            return tf.less(x, y)
+        case "Ge":
+            return tf.greater_equal(x, y)
+        case "Gt":
+            return tf.greater(x, y)
+        case _:
+            raise error.VehicleInternalError(f"Unknown comparison operation: {op}")
+
+
 ################################################################################
 ### Interpretations of Vehicle builtins in Tensorflow
 ################################################################################
@@ -61,23 +88,87 @@ class TensorFlowBuiltins(
     dtype_rat: tf.DType = tf.float32
 
     @override
-    def RatTensor(self, value: _nodes.Tensor) -> tf.Tensor:
-        match value.value:
-            case _nodes.ExtendedFraction():
-                # Single value - expand to tensor shape
-                float_value = _extended_rational_to_float(value.value)
-                return _tf_constant(
-                    value=float_value, dtype=self.dtype_rat, shape=value.shape
-                )
+    def BoolTensor(self, x: _nodes.Tensor[bool]) -> tf.Tensor:
+        match x:
+            case _nodes.DenseTensor():
+                values = x.values
+            case _nodes.ConstantTensor():
+                values = (x.value,)
             case _:
-                # Sequence of values
-                return _tf_constant(
-                    value=tuple(
-                        _extended_rational_to_float(val) for val in value.value
-                    ),
-                    dtype=self.dtype_rat,
-                    shape=value.shape,
+                raise error.VehicleInternalError(f"Unknown tensor type: {type(x)}.")
+
+        return _tf_constant(data=values, dtype=tf.bool, shape=x.shape)
+
+    @override
+    def BoolNot(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.logical_not(x)
+
+    @override
+    def BoolAnd(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.logical_and(x, y)
+
+    @override
+    def BoolOr(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.logical_or(x, y)
+
+    @override
+    def BoolImplies(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.logical_or(tf.logical_not(x), y)
+
+    @override
+    def BoolCompareIndex(self, op: str, x: int, y: int) -> tf.Tensor:
+        tx = _tf_constant(value=x, dtype=self.dtype_index)
+        ty = _tf_constant(value=y, dtype=self.dtype_index)
+        return _comparison(op, tx, ty)
+
+    @override
+    def BoolCompareNat(self, op: str, x: int, y: int) -> tf.Tensor:
+        tx = _tf_constant(value=x, dtype=self.dtype_index)
+        ty = _tf_constant(value=y, dtype=self.dtype_index)
+        return _comparison(op, tx, ty)
+
+    @override
+    def BoolCompareRatTensor(
+        self,
+        op: str,
+        pointwise_dims: Sequence[int],
+        reduce_dims: Sequence[int],
+        x: tf.Tensor,
+        y: tf.Tensor,
+    ) -> tf.Tensor:
+        _ = pointwise_dims
+        result = _comparison(op, x, y)
+        for _ in reduce_dims:
+            result = tf.reduce_all(result, axis=-1)
+        return result
+
+    @override
+    def BoolReduceAnd(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.reduce_all(x)
+
+    @override
+    def BoolReduceOr(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.reduce_any(x)
+
+    @override
+    def BoolIf(self, c: tf.Tensor, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.where(c, x, y)
+
+    @override
+    def RatTensor(self, x: _nodes.Tensor[_nodes.ExtendedFraction]) -> tf.Tensor:
+        match x:
+            case _nodes.DenseTensor():
+                float_values = tuple(
+                    _extended_rational_to_float(val) for val in x.values
                 )
+            case _nodes.ConstantTensor():
+                float_values = (_extended_rational_to_float(x.value),)
+            case _:
+                raise error.VehicleInternalError(
+                    f"Unexpected type for RatTensor: {type(x)}"
+                )
+
+        return _tf_constant(value=float_values, dtype=self.dtype_rat, shape=x.shape)
 
     @override
     def NegRatTensor(self, x: tf.Tensor) -> tf.Tensor:
