@@ -9,6 +9,7 @@ module Vehicle.Backend.Loss.JSON
   )
 where
 
+import Control.Monad.Except (MonadError (..))
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
 import Data.Map.Ordered qualified as OMap
@@ -39,7 +40,7 @@ import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Tensor (ExtendedRatTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
-import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, userModulePath)
+import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, stdlibIdentifier, userModulePath)
 import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Logging.Class
 
@@ -164,8 +165,8 @@ type MonadJSON m =
     MonadFreeContext LossBuiltin m
   )
 
-unsupportedError :: (Pretty a) => a -> b
-unsupportedError b = developerError $ "Conversion of" <+> pretty b <+> "is not yet implemented"
+unsupportedError :: (MonadJSON m, Pretty a) => a -> m b
+unsupportedError a = throwError $ UnsupportedLossOperation (stdlibIdentifier "unknown", mempty) (pretty a)
 
 dependentTypesError :: (Pretty a) => a -> b
 dependentTypesError b = developerError $ "Conversion of" <+> pretty b <+> "is not yet implemented"

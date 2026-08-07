@@ -112,7 +112,8 @@ instance
 
 -- Merge into `TypedEvalScheme`?
 instance
-  ( MonadNorm builtin m,
+  ( Show meta,
+    MonadNorm builtin m,
     TypedEvalScheme meta builtin m
   ) =>
   NormalisableExpr (GenericForcedValue meta) (GenericThunk meta) builtin m

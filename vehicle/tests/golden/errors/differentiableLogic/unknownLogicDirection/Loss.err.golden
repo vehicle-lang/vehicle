@@ -1,7 +1,8 @@
 Error in file 'spec.vcl' at Line 6, Columns 1-11: Unable to compile differentiable logic 'CustomLoss'.
 Internally Vehicle computes the result of: 
-  TruthityElement <= FalsityElement
+  TruthityElement < FalsityElement
 in order to work out whether the loss should be maximised or minimised.
-However, Vehicle was unable to establish the truth value of the result: 
+However, Vehicle was unable to establish the truth value of
   f 0.0 <= 1000000.0
-Fix: ensure that the expression 'TruthityElement <= FalsityElement' evaluates to either `true` or `false`.
+because it could not evaluate 'f'
+Fix: ensure that the expression 'TruthityElement < FalsityElement' evaluates to either `true` or `false`.

@@ -983,7 +983,7 @@ formatCompileError = \case
           Just
             "declare the logic directly as a record literal."
       }
-  UnorderableDifferentiableLogic (ident, p) value ->
+  UnorderableDifferentiableLogic (ident, p) expr reason ->
     VehicleUserError
       { provenance = Just p,
         problem =
@@ -995,14 +995,21 @@ formatCompileError = \case
             <> line
             <> "in order to work out whether the loss should be maximised or minimised."
             <> line
-            <> "However, Vehicle was unable to establish the truth value of the result:"
-              <+> lineIndent (prettyFriendlyEmptyCtx value),
+            <> "However, Vehicle was unable to establish the truth value of"
+            <> lineIndent (prettyFriendlyEmptyCtx expr)
+            <> line
+            <> "because it could not evaluate" <+> case reason of
+              Right value ->
+                ":"
+                  <+> lineIndent (prettyFriendlyEmptyCtx value)
+              Left (BlockingDatasetOrParameter blockingIdent) -> quotePretty (nameOf blockingIdent)
+              Left (BlockingNetwork blockingIdent) -> quotePretty (nameOf blockingIdent),
         fix =
           Just $
             "ensure that the expression" <+> squotes comp <+> "evaluates to either `true` or `false`."
       }
     where
-      comp = pretty TruthityElement <+> "<=" <+> pretty FalsityElement
+      comp = pretty TruthityElement <+> "<" <+> pretty FalsityElement
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =

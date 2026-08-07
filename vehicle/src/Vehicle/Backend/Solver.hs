@@ -30,6 +30,7 @@ import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.ForcedValue
@@ -317,10 +318,10 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
 topLevelUnblockingActions :: (Monad m) => UnblockingActions m
 topLevelUnblockingActions =
   UnblockingActions
-    { unblockRatTensorBoundVar = developerError "No bound variables should exist at top-level",
-      unblockRecordBoundVar = developerError "No bound variables should exist at top-level",
-      unblockNetworkApp = \_ _ _ -> developerError "Unblocking of constant network functions at top-level not yet supported",
-      unblockDatasetOrParameter = developerError "Should not be unblocking datasets or parameters"
+    { unblockRatTensorBoundVar = \_ _ -> developerError "No bound variables should exist at top-level",
+      unblockRecordBoundVar = \_ _ -> developerError "No bound variables should exist at top-level",
+      unblockNetworkApp = \_ _ ident args -> return $ IfLeaf $ Forced $ VFreeVar ident (mkExpr accessSpine args),
+      unblockDatasetOrParameter = \_ _ -> developerError "Should not be unblocking datasets or parameters"
     }
 
 handlePropertyCompileError ::
