@@ -429,7 +429,7 @@ convertTranspose convert spine = case getExpr accessSpine spine of
   Nothing -> arityError L.Transpose 3 spine
 
 convertSearch :: (MonadJSON m) => Name -> UnforcedSpine LossBuiltin -> m JExpr
-convertSearch name = convertNonNullaryOp (L.SearchRatTensor name) 5 $
+convertSearch name = convertNonNullaryOp (L.SearchRatTensor name) 4 $
   \(SearchRatTensorArgs dims lowerBound upperBound fn) ->
     SearchRatTensor name <$> convertValue dims <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn
 

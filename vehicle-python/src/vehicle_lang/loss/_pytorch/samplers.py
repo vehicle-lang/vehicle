@@ -69,7 +69,6 @@ class DefaultPyTorchSampler(PyTorchSampler):
             lower_bound: The lower bound tensor
             upper_bound: The upper bound tensor
             search_lambda: A callable representing the property to evaluate
-            minimise: Whether to minimize (True) or maximize (False) the search_lambda
 
         Returns:
             A sequence of loss values evaluated at the PGD-perturbed points
