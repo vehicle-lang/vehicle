@@ -6,12 +6,11 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.RWS (MonadReader, ask)
 import Control.Monad.Reader (runReaderT)
-import Control.Monad.Writer.Strict (MonadWriter (..), runWriterT)
-import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
+import Vehicle.Compile.LowerNot
 import Vehicle.Compile.Normalise.Builtin (elimImplies)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (unnormalise)
@@ -20,12 +19,15 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard hiding (And)
+import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Context.Name (runFreshNameBoundContextT)
 import Vehicle.Data.Variable.Bound.Context.Name.Class
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (getFreeCtx), addDeclEntryToContext, runFreshFreeContextT)
+import Vehicle.Verify.Specification (Property, QuerySet (..), propertySize, traverseProperty)
 
 type MonadLiftQuantifiers m =
   ( MonadCompile m,
@@ -40,162 +42,292 @@ type NewContextValue = Thunk Builtin
 
 type QuantifierData = (Quantifier, Either (UnforcedDims Builtin, UnforcedDims Builtin) (UnforcedType Builtin), UnforcedBinder Builtin)
 
-type PropertyData = Map Name Bool
+type HasForall = Bool
+
+type HasExists = Bool
+
+type LiftedData = ([QuantifierData], NewContextValue, HasForall, HasExists)
+
+type LiftedExpr = Thunk Builtin
 
 liftQuantifiers ::
   (MonadCompile m) =>
   Prog Builtin ->
-  m (PropertyData, Prog Builtin)
+  m ([Decl Builtin], [(Name, Property LiftedExpr)])
 liftQuantifiers (Main ds) = logCompilerPass LossLogic $
   runFreshFreeContextT (Proxy @Builtin) $ do
-    (ds', propertyData) <- runWriterT (liftQuantifierDecls ds)
-    return (propertyData, Main ds')
+    (nonProperties, properties) <- liftQuantifierDecls ds
+    return (nonProperties, properties)
 
 liftQuantifierDecls ::
   ( MonadCompile m,
-    MonadFreeContext Builtin m,
-    MonadWriter PropertyData m
+    MonadFreeContext Builtin m
   ) =>
   [Decl Builtin] ->
-  m [Decl Builtin]
+  m ([Decl Builtin], [(Name, Property LiftedExpr)])
 liftQuantifierDecls = \case
-  [] -> return []
+  [] -> return ([], [])
   decl : decls -> do
     logDebug MaxDetail $ pretty $ identifierOf decl
     logDebugM MaxDetail $ do
       pretty . Map.keys <$> getFreeCtx (Proxy @Builtin)
     decl' <- liftQuantifierDecl decl
-    decls' <- addDeclEntryToContext decl' $ liftQuantifierDecls decls
-    return (decl' : decls')
+    case decl' of
+      Left nonProperty -> do
+        (nonProperties, properties) <- addDeclEntryToContext decl $ liftQuantifierDecls decls -- do I add decl' or decl to context?
+        return (nonProperty : nonProperties, properties)
+      Right property -> do
+        (nonProperties, properties) <- addDeclEntryToContext decl $ liftQuantifierDecls decls -- do I add decl' or decl to context?
+        return (nonProperties, property : properties)
 
 liftQuantifierDecl ::
   ( MonadCompile m,
-    MonadFreeContext Builtin m,
-    MonadWriter PropertyData m
+    MonadFreeContext Builtin m
   ) =>
   Decl Builtin ->
-  m (Decl Builtin)
+  m (Either (Decl Builtin) (Name, Property LiftedExpr))
 liftQuantifierDecl decl = case decl of
-  DefAbstract {} -> return decl
-  DefRecord {} -> return decl
-  DefFunction p ident ann typ expr ->
+  DefAbstract {} -> return $ Left decl
+  DefRecord {} -> return $ Left decl
+  DefFunction p ident ann _ expr ->
     if isAnnotatedAsProperty ann
       then do
-        ((quantifiers, value), _) <-
+        let name = nameOf ident
+        propertyNotLowered <-
           runFreshNameBoundContextT $
             flip runReaderT (ident, p) $
-              liftQuantifierProperty (Unforced emptyBoundEnv expr, 0)
-        ((newQuantifiers, newValue), findCounterExample) <- runReaderT (flipForall (quantifiers, value)) (ident, p)
-        liftedValue <- runFreshNameBoundContextT $ reconstructProperty newQuantifiers newValue
-        logDebug MaxDetail $ do
-          prettyFriendlyEmptyCtx liftedValue
-        tell (Map.singleton (identifierName ident) findCounterExample)
-        return $ DefFunction p ident ann typ $ unnormalise 0 liftedValue
-      else return decl
+              applyDeMorgan (Unforced emptyBoundEnv expr)
+        (propertyLifted, _) <-
+          runFreshNameBoundContextT $
+            flip runReaderT (ident, p) $
+              liftQuantifierProperty (propertyNotLowered, 0)
+        propertyExistential <- runReaderT (eliminateForall propertyLifted) (ident, p)
+        propertyReconstructed <- runFreshNameBoundContextT $ reconstructProperty propertyExistential
+        -- tell (Map.singleton (identifierName ident) findCounterExample)
+        return $ Right (name, propertyReconstructed)
+      else return $ Left decl
 
--- | Returns a Bool representing whether performing a search on the property would produce an adversarial example
--- True = example input found will be an adversarial example to the property
--- False = example input found will not be a counter-example
+applyDeMorgan ::
+  (MonadLiftQuantifiers m) =>
+  OldContextValue ->
+  m OldContextValue
+applyDeMorgan value = do
+  forcedValue <- forceThunk value
+  case toBoolValue forcedValue of
+    VBoolLiteral _ -> return value
+    VAnd args -> do
+      args' <- traverseTensorOp2Args applyDeMorgan args
+      return (Forced $ mkExpr accessAndTensor args')
+    VOr args -> do
+      args' <- traverseTensorOp2Args applyDeMorgan args
+      return (Forced $ mkExpr accessOrTensor args')
+    VNot args -> do
+      lowered <- lowerNot unblockingActions args
+      return lowered
+    VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs pDims bDims binder closure) -> do
+      lv <- getBinderDepth
+      let normBody = extendClosureWithBound closure binder lv
+      body' <- addNameToContext binder $ applyDeMorgan normBody
+      let newBody = unnormalise lv body'
+      newEnv <- namedBoundContextToEnv <$> getNameContext
+      return (Forced $ mkExpr accessQuantifyRatTensor (quantifier, QuantifyRatTensorArgs pDims bDims binder (Closure newEnv newBody)))
+    VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder closure) -> do
+      lv <- getBinderDepth
+      let normBody = extendClosureWithBound closure binder lv
+      body' <- addNameToContext binder $ applyDeMorgan normBody
+      let newBody = unnormalise lv body'
+      newEnv <- namedBoundContextToEnv <$> getNameContext
+      return (Forced $ mkExpr accessQuantifyRecord (quantifier, QuantifyRecordArgs typ binder (Closure newEnv newBody)))
+    VCompareIndex (op, IndexComparisonArgs size1 size2 arg1 arg2) -> do
+      arg1' <- applyDeMorgan arg1
+      arg2' <- applyDeMorgan arg2
+      return (Forced $ mkExpr accessCompareIndex (op, IndexComparisonArgs size1 size2 arg1' arg2'))
+    VCompareNat (op, args) -> do
+      args' <- traverseOp2Args applyDeMorgan args
+      return (Forced $ mkExpr accessCompareNat (op, args'))
+    VCompareRatTensor (op, TensorComparisonArgs rDims pDims xs ys) -> do
+      xs' <- applyDeMorgan xs
+      ys' <- applyDeMorgan ys
+      let args' = TensorComparisonArgs rDims pDims xs' ys'
+      return (Forced $ mkExpr accessCompareRatTensor (op, args'))
+    VBoolIf args -> do
+      unfolded <- unfoldIf args
+      applyDeMorgan unfolded
+    VImplies args -> do
+      let unfolded = elimImplies args
+      applyDeMorgan unfolded
+    VBoolVectorAt {} -> unblock
+    VBoolFoldList {} -> unblock
+    VReduceAndTensor {} -> unblock
+    VReduceOrTensor {} -> unblock
+    VBoolTensorAt {} -> unblock
+  where
+    unblock = do
+      unblocked <- unblockBoolExpr unblockingActions value
+      applyDeMorgan unblocked
+
+eliminateForall ::
+  ( MonadCompile m,
+    MonadReader DeclProvenance m
+  ) =>
+  Property LiftedData ->
+  m (Property LiftedData)
+eliminateForall = traverseProperty eliminateForallCheckAlternatingQuantifiers
+
+-- | Throws an error if there are alternating quantifiers in the
+-- property and makes all quantifiers existential
+eliminateForallCheckAlternatingQuantifiers ::
+  ( MonadCompile m,
+    MonadReader DeclProvenance m
+  ) =>
+  LiftedData ->
+  m LiftedData
+eliminateForallCheckAlternatingQuantifiers (quantifiers, value, hasForall, hasExists) =
+  if hasForall && hasExists
+    then do
+      declProv <- ask
+      throwError $ UnableToLiftQuantifiersInProperty declProv
+    else do
+      newQuantifiers <- flipForall quantifiers
+      return (newQuantifiers, value, False, True)
+
 flipForall ::
   ( MonadCompile m,
     MonadReader DeclProvenance m
   ) =>
-  ([QuantifierData], NewContextValue) ->
-  m (([QuantifierData], NewContextValue), Bool)
-flipForall (quantifierData, value) = case quantifierData of
-  [] -> return ((quantifierData, value), True)
-  (firstQuantifier, _, _) : _ -> do
-    newQuantifierData <- checkAlternatingQuantifiers firstQuantifier quantifierData
-    return $
-      if firstQuantifier == Forall
-        then ((newQuantifierData, Forced $ mkExpr accessNotTensor (TensorOp1Args (Forced IDimNil) value)), True) -- not sure what dims to use here
-        else ((newQuantifierData, value), False)
-
--- | Throws an error if there are alternating quantifiers in the
--- property and makes all quantifiers existential
-checkAlternatingQuantifiers ::
-  ( MonadCompile m,
-    MonadReader DeclProvenance m
-  ) =>
-  Quantifier ->
   [QuantifierData] ->
   m [QuantifierData]
-checkAlternatingQuantifiers prevQuantifier quantifierData = case quantifierData of
+flipForall quantifiers = case quantifiers of
   [] -> return []
-  (quantifier, dimsOrTyp, binder) : qs ->
-    if prevQuantifier /= quantifier
-      then do
-        declProv <- ask
-        throwError $ UnableToLiftQuantifiersInProperty declProv
-      else do
-        newData <- checkAlternatingQuantifiers quantifier qs
-        return ((Exists, dimsOrTyp, binder) : newData)
+  (_, dimsOrType, binder) : qs -> do
+    newQuantifiers <- flipForall qs
+    return ((Exists, dimsOrType, binder) : newQuantifiers)
 
 reconstructProperty ::
   ( MonadCompile m,
     MonadFreeContext Builtin m,
     MonadNameContext m
   ) =>
-  [QuantifierData] ->
-  NewContextValue ->
-  m (Thunk Builtin)
-reconstructProperty quantifiers value = case quantifiers of
+  Property LiftedData ->
+  m (Property LiftedExpr)
+reconstructProperty = traverseProperty reconstructLiftedExpr
+
+reconstructLiftedExpr ::
+  ( MonadCompile m,
+    MonadFreeContext Builtin m,
+    MonadNameContext m
+  ) =>
+  LiftedData ->
+  m LiftedExpr
+reconstructLiftedExpr (quantifiers, value, hasForall, hasExists) = case quantifiers of
   [] -> return value
   (quantifier, dimsOrType, binder) : qs -> do
     newBody <- addNameToContext binder $ do
-      reconstructed <- reconstructProperty qs value
+      reconstructed <- reconstructLiftedExpr (qs, value, hasForall, hasExists)
       lv <- getBinderDepth
       return $ unnormalise lv reconstructed
+    logDebug MaxDetail $ prettyFriendlyEmptyCtx newBody
     newEnv <- namedBoundContextToEnv <$> getNameContext
     case dimsOrType of
       Left (pDims, bDims) -> return (Forced $ mkExpr accessQuantifyRatTensor (quantifier, QuantifyRatTensorArgs pDims bDims binder (Closure newEnv newBody)))
       Right typ -> return (Forced $ mkExpr accessQuantifyRecord (quantifier, QuantifyRecordArgs typ binder (Closure newEnv newBody)))
 
+-- A property should never be Trivial?
 liftQuantifierProperty ::
   (MonadLiftQuantifiers m) =>
   (OldContextValue, Lv) ->
-  m (([QuantifierData], NewContextValue), Lv)
+  m (Property LiftedData, Lv)
 liftQuantifierProperty (value, ctxDelta) = do
   forcedValue <- forceThunk value
   case toBoolValue forcedValue of
     VBoolLiteral _ ->
-      return (([], value), 0)
+      return (NonTrivial $ Query $ QuerySet False (DisjunctAll [([], value, False, False)]), 0)
     VAnd (TensorOp2Args dims arg1 arg2) -> do
-      ((quantifiers1, arg1'), ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
-      ((quantifiers2, arg2'), ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
-      return ((quantifiers1 ++ quantifiers2, Forced $ mkExpr accessAndTensor (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2)
+      (arg1', ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
+      (arg2', ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
+      case (arg1', arg2') of
+        (NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers1, newValue1, hasForall1, hasExists1)]))), NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers2, newValue2, hasForall2, hasExists2)])))) -> do
+          let hasForall = hasForall1 || hasForall2
+          let hasExists = hasExists1 || hasExists2
+          if hasExists
+            then do
+              let query1 = Query (QuerySet False (DisjunctAll [(quantifiers1, newValue1, hasForall1, hasExists1)]))
+              let query2 = Query (QuerySet False (DisjunctAll [(quantifiers2, newValue2, hasForall2, hasExists2)]))
+              return (NonTrivial $ Conjunct $ ConjunctAll [query1, query2], ctxSize1 + ctxSize2)
+            else do
+              let newQuery = Query $ QuerySet hasForall (DisjunctAll [(quantifiers1 ++ quantifiers2, Forced $ mkExpr accessAndTensor (TensorOp2Args dims newValue1 newValue2), hasForall, hasExists)])
+              return (NonTrivial newQuery, ctxSize1 + ctxSize2)
+        (NonTrivial conjunctOrDisjunct1, NonTrivial conjunctOrDisjunct2) -> return (NonTrivial $ Conjunct $ ConjunctAll [conjunctOrDisjunct1, conjunctOrDisjunct2], ctxSize1 + ctxSize2)
+        _ -> developerError "Conjunct cannot contain trivial args"
     VOr (TensorOp2Args dims arg1 arg2) -> do
-      ((quantifiers1, arg1'), ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
-      ((quantifiers2, arg2'), ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
-      return ((quantifiers1 ++ quantifiers2, Forced $ mkExpr accessOrTensor (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2)
+      (arg1', ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
+      (arg2', ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
+      case (arg1', arg2') of
+        (NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers1, newValue1, hasForall1, hasExists1)]))), NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers2, newValue2, hasForall2, hasExists2)])))) -> do
+          let hasForall = hasForall1 || hasForall2
+          let hasExists = hasExists1 || hasExists2
+          if hasForall
+            then do
+              let query1 = Query (QuerySet False (DisjunctAll [(quantifiers1, newValue1, hasForall1, hasExists1)]))
+              let query2 = Query (QuerySet False (DisjunctAll [(quantifiers2, newValue2, hasForall2, hasExists2)]))
+              return (NonTrivial $ Disjunct $ DisjunctAll [query1, query2], ctxSize1 + ctxSize2)
+            else do
+              let newQuery = Query $ QuerySet hasForall (DisjunctAll [(quantifiers1 ++ quantifiers2, Forced $ mkExpr accessOrTensor (TensorOp2Args dims newValue1 newValue2), hasForall, hasExists)])
+              return (NonTrivial newQuery, ctxSize1 + ctxSize2)
+        (NonTrivial conjunctOrDisjunct1, NonTrivial conjunctOrDisjunct2) -> return (NonTrivial $ Disjunct $ DisjunctAll [conjunctOrDisjunct1, conjunctOrDisjunct2], ctxSize1 + ctxSize2)
+        _ -> developerError "Disjunct cannot contain trivial args"
     VNot (TensorOp1Args dims arg) -> do
-      ((quantifiers, arg'), ctxSize) <- liftQuantifierProperty (arg, ctxDelta)
-      return ((quantifiers, Forced $ mkExpr accessNotTensor (TensorOp1Args dims arg')), ctxSize)
+      (arg', ctxSize) <- liftQuantifierProperty (arg, ctxDelta)
+      case arg' of
+        NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers, newValue, hasForall, hasExists)]))) -> do
+          let newQuery = Query $ QuerySet hasForall (DisjunctAll [(quantifiers, Forced $ mkExpr accessNotTensor $ TensorOp1Args dims newValue, hasForall, hasExists)])
+          return (NonTrivial newQuery, ctxSize)
+        NonTrivial _ -> developerError "Negation must be pushed below and/or"
+        _ -> developerError "Negation cannot contain trivial args"
     VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs pDims bDims binder closure) -> do
       lv <- getBinderDepth
       let normBody = extendClosureWithBound closure binder lv
-      ((quantifiers, body'), ctxSize) <- addNameToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
-      return (((quantifier, Left (pDims, bDims), binder) : quantifiers, body'), ctxSize + 1)
+      let quantifierData = (quantifier, Left (pDims, bDims), binder)
+      (body', ctxSize) <- addNameToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
+      case body' of
+        NonTrivial (Query querySet) -> do
+          newQuerySet <- addQuantifierToQuerySet quantifierData querySet
+          return (NonTrivial $ Query newQuerySet, ctxSize + 1)
+        NonTrivial conjunctOrDisjunct -> do
+          (lowered, newCtxSize) <- lowerQuantifier quantifierData ctxSize (NonTrivial conjunctOrDisjunct)
+          return (lowered, newCtxSize)
+        _ -> developerError "Quantifier body cannot be trivial"
     VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder closure) -> do
       lv <- getBinderDepth
       let normBody = extendClosureWithBound closure binder lv
-      ((quantifiers, body'), ctxSize) <- addNameToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
-      return (((quantifier, Right typ, binder) : quantifiers, body'), ctxSize + 1)
-    VBoolIf args -> do
-      unfolded <- unfoldIf args
-      liftQuantifierProperty (unfolded, ctxDelta)
+      let quantifierData = (quantifier, Right typ, binder)
+      (body', ctxSize) <- addNameToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
+      case body' of
+        NonTrivial (Query querySet) -> do
+          newQuerySet <- addQuantifierToQuerySet quantifierData querySet
+          return (NonTrivial $ Query newQuerySet, ctxSize + 1)
+        NonTrivial conjunctOrDisjunct -> do
+          (lowered, newCtxSize) <- lowerQuantifier quantifierData ctxSize (NonTrivial conjunctOrDisjunct)
+          return (lowered, newCtxSize)
+        _ -> developerError "Quantifier body cannot be trivial"
     VCompareIndex (op, IndexComparisonArgs size1 size2 arg1 arg2) -> do
       arg1' <- updateIndexBoundVar ctxDelta arg1
       arg2' <- updateIndexBoundVar ctxDelta arg2
-      return (([], Forced $ mkExpr accessCompareIndex (op, IndexComparisonArgs size1 size2 arg1' arg2')), 0)
+      let newQuery = Query $ QuerySet False (DisjunctAll [([], Forced $ mkExpr accessCompareIndex (op, IndexComparisonArgs size1 size2 arg1' arg2'), False, False)])
+      return (NonTrivial newQuery, 0)
     VCompareNat (op, args) -> do
       args' <- traverseOp2Args (updateNatBoundVar ctxDelta) args
-      return (([], Forced $ mkExpr accessCompareNat (op, args')), 0)
+      let newQuery = Query $ QuerySet False (DisjunctAll [([], Forced $ mkExpr accessCompareNat (op, args'), False, False)])
+      return (NonTrivial newQuery, 0)
     VCompareRatTensor (op, TensorComparisonArgs rDims pDims xs ys) -> do
       xs' <- updateRatTensorBoundVar ctxDelta xs
       ys' <- updateRatTensorBoundVar ctxDelta ys
       let args' = TensorComparisonArgs rDims pDims xs' ys'
-      return (([], Forced $ mkExpr accessCompareRatTensor (op, args')), 0)
+      let newQuery = Query $ QuerySet False (DisjunctAll [([], Forced $ mkExpr accessCompareRatTensor (op, args'), False, False)])
+      return (NonTrivial newQuery, 0)
+    VBoolIf args -> do
+      unfolded <- unfoldIf args
+      liftQuantifierProperty (unfolded, ctxDelta)
     VImplies args -> do
       let unfolded = elimImplies args
       liftQuantifierProperty (unfolded, ctxDelta)
@@ -208,6 +340,36 @@ liftQuantifierProperty (value, ctxDelta) = do
     unblock = do
       unblocked <- unblockBoolExpr unblockingActions value
       liftQuantifierProperty (unblocked, ctxDelta)
+
+lowerQuantifier ::
+  (MonadLiftQuantifiers m) =>
+  QuantifierData ->
+  Lv ->
+  Property LiftedData ->
+  m (Property LiftedData, Lv)
+lowerQuantifier quantifierData ctxSize property = case property of
+  NonTrivial expr -> do
+    newExpr <- traverse (addQuantifierToQuerySet quantifierData) expr
+    let newProperty = NonTrivial newExpr
+    let newPropertySize = propertySize newProperty
+    -- When a quantifier is lowered, it is prepended to every LiftedData's list of quantifier data
+    -- so the property's context size grows by how many LiftedData leaves there are
+    let newCtxSize = ctxSize + Lv newPropertySize
+    return (newProperty, newCtxSize)
+  _ -> developerError "Cannot lower a quantifier into an empty property"
+
+addQuantifierToQuerySet ::
+  (MonadLiftQuantifiers m) =>
+  QuantifierData ->
+  QuerySet LiftedData ->
+  m (QuerySet LiftedData)
+addQuantifierToQuerySet (quantifier, dimsOrType, binder) querySet = case querySet of
+  QuerySet _ (DisjunctAll [(quantifiers, value, hasForall, hasExists)]) -> do
+    let newQuantifiers = (quantifier, dimsOrType, binder) : quantifiers
+    if quantifier == Forall
+      then return $ QuerySet True (DisjunctAll [(newQuantifiers, value, True, hasExists)])
+      else return $ QuerySet hasForall (DisjunctAll [(newQuantifiers, value, hasForall, True)])
+  _ -> developerError "Missing lifted expression"
 
 updateIndexBoundVar ::
   (MonadLiftQuantifiers m) =>
@@ -232,7 +394,7 @@ updateIndexBoundVar lv value = do
       return value
     VIndexRecordAcc typ val fieldName spine -> do
       val' <- updateIndexBoundVar lv val
-      spine' <- traverseArgs (updateRatTensorBoundVar lv) spine
+      spine' <- traverseArgs (updateIndexBoundVar lv) spine
       return (Forced $ VRecordAcc typ val' fieldName spine')
 
 updateNatBoundVar ::
