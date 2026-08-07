@@ -14,7 +14,7 @@ import Vehicle.CommandLine
     commandLineOptionsParserInfo,
     defaultGlobalOptions,
   )
-import Vehicle.List (ListOptions (..))
+import Vehicle.List (ListEntitiesOptions (..), ListOptions (..))
 import Vehicle.Prelude
   ( Pretty (pretty),
     developerError,
@@ -93,19 +93,20 @@ listModeTests =
     "listMode"
     [ parserTest
         "basic"
-        "vehicle list \
+        "vehicle list entities \
         \--specification test/spec.vcl"
         $ Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
                 List $
-                  ListOptions
-                    { specification = "test/spec.vcl",
-                      networkLocations = mempty,
-                      datasetLocations = mempty,
-                      parameterValues = mempty
-                    }
+                  ListEntitiesTarget $
+                    ListEntitiesOptions
+                      { specification = "test/spec.vcl",
+                        networkLocations = mempty,
+                        datasetLocations = mempty,
+                        parameterValues = mempty
+                      }
           }
     ]
 

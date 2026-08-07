@@ -24,8 +24,9 @@ def load_specification(
     samplers: Mapping[str, TensorFlowSampler] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,
+    adapt_networks: bool = True,
 ) -> dict[str, Any]:
-    """Load a loss function compiled for TensorFlow."""
+    """Load a loss function compiled for TensorFlow. @tensor records are unsupported."""
 
     return load_loss_specification(
         path,
@@ -35,4 +36,6 @@ def load_specification(
         declaration_context=declaration_context,
         translation_factory=TensorFlowTranslation,
         default_sampler_factory=DefaultTensorFlowSampler,
+        adapt_networks=adapt_networks,
+        records_supported=False,
     )

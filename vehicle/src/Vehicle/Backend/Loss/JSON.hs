@@ -3,27 +3,35 @@
 module Vehicle.Backend.Loss.JSON
   ( convertToJSONProg,
     convertFromJSONProg,
+    JProg (..),
+    JDecl (..),
+    JFieldType (..),
   )
 where
 
 import Control.Monad.Except (MonadError (..))
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
+import Data.Map.Ordered qualified as OMap
 import Data.Proxy (Proxy (..))
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Builtin (getDimsExprs)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Prelude (Ix (..))
-import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
+import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog, Type)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
 import Vehicle.Data.AST.Decl
   ( DefFunctionSort (..),
+    DefRecordSort (..),
     FunctionDeclAnnotation (..),
+    isAnnotatedAsTensor,
   )
 import Vehicle.Data.AST.Expr.Scoped (normAppList)
+import Vehicle.Data.AST.Record (FieldName (..))
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, LossBuiltinExtraFunction, LossBuiltinFunction, LossBuiltinType)
 import Vehicle.Data.Builtin.Loss qualified as L
@@ -31,7 +39,7 @@ import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Tensor (ExtendedRatTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext, runFreshFreeContextT)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, stdlibIdentifier, userModulePath)
 import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Logging.Class
@@ -61,7 +69,14 @@ newtype JProg
 
 data JDecl
   = DefFunction Provenance Name JType JExpr
+  | DefRecordSchema Provenance Name [(Name, JFieldType)]
   deriving (Generic)
+
+data JFieldType
+  = FieldScalarReal
+  | FieldTensorReal [Either Int Name]
+  | FieldRecordRef Name
+  deriving (Show, Generic)
 
 data JBinder
   = Binder Provenance Name JType
@@ -70,12 +85,13 @@ data JBinder
 data JType
   = Pi JType JType
   | RatType
-  | TensorType JType
+  | TensorType JType (Maybe [Either Int Name])
   | VectorType JType
   | DimensionType
   | DimensionsType
   | DimensionIndexType
   | TypeVar Name [JExpr]
+  | RecordType Name
   deriving (Show, Generic)
 
 data JExpr
@@ -102,7 +118,10 @@ data JExpr
   | StackTensor [JExpr]
   | ForeachTensor JExpr JExpr
   | AtTensor JExpr JExpr
-  | SearchRatTensor Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Dims, ReductionOp, LowerBound, UpperBound, SearchLambda, Minimise)
+  | SearchRatTensor Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Name, ReductionOp, Dims, LowerBound, UpperBound, SearchLambda, Minimise)
+  | -- Tensor records
+    Record Name [(Name, JExpr)] -- (Schema, Fields)
+  | RecordAcc JExpr Name -- (Record, FieldName)
   | -- Vector
     VectorLiteral [JExpr]
   | AtVector JExpr JExpr
@@ -119,6 +138,9 @@ instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JDecl where
+  toJSON = genericToJSON jsonOptions
+
+instance ToJSON JFieldType where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JExpr where
@@ -153,16 +175,84 @@ dependentTypesError b = developerError $ "Conversion of" <+> pretty b <+> "is no
 -- Programs and declarations
 
 convertProg :: (MonadJSON m) => S.Prog LossBuiltin -> m JProg
-convertProg (S.Main decls) = Main <$> traverse convertDecl decls
+convertProg (S.Main decls) = Main <$> goDecls decls
+  where
+    goDecls [] = return []
+    goDecls (d : ds) = do
+      jdecl <- convertDecl d
+      jdecls <- addDeclEntryToContext d (goDecls ds)
+      return (jdecl : jdecls)
 
 convertDecl :: (MonadJSON m) => S.Decl LossBuiltin -> m JDecl
 convertDecl = \case
   S.DefAbstract {} -> developerError "Found abstract definition when converting to JSON"
-  S.DefRecord {} -> developerError "Found record when converting to JSON"
+  S.DefRecord p ident anns _telescope fields _ops
+    | isAnnotatedAsTensor anns -> do
+        fieldSchemas <- traverse convertSchemaField fields
+        return $ DefRecordSchema p (nameOf ident) fieldSchemas
+    | otherwise -> developerError "Found non-@tensor record when converting to JSON"
   S.DefFunction p ident _ typ body -> do
     typ' <- convertType emptyBoundEnv typ
     expr' <- convertExpr emptyBoundEnv body
     return $ DefFunction p (nameOf ident) typ' expr'
+
+convertSchemaField ::
+  (MonadJSON m) =>
+  (FieldName, S.Type LossBuiltin) ->
+  m (Name, JFieldType)
+convertSchemaField (fieldName, fieldType) = do
+  ft <- convertJFieldType fieldType
+  return (nameOf fieldName, ft)
+
+convertJFieldType ::
+  (MonadJSON m) =>
+  S.Type LossBuiltin ->
+  m JFieldType
+convertJFieldType typ = do
+  typVal <- eval emptyBoundEnv typ
+  case typVal of
+    VBuiltin (L.LossBuiltinType L.RatType) _ -> return FieldScalarReal
+    VBuiltin (L.LossBuiltinType L.TensorType) (fmap argExpr -> [_elemTyp, dimsValue]) -> do
+      dims <- extractDims dimsValue
+      return $ case dims of
+        [] -> FieldScalarReal
+        _ -> FieldTensorReal dims
+    VFreeVar refIdent _ ->
+      return $ FieldRecordRef (nameOf refIdent)
+    _ -> developerError $ "Unsupported @tensor record field type:" <+> prettyVerbose typVal
+
+extractDims ::
+  (MonadJSON m) =>
+  Thunk LossBuiltin ->
+  m [Either Int Name]
+extractDims dimsValue = do
+  maybeDims <- extractMaybeDims dimsValue
+  case maybeDims of
+    Nothing -> do
+      value <- forceThunk dimsValue
+      developerError $ "Unexpected dimension expression in @tensor record field:" <+> prettyVerbose value
+    Just ds -> return ds
+
+extractMaybeDims ::
+  (MonadJSON m) =>
+  Thunk LossBuiltin ->
+  m (Maybe [Either Int Name])
+extractMaybeDims dimsValue = do
+  dims <- getDimsExprs dimsValue
+  case dims of
+    Left {} -> return Nothing
+    Right ds -> sequence <$> traverse extractOneDim ds
+
+extractOneDim ::
+  (MonadJSON m) =>
+  Thunk LossBuiltin ->
+  m (Maybe (Either Int Name))
+extractOneDim thunk = do
+  value <- forceThunk thunk
+  return $ case value of
+    VBuiltin (L.LossBuiltinConstructor (L.NatLiteral n)) _ -> Just $ Left n
+    VFreeVar ident _ -> Just $ Right (nameOf ident)
+    _ -> Nothing
 
 --------------------------------------------------------------------------------
 -- Types
@@ -179,7 +269,7 @@ convertTypeValue expr = do
   showEntry expr
   forcedExpr <- forceThunk expr
   result <- case forcedExpr of
-    VFreeVar {} -> resolutionError currentPass "VFreeVar"
+    VFreeVar ident _ -> return $ RecordType (nameOf ident)
     VUniverse {} -> resolutionError currentPass "Universe"
     VRecord {} -> resolutionError currentPass "VRecord"
     VRecordAcc {} -> resolutionError currentPass "VRecordAcc"
@@ -215,7 +305,7 @@ convertIndexType spine = case spine of
 
 convertTensorType :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JType
 convertTensorType spine = case spine of
-  (fmap argExpr -> [t, _ds]) -> TensorType <$> convertTypeValue t
+  (fmap argExpr -> [t, ds]) -> TensorType <$> convertTypeValue t <*> extractMaybeDims ds
   _ -> arityError L.TensorType 2 spine
 
 convertVectorType :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JType
@@ -243,8 +333,13 @@ convertValue expr = do
   result <- case forcedValue of
     VFreeVar {} -> resolutionError currentPass "VFreeVar"
     VUniverse {} -> resolutionError currentPass "Universe"
-    VRecord {} -> resolutionError currentPass "VRecord"
-    VRecordAcc {} -> resolutionError currentPass "VRecordAcc"
+    VRecord typ fields -> do
+      schemaName <- recordSchemaName typ
+      fields' <- traverse (\(k, v) -> (nameOf k,) <$> convertValue v) (OMap.assocs fields)
+      return $ Record schemaName fields'
+    VRecordAcc _typ recordVal field _spine -> do
+      record' <- convertValue recordVal
+      return $ RecordAcc record' (nameOf field)
     VPi {} -> resolutionError currentPass "VPi"
     VLam binder closure -> do
       binder' <- convertBinder binder
@@ -257,6 +352,13 @@ convertValue expr = do
       return $ Var name spine'
   showExit result
   return result
+
+recordSchemaName :: (MonadJSON m) => Thunk LossBuiltin -> m Name
+recordSchemaName typ = do
+  forcedType <- forceThunk typ
+  case forcedType of
+    VFreeVar ident _ -> return $ nameOf ident
+    v -> developerError $ "Expected FreeVar type on VRecord/VRecordAcc, got:" <+> prettyVerbose v
 
 convertBinder :: (MonadJSON m) => UnforcedBinder LossBuiltin -> m JBinder
 convertBinder binder = do
@@ -480,6 +582,14 @@ fromJDecl = \case
       let ident = Identifier userModulePath name
       let sort = FunctionDecl 0 (Just AnnProperty)
       return $ S.DefFunction p ident sort typ' body'
+  DefRecordSchema p name fields ->
+    runFreshNameBoundContext $ do
+      let ident = Identifier userModulePath name
+      -- JType has no representation for tensor dimensions, so every field
+      -- recovers as Real regardless of its schema entry.
+      ratTyp <- toType L.RatType []
+      let recoverField (fname, _) = (FieldName mempty fname, ratTyp)
+      return $ S.DefRecord p ident (Just AnnTensor) [] (fmap recoverField fields) []
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr LossBuiltin)
 fromJType = \case
@@ -488,7 +598,7 @@ fromJType = \case
     let binder' = mkExplicitBinder input' Nothing
     S.Pi mempty binder' <$> fromJType output
   RatType -> toType L.RatType []
-  TensorType t -> toType L.TensorType [t]
+  TensorType t _ds -> toType L.TensorType [t]
   VectorType t -> toType L.VectorType [t]
   DimensionType -> toType L.NatType []
   DimensionsType -> toType L.ListType [DimensionType]
@@ -498,6 +608,7 @@ fromJType = \case
     let ix = maybe (developerError ("ill-scoped JExpr, no variable" <+> squotes (pretty name))) Ix (elemIndex (Just name) nameCtx)
     spine' <- traverse fromJExpr spine
     return $ normAppList (S.BoundVar mempty ix) (fmap explicit spine')
+  RecordType schemaName -> return $ S.FreeVar mempty (Identifier userModulePath schemaName)
 
 toType :: (MonadNameContext m) => LossBuiltinType -> [JType] -> m (S.Expr LossBuiltin)
 toType op = toExpr fromJType (LossBuiltinType op)
@@ -528,7 +639,16 @@ fromJExpr = \case
   ReduceMulRatTensor xs -> toFunction L.ReduceMulRatTensor [xs]
   ReduceMinRatTensor xs -> toFunction L.ReduceMinRatTensor [xs]
   ReduceMaxRatTensor xs -> toFunction L.ReduceMaxRatTensor [xs]
-  SearchRatTensor name dims e1 e2 e3 e4 minimise -> toExtraFunction (L.SearchRatTensor name minimise) [dims, e1, e2, e3, e4]
+  SearchRatTensor name reductionOp dims lowerBound upperBound predicate minimise ->
+    toExtraFunction (L.SearchRatTensor name minimise) [dims, reductionOp, lowerBound, upperBound, predicate]
+  Record schemaName fields -> do
+    let schemaIdent = Identifier userModulePath schemaName
+    fieldExprs <- traverse (\(_, v) -> fromJExpr v) fields
+    return $ normAppList (S.FreeVar mempty schemaIdent) (fmap explicit fieldExprs)
+  RecordAcc recordVal fieldName -> do
+    record' <- fromJExpr recordVal
+    let fieldIdent = Identifier userModulePath fieldName
+    return $ normAppList (S.FreeVar mempty fieldIdent) [explicit record']
   Dimension d -> toConstructor (L.NatLiteral d) []
   DimensionNil -> toConstructor L.Nil []
   DimensionCons e1 e2 -> toConstructor L.Cons [e1, e2]

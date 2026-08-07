@@ -79,7 +79,9 @@ convertDecl logicID logic requestedDecls decl = case decl of
         let normExpr = Unforced emptyBoundEnv expr
         runConversion $ convertPropertyDecl p ident ann normType normExpr
     | otherwise -> return Nothing
-  DefRecord {} -> return Nothing
+  DefRecord p ident anns telescope fields _ops
+    | isAnnotatedAsTensor anns -> runConversion $ convertTensorRecordDecl p ident anns telescope fields
+    | otherwise -> return Nothing
   where
     runConversion :: TensorBoundContextT (ReaderT LossCtx m) (Decl LossBuiltin) -> m (Maybe (Decl LossBuiltin))
     runConversion action = do
@@ -98,6 +100,20 @@ convertResourceDecl p ident sort typ = do
   -- TODO what about boolean parameters?
   typ' <- convertDeclType typ
   return $ DefAbstract p ident sort typ'
+
+convertTensorRecordDecl ::
+  (MonadLogic m) =>
+  Provenance ->
+  Identifier ->
+  Maybe DefRecordSort ->
+  GenericTelescope (Type Builtin) ->
+  GenericRecordFields (Type Builtin) ->
+  m (Decl LossBuiltin)
+convertTensorRecordDecl p ident anns telescope fields = do
+  let convertType = convertDeclType . Unforced emptyBoundEnv
+  telescope' <- traverse (traverse convertType) telescope
+  fields' <- traverse (traverse convertType) fields
+  return $ DefRecord p ident anns telescope' fields' []
 
 convertPropertyDecl ::
   (MonadLogic m) =>

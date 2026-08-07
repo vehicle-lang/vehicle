@@ -13,6 +13,18 @@
 
 * Fixed bug where the Isabelle backend mis-compiled declarations referencing `@network`, `@dataset`, or `@parameter` resources (#1195).
 
+### Loss backend
+
+* Added support for `@tensor` records, including quantification over them.
+
+### Python bindings
+
+* Added support for specifications declaring `@tensor` records; the record classes are built when the specification is loaded.
+
+* Added `vehicle compile python-types`, which writes those classes to an importable module for static typing, passed back as `types=`.
+
+* Networks may be written against either the record classes or raw tensors. Pass `adapt_networks=False` to call them exactly as declared.
+
 ## v0.26.1
 
 ### General

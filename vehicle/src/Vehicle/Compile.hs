@@ -16,7 +16,7 @@ import Vehicle.Backend.ITP.Imandra
 import Vehicle.Backend.ITP.Isabelle
 import Vehicle.Backend.ITP.Rocq
 import Vehicle.Backend.Loss (convertToLossTensors)
-import Vehicle.Backend.Loss.JSON
+import Vehicle.Backend.Loss.JSON (convertFromJSONProg, convertToJSONProg)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Solver
 import Vehicle.Compile.Error

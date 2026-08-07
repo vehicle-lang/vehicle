@@ -5,11 +5,11 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Optional, Sequence
 
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Annotated, Self, TypeAlias
 from typing_extensions import TypeVar as TypingTypeVar
 from typing_extensions import override
 
-from ._decode import JsonValue, decode
+from ._decode import EitherWireForm, JsonValue, decode
 
 Name: TypeAlias = str
 UniverseLevel: TypeAlias = int
@@ -148,9 +148,10 @@ class VectorType(BuiltinType):
 
 @dataclass(frozen=True)
 class TensorType(BuiltinType):
-    """Tensor type: TensorType base_type"""
+    """Tensor type: TensorType base_type shape"""
 
     base_type: BuiltinType
+    shape: Optional[Sequence[Annotated[int | str, EitherWireForm]]]
 
 
 @dataclass(frozen=True)
@@ -174,6 +175,13 @@ class TypeVar(BuiltinType):
 
     name: str
     spine: Sequence[BuiltinType]
+
+
+@dataclass(frozen=True)
+class RecordType(BuiltinType):
+    """Record type: RecordType schema"""
+
+    schema: Name
 
 
 ################################################################################
@@ -403,6 +411,27 @@ class ForeachVector(Expression):
 
 
 ################################################################################
+# Tensor records
+################################################################################
+
+
+@dataclass(frozen=True)
+class Record(Expression):
+    """Record construction: Record schema fields"""
+
+    schema: Name
+    fields: Sequence[tuple[Name, Expression]]
+
+
+@dataclass(frozen=True)
+class RecordAcc(Expression):
+    """Record field projection: RecordAcc record field"""
+
+    record: Expression
+    field: Name
+
+
+################################################################################
 # Declarations
 ################################################################################
 
@@ -422,6 +451,51 @@ class DefFunction(Declaration):
     name: Name
     type: BuiltinType
     body: Expression
+
+    @override
+    def get_name(self) -> Name:
+        return self.name
+
+
+################################################################################
+# Tensor record schemas
+################################################################################
+
+
+@dataclass(frozen=True, init=False)
+class FieldType(AST, metaclass=ABCMeta):
+    """Record field type descriptor"""
+
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class FieldType")
+
+
+@dataclass(frozen=True)
+class FieldScalarReal(FieldType):
+    """Scalar Real field type: FieldScalarReal"""
+
+
+@dataclass(frozen=True)
+class FieldTensorReal(FieldType):
+    """Tensor Real field type: FieldTensorReal shape"""
+
+    shape: Sequence[Annotated[int | str, EitherWireForm]]
+
+
+@dataclass(frozen=True)
+class FieldRecordRef(FieldType):
+    """Nested record field type: FieldRecordRef schema"""
+
+    schema: Name
+
+
+@dataclass(frozen=True)
+class DefRecordSchema(Declaration):
+    """Tensor record schema definition: DefRecordSchema provenance name fields"""
+
+    provenance: Provenance = field(repr=False)
+    name: Name
+    fields: Sequence[tuple[Name, FieldType]]
 
     @override
     def get_name(self) -> Name:

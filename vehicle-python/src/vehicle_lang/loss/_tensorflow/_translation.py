@@ -14,9 +14,10 @@ PY_MISSING = {"lineno": 0, "col_offset": 0}
 
 @dataclass(frozen=True, init=False)
 class TensorFlowTranslation(PythonTranslation):
-    def __init__(self) -> None:
+    def __init__(self, *, adapt_networks: bool = True) -> None:
         super().__init__(
             builtins=TensorFlowBuiltins(),
+            adapt_networks=adapt_networks,
             module_header=[
                 py.Import(
                     names=[

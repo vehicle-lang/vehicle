@@ -17,6 +17,7 @@ from typing import (
 )
 
 from typing_extensions import (
+    Annotated,
     Literal,
     TypeAlias,
     TypeVar,
@@ -428,6 +429,60 @@ class FractionDecoder(Decoder[fractions.Fraction]):
         return fractions.Fraction(numerator, denominator)
 
 
+class WireForm:
+    @classmethod
+    def decode(
+        cls,
+        decoder: "JsonDecoder",
+        underlying: Any,
+        value: JsonValue,
+    ) -> Any:
+        raise NotImplementedError
+
+
+class EitherWireForm(WireForm):
+    @classmethod
+    @override
+    def decode(
+        cls,
+        decoder: "JsonDecoder",
+        underlying: Any,
+        value: JsonValue,
+    ) -> Any:
+        if not isinstance(value, Dict) or len(value) != 1:
+            raise DecodeError(
+                value, cls, "expected single-key {'Left'|'Right': ...} object"
+            )
+        inner_args = get_args(underlying)
+        if len(inner_args) != 2:
+            raise DecodeError(
+                value,
+                cls,
+                f"underlying type must have exactly two args, got {underlying}",
+            )
+        if "Left" in value:
+            return decoder.decode(inner_args[0], value["Left"])
+        if "Right" in value:
+            return decoder.decode(inner_args[1], value["Right"])
+        raise DecodeError(value, cls, "expected 'Left' or 'Right' key")
+
+
+class AnnotatedDecoder(Decoder[Any]):
+    @override
+    def decode(
+        self,
+        decoder: "JsonDecoder",
+        cls_origin: Any,
+        cls_args: tuple[Any, ...],
+        value: JsonValue,
+    ) -> Any:
+        underlying = cls_args[0]
+        for marker in cls_args[1:]:
+            if isinstance(marker, type) and issubclass(marker, WireForm):
+                return marker.decode(decoder, underlying, value)
+        return decoder.decode(underlying, value)
+
+
 AnyDecoder: TypeAlias = Decoder[Any] | Callable[[JsonValue], Any]
 
 
@@ -487,6 +542,7 @@ _DEFAULT_DECODER.register(collections.abc.Mapping, DictDecoder())
 _DEFAULT_DECODER.register(collections.abc.MutableMapping, DictDecoder())
 _DEFAULT_DECODER.register(Literal, LiteralDecoder())
 _DEFAULT_DECODER.register(Union, UnionDecoder())
+_DEFAULT_DECODER.register(Annotated, AnnotatedDecoder())
 
 
 def decode(cls: Type[_T], value: JsonValue) -> _T:

@@ -11,6 +11,7 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Backend.Loss.Core hiding (currentPass)
+import Vehicle.Backend.Loss.RecordCompilation (wrapQuantifyRecordForLoss)
 import Vehicle.Compile.Error (CompileError (UnsupportedLossOperation))
 import Vehicle.Compile.Normalise.Force (forceApplication, forceFreeVar, forceThunk)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
@@ -85,7 +86,7 @@ convertThunk quantifiers = go
         S.And -> convertBoolOp PointwiseConjunction
         S.Or -> convertBoolOp PointwiseDisjunction
         S.QuantifyRatTensor q -> convertQuantifiers quantifiers q args
-        S.QuantifyRecord {} -> unexpectedOperation "quantifier"
+        S.QuantifyRecord q -> convertRecordQuantifiers quantifiers q args
         S.CompareIndex {} -> unsupportedOperation (pretty b)
         S.CompareNat {} -> unsupportedOperation (pretty b)
         S.CompareRatTensor op -> convertRatTensorComparison op args
@@ -219,11 +220,23 @@ convertThunk quantifiers = go
           return $ Forced $ VFreeVar name $ mkExpr accessSpine args'
 
 convertQuantifiers :: QuantifierHandling m -> Quantifier -> UnforcedSpine Builtin -> m (Thunk LossBuiltin)
-convertQuantifiers handling q args = case handling of
+convertQuantifiers handling q args = case getExpr accessQuantifyRatTensorSpine args of
+  Nothing -> developerError "ill-formed quantifier args"
+  Just qArgs -> applyQuantifierHandling handling q qArgs
+
+convertRecordQuantifiers :: (MonadLogic m) => QuantifierHandling m -> Quantifier -> UnforcedSpine Builtin -> m (Thunk LossBuiltin)
+convertRecordQuantifiers handling q args = case getExpr accessQuantifyRecordSpine args of
+  Nothing -> developerError "ill-formed record quantifier args"
+  Just recordArgs -> applyQuantifierHandling handling q =<< wrapQuantifyRecordForLoss recordArgs
+
+applyQuantifierHandling ::
+  QuantifierHandling m ->
+  Quantifier ->
+  QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin) ->
+  m (Thunk LossBuiltin)
+applyQuantifierHandling handling q qArgs = case handling of
   Nothing -> developerError "Unexpected quantifier found during loss compilation"
-  Just handle -> case getExpr accessQuantifyRatTensorSpine args of
-    Nothing -> developerError "ill-formed quantifier args"
-    Just qArgs -> handle (q, qArgs)
+  Just handle -> handle (q, qArgs)
 
 convertBooleanOp ::
   (MonadLogic m) =>

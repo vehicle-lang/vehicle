@@ -21,12 +21,12 @@
   },
   {
     "name": "List",
-    "run": "vehicle list -s spec.vcl -j",
+    "run": "vehicle list entities -s spec.vcl -j",
     "needs": ["spec.vcl"]
   },
   {
     "name": "ListWithParams",
-    "run": "vehicle list -s spec.vcl --network classifier:fake.onnx --parameter epsilon:0.1 --dataset trainingImages:images.idx --dataset trainingLabels:labels.idx -j",
+    "run": "vehicle list entities -s spec.vcl --network classifier:fake.onnx --parameter epsilon:0.1 --dataset trainingImages:images.idx --dataset trainingLabels:labels.idx -j",
     "needs": ["spec.vcl", "fake.onnx", "images.idx", "labels.idx"]
   },
   {

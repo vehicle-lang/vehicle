@@ -1,3 +1,3 @@
 @property;
 belowOne : (Tensor Real -> Tensor Real) -> Tensor Real;
-belowOne = \ f -> const 1.0 nil / search[x] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x -> max (const 0.0 nil) (1.0 - f [x, x, x, x] ! 0))
+belowOne = \ f -> const 1.0 nil / search[x] nil (\ dims -> \ xs -> reduceMul xs) 0.0 1.0 (\ x -> max (const 0.0 nil) (1.0 - f [x, x, x, x] ! 0))

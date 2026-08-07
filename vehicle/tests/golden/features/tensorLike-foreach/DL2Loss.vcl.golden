@@ -1,0 +1,6 @@
+@tensor;
+record Pair where {a : Real, b : Real} 
+
+@property;
+safeBatch : (Pair -> Pair) -> Vector (Tensor Real);
+safeBatch = \ f -> foreach i . const 1.0 nil / search[_t0] [2] (\ dims -> \ xs -> reduceMul xs) (const 0.0 [2]) (const 1.0 [2]) (\ _t0 -> max (const 0.0 nil) (a (f (Pair (_t0 ! 0) (_t0 ! 1))) - 0.0))

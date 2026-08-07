@@ -189,6 +189,7 @@ unblockRecordValue actions@UnblockingActions {..} expr = showEntry expr $ do
     VRecordMeta {} -> unexpectedExprError currentPass "record meta"
     VRecordBuiltin b spine -> case VBuiltin b spine of
       (getExpr accessIf -> Just args) -> unblockIf unblockRecord args
+      (getExpr accessAtVector -> Just args) -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
       _ -> unexpectedExprError currentPass (pretty b <+> "record")
     VRecordRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
   where
@@ -231,7 +232,7 @@ unblockVectorValue actions value = showEntry value $ do
     VVectorIf args -> unblockIf (unblockVectorValue actions) args
     VVectorForeach args -> unblockForeachVector args
     VVectorBoundVar {} -> unexpectedExprError currentPass (prettyVerbose forcedValue)
-    VVectorDataset {} -> unexpectedExprError currentPass (prettyVerbose forcedValue)
+    VVectorDataset ident -> unblockDatasetOrParameter actions (unblockVectorValue actions) ident
     VVectorRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
 
 unblockListValue ::

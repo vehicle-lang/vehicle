@@ -137,6 +137,7 @@ library
     Vehicle.Backend.Loss.JSON
     Vehicle.Backend.Loss.LogicCompilation
     Vehicle.Backend.Loss.LossCompilation
+    Vehicle.Backend.Loss.RecordCompilation
     Vehicle.Backend.Prelude
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
@@ -185,6 +186,7 @@ library
     Vehicle.Libraries.Core
     Vehicle.Libraries.StandardLibrary
     Vehicle.List
+    Vehicle.List.RecordSchema
     Vehicle.Prelude
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Warning

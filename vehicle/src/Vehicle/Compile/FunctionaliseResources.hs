@@ -118,7 +118,7 @@ functionaliseDecl d =
       logDebug MaxDetail $ prettyFriendly fun
       return (addResourceUsage i binderNames, Just fun)
     DefRecord {} ->
-      return (id, Just d)
+      return (addResourceUsage (identifierOf d) [], Just d)
 
 findResourceUses ::
   (MonadResource m builtin) =>

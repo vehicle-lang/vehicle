@@ -1,0 +1,6 @@
+@tensor;
+record Track where {p : Real, q : Real} 
+
+@property;
+safe : (Track -> Tensor Real) -> Tensor Real;
+safe = \ f -> const 1.0 nil / search[_t0] [2, 3] (\ dims -> \ xs -> reduceMul xs) (const 0.0 [2, 3]) (const 1.0 [2, 3]) (\ _t0 -> max (const 0.0 nil) (f (Track (_t0 ! 0) (_t0 ! 1)) ! 0 - 0.0))
