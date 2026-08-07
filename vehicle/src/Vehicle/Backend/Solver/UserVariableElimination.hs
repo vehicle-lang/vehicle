@@ -38,7 +38,7 @@ import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Code.BooleanExpr (elimIfTree)
+import Vehicle.Data.Code.BooleanExpr (IfTree, elimIfTree)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.MaybeTrivial
@@ -271,15 +271,16 @@ unblockingActions =
     { unblockRatTensorBoundVar = unblockQuantifiedBoundVar,
       unblockRecordBoundVar = unblockQuantifiedBoundVar,
       unblockNetworkApp = unblockNetworkApplication,
-      unblockDatasetOrParameter = unexpectedExprError "solver compilation" "dataset or parameter"
+      unblockDatasetOrParameter = \_ _ -> unexpectedExprError "solver compilation" "dataset or parameter"
     }
 
 unblockQuantifiedBoundVar ::
   (MonadQuantifierBody m) =>
+  TypeUnblockingFunction (Thunk Builtin) m ->
   Lv ->
-  m (Thunk Builtin)
-unblockQuantifiedBoundVar lv =
-  replaceTensorVariableWithStackedChildren (SliceVariable lv)
+  m (IfTree (Thunk Builtin) (Thunk Builtin))
+unblockQuantifiedBoundVar unblock lv =
+  unblock =<< replaceTensorVariableWithStackedChildren (SliceVariable lv)
 
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>

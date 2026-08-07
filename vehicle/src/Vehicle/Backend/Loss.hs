@@ -6,6 +6,8 @@ where
 import Control.Monad.Reader (ReaderT)
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Backend.Loss.Core
 import Vehicle.Backend.Loss.Domain (compileQuantifier)
 import Vehicle.Backend.Loss.LogicCompilation (findAndCompileLogic)
@@ -18,6 +20,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
+import Vehicle.Data.Code.BooleanExpr (unDisjunctAll)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Variable.Bound.Context.Tensor (TensorBoundContextT)
@@ -26,9 +29,10 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), addDeclEntryTo
 convertToLossTensors ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
+  Set Name ->
   Prog Builtin ->
   m (Prog LossBuiltin)
-convertToLossTensors logicID prog@(Main ds) = do
+convertToLossTensors logicID requestedDecls prog@(Main ds) = do
   -- First find and compile the logic
   logic <- logCompilerPass LossLogic $ findAndCompileLogic logicID prog
 
@@ -36,22 +40,23 @@ convertToLossTensors logicID prog@(Main ds) = do
   runFreshFreeContextT (Proxy @Builtin) $ do
     runFreshFreeContextT (Proxy @LossBuiltin) $
       logCompilerPass Loss $ do
-        Main <$> convertDecls logicID logic ds
+        Main <$> convertDecls logicID logic requestedDecls ds
 
 convertDecls ::
   (MonadCompile m, MonadFreeContext Builtin m, MonadFreeContext LossBuiltin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
+  Set Name ->
   [Decl Builtin] ->
   m [Decl LossBuiltin]
-convertDecls logicID logic = \case
+convertDecls logicID logic requestedDecls = \case
   [] -> return []
   decl : decls -> do
-    maybeLossDecl <- convertDecl logicID logic decl
+    maybeLossDecl <- convertDecl logicID logic requestedDecls decl
     decls' <-
       maybe id addDeclToContext maybeLossDecl $
         addDeclEntryToContext decl $
-          convertDecls logicID logic decls
+          convertDecls logicID logic requestedDecls decls
     return $ maybeToList maybeLossDecl ++ decls'
 
 convertDecl ::
@@ -59,16 +64,17 @@ convertDecl ::
   (MonadCompile m, MonadFreeContext Builtin m, MonadFreeContext LossBuiltin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
+  Set Name ->
   Decl Builtin ->
   m (Maybe (Decl LossBuiltin))
-convertDecl logicID logic decl = case decl of
+convertDecl logicID logic requestedDecls decl = case decl of
   DefAbstract p ident sort typ
     | isAnnotatedAsExternalResource sort -> do
         let normType = Unforced emptyBoundEnv typ
         runConversion $ convertResourceDecl p ident sort normType
     | otherwise -> return Nothing
   DefFunction p ident ann typ expr
-    | isAnnotatedAsProperty ann -> do
+    | isAnnotatedAsProperty ann || nameOf decl `Set.member` requestedDecls -> do
         let normType = Unforced emptyBoundEnv typ
         let normExpr = Unforced emptyBoundEnv expr
         runConversion $ convertPropertyDecl p ident ann normType normExpr
@@ -104,11 +110,14 @@ convertPropertyDecl ::
 convertPropertyDecl p ident ann typ body = do
   lossType <- convertDeclType typ
   lossBody <- convertMultiProperty body
-  let lossTensorDecl = DefFunction p ident ann lossType lossBody
-  return lossTensorDecl
+  return $ DefFunction p ident ann lossType lossBody
 
 convertDeclType :: (MonadLogic m) => UnforcedType Builtin -> m (Type LossBuiltin)
 convertDeclType typ = unnormalise 0 <$> convertThunk Nothing typ
 
 convertMultiProperty :: (MonadLogic m) => Thunk Builtin -> m (Expr LossBuiltin)
-convertMultiProperty body = unnormalise 0 <$> convertThunk (Just compileQuantifier) body
+convertMultiProperty body = do
+  let compQuantifier args = do
+        disjuncts <- compileQuantifier args
+        foldrM1 orLossValue $ unDisjunctAll disjuncts
+  unnormalise 0 <$> convertThunk (Just compQuantifier) body

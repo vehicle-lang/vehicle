@@ -1,5 +1,6 @@
 module Vehicle.Backend.Loss.Domain
   ( compileQuantifier,
+    orLossValue,
   )
 where
 
@@ -12,7 +13,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Vehicle.Backend.Loss.Core
-import Vehicle.Backend.Loss.Domain.PurifyAssertion (BlockingReason, tryPurifyAssertion, unblockingActions)
+import Vehicle.Backend.Loss.Domain.PurifyAssertion (tryPurifyAssertion, unblockingActions)
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
 import Vehicle.Compile.Constants.ForcedValue
@@ -50,17 +51,17 @@ import Vehicle.Prelude.Warning (CompileWarning (..))
 compileQuantifier ::
   (MonadLogic m) =>
   (Quantifier, QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin)) ->
-  m (Thunk LossBuiltin)
+  m (DisjunctAll (Thunk LossBuiltin))
 compileQuantifier (q, args) = do
   maybePartitions <- compileQuantifierInternal (q, args)
   case maybePartitions of
-    Trivial b ->
+    Trivial b -> do
       -- TODO add a warning
-      Forced <$> convertBoolTensorLiteral (ZeroDimTensor b)
+      value <- Forced <$> convertBoolTensorLiteral (ZeroDimTensor b)
+      return $ DisjunctAll [value]
     NonTrivial partitions -> do
       let disjunctedPartitions = partitionsToDisjuncts partitions
-      DisjunctAll (v :| vs) <- traverse checkFinalPartitionUnconstrained disjunctedPartitions
-      foldrM orLossValue v vs
+      traverse checkFinalPartitionUnconstrained disjunctedPartitions
 
 checkFinalPartitionUnconstrained ::
   (MonadLogic m) =>
@@ -291,21 +292,6 @@ type MonadDomain m =
     MonadFreeContext LossBuiltin m,
     MonadTensorBoundContext m
   )
-
-orLossValue :: (MonadDomain m) => Thunk LossBuiltin -> Thunk LossBuiltin -> m (Thunk LossBuiltin)
-orLossValue e1 e2 =
-  convertBooleanOp PointwiseDisjunction $
-    mkExpr accessSpine (TensorOp2Args (Forced IDimNil) e1 e2)
-
-andLossValue :: (MonadDomain m) => Thunk LossBuiltin -> Thunk LossBuiltin -> m (Thunk LossBuiltin)
-andLossValue e1 e2 =
-  convertBooleanOp PointwiseConjunction $
-    mkExpr accessSpine (TensorOp2Args (Forced IDimNil) e1 e2)
-
-notLossValue :: (MonadDomain m) => Thunk LossBuiltin -> Thunk LossBuiltin -> m (Thunk LossBuiltin)
-notLossValue dims e =
-  convertBooleanOp PointwiseNegation $
-    mkExpr accessSpine (TensorOp1Args dims e)
 
 notConstraint :: (MonadDomain m) => UserVariableConstraint LossBuiltin -> m (BooleanExpr (UserVariableConstraint LossBuiltin))
 notConstraint (NormalisedRelation rel expr) = do

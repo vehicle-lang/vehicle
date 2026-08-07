@@ -9,6 +9,7 @@ where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
+import Data.Set qualified as Set
 import System.Directory (makeAbsolute)
 import Vehicle.Backend.ITP.Agda
 import Vehicle.Backend.ITP.Imandra
@@ -162,19 +163,21 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   if lossFunctionMode == Training
-    then compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON
-    else compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON
+    then compileToTrainingLoss differentiableLogicID outputFile declarationsToCompile typedProg outputAsJSON
+    else compileToSearchLoss differentiableLogicID outputFile declarationsToCompile typedProg outputAsJSON
 
 compileToTrainingLoss ::
   forall m.
   (MonadCompile m, MonadStdIO m) =>
   DifferentiableLogicID ->
   Maybe FilePath ->
+  DeclarationNames ->
   Prog Builtin ->
   OutputAsJSON ->
   m ()
-compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON = do
-  lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
+compileToTrainingLoss differentiableLogicID outputFile declsToCompile typedProg outputAsJSON = do
+  let requestedDecls = Set.fromList declsToCompile
+  lossTensorProg <- convertToLossTensors differentiableLogicID requestedDecls typedProg
   hoistedProg <- hoistInferableParameters lossTensorProg
   functionalisedProg <- functionaliseResources hoistedProg
   jsonProg <- convertToJSONProg functionalisedProg
@@ -188,13 +191,15 @@ compileToSearchLoss ::
   (MonadCompile m, MonadStdIO m) =>
   DifferentiableLogicID ->
   Maybe FilePath ->
+  DeclarationNames ->
   Prog Builtin ->
   OutputAsJSON ->
   m ()
-compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON =
+compileToSearchLoss differentiableLogicID outputFile declsToCompile typedProg outputAsJSON = do
+  let requestedDecls = Set.fromList declsToCompile
   logCompilerPass Loss $ do
     (propertyData, liftedProg) <- liftQuantifiers typedProg
-    lossTensorProg <- convertToLossTensors differentiableLogicID liftedProg
+    lossTensorProg <- convertToLossTensors differentiableLogicID requestedDecls liftedProg
     logDebug MaxDetail "Hit1"
     jsonProg <- convertToJSONProg lossTensorProg
     logDebug MaxDetail "Hit2"

@@ -1,0 +1,3 @@
+@property;
+increasing : (Tensor Real -> Tensor Real) -> Tensor Real;
+increasing = \ f -> - search[x] (\ dims -> \ xs -> reduceMin xs) nil 0.0 1.0 (\ x -> f x - x)

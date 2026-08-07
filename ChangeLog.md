@@ -109,6 +109,8 @@ the ITP backend code can be invoked from any location.
 
 ### Loss backend
 
+* `--declaration` now accepts non-property declarations and restricts output to exactly the names listed.
+
 * Added the ability to declare custom Differentiable Logics internally in Vehicle (see documentation for details).
 
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.

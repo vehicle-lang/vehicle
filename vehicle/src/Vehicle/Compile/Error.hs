@@ -18,6 +18,7 @@ module Vehicle.Compile.Error
     UnboundedIndices,
     ParseLocation,
     MonadCompile,
+    BlockingReason (..),
     compilerDeveloperError,
     unsupportedTensorLikeQuantifier,
   )
@@ -230,7 +231,7 @@ data CompileError
   | UnsupportedLossOperation DeclProvenance (Doc Void)
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Thunk Builtin) NamedBoundCtx (Thunk Builtin)
   | NoQuantifierDomainFound DeclProvenance (UnforcedBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
-  | UnorderableDifferentiableLogic DeclProvenance (ForcedValue Builtin)
+  | UnorderableDifferentiableLogic DeclProvenance (Thunk Builtin) (Either BlockingReason (ForcedValue Builtin))
   | UnableToLiftQuantifiersInProperty DeclProvenance
   | -- ITP backend errors
     UnimplementedFeature Provenance (Doc Void)
@@ -240,6 +241,12 @@ data CompileError
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
 
 deriving instance Show CompileError
+
+data BlockingReason
+  = BlockingNetwork Identifier
+  | BlockingDatasetOrParameter Identifier
+
+deriving instance Show BlockingReason
 
 --------------------------------------------------------------------------------
 -- Some useful developer errors

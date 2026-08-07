@@ -104,7 +104,7 @@ purifyBoundVar ::
   Lv ->
   PurifyFn m
 purifyBoundVar v actions@UnblockingActions {..} incrDims
-  | incrDims > 0 = purifyExpr actions incrDims =<< unblockRatTensorBoundVar v
+  | incrDims > 0 = unblockRatTensorBoundVar (purifyExpr actions incrDims) v
   | otherwise = return $ IfLeaf $ Forced $ VBoundVar v []
 
 purifyNetworkVar ::

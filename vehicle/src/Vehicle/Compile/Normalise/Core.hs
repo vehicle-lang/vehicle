@@ -48,11 +48,11 @@ data EvalScheme meta builtin m
   | TypeClassOp
   | None
 
-class (Monad m, HasBuiltinConstructor expr thunk) => NormalisableExpr expr thunk builtin m | thunk -> expr where
+class (Monad m, HasBuiltinConstructor expr thunk, Show (expr builtin)) => NormalisableExpr expr thunk builtin m | thunk -> expr where
   force :: thunk builtin -> m (expr builtin)
   forceApp :: thunk builtin -> [GenericArg (thunk builtin)] -> m (expr builtin)
 
-instance (Monad m) => NormalisableExpr Expr Expr builtin m where
+instance (Monad m, Show builtin) => NormalisableExpr Expr Expr builtin m where
   force = return
   forceApp fun args = return $ normAppList fun args
 
