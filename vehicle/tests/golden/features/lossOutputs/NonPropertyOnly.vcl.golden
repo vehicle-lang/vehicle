@@ -1,0 +1,3 @@
+@property;
+predicted : (Tensor Real -> Tensor Real) -> Tensor Real;
+predicted = \ f -> f (const 0.0 [4])

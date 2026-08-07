@@ -9,6 +9,7 @@ where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
+import Data.Set qualified as Set
 import System.Directory (makeAbsolute)
 import Vehicle.Backend.ITP.Agda
 import Vehicle.Backend.ITP.Imandra
@@ -159,7 +160,8 @@ compileToLossFunction ::
   OutputAsJSON ->
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON = do
-  lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
+  let requestedDecls = Set.fromList declarationsToCompile
+  lossTensorProg <- convertToLossTensors differentiableLogicID requestedDecls typedProg
   hoistedProg <- hoistInferableParameters lossTensorProg
   functionalisedProg <- functionaliseResources hoistedProg
   jsonProg <- convertToJSONProg functionalisedProg
