@@ -1,3 +1,3 @@
 @property;
 p : (Tensor Real -> Tensor Real) -> Tensor Real;
-p = \ f -> const 1.0 nil / search[x] (\ dims -> \ xs -> reduceMul xs) [1] (const 0.0 [1]) (const 1.0 [1]) (\ x -> max (const 0.0 nil) (f x - 0.0))
+p = \ f -> const 1.0 nil / search[x] [1] (const 0.0 [1]) (const 1.0 [1]) (\ x -> max (const 0.0 nil) (f x - 0.0))

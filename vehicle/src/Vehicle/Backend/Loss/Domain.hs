@@ -201,15 +201,6 @@ compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
   lossBinder <- traverse convertQuantifierlessExprToLoss binder
   lossDims <- convertQuantifierlessExprToLoss dims
 
-  -- Generate the operation for doing the reduction
-  -- We do not know how many samples the quantifier will generate so we must append
-  -- an explicit lambda that takes them and then applies them appropriately.
-  -- The sample implementation will then provide them at run time.
-  genericReductionOp <- getLogicField ReduceDisjunction
-  let explicitDimsBinder = mkExplicitBinder (IListType INatType) (Just (mempty, "dims"))
-  let explicitDimsReductionOp = Lam mempty explicitDimsBinder (normAppList genericReductionOp [implicitIrrelevant (BoundVar mempty (Ix 0))])
-  let reductionOp = Unforced emptyBoundEnv explicitDimsReductionOp
-
   -- Reform the predicate as if we had no tensor variables at all
   let lossPredicate = Forced $ VLam lossBinder closure
 
@@ -219,13 +210,11 @@ compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
         mkExpr accessSpine $
           SearchRatTensorArgs
             { searchDims = lossDims,
-              searchReductionOp = reductionOp,
               searchLowerBound = tensorValue $ lowerBoundValue lowerBound,
               searchUpperBound = tensorValue $ upperBoundValue upperBound,
               searchPredicate = lossPredicate
             }
-  minimise <- getLogicDirection
-  return $ Forced $ VBuiltin (LossBuiltinExtraFunction $ SearchRatTensor varName minimise) spine
+  return $ Forced $ VBuiltin (LossBuiltinExtraFunction $ SearchRatTensor varName) spine
 
 findTensorBounds ::
   forall m.

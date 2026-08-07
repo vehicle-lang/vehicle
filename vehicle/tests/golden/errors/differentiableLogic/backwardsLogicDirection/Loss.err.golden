@@ -1,0 +1,9 @@
+Error in file 'spec.vcl' at Line 6, Columns 1-11: Unable to compile differentiable logic 'CustomLoss'.
+The logic must produce a loss value, i.e. false values must result in a higher value than true values.
+However, the following expression: 
+  TruthityElement < FalsityElement
+i.e.
+  1.0 < 0.0
+evaluated to:
+  False
+Fix: please reverse the direction of your logic.

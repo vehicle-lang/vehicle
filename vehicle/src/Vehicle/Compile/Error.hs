@@ -232,6 +232,7 @@ data CompileError
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Thunk Builtin) NamedBoundCtx (Thunk Builtin)
   | NoQuantifierDomainFound DeclProvenance (UnforcedBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
   | UnorderableDifferentiableLogic DeclProvenance (Thunk Builtin) (Either BlockingReason (ForcedValue Builtin))
+  | BackwardsDifferentiableLogic DeclProvenance (Thunk Builtin)
   | -- ITP backend errors
     UnimplementedFeature Provenance (Doc Void)
   | UnusedMonomorphisableDeclaration Provenance Identifier

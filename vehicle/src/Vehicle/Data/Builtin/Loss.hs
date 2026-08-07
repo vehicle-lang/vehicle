@@ -149,13 +149,13 @@ instance Pretty LossBuiltinFunction where
 --------------------------------------------------------------------------------
 -- Extra loss builtin functions
 
-data LossBuiltinExtraFunction
-  = SearchRatTensor Name LogicDirection
+newtype LossBuiltinExtraFunction
+  = SearchRatTensor Name
   deriving (Show, Eq, Ord, Generic)
 
 instance Pretty LossBuiltinExtraFunction where
   pretty = \case
-    SearchRatTensor name _direction -> "search[" <> pretty name <> "]"
+    SearchRatTensor name -> "search[" <> pretty name <> "]"
 
 --------------------------------------------------------------------------------
 -- Builtin datatype

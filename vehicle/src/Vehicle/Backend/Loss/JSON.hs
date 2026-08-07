@@ -102,7 +102,7 @@ data JExpr
   | StackTensor [JExpr]
   | ForeachTensor JExpr JExpr
   | AtTensor JExpr JExpr
-  | SearchRatTensor Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Dims, ReductionOp, LowerBound, UpperBound, SearchLambda, Minimise)
+  | SearchRatTensor Name JExpr JExpr JExpr JExpr -- (Dims, LowerBound, UpperBound, SearchLambda)
   | -- Vector
     VectorLiteral [JExpr]
   | AtVector JExpr JExpr
@@ -319,7 +319,7 @@ convertBuiltin b spine = case b of
     L.ReverseList -> unsupportedError b
     L.AppendList -> unsupportedError b
   L.LossBuiltinExtraFunction f -> case f of
-    L.SearchRatTensor name minimise -> convertSearch name minimise spine
+    L.SearchRatTensor name -> convertSearch name spine
 
 convertNullaryOp :: (MonadJSON m) => LossBuiltin -> a -> UnforcedSpine LossBuiltin -> m a
 convertNullaryOp b fn = \case
@@ -428,10 +428,10 @@ convertTranspose convert spine = case getExpr accessSpine spine of
   Just (TransposeTensorArgs _t _ds xs) -> Transpose <$> convert xs
   Nothing -> arityError L.Transpose 3 spine
 
-convertSearch :: (MonadJSON m) => Name -> Bool -> UnforcedSpine LossBuiltin -> m JExpr
-convertSearch name minimise = convertNonNullaryOp (L.SearchRatTensor name minimise) 5 $
-  \(SearchRatTensorArgs dims unaryOp lowerBound upperBound fn) ->
-    SearchRatTensor name <$> convertValue unaryOp <*> convertValue dims <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn <*> pure minimise
+convertSearch :: (MonadJSON m) => Name -> UnforcedSpine LossBuiltin -> m JExpr
+convertSearch name = convertNonNullaryOp (L.SearchRatTensor name) 5 $
+  \(SearchRatTensorArgs dims lowerBound upperBound fn) ->
+    SearchRatTensor name <$> convertValue dims <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn
 
 arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> UnforcedSpine LossBuiltin -> m a
 arityError fun arity explicitArgs =
@@ -528,7 +528,7 @@ fromJExpr = \case
   ReduceMulRatTensor xs -> toFunction L.ReduceMulRatTensor [xs]
   ReduceMinRatTensor xs -> toFunction L.ReduceMinRatTensor [xs]
   ReduceMaxRatTensor xs -> toFunction L.ReduceMaxRatTensor [xs]
-  SearchRatTensor name dims e1 e2 e3 e4 minimise -> toExtraFunction (L.SearchRatTensor name minimise) [dims, e1, e2, e3, e4]
+  SearchRatTensor name dims lower upper lambda -> toExtraFunction (L.SearchRatTensor name) [dims, lower, upper, lambda]
   Dimension d -> toConstructor (L.NatLiteral d) []
   DimensionNil -> toConstructor L.Nil []
   DimensionCons e1 e2 -> toConstructor L.Cons [e1, e2]

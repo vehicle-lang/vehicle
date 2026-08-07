@@ -1,3 +1,3 @@
 @property;
 boundedByEpsilonFactor : (Tensor Real -> Tensor Real) -> Tensor Real -> Tensor Real -> Tensor Real;
-boundedByEpsilonFactor = \ net -> \ epsilon -> \ factor -> const 1.0 nil / search[x] (\ dims -> \ xs -> reduceMul xs) [1] [-1.0 * epsilon * factor] [-1.0 * (-1.0 * (epsilon * factor))] (\ x -> max (const 0.0 nil) (net x ! 0 - - (epsilon / factor)) * max (const 0.0 nil) (epsilon / factor - net x ! 0))
+boundedByEpsilonFactor = \ net -> \ epsilon -> \ factor -> const 1.0 nil / search[x] [1] [-1.0 * epsilon * factor] [-1.0 * (-1.0 * (epsilon * factor))] (\ x -> max (const 0.0 nil) (net x ! 0 - - (epsilon / factor)) * max (const 0.0 nil) (epsilon / factor - net x ! 0))

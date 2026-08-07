@@ -24,7 +24,6 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-        minimise: bool,
     ) -> Float[torch.Tensor, "1 losses"]: ...
 
 
@@ -58,10 +57,9 @@ class DefaultPyTorchSampler(PyTorchSampler):
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-        minimise: bool,
     ) -> Float[torch.Tensor, "1 losses"]:
         """
-        Use FGSM to generate adversarial samples and evaluate the search lambda.
+        Use PGD to generate adversarial samples and evaluate the search lambda.
 
         The step size is automatically inferred from the bounds to provide
         an out-of-the-box implementation that works for most applications.
@@ -74,7 +72,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
             minimise: Whether to minimize (True) or maximize (False) the search_lambda
 
         Returns:
-            A sequence of loss values evaluated at the FGSM-perturbed points
+            A sequence of loss values evaluated at the PGD-perturbed points
         """
         # Set seed for reproducibility if provided
         if self.seed is not None:
@@ -93,8 +91,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
                 lower_bound + torch.rand((), dtype=lower_bound.dtype) * range_size
             )
 
-            # Perform FGSM iterations from this starting point
-            # IMPORTANT: During FGSM, we only want gradients w.r.t. the INPUT to find
+            # Perform PGD iterations from this starting point
+            # IMPORTANT: During PGD, we only want gradients w.r.t. the INPUT to find
             # adversarial examples. We must NOT accumulate gradients in network parameters,
             # as that would interfere with the actual training gradients computed later.
             for _ in range(self.num_steps):
@@ -130,18 +128,9 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     gradient = torch.zeros_like(current_point_var)
 
                 # FGSM: perturb in the direction of the gradient sign
-                # The compiled loss is often -aggregation(search_lambda), so to find worst-case
-                # inputs that make the training loss high, we need to minimize search_lambda.
-                # When minimise=True (we want to minimize training loss), find worst violations
-                # by MINIMIZING search_lambda (which after negation/aggregation gives high loss)
-                sign_grad = torch.sign(gradient)
-
-                if minimise:
-                    # Find worst violations by minimizing search_lambda
-                    perturbation = -epsilon * sign_grad
-                else:
-                    # Find best satisfactions by maximizing search_lambda
-                    perturbation = epsilon * sign_grad
+                # To find worst-case inputs that make the loss high, we need to
+                # move in the direction of the gradient (gradient ascent).
+                perturbation = epsilon * torch.sign(gradient)
 
                 # Apply perturbation and clip to bounds
                 current_point = torch.clamp(

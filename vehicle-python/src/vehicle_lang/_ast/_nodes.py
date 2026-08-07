@@ -315,12 +315,10 @@ class ReduceMaxRatTensor(Expression):
 class SearchRatTensor(Expression):
 
     name: str
-    reduction_op: Expression
     dims: Expression
     lower_bound: Expression
     upper_bound: Expression
     search_lambda: Expression
-    minimise: bool
 
 
 @dataclass(frozen=True)

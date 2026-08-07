@@ -23,7 +23,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Unblock (noUnblocking, unblockBoolExpr)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LogicDirection, LossBuiltin)
+import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LossBuiltin)
 import Vehicle.Data.Builtin.Standard (Builtin)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
@@ -142,26 +142,29 @@ compileLogic logicID declProv fields = do
     -- Lift fields to the tensor level
     let tensorLogicFields = [minBound .. maxBound] :: [TensorDifferentiableLogicField]
     lossTensorImplementation <- foldM (compileLogicField logicID declProv fields) mempty tensorLogicFields
-    minimise <- calculateLogicDirection declProv fields
+    checkLogicDirection declProv fields
     -- Convert fields to loss tensors
-    return (lossTensorImplementation, minimise)
+    return lossTensorImplementation
 
-calculateLogicDirection ::
+checkLogicDirection ::
   (MonadLoss m) =>
   DeclProvenance ->
   OMap FieldName (Thunk Builtin) ->
-  m LogicDirection
-calculateLogicDirection declProv fields = do
+  m ()
+checkLogicDirection declProv fields = do
   let expr = do
         let trueValue = lookupLogicField TruthityElement fields
         let falseValue = lookupLogicField FalsityElement fields
         let args = TensorComparisonArgs (Forced IDimNil) (Forced IDimNil) trueValue falseValue
-        Forced $ mkExpr accessCompareRatTensor (Le, args)
+        Forced $ mkExpr accessCompareRatTensor (Lt, args)
 
   errorOrResult <- runExceptT $ runFreshNameBoundContextT $ forceThunk =<< unblockBoolExpr noUnblocking expr
   case errorOrResult of
+    Right (IBoolLiteral result) ->
+      if result
+        then return ()
+        else throwError $ BackwardsDifferentiableLogic declProv expr
     Left blockingErr -> throwError $ UnorderableDifferentiableLogic declProv expr (Left blockingErr)
-    Right (IBoolLiteral b) -> return b
     Right result -> throwError $ UnorderableDifferentiableLogic declProv expr (Right result)
 
 compileLogicField ::
@@ -178,7 +181,7 @@ compileLogicField logicID declProv fields impl field =
     logDebug MaxDetail $ "input:" <+> prettyFriendlyEmptyCtx tensorValue
     lossTensorExpr <-
       runFreshFreeContextT (Proxy @LossBuiltin) $ do
-        runMonadLogicT logicID (mempty, True) declProv $ do
+        runMonadLogicT logicID mempty declProv $ do
           convertQuantifierlessExprToLoss tensorValue
     logDebug MaxDetail $ "output:" <+> prettyFriendlyEmptyCtx lossTensorExpr
     return $ Map.insert field (unnormalise 0 lossTensorExpr) impl
