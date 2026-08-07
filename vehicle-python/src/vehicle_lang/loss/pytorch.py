@@ -26,6 +26,7 @@ def load_specification(
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,
     types: ModuleType | None = None,
+    adapt_networks: bool = True,
 ) -> dict[str, Any]:
     """Load a loss function compiled for PyTorch."""
 
@@ -38,4 +39,5 @@ def load_specification(
         translation_factory=PyTorchTranslation,
         default_sampler_factory=DefaultPyTorchSampler,
         types=types,
+        adapt_networks=adapt_networks,
     )

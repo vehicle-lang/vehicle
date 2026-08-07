@@ -85,7 +85,7 @@ data JBinder
 data JType
   = Pi JType JType
   | RatType
-  | TensorType JType
+  | TensorType JType (Maybe [Either Int Name])
   | VectorType JType
   | DimensionType
   | DimensionsType
@@ -226,21 +226,33 @@ extractDims ::
   Thunk LossBuiltin ->
   m [Either Int Name]
 extractDims dimsValue = do
+  maybeDims <- extractMaybeDims dimsValue
+  case maybeDims of
+    Nothing -> do
+      value <- forceThunk dimsValue
+      developerError $ "Unexpected dimension expression in @tensor record field:" <+> prettyVerbose value
+    Just ds -> return ds
+
+extractMaybeDims ::
+  (MonadJSON m) =>
+  Thunk LossBuiltin ->
+  m (Maybe [Either Int Name])
+extractMaybeDims dimsValue = do
   dims <- getDimsExprs dimsValue
   case dims of
-    Left v -> developerError $ "Unexpected dims spine in @tensor record field:" <+> prettyVerbose v
-    Right ds -> traverse extractOneDim ds
+    Left {} -> return Nothing
+    Right ds -> sequence <$> traverse extractOneDim ds
 
 extractOneDim ::
   (MonadJSON m) =>
   Thunk LossBuiltin ->
-  m (Either Int Name)
+  m (Maybe (Either Int Name))
 extractOneDim thunk = do
   value <- forceThunk thunk
-  case value of
-    VBuiltin (L.LossBuiltinConstructor (L.NatLiteral n)) _ -> return $ Left n
-    VFreeVar ident _ -> return $ Right (nameOf ident)
-    v -> developerError $ "Unexpected dimension expression in @tensor record field:" <+> prettyVerbose v
+  return $ case value of
+    VBuiltin (L.LossBuiltinConstructor (L.NatLiteral n)) _ -> Just $ Left n
+    VFreeVar ident _ -> Just $ Right (nameOf ident)
+    _ -> Nothing
 
 --------------------------------------------------------------------------------
 -- Types
@@ -293,7 +305,7 @@ convertIndexType spine = case spine of
 
 convertTensorType :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JType
 convertTensorType spine = case spine of
-  (fmap argExpr -> [t, _ds]) -> TensorType <$> convertTypeValue t
+  (fmap argExpr -> [t, ds]) -> TensorType <$> convertTypeValue t <*> extractMaybeDims ds
   _ -> arityError L.TensorType 2 spine
 
 convertVectorType :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JType
@@ -586,7 +598,7 @@ fromJType = \case
     let binder' = mkExplicitBinder input' Nothing
     S.Pi mempty binder' <$> fromJType output
   RatType -> toType L.RatType []
-  TensorType t -> toType L.TensorType [t]
+  TensorType t _ds -> toType L.TensorType [t]
   VectorType t -> toType L.VectorType [t]
   DimensionType -> toType L.NatType []
   DimensionsType -> toType L.ListType [DimensionType]

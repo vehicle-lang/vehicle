@@ -10,13 +10,14 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping, Protocol, c
 from .._ast import _nodes as vcl
 from ..loss import load_ast
 from ..typing import DeclarationName, DifferentiableLogic
+from . import _records
 
 
 class _SamplerProtocol(Protocol):
     def get_loss(self, *args: Any, **kwargs: Any) -> Any: ...
 
 
-TranslationFactory = Callable[[], Any]
+TranslationFactory = Callable[..., Any]
 SamplerFactory = Callable[[], _SamplerProtocol]
 
 
@@ -30,6 +31,8 @@ def load_loss_specification(
     translation_factory: TranslationFactory,
     default_sampler_factory: SamplerFactory,
     types: ModuleType | None = None,
+    adapt_networks: bool = True,
+    records_supported: bool = True,
 ) -> dict[str, Any]:
     """Load a specification using the provided backend factories."""
 
@@ -48,11 +51,11 @@ def load_loss_specification(
         declarations=declarations,
     )
 
-    _check_types_module(path, program, types)
-    if types is not None:
-        declaration_context["__vehicle_record_types__"] = types
+    record_types = _resolve_record_types(path, program, types, records_supported)
+    if record_types is not None:
+        declaration_context["__vehicle_record_types__"] = record_types
 
-    translation = translation_factory()
+    translation = translation_factory(adapt_networks=adapt_networks)
     compiled = translation.compile(
         program=program,
         path=path,
@@ -62,26 +65,30 @@ def load_loss_specification(
     return cast(dict[str, Any], compiled)
 
 
-def _check_types_module(
+def _resolve_record_types(
     path: str | Path,
     program: vcl.Program,
     types: ModuleType | None,
-) -> None:
-    """Raise if the spec declares @tensor records but no types module is provided."""
-    assert isinstance(program, vcl.Main)
-    schemas = [d for d in program.declarations if isinstance(d, vcl.DefRecordSchema)]
+    records_supported: bool,
+) -> ModuleType | None:
+    schemas = _records.schemas_of(program)
     if not schemas:
-        return
-    names = [s.name for s in schemas]
+        return None
+    if not records_supported:
+        raise RuntimeError(
+            f"spec {path} declares @tensor record(s) "
+            f"{[s.name for s in schemas]}; records are only supported on the "
+            f"PyTorch backend"
+        )
     if types is None:
+        return _records.build_record_classes(schemas, path)
+
+    expected = _records.schema_digest(schemas)
+    actual = getattr(types, _records.DIGEST_ATTR, None)
+    if actual != expected:
         raise RuntimeError(
-            f"spec {path} declares @tensor record(s) {names}; "
-            f"run 'vehicle compile python-types -s {path} -o <out>.py' "
-            f"and pass 'types=<imported module>' to load_specification"
+            f"types module {types.__name__!r} was generated from a different version "
+            f"of {path} (schema digest {actual!r}, expected {expected!r}); "
+            f"regenerate via 'vehicle compile python-types -s {path} -o <out>.py'"
         )
-    missing = [n for n in names if not hasattr(types, n)]
-    if missing:
-        raise RuntimeError(
-            f"types module {types.__name__!r} is missing class(es) {missing}; "
-            f"regenerate via 'vehicle compile python-types -s {path}'"
-        )
+    return types

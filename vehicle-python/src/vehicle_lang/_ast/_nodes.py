@@ -148,9 +148,10 @@ class VectorType(BuiltinType):
 
 @dataclass(frozen=True)
 class TensorType(BuiltinType):
-    """Tensor type: TensorType base_type"""
+    """Tensor type: TensorType base_type shape"""
 
     base_type: BuiltinType
+    shape: Optional[Sequence[Annotated[int | str, EitherWireForm]]]
 
 
 @dataclass(frozen=True)
@@ -476,7 +477,7 @@ class FieldScalarReal(FieldType):
 
 @dataclass(frozen=True)
 class FieldTensorReal(FieldType):
-    """Tensor Real field type: FieldTensorReal shape - each entry is a concrete int or a symbolic dim name"""
+    """Tensor Real field type: FieldTensorReal shape"""
 
     shape: Sequence[Annotated[int | str, EitherWireForm]]
 

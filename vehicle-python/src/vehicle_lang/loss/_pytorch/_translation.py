@@ -14,9 +14,10 @@ PY_MISSING = {"lineno": 0, "col_offset": 0}
 
 @dataclass(frozen=True, init=False)
 class PyTorchTranslation(PythonTranslation):
-    def __init__(self) -> None:
+    def __init__(self, *, adapt_networks: bool = True) -> None:
         super().__init__(
             builtins=PyTorchBuiltins(),
+            adapt_networks=adapt_networks,
             module_header=[
                 py.Import(
                     names=[

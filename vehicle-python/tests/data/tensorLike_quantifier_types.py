@@ -6,6 +6,8 @@ import torch
 from jaxtyping import Float
 from torch import Tensor
 
+__vehicle_schema_digest__ = "b991f606c5eb01f3"
+
 
 class Pair(torch.Tensor):  # type: ignore[misc]
     # Make torch.* ops return plain Tensor, not this subclass.

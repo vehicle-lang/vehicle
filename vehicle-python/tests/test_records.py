@@ -1,5 +1,3 @@
-"""End-to-end tests for the codegen-driven @tensor record path."""
-
 import importlib
 import sys
 from pathlib import Path
@@ -13,15 +11,18 @@ torch = pytest.importorskip("torch")
 import vehicle_lang.typing as vcl
 from vehicle_lang.loss import codegen
 from vehicle_lang.loss import pytorch as loss_pt
+from vehicle_lang.loss._records import DIGEST_ATTR
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 SPEC = _REPO_ROOT / "vehicle/tests/golden/features/tensorLike-quantifier/spec.vcl"
+SCALAR_SPEC = (
+    _REPO_ROOT / "vehicle/tests/golden/features/tensorLike-network-scalar/spec.vcl"
+)
 GOLDEN_SOURCE = Path(__file__).parent / "data" / "tensorLike_quantifier_types.py"
 
 
 @pytest.fixture(scope="module")  # type: ignore[untyped-decorator]
 def types(tmp_path_factory: pytest.TempPathFactory) -> ModuleType:
-    """Run codegen on the test spec, import the generated module, yield it."""
     out_dir = tmp_path_factory.mktemp("types")
     out_path = out_dir / "pair_types.py"
     codegen.generate(SPEC, out_path)
@@ -38,8 +39,7 @@ def _load(types: ModuleType) -> Any:
     )
 
 
-def test_schema_materialised_as_dataclass(types: ModuleType) -> None:
-    """Test that codegen emits a torch.Tensor subclass with the spec's fields in declaration order."""
+def test_schema_materialised_as_tensor_subclass(types: ModuleType) -> None:
     Pair = types.Pair
     assert issubclass(Pair, torch.Tensor), "Pair should subclass torch.Tensor"
     assert Pair._FIELDS == ("a", "b")
@@ -48,7 +48,6 @@ def test_schema_materialised_as_dataclass(types: ModuleType) -> None:
 
 
 def test_pair_construction_and_field_access(types: ModuleType) -> None:
-    """Test that codegen-emitted Tensor subclass supports kwarg construction + attribute access."""
     Pair = types.Pair
     x = Pair(a=1.0, b=2.0)
     assert isinstance(x, torch.Tensor)
@@ -58,7 +57,6 @@ def test_pair_construction_and_field_access(types: ModuleType) -> None:
 
 
 def test_property_runs_with_record_controller(types: ModuleType) -> None:
-    """Test that a property accepts a controller and invokes it with Pair instances."""
     Pair = types.Pair
     decls = _load(types)
     safe = decls["p"]
@@ -78,7 +76,6 @@ def test_property_runs_with_record_controller(types: ModuleType) -> None:
 
 
 def test_backward_through_record_pipeline(types: ModuleType) -> None:
-    """Test that backprop through a record-typed property populates parameter gradients."""
     Pair = types.Pair
     decls = _load(types)
     safe = decls["p"]
@@ -96,7 +93,6 @@ def test_backward_through_record_pipeline(types: ModuleType) -> None:
 
 
 def test_sampler_stays_within_schema_bounds(types: ModuleType) -> None:
-    """Test that the sampler draws Pair instances inside the spec's minBound/maxBound."""
     Pair = types.Pair
     decls = _load(types)
     safe = decls["p"]
@@ -130,7 +126,6 @@ def test_sampler_stays_within_schema_bounds(types: ModuleType) -> None:
 
 
 def test_property_receives_pair_instances_throughout(types: ModuleType) -> None:
-    """Test that every controller invocation inside the sampler search receives a Pair instance."""
     Pair = types.Pair
     decls = _load(types)
     safe = decls["p"]
@@ -148,25 +143,74 @@ def test_property_receives_pair_instances_throughout(types: ModuleType) -> None:
     ), f"controller saw non-Pair argument types: {set(saw_non_pair)}"
 
 
-def test_record_spec_without_types_raises() -> None:
-    """Test that load_specification on a record spec without types= raises with a clear message."""
-    with pytest.raises(RuntimeError, match=r"declares @tensor record"):
-        loss_pt.load_specification(SPEC, logic=vcl.DL2DifferentiableLogic())
+def test_record_spec_without_types_builds_classes() -> None:
+    decls = loss_pt.load_specification(SPEC, logic=vcl.DL2DifferentiableLogic())
+    Pair = decls["Pair"]
+    assert issubclass(Pair, torch.Tensor)
+
+    received: list[type] = []
+
+    def controller(x: Any) -> Any:
+        received.append(type(x))
+        return Pair(a=x.a * 2.0, b=x.b * 2.0)
+
+    loss = decls["p"](controller)
+    assert torch.is_tensor(loss)
+    assert received and all(t is Pair for t in received)
+
+
+def test_runtime_classes_match_generated_classes(types: ModuleType) -> None:
+    decls = loss_pt.load_specification(SPEC, logic=vcl.DL2DifferentiableLogic())
+    runtime, generated = decls["Pair"], types.Pair
+    assert runtime._FIELDS == generated._FIELDS
+    assert runtime._FLAT_WIDTH == generated._FLAT_WIDTH
+    assert runtime._FIELD_SLOTS == generated._FIELD_SLOTS
+
+
+def test_stale_types_module_raises(types: ModuleType) -> None:
+    stale = ModuleType("stale_pair_types")
+    stale.__dict__.update(vars(types))
+    stale.__dict__[DIGEST_ATTR] = "0" * 16
+    with pytest.raises(RuntimeError, match=r"generated from a different version"):
+        loss_pt.load_specification(
+            SPEC, logic=vcl.DL2DifferentiableLogic(), types=stale
+        )
+
+
+def test_types_module_without_digest_raises(types: ModuleType) -> None:
+    undigested = ModuleType("undigested_pair_types")
+    undigested.__dict__.update(vars(types))
+    del undigested.__dict__[DIGEST_ATTR]
+    with pytest.raises(RuntimeError, match=r"generated from a different version"):
+        loss_pt.load_specification(
+            SPEC, logic=vcl.DL2DifferentiableLogic(), types=undigested
+        )
+
+
+def test_adapt_networks_false_calls_network_as_declared() -> None:
+    adapted = loss_pt.load_specification(SPEC, logic=vcl.DL2DifferentiableLogic())
+    unadapted = loss_pt.load_specification(
+        SPEC, logic=vcl.DL2DifferentiableLogic(), adapt_networks=False
+    )
+
+    def raw(x: Any) -> Any:
+        return x * 2.0
+
+    assert torch.is_tensor(adapted["p"](raw))
+    with pytest.raises(AttributeError):
+        unadapted["p"](raw)
 
 
 def test_pair_is_torch_tensor(types: ModuleType) -> None:
-    """Test that Pair acts as a torch.Tensor in standard ops."""
     Pair = types.Pair
     p = Pair(a=torch.tensor(1.0), b=torch.tensor(2.0))
     assert isinstance(p, torch.Tensor)
-    # nn.Linear consumes the Pair directly (last dim is 2).
     out = torch.nn.Linear(2, 1)(p)
     # __torch_function__ = _disabled_torch_function_impl: output is plain Tensor.
     assert type(out) is torch.Tensor
 
 
 def test_batched_pair_field_access(types: ModuleType) -> None:
-    """Test that batched Pair instances expose per-field tensors with the right shape."""
     Pair = types.Pair
     batch = Pair(a=torch.zeros(4), b=torch.ones(4))
     assert batch.shape == (4, 2)
@@ -175,8 +219,7 @@ def test_batched_pair_field_access(types: ModuleType) -> None:
     assert torch.equal(batch.b, torch.ones(4))
 
 
-def test_controller_returning_plain_tensor_is_autocast(types: ModuleType) -> None:
-    """Test that a tensor-returning controller works against a record-returning spec."""
+def test_controller_returning_plain_tensor_is_adapted(types: ModuleType) -> None:
     Pair = types.Pair
     decls = _load(types)
     safe = decls["p"]
@@ -193,8 +236,55 @@ def test_controller_returning_plain_tensor_is_autocast(types: ModuleType) -> Non
     assert all(t is Pair for t in saw_args), f"controller saw non-Pair: {set(saw_args)}"
 
 
+def test_plain_torch_modules_cross_the_record_boundary() -> None:
+    decls = loss_pt.load_specification(SCALAR_SPEC, logic=vcl.DL2DifferentiableLogic())
+
+    f = torch.nn.Linear(1, 1)
+    g = torch.nn.Linear(1, 1)
+
+    loss = decls["p"](f, g)
+    assert loss.shape == (), f"expected a scalar loss, got shape {tuple(loss.shape)}"
+    loss.backward()
+    assert f.weight.grad is not None and g.weight.grad is not None
+
+
+def test_record_class_and_raw_networks_mix() -> None:
+    decls = loss_pt.load_specification(SCALAR_SPEC, logic=vcl.DL2DifferentiableLogic())
+    A = decls["A"]
+
+    def f(x: Any) -> Any:
+        return A(a=x * 2.0 + 1.0)
+
+    returned: list[type] = []
+
+    def g(y: Any) -> Any:
+        returned.append(type(y))
+        return y.a * 0.5
+
+    loss = decls["p"](f, g)
+    assert torch.is_tensor(loss)
+    assert returned and all(t is A for t in returned)
+
+
+def test_scalar_record_roundtrips_through_raw_tensors() -> None:
+    decls = loss_pt.load_specification(SCALAR_SPEC, logic=vcl.DL2DifferentiableLogic())
+    A = decls["A"]
+
+    seen: list[type] = []
+
+    def f(x: Any) -> Any:
+        return (x * 3.0).reshape(*x.shape, 1)
+
+    def g(y: Any) -> Any:
+        seen.append(type(y))
+        return y.a
+
+    loss = decls["p"](f, g)
+    assert torch.is_tensor(loss)
+    assert seen and all(t is A for t in seen)
+
+
 def test_codegen_source_matches_golden() -> None:
-    """Test that the codegen output for the test spec matches the checked-in golden source."""
     import io
 
     buf = io.StringIO()

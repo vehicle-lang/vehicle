@@ -3,7 +3,7 @@ from dataclasses import asdict, dataclass, field
 from fractions import Fraction
 from functools import reduce
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Sequence
+from typing import Any, Callable, Iterator, Mapping, Sequence, Union
 
 from ..._ast import _nodes as vcl
 from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
@@ -31,20 +31,108 @@ _IGNORED_RETURN_KEYS = {
     "__vehicle__",
     "__vehicle_user_samplers__",
     "__vehicle_record_types__",
-    "__vehicle_autocast__",
+    "__vehicle_adapt_network__",
     "__builtins__",
     "__annotations__",
 }
 
 
-def _autocast_return(f: Any, cls: Any) -> Any:
-    """Wrap f so its return is cls.from_tensor(result) when not already cls."""
+RankTransform = Callable[[Any], Any]
 
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        result = f(*args, **kwargs)
-        if isinstance(result, cls):
-            return result
-        return cls.from_tensor(result)
+# type = record class, tuple = trailing tensor shape, None = not pinned down by the spec.
+TypeDescriptor = Union[type, tuple[int, ...], None]
+
+
+def _drop_trailing_axis(t: Any) -> Any:
+    reshape = getattr(t, "reshape", None)
+    if reshape is None or t.ndim < 1 or t.shape[-1] != 1:
+        return None
+    return reshape(tuple(t.shape[:-1]))
+
+
+def _add_trailing_axis(t: Any) -> Any:
+    reshape = getattr(t, "reshape", None)
+    if reshape is None:
+        return None
+    return reshape((*tuple(t.shape), 1))
+
+
+def _rank_alternatives(shape: tuple[int, ...]) -> list[RankTransform]:
+    if shape == ():
+        return [_add_trailing_axis]
+    if shape == (1,):
+        return [_drop_trailing_axis]
+    return []
+
+
+def _or_original(adapted: Any, original: Any) -> Any:
+    return original if adapted is None else adapted
+
+
+def _coerce_result(y: Any, desc: TypeDescriptor) -> Any:
+    if desc is None:
+        return y
+    rank = getattr(y, "ndim", None)
+    if isinstance(desc, type):
+        if isinstance(y, desc):
+            return y
+        record_cls: Any = desc
+        if (
+            rank is not None
+            and getattr(record_cls, "_FLAT_WIDTH", None) == 1
+            and (rank == 0 or y.shape[-1] != 1)
+        ):
+            y = _or_original(_add_trailing_axis(y), y)
+        return record_cls.from_tensor(y)
+    if rank is None:
+        return y
+    width = len(desc)
+    if rank >= width and tuple(y.shape[rank - width :]) == desc:
+        return y
+    if desc == ():
+        return _or_original(_drop_trailing_axis(y), y)
+    if desc == (1,):
+        return _or_original(_add_trailing_axis(y), y)
+    return y
+
+
+def _first_accepted(
+    attempt: Callable[[Any], Any],
+    x: Any,
+    alternatives: list[RankTransform],
+) -> tuple[RankTransform | None, Any]:
+    for alternative in alternatives:
+        adapted = alternative(x)
+        if adapted is None:
+            continue
+        try:
+            return alternative, attempt(adapted)
+        except Exception:
+            continue
+    return None, None
+
+
+def _adapt_network(f: Any, in_desc: TypeDescriptor, out_desc: TypeDescriptor) -> Any:
+    """Wrap f so it can be treated as having the type the spec declares for it."""
+
+    alternatives = _rank_alternatives(in_desc) if isinstance(in_desc, tuple) else []
+    adapt_argument: list[RankTransform | None] = [None]
+
+    def wrapper(x: Any, *rest: Any, **kwargs: Any) -> Any:
+        def attempt(arg: Any) -> Any:
+            return f(arg, *rest, **kwargs)
+
+        chosen = adapt_argument[0]
+        if chosen is not None:
+            return _coerce_result(attempt(chosen(x)), out_desc)
+        try:
+            result = attempt(x)
+        except (TypeError, RuntimeError, IndexError) as declared_shape_failed:
+            alternative, result = _first_accepted(attempt, x, alternatives)
+            if alternative is None:
+                raise declared_shape_failed
+            adapt_argument[0] = alternative
+        return _coerce_result(result, out_desc)
 
     return wrapper
 
@@ -54,6 +142,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     builtins: AnyBuiltins
     module_header: Sequence[py.stmt] = field(default_factory=tuple)
     module_footer: Sequence[py.stmt] = field(default_factory=tuple)
+    adapt_networks: bool = True
     ignored_types: list[str] = field(init=False, default_factory=list)
 
     def compile(
@@ -67,7 +156,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         try:
             declaration_context["__vehicle__"] = self.builtins
             declaration_context["__vehicle_user_samplers__"] = samplers
-            declaration_context["__vehicle_autocast__"] = _autocast_return
+            declaration_context["__vehicle_adapt_network__"] = _adapt_network
             before_exec = dict(declaration_context)
             py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
@@ -133,23 +222,44 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             **asdict(binder.provenance),
         )
 
-    def _maybe_autocast(self, binder: vcl.Binder) -> py.stmt | None:
+    def _type_descriptor(
+        self, typ: vcl.BuiltinType, provenance: vcl.Provenance
+    ) -> py.expr | None:
+        if isinstance(typ, vcl.RecordType):
+            return py_name(typ.schema, provenance=provenance)
+        if isinstance(typ, vcl.TensorType) and typ.shape is not None:
+            if all(isinstance(d, int) for d in typ.shape):
+                return py.Tuple(
+                    elts=[
+                        py.Constant(value=d, **asdict(provenance)) for d in typ.shape
+                    ],
+                    ctx=py.Load(),
+                    **asdict(provenance),
+                )
+        return None
+
+    def _maybe_adapt_network(self, binder: vcl.Binder) -> py.stmt | None:
+        if not self.adapt_networks:
+            return None
         if binder.name is None:
             return None
         if not isinstance(binder.type, vcl.Pi):
             return None
-        if not isinstance(binder.type.output_type, vcl.RecordType):
+        in_desc = self._type_descriptor(binder.type.input_type, binder.provenance)
+        out_desc = self._type_descriptor(binder.type.output_type, binder.provenance)
+        if in_desc is None and out_desc is None:
             return None
-        schema = binder.type.output_type.schema
+        unknown = py.Constant(value=None, **asdict(binder.provenance))
         return py.Assign(
             targets=[
                 py.Name(id=binder.name, ctx=py.Store(), **asdict(binder.provenance))
             ],
             value=py.Call(
-                func=py_name("__vehicle_autocast__", provenance=binder.provenance),
+                func=py_name("__vehicle_adapt_network__", provenance=binder.provenance),
                 args=[
                     py_name(binder.name, provenance=binder.provenance),
-                    py_name(schema, provenance=binder.provenance),
+                    in_desc if in_desc is not None else unknown,
+                    out_desc if out_desc is not None else unknown,
                 ],
                 keywords=[],
                 **asdict(binder.provenance),
@@ -170,12 +280,12 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_DefFunction(self, declaration: vcl.DefFunction) -> py.stmt:
         body = declaration.body
         binders = []
-        autocast_stmts: list[py.stmt] = []
+        adapt_stmts: list[py.stmt] = []
         while isinstance(body, vcl.Lam):
             binders.append(self.translate_binder(body.binder))
-            wrap = self._maybe_autocast(body.binder)
+            wrap = self._maybe_adapt_network(body.binder)
             if wrap is not None:
-                autocast_stmts.append(wrap)
+                adapt_stmts.append(wrap)
             body = body.body
 
         if binders:
@@ -183,7 +293,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 name=declaration.name,
                 args=py_binder(*binders),
                 body=[
-                    *autocast_stmts,
+                    *adapt_stmts,
                     py.Return(
                         value=self.translate_expression(body),
                         **asdict(declaration.provenance),
