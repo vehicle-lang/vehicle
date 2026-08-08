@@ -24,7 +24,6 @@ class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
-        minimise: bool,
     ) -> Float[tf.Tensor, "1 losses"]: ...
 
 
@@ -58,10 +57,9 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
-        minimise: bool,
     ) -> Float[tf.Tensor, "1 losses"]:
         """
-        Use FGSM to generate adversarial samples and evaluate the search lambda.
+        Use PGD to generate adversarial samples and evaluate the search lambda.
 
         The step size is automatically inferred from the bounds to provide
         an out-of-the-box implementation that works for most applications.
@@ -71,10 +69,9 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
             lower_bound: The lower bound tensor
             upper_bound: The upper bound tensor
             search_lambda: A callable representing the property to evaluate
-            minimise: Whether to minimize (True) or maximize (False) the search_lambda
 
         Returns:
-            A sequence of loss values evaluated at the FGSM-perturbed points
+            A sequence of loss values evaluated at the PGD-perturbed points
         """
         if self.seed is not None:
             tf.random.set_seed(self.seed)
@@ -97,7 +94,7 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                 tf.multiply(tf.random.uniform(shape=(), dtype=tf.float32), range_size),
             )
 
-            # Perform FGSM iterations from this starting point
+            # Perform PGD iterations from this starting point
             for _ in range(self.num_steps):
                 # Create a variable for gradient computation
                 x = tf.Variable(current_point, dtype=tf.float32)
@@ -118,18 +115,9 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                     )
 
                 # FGSM: perturb in the direction of the gradient sign
-                # The compiled loss is often -aggregation(search_lambda), so to find worst-case
-                # inputs that make the training loss high, we need to minimize search_lambda.
-                # When minimise=True (we want to minimize training loss), find worst violations
-                # by MINIMIZING search_lambda (which after negation/aggregation gives high loss)
-                sign_grad = tf.sign(gradient)
-
-                if minimise:
-                    # Find worst violations by minimizing search_lambda
-                    perturbation = -epsilon * sign_grad
-                else:
-                    # Find best satisfactions by maximizing search_lambda
-                    perturbation = epsilon * sign_grad
+                # To find worst-case inputs that make the loss high, we need to
+                # move in the direction of the gradient (gradient ascent).
+                perturbation = epsilon * tf.sign(gradient)
 
                 # Apply perturbation and clip to bounds
                 current_point = tf.clip_by_value(current_point + perturbation, lb, ub)
@@ -157,7 +145,6 @@ class ConstantTensorFlowSampler(TensorFlowSampler):
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
-        minimise: bool,
     ) -> Any:
         """Returns the original constant value."""
         results = []

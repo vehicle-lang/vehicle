@@ -1,3 +1,3 @@
 @property;
 monotonic : (Tensor Real -> Tensor Real) -> Tensor Real;
-monotonic = \ f -> const 1.0 nil / search[x1] (\ dims -> \ xs -> reduceMul xs) nil 0.0 1.0 (\ x1 -> search[x2] (\ dims -> \ xs -> reduceMul xs) nil (max 0.0 x1) 1.0 (\ x2 -> max (const 0.0 nil) (f x2 - f x1)))
+monotonic = \ f -> const 1.0 nil / search[x1] nil 0.0 1.0 (\ x1 -> search[x2] nil (max 0.0 x1) 1.0 (\ x2 -> max (const 0.0 nil) (f x2 - f x1)))

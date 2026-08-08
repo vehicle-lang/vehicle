@@ -81,10 +81,7 @@ comparisonOpToField = \case
 --------------------------------------------------------------------------------
 -- Tensor implementation
 
-type DifferentiableLogicImplementation =
-  ( Map TensorDifferentiableLogicField (Expr LossBuiltin),
-    LogicDirection
-  )
+type DifferentiableLogicImplementation = Map TensorDifferentiableLogicField (Expr LossBuiltin)
 
 elementLogicName :: Name
 elementLogicName = "DifferentiableElementLogic"

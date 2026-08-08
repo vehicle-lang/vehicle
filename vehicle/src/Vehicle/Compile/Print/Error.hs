@@ -993,7 +993,7 @@ formatCompileError = \case
             <> line
             <> "Internally Vehicle computes the result of:" <+> lineIndent comp
             <> line
-            <> "in order to work out whether the loss should be maximised or minimised."
+            <> "in order to check that the logic orders true and false correctly."
             <> line
             <> "However, Vehicle was unable to establish the truth value of"
             <> lineIndent (prettyFriendlyEmptyCtx expr)
@@ -1007,6 +1007,29 @@ formatCompileError = \case
         fix =
           Just $
             "ensure that the expression" <+> squotes comp <+> "evaluates to either `true` or `false`."
+      }
+    where
+      comp = pretty TruthityElement <+> "<" <+> pretty FalsityElement
+  BackwardsDifferentiableLogic (ident, p) expr ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "Unable to compile differentiable logic"
+            <+> quotePretty (nameOf ident)
+            <> "."
+            <> line
+            <> "The logic must produce a loss value, i.e. false values must result in a higher value than true values."
+            <> line
+            <> "However, the following expression:" <+> lineIndent comp
+            <> line
+            <> "i.e."
+            <> lineIndent (prettyFriendlyEmptyCtx expr)
+            <> line
+            <> "evaluated to:"
+            <> lineIndent "False",
+        fix =
+          Just
+            "please reverse the direction of your logic."
       }
     where
       comp = pretty TruthityElement <+> "<" <+> pretty FalsityElement

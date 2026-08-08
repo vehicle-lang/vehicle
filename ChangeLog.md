@@ -9,6 +9,15 @@
 * Added the `transpose` operator on tensors.
   See [tensors](docs/language/tensors.rst) for documentation.
 
+### Loss backend
+
+* BREAKING: all DifferentiableLogic implementations must now represent losses so that `false` is mapped to strictly larger values than `true`.
+
+* BREAKING: correspondingly the `Sampler.get_loss` method in the Python bindings no longer takes a `minimise` parameter.
+
+* The implementation of quantifier search has changed slightly so that samples returned by `Sampler` classes
+  are no longer aggregated by the implementation `reduceConjunction` provided by the logic but instead the maximum value is taken.
+
 ### ITP backends
 
 * Fixed bug where the Isabelle backend mis-compiled declarations referencing `@network`, `@dataset`, or `@parameter` resources (#1195).
