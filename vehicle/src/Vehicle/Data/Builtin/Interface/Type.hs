@@ -101,6 +101,12 @@ typeOfBuiltinFunction = \case
   ForeachVector -> typeOfForeachVector
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
   Transpose -> typeOfTranspose
+  SearchRatTensor ->
+    forAllDims $ \dims ->
+      tRatTensor dims
+        ~> tRatTensor dims
+        ~> (tRatTensor dims ~> tRatTensor dimNil)
+        ~> tRatTensor dims
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case

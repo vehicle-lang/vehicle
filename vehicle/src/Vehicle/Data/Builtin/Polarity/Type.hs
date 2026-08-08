@@ -93,6 +93,7 @@ typeOfBuiltinFunction = \case
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
   Transpose -> forAllPolarities $ \pol -> pol ~> pol
+  SearchRatTensor {} -> developerError "SearchRatTensor not supported in polarity typing"
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case

@@ -94,6 +94,7 @@ typeOfBuiltinFunction p = \case
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
   Transpose -> typeOfOp1
+  SearchRatTensor {} -> developerError "SearchRatTensor not supported in linearity typing"
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case

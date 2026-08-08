@@ -32,6 +32,7 @@ import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss
+import Vehicle.Data.Builtin.Loss qualified as L
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (BooleanExpr (..), DisjunctAll (..), andBoolExpr, conjunctDisjunctsM, disjunctDisjuncts, disjunctsToList, elimIfTree, eliminateTrivialDisjunctions, flattenBoolExpr)
 import Vehicle.Data.Code.ForcedValue
@@ -184,19 +185,18 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
           remDoc <- maybe (return "") (fmap lineIndent . prettyFriendlyInCtx) remainingTree
           return $ "remaining-constraints:" <> remDoc
 
-        finalValue <- compileSearch varName dims binder remainder domain
+        finalValue <- compileSearch dims binder remainder domain
         return $ singletonPartition (remainingTree, Just finalValue)
     NonTrivial <$> disjunctPartitions newPartitions
 
 compileSearch ::
   (MonadLogic m) =>
-  Name ->
   Thunk Builtin ->
   UnforcedBinder Builtin ->
   Closure LossBuiltin ->
   Domain (DimensionedTensorValue LossBuiltin) ->
   m (Thunk LossBuiltin)
-compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
+compileSearch dims binder closure (Domain lowerBound upperBound) = do
   -- Convert the binder and the dimensions.
   lossBinder <- traverse convertQuantifierlessExprToLoss binder
   lossDims <- convertQuantifierlessExprToLoss dims
@@ -214,7 +214,7 @@ compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
               searchUpperBound = tensorValue $ upperBoundValue upperBound,
               searchPredicate = lossPredicate
             }
-  return $ Forced $ VBuiltin (LossBuiltinExtraFunction $ SearchRatTensor varName) spine
+  return $ Forced $ VBuiltin (LossBuiltinFunction $ L.SearchRatTensor) spine
 
 findTensorBounds ::
   forall m.

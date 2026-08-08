@@ -54,6 +54,7 @@ instance Forced.NormalisableBuiltin Builtin where
       ForeachVector -> Forced.Eval Forced.evalForeachVector
       Iterate -> Forced.Eval Forced.evalIterate
       Transpose -> Forced.Eval Forced.evalTransposeTensor
+      SearchRatTensor {} -> Forced.None
       QuantifyRatTensor {} -> Forced.None
       QuantifyRecord {} -> Forced.None
     BuiltinCast c -> case c of

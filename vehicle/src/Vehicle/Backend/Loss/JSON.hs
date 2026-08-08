@@ -15,7 +15,7 @@ import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Force
-import Vehicle.Compile.Prelude (Ix (..))
+import Vehicle.Compile.Prelude (Ix (..), getBinderName)
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
@@ -25,11 +25,12 @@ import Vehicle.Data.AST.Decl
   )
 import Vehicle.Data.AST.Expr.Scoped (normAppList)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, LossBuiltinExtraFunction, LossBuiltinFunction, LossBuiltinType)
-import Vehicle.Data.Builtin.Loss qualified as L
+import Vehicle.Data.Builtin.Standard.Core (Builtin (..), BuiltinConstructor, BuiltinFunction, BuiltinType)
+import Vehicle.Data.Builtin.Standard.Core qualified as B
+import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface.Args
-import Vehicle.Data.Tensor (ExtendedRatTensor)
+import Vehicle.Data.Tensor (ExtendedRatTensor, Tensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, runFreshFreeContextT)
 import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, stdlibIdentifier, userModulePath)
@@ -40,15 +41,15 @@ import Vehicle.Prelude.Logging.Class
 -- Public method
 --------------------------------------------------------------------------------
 
-convertToJSONProg :: (MonadCompile m) => S.Prog LossBuiltin -> m JProg
+convertToJSONProg :: (MonadCompile m) => S.Prog Builtin -> m JProg
 convertToJSONProg prog =
   logCompilerSection2 MinDetail currentPass $ do
     -- relevantProg <- removeIrrelevantCodeFromProg prog
-    runFreshFreeContextT (Proxy @LossBuiltin) $
+    runFreshFreeContextT (Proxy @Builtin) $
       runFreshNameBoundContextT $
         convertProg prog
 
-convertFromJSONProg :: JProg -> S.Prog LossBuiltin
+convertFromJSONProg :: JProg -> S.Prog Builtin
 convertFromJSONProg = fromJProg
 
 --------------------------------------------------------------------------------
@@ -69,6 +70,7 @@ data JBinder
 
 data JType
   = Pi JType JType
+  | BoolType
   | RatType
   | TensorType JType
   | VectorType JType
@@ -82,6 +84,17 @@ data JExpr
   = -- Types
     Lam JBinder JExpr
   | Var Name [JExpr]
+  | BoolTensor (Tensor Bool)
+  | BoolNot JExpr
+  | BoolAnd JExpr JExpr
+  | BoolOr JExpr JExpr
+  | BoolImplies JExpr JExpr
+  | BoolCompareIndex B.ComparisonOp JExpr JExpr
+  | BoolCompareNat B.ComparisonOp JExpr JExpr
+  | BoolCompareRatTensor B.ComparisonOp JExpr JExpr JExpr JExpr
+  | BoolReduceAnd JExpr
+  | BoolReduceOr JExpr
+  | BoolIf JExpr JExpr JExpr
   | -- Rational tensors
     RatTensor ExtendedRatTensor
   | NegRatTensor JExpr
@@ -130,6 +143,9 @@ instance ToJSON JType where
 instance ToJSON JBinder where
   toJSON = genericToJSON jsonOptions
 
+instance ToJSON B.ComparisonOp where
+  toJSON = toJSON . show
+
 --------------------------------------------------------------------------------
 -- Conversion to JExpr
 --------------------------------------------------------------------------------
@@ -140,7 +156,7 @@ currentPass = "conversion to JSON"
 type MonadJSON m =
   ( MonadCompile m,
     MonadNameContext m,
-    MonadFreeContext LossBuiltin m
+    MonadFreeContext Builtin m
   )
 
 unsupportedError :: (MonadJSON m, Pretty a) => a -> m b
@@ -152,10 +168,10 @@ dependentTypesError b = developerError $ "Conversion of" <+> pretty b <+> "is no
 --------------------------------------------------------------------------------
 -- Programs and declarations
 
-convertProg :: (MonadJSON m) => S.Prog LossBuiltin -> m JProg
+convertProg :: (MonadJSON m) => S.Prog Builtin -> m JProg
 convertProg (S.Main decls) = Main <$> traverse convertDecl decls
 
-convertDecl :: (MonadJSON m) => S.Decl LossBuiltin -> m JDecl
+convertDecl :: (MonadJSON m) => S.Decl Builtin -> m JDecl
 convertDecl = \case
   S.DefAbstract {} -> developerError "Found abstract definition when converting to JSON"
   S.DefRecord {} -> developerError "Found record when converting to JSON"
@@ -169,12 +185,12 @@ convertDecl = \case
 
 convertType ::
   (MonadJSON m) =>
-  BoundEnv LossBuiltin ->
-  S.Expr LossBuiltin ->
+  BoundEnv Builtin ->
+  S.Expr Builtin ->
   m JType
 convertType env body = convertTypeValue $ Unforced env body
 
-convertTypeValue :: (MonadJSON m) => UnforcedType LossBuiltin -> m JType
+convertTypeValue :: (MonadJSON m) => UnforcedType Builtin -> m JType
 convertTypeValue expr = do
   showEntry expr
   forcedExpr <- forceThunk expr
@@ -196,47 +212,48 @@ convertTypeValue expr = do
   showExit result
   return result
 
-convertBuiltinType :: (MonadJSON m) => LossBuiltin -> UnforcedSpine LossBuiltin -> m JType
+convertBuiltinType :: (MonadJSON m) => Builtin -> UnforcedSpine Builtin -> m JType
 convertBuiltinType b spine = case b of
-  LossBuiltinType op -> case op of
-    L.UnitType -> unsupportedError b
-    L.IndexType -> convertIndexType spine
-    L.NatType -> convertNullaryOp b DimensionType spine
-    L.RatType -> convertNullaryOp b RatType spine
-    L.ListType -> convertListType spine
-    L.TensorType -> convertTensorType spine
-    L.VectorType -> convertVectorType spine
+  BuiltinType op -> case op of
+    B.UnitType -> unsupportedError b
+    B.BoolType -> convertNullaryOp b BoolType spine
+    B.IndexType -> convertIndexType spine
+    B.NatType -> convertNullaryOp b DimensionType spine
+    B.RatType -> convertNullaryOp b RatType spine
+    B.ListType -> convertListType spine
+    B.TensorType -> convertTensorType spine
+    B.VectorType -> convertVectorType spine
   _ -> dependentTypesError b
 
-convertIndexType :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JType
+convertIndexType :: (MonadJSON m) => UnforcedSpine Builtin -> m JType
 convertIndexType spine = case spine of
   (fmap argExpr -> [_t]) -> return DimensionIndexType
-  _ -> arityError L.IndexType 1 spine
+  _ -> arityError B.IndexType 1 spine
 
-convertTensorType :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JType
+convertTensorType :: (MonadJSON m) => UnforcedSpine Builtin -> m JType
 convertTensorType spine = case spine of
   (fmap argExpr -> [t, _ds]) -> TensorType <$> convertTypeValue t
-  _ -> arityError L.TensorType 2 spine
+  _ -> arityError B.TensorType 2 spine
 
-convertVectorType :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JType
+convertVectorType :: (MonadJSON m) => UnforcedSpine Builtin -> m JType
 convertVectorType spine = case spine of
   (fmap argExpr -> [t, _d]) -> VectorType <$> convertTypeValue t
-  _ -> arityError L.VectorType 2 spine
+  _ -> arityError B.VectorType 2 spine
 
-convertListType :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JType
+convertListType :: (MonadJSON m) => UnforcedSpine Builtin -> m JType
 convertListType spine = case spine of
   (fmap argExpr -> [_t]) -> return DimensionsType
-  _ -> arityError L.ListType 1 spine
+  _ -> arityError B.ListType 1 spine
 
 --------------------------------------------------------------------------------
 -- Expressions
 
-convertExpr :: (MonadJSON m) => BoundEnv LossBuiltin -> S.Expr LossBuiltin -> m JExpr
+convertExpr :: (MonadJSON m) => BoundEnv Builtin -> S.Expr Builtin -> m JExpr
 convertExpr env body = do
   let normBody = Unforced env body
   convertValue normBody
 
-convertValue :: (MonadJSON m) => Thunk LossBuiltin -> m JExpr
+convertValue :: (MonadJSON m) => Thunk Builtin -> m JExpr
 convertValue expr = do
   showEntry expr
   forcedValue <- forceThunk expr
@@ -258,7 +275,7 @@ convertValue expr = do
   showExit result
   return result
 
-convertBinder :: (MonadJSON m) => UnforcedBinder LossBuiltin -> m JBinder
+convertBinder :: (MonadJSON m) => UnforcedBinder Builtin -> m JBinder
 convertBinder binder = do
   let (name, p) = getNamedBinderInfo binder
   typ' <- convertTypeValue (typeOf binder)
@@ -266,9 +283,9 @@ convertBinder binder = do
 
 convertClosure ::
   (MonadJSON m) =>
-  (BoundEnv LossBuiltin -> S.Expr LossBuiltin -> m a) ->
-  UnforcedBinder LossBuiltin ->
-  Closure LossBuiltin ->
+  (BoundEnv Builtin -> S.Expr Builtin -> m a) ->
+  UnforcedBinder Builtin ->
+  Closure Builtin ->
   m a
 convertClosure f binder (Closure env body) = do
   lv <- getBinderDepth
@@ -277,51 +294,65 @@ convertClosure f binder (Closure env body) = do
     debugFriendly body
     f newEnv body
 
-convertBuiltin :: (MonadJSON m) => LossBuiltin -> UnforcedSpine LossBuiltin -> m JExpr
+convertBuiltin :: (MonadJSON m) => Builtin -> UnforcedSpine Builtin -> m JExpr
 convertBuiltin b spine = case b of
-  LossBuiltinType op -> resolutionError currentPass (pretty op)
-  LossBuiltinConstructor op -> case op of
-    L.Nil -> convertNil spine
-    L.Cons -> convertCons spine
-    L.UnitLiteral -> unsupportedError b
-    L.NatTensorLiteral _ -> unsupportedError b
-    L.IndexLiteral i -> convertNullaryOp b (DimensionIndex i) []
-    L.NatLiteral x -> convertNullaryOp b (Dimension x) spine
-    L.RatTensorLiteral t -> convertNullaryOp b (RatTensor t) spine
-    L.VectorLiteral -> convertVectorLiteral spine
-  LossBuiltinFunction op -> case op of
-    L.Neg L.NegRatTensor -> convertTensorOp1 b NegRatTensor spine
-    L.Add L.AddRatTensor -> convertTensorOp2 b AddRatTensor spine
-    L.Mul L.MulRatTensor -> convertTensorOp2 b MulRatTensor spine
-    L.Sub L.SubRatTensor -> convertTensorOp2 b SubRatTensor spine
-    L.Div L.DivRatTensor -> convertTensorOp2 b DivRatTensor spine
-    L.Min L.MinRatTensor -> convertTensorOp2 b MinRatTensor spine
-    L.Max L.MaxRatTensor -> convertTensorOp2 b MaxRatTensor spine
-    L.Pow L.PowRatTensor -> convertTensorOp2 b PowRatTensor spine
-    L.Log L.LogRatTensor -> convertTensorOp1 b LogRatTensor spine
-    L.Exp L.ExpRatTensor -> convertTensorOp1 b ExpRatTensor spine
-    L.ReduceAddRatTensor -> convertTensorReduction b ReduceAddRatTensor spine
-    L.ReduceMulRatTensor -> convertTensorReduction b ReduceMulRatTensor spine
-    L.ReduceMinRatTensor -> convertTensorReduction b ReduceMinRatTensor spine
-    L.ReduceMaxRatTensor -> convertTensorReduction b ReduceMaxRatTensor spine
-    L.AtTensor -> convertAtTensor spine
-    L.ForeachTensor -> convertForeachTensor spine
-    L.StackTensor -> convertStackTensor spine
-    L.ConstTensor -> convertConstTensor spine
-    L.Transpose -> convertTranspose convertValue spine
-    L.ForeachVector -> convertForeachVector spine
-    L.AtVector -> convertAtVector spine
+  BuiltinType op -> resolutionError currentPass (pretty op)
+  BuiltinConstructor op -> case op of
+    B.Nil -> convertNil spine
+    B.Cons -> convertCons spine
+    B.UnitLiteral -> unsupportedError b
+    B.BoolTensorLiteral t -> convertNullaryOp b (BoolTensor t) spine
+    B.NatTensorLiteral _ -> unsupportedError b
+    B.IndexLiteral i -> convertNullaryOp b (DimensionIndex i) []
+    B.NatLiteral x -> convertNullaryOp b (Dimension x) spine
+    B.RatTensorLiteral t -> convertNullaryOp b (RatTensor t) spine
+    B.VectorLiteral -> convertVectorLiteral spine
+  BuiltinFunction op -> case op of
+    B.Not -> convertTensorOp1 b BoolNot spine
+    B.And -> convertTensorOp2 b BoolAnd spine
+    B.Or -> convertTensorOp2 b BoolOr spine
+    B.Implies -> convertTensorOp2 b BoolImplies spine
+    B.QuantifyRatTensor {} -> developerError "QuantifyRatTensor should not have reached JSON conversion"
+    B.QuantifyRecord {} -> developerError "QuantifyRecord should not have reached JSON conversion"
+    B.If -> convertIf spine
+    B.CompareIndex cmp -> convertCompareIndex cmp spine
+    B.CompareNat cmp -> convertCompareNat cmp spine
+    B.CompareRatTensor cmp -> convertCompareRatTensor cmp spine
+    B.ReduceAndTensor -> convertTensorReduction b BoolReduceAnd spine
+    B.ReduceOrTensor -> convertTensorReduction b BoolReduceOr spine
+    B.Neg B.NegRatTensor -> convertTensorOp1 b NegRatTensor spine
+    B.Add B.AddRatTensor -> convertTensorOp2 b AddRatTensor spine
+    B.Mul B.MulRatTensor -> convertTensorOp2 b MulRatTensor spine
+    B.Sub B.SubRatTensor -> convertTensorOp2 b SubRatTensor spine
+    B.Div B.DivRatTensor -> convertTensorOp2 b DivRatTensor spine
+    B.Min B.MinRatTensor -> convertTensorOp2 b MinRatTensor spine
+    B.Max B.MaxRatTensor -> convertTensorOp2 b MaxRatTensor spine
+    B.Pow B.PowRatTensor -> convertTensorOp2 b PowRatTensor spine
+    B.Log B.LogRatTensor -> convertTensorOp1 b LogRatTensor spine
+    B.Exp B.ExpRatTensor -> convertTensorOp1 b ExpRatTensor spine
+    B.ReduceAddRatTensor -> convertTensorReduction b ReduceAddRatTensor spine
+    B.ReduceMulRatTensor -> convertTensorReduction b ReduceMulRatTensor spine
+    B.ReduceMinRatTensor -> convertTensorReduction b ReduceMinRatTensor spine
+    B.ReduceMaxRatTensor -> convertTensorReduction b ReduceMaxRatTensor spine
+    B.AtTensor -> convertAtTensor spine
+    B.ForeachTensor -> convertForeachTensor spine
+    B.StackTensor -> convertStackTensor spine
+    B.ConstTensor -> convertConstTensor spine
+    B.Transpose -> convertTranspose convertValue spine
+    B.ForeachVector -> convertForeachVector spine
+    B.AtVector -> convertAtVector spine
+    B.SearchRatTensor -> convertSearch spine
     -- Dimension operations, not yet converted
-    L.Add L.AddNat -> unsupportedError b
-    L.Mul L.MulNat -> unsupportedError b
-    L.MapList -> unsupportedError b
-    L.FoldList -> unsupportedError b
-    L.ReverseList -> unsupportedError b
-    L.AppendList -> unsupportedError b
-  L.LossBuiltinExtraFunction f -> case f of
-    L.SearchRatTensor name -> convertSearch name spine
+    B.Add B.AddNat -> unsupportedError b
+    B.Mul B.MulNat -> unsupportedError b
+    B.MapList -> unsupportedError b
+    B.FoldList -> unsupportedError b
+    B.ReverseList -> unsupportedError b
+    B.AppendList -> unsupportedError b
+    B.Iterate -> unsupportedError b
+  _ -> dependentTypesError b
 
-convertNullaryOp :: (MonadJSON m) => LossBuiltin -> a -> UnforcedSpine LossBuiltin -> m a
+convertNullaryOp :: (MonadJSON m) => Builtin -> a -> UnforcedSpine Builtin -> m a
 convertNullaryOp b fn = \case
   [] -> return fn
   spine -> arityError b 0 spine
@@ -330,29 +361,29 @@ convertNonNullaryOp ::
   (MonadJSON m, IsArgs args, Pretty fn) =>
   fn ->
   Arity ->
-  (args (Thunk LossBuiltin) -> m a) ->
-  UnforcedSpine LossBuiltin ->
+  (args (Thunk Builtin) -> m a) ->
+  UnforcedSpine Builtin ->
   m a
 convertNonNullaryOp op arity f spine =
   case getExpr accessSpine spine of
     Just args -> f args
     Nothing -> arityError op arity spine
 
-convertNil :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JExpr
-convertNil = convertNonNullaryOp L.Nil 1 $
+convertNil :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertNil = convertNonNullaryOp B.Nil 1 $
   \NilArgs {} ->
     return DimensionNil
 
-convertCons :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JExpr
-convertCons = convertNonNullaryOp L.Cons 4 $
+convertCons :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertCons = convertNonNullaryOp B.Cons 4 $
   \(ConsArgs _t v ds) ->
     DimensionCons <$> convertValue v <*> convertValue ds
 
 convertTensorOp1 ::
   (MonadJSON m) =>
-  LossBuiltin ->
+  Builtin ->
   (JExpr -> JExpr) ->
-  UnforcedSpine LossBuiltin ->
+  UnforcedSpine Builtin ->
   m JExpr
 convertTensorOp1 b fn = convertNonNullaryOp b 1 $
   \(TensorOp1Args _ x) ->
@@ -360,9 +391,9 @@ convertTensorOp1 b fn = convertNonNullaryOp b 1 $
 
 convertTensorOp2 ::
   (MonadJSON m) =>
-  LossBuiltin ->
+  Builtin ->
   (JExpr -> JExpr -> JExpr) ->
-  UnforcedSpine LossBuiltin ->
+  UnforcedSpine Builtin ->
   m JExpr
 convertTensorOp2 b fn = convertNonNullaryOp b 2 $
   \(TensorOp2Args _ x y) ->
@@ -370,9 +401,9 @@ convertTensorOp2 b fn = convertNonNullaryOp b 2 $
 
 convertTensorReduction ::
   (MonadJSON m) =>
-  LossBuiltin ->
+  Builtin ->
   (JExpr -> JExpr) ->
-  UnforcedSpine LossBuiltin ->
+  UnforcedSpine Builtin ->
   m JExpr
 convertTensorReduction b fn = convertNonNullaryOp b 1 $
   \(TensorReductionArgs _ xs) ->
@@ -380,60 +411,85 @@ convertTensorReduction b fn = convertNonNullaryOp b 1 $
 
 convertAtTensor ::
   (MonadJSON m) =>
-  UnforcedSpine LossBuiltin ->
+  UnforcedSpine Builtin ->
   m JExpr
-convertAtTensor = convertNonNullaryOp L.AtTensor 5 $
+convertAtTensor = convertNonNullaryOp B.AtTensor 5 $
   \(AtTensorArgs _t _d _ds xs i) ->
     AtTensor <$> convertValue xs <*> convertValue i
 
-convertStackTensor :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JExpr
-convertStackTensor = convertNonNullaryOp L.StackTensor 4 $
+convertStackTensor :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertStackTensor = convertNonNullaryOp B.StackTensor 4 $
   \(StackTensorArgs _t _d _ds xs) ->
     StackTensor <$> traverse convertValue xs
 
-convertConstTensor :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JExpr
-convertConstTensor = convertNonNullaryOp L.ConstTensor 4 $
+convertConstTensor :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertConstTensor = convertNonNullaryOp B.ConstTensor 4 $
   \(ConstTensorArgs _t v ds) ->
     ConstTensor <$> convertValue v <*> convertValue ds
 
-convertForeachTensor :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JExpr
-convertForeachTensor = convertNonNullaryOp L.ForeachTensor 4 $
+convertForeachTensor :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertForeachTensor = convertNonNullaryOp B.ForeachTensor 4 $
   \(ForeachTensorArgs _t d _ds fn) ->
     ForeachTensor <$> convertValue d <*> convertValue fn
 
-convertVectorLiteral :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JExpr
-convertVectorLiteral = convertNonNullaryOp L.VectorLiteral 4 $
+convertVectorLiteral :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertVectorLiteral = convertNonNullaryOp B.VectorLiteral 4 $
   \(VectorLitArgs _t _ xs) ->
     VectorLiteral <$> traverse convertValue xs
 
 convertAtVector ::
   (MonadJSON m) =>
-  UnforcedSpine LossBuiltin ->
+  UnforcedSpine Builtin ->
   m JExpr
-convertAtVector = convertNonNullaryOp L.AtVector 4 $
+convertAtVector = convertNonNullaryOp B.AtVector 4 $
   \(AtVectorArgs _t _d xs i) ->
     AtVector <$> convertValue xs <*> convertValue i
 
-convertForeachVector :: (MonadJSON m) => UnforcedSpine LossBuiltin -> m JExpr
-convertForeachVector = convertNonNullaryOp L.ForeachVector 4 $
+convertForeachVector :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertForeachVector = convertNonNullaryOp B.ForeachVector 4 $
   \(ForeachVectorArgs _t d fn) ->
     ForeachVector <$> convertValue d <*> convertValue fn
 
+convertIf :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertIf = convertNonNullaryOp B.If 4 $
+  \(IfArgs _t c x y) ->
+    BoolIf <$> convertValue c <*> convertValue x <*> convertValue y
+
+convertCompareIndex :: (MonadJSON m) => B.ComparisonOp -> UnforcedSpine Builtin -> m JExpr
+convertCompareIndex op = convertNonNullaryOp (B.CompareIndex op) 4 $
+  \(IndexComparisonArgs _n1 _n2 x y) ->
+    BoolCompareIndex op <$> convertValue x <*> convertValue y
+
+convertCompareNat :: (MonadJSON m) => B.ComparisonOp -> UnforcedSpine Builtin -> m JExpr
+convertCompareNat op = convertNonNullaryOp (B.CompareNat op) 2 $
+  \(Op2Args x y) ->
+    BoolCompareNat op <$> convertValue x <*> convertValue y
+
+convertCompareRatTensor :: (MonadJSON m) => B.ComparisonOp -> UnforcedSpine Builtin -> m JExpr
+convertCompareRatTensor op = convertNonNullaryOp (B.CompareRatTensor op) 4 $
+  \(TensorComparisonArgs pDims rDims x y) ->
+    BoolCompareRatTensor op <$> convertValue pDims <*> convertValue rDims <*> convertValue x <*> convertValue y
+
 convertTranspose ::
   (MonadJSON m) =>
-  (Thunk LossBuiltin -> m JExpr) ->
-  UnforcedSpine LossBuiltin ->
+  (Thunk Builtin -> m JExpr) ->
+  UnforcedSpine Builtin ->
   m JExpr
 convertTranspose convert spine = case getExpr accessSpine spine of
   Just (TransposeTensorArgs _t _ds xs) -> Transpose <$> convert xs
-  Nothing -> arityError L.Transpose 3 spine
+  Nothing -> arityError B.Transpose 3 spine
 
-convertSearch :: (MonadJSON m) => Name -> UnforcedSpine LossBuiltin -> m JExpr
-convertSearch name = convertNonNullaryOp (L.SearchRatTensor name) 4 $
-  \(SearchRatTensorArgs dims lowerBound upperBound fn) ->
+convertSearch :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertSearch = convertNonNullaryOp B.SearchRatTensor 4 $
+  \(SearchRatTensorArgs dims lowerBound upperBound fn) -> do
+    let name = case fn of
+          Forced (VLam binder _) -> getBinderName binder
+          Unforced _ (S.Lam _ binder _) -> getBinderName binder
+          _ -> developerError "Malformed search operation"
+
     SearchRatTensor name <$> convertValue dims <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn
 
-arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> UnforcedSpine LossBuiltin -> m a
+arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> UnforcedSpine Builtin -> m a
 arityError fun arity explicitArgs =
   compilerDeveloperError $
     "Number of args is different from expected arity:"
@@ -453,7 +509,7 @@ arityError fun arity explicitArgs =
             <+> prettyVerbose explicitArgs
         )
 
-showEntry :: (MonadJSON m) => Thunk LossBuiltin -> m ()
+showEntry :: (MonadJSON m) => Thunk Builtin -> m ()
 showEntry e = do
   logDebug MaxDetail $ "json-enter:" <+> prettyVerbose e
   incrCallDepth
@@ -467,11 +523,11 @@ showExit _e = do
 -- Conversion back (for printing purposes)
 --------------------------------------------------------------------------------
 
-fromJProg :: JProg -> S.Prog LossBuiltin
+fromJProg :: JProg -> S.Prog Builtin
 fromJProg = \case
   Main decls -> S.Main (fmap fromJDecl decls)
 
-fromJDecl :: JDecl -> S.Decl LossBuiltin
+fromJDecl :: JDecl -> S.Decl Builtin
 fromJDecl = \case
   DefFunction p name typ body ->
     runFreshNameBoundContext $ do
@@ -481,28 +537,29 @@ fromJDecl = \case
       let sort = FunctionDecl 0 (Just AnnProperty)
       return $ S.DefFunction p ident sort typ' body'
 
-fromJType :: (MonadNameContext m) => JType -> m (S.Expr LossBuiltin)
+fromJType :: (MonadNameContext m) => JType -> m (S.Expr Builtin)
 fromJType = \case
   Pi input output -> do
     input' <- fromJType input
     let binder' = mkExplicitBinder input' Nothing
     S.Pi mempty binder' <$> fromJType output
-  RatType -> toType L.RatType []
-  TensorType t -> toType L.TensorType [t]
-  VectorType t -> toType L.VectorType [t]
-  DimensionType -> toType L.NatType []
-  DimensionsType -> toType L.ListType [DimensionType]
-  DimensionIndexType -> toType L.IndexType []
+  BoolType -> toType B.BoolType []
+  RatType -> toType B.RatType []
+  TensorType t -> toType B.TensorType [t]
+  VectorType t -> toType B.VectorType [t]
+  DimensionType -> toType B.NatType []
+  DimensionsType -> toType B.ListType [DimensionType]
+  DimensionIndexType -> toType B.IndexType []
   TypeVar name spine -> do
     nameCtx <- getNameContext
     let ix = maybe (developerError ("ill-scoped JExpr, no variable" <+> squotes (pretty name))) Ix (elemIndex (Just name) nameCtx)
     spine' <- traverse fromJExpr spine
     return $ normAppList (S.BoundVar mempty ix) (fmap explicit spine')
 
-toType :: (MonadNameContext m) => LossBuiltinType -> [JType] -> m (S.Expr LossBuiltin)
-toType op = toExpr fromJType (LossBuiltinType op)
+toType :: (MonadNameContext m) => BuiltinType -> [JType] -> m (S.Expr Builtin)
+toType op = toExpr fromJType (BuiltinType op)
 
-fromJExpr :: (MonadNameContext m) => JExpr -> m (S.Expr LossBuiltin)
+fromJExpr :: (MonadNameContext m) => JExpr -> m (S.Expr Builtin)
 fromJExpr = \case
   Lam binder body -> do
     binder' <- fromJBinder binder
@@ -513,50 +570,58 @@ fromJExpr = \case
     let ix = maybe (developerError ("ill-scoped JExpr, no variable" <+> squotes (pretty name))) Ix (elemIndex (Just name) nameCtx)
     spine' <- traverse fromJExpr spine
     return $ normAppList (S.BoundVar mempty ix) (fmap explicit spine')
-  RatTensor t -> toConstructor (L.RatTensorLiteral t) []
-  NegRatTensor e -> toFunction (L.Neg L.NegRatTensor) [e]
-  LogRatTensor e -> toFunction (L.Log L.LogRatTensor) [e]
-  ExpRatTensor e -> toFunction (L.Exp L.ExpRatTensor) [e]
-  AddRatTensor e1 e2 -> toFunction (L.Add L.AddRatTensor) [e1, e2]
-  SubRatTensor e1 e2 -> toFunction (L.Sub L.SubRatTensor) [e1, e2]
-  MulRatTensor e1 e2 -> toFunction (L.Mul L.MulRatTensor) [e1, e2]
-  DivRatTensor e1 e2 -> toFunction (L.Div L.DivRatTensor) [e1, e2]
-  MinRatTensor e1 e2 -> toFunction (L.Min L.MinRatTensor) [e1, e2]
-  MaxRatTensor e1 e2 -> toFunction (L.Max L.MaxRatTensor) [e1, e2]
-  PowRatTensor e1 e2 -> toFunction (L.Pow L.PowRatTensor) [e1, e2]
-  ReduceAddRatTensor xs -> toFunction L.ReduceAddRatTensor [xs]
-  ReduceMulRatTensor xs -> toFunction L.ReduceMulRatTensor [xs]
-  ReduceMinRatTensor xs -> toFunction L.ReduceMinRatTensor [xs]
-  ReduceMaxRatTensor xs -> toFunction L.ReduceMaxRatTensor [xs]
-  SearchRatTensor name dims lower upper lambda -> toExtraFunction (L.SearchRatTensor name) [dims, lower, upper, lambda]
-  Dimension d -> toConstructor (L.NatLiteral d) []
-  DimensionNil -> toConstructor L.Nil []
-  DimensionCons e1 e2 -> toConstructor L.Cons [e1, e2]
-  DimensionIndex i -> toConstructor (L.IndexLiteral i) []
-  AtTensor xs i -> toFunction L.AtTensor [xs, i]
-  ForeachTensor _n fn -> toFunction L.ForeachTensor [fn]
-  ConstTensor c ds -> toFunction L.ConstTensor [c, ds]
-  StackTensor xs -> toFunction L.StackTensor xs
-  Transpose xs -> toFunction L.Transpose [xs]
-  VectorLiteral xs -> toConstructor L.VectorLiteral xs
-  ForeachVector _n fn -> toFunction L.ForeachVector [fn]
-  AtVector xs i -> toFunction L.AtVector [xs, i]
+  BoolTensor t -> toConstructor (B.BoolTensorLiteral t) []
+  BoolNot e -> toFunction B.Not [e]
+  BoolAnd e1 e2 -> toFunction B.And [e1, e2]
+  BoolOr e1 e2 -> toFunction B.Or [e1, e2]
+  BoolImplies e1 e2 -> toFunction B.Implies [e1, e2]
+  BoolCompareIndex op e1 e2 -> toFunction (B.CompareIndex op) [e1, e2]
+  BoolCompareNat op e1 e2 -> toFunction (B.CompareNat op) [e1, e2]
+  BoolCompareRatTensor op pDims rDims e1 e2 -> toFunction (B.CompareRatTensor op) [pDims, rDims, e1, e2]
+  BoolReduceAnd xs -> toFunction B.ReduceAndTensor [xs]
+  BoolReduceOr xs -> toFunction B.ReduceOrTensor [xs]
+  BoolIf c e1 e2 -> toFunction B.If [c, e1, e2]
+  RatTensor t -> toConstructor (B.RatTensorLiteral t) []
+  NegRatTensor e -> toFunction (B.Neg B.NegRatTensor) [e]
+  LogRatTensor e -> toFunction (B.Log B.LogRatTensor) [e]
+  ExpRatTensor e -> toFunction (B.Exp B.ExpRatTensor) [e]
+  AddRatTensor e1 e2 -> toFunction (B.Add B.AddRatTensor) [e1, e2]
+  SubRatTensor e1 e2 -> toFunction (B.Sub B.SubRatTensor) [e1, e2]
+  MulRatTensor e1 e2 -> toFunction (B.Mul B.MulRatTensor) [e1, e2]
+  DivRatTensor e1 e2 -> toFunction (B.Div B.DivRatTensor) [e1, e2]
+  MinRatTensor e1 e2 -> toFunction (B.Min B.MinRatTensor) [e1, e2]
+  MaxRatTensor e1 e2 -> toFunction (B.Max B.MaxRatTensor) [e1, e2]
+  PowRatTensor e1 e2 -> toFunction (B.Pow B.PowRatTensor) [e1, e2]
+  ReduceAddRatTensor xs -> toFunction B.ReduceAddRatTensor [xs]
+  ReduceMulRatTensor xs -> toFunction B.ReduceMulRatTensor [xs]
+  ReduceMinRatTensor xs -> toFunction B.ReduceMinRatTensor [xs]
+  ReduceMaxRatTensor xs -> toFunction B.ReduceMaxRatTensor [xs]
+  SearchRatTensor _name dims lower upper lambda -> toFunction B.SearchRatTensor [dims, lower, upper, lambda]
+  Dimension d -> toConstructor (B.NatLiteral d) []
+  DimensionNil -> toConstructor B.Nil []
+  DimensionCons e1 e2 -> toConstructor B.Cons [e1, e2]
+  DimensionIndex i -> toConstructor (B.IndexLiteral i) []
+  AtTensor xs i -> toFunction B.AtTensor [xs, i]
+  ForeachTensor _n fn -> toFunction B.ForeachTensor [fn]
+  ConstTensor c ds -> toFunction B.ConstTensor [c, ds]
+  StackTensor xs -> toFunction B.StackTensor xs
+  Transpose xs -> toFunction B.Transpose [xs]
+  VectorLiteral xs -> toConstructor B.VectorLiteral xs
+  ForeachVector _n fn -> toFunction B.ForeachVector [fn]
+  AtVector xs i -> toFunction B.AtVector [xs, i]
 
-fromJBinder :: (MonadNameContext m) => JBinder -> m (S.Binder LossBuiltin)
+fromJBinder :: (MonadNameContext m) => JBinder -> m (S.Binder Builtin)
 fromJBinder (Binder p name typ) = do
   typ' <- fromJType typ
   return $ mkExplicitBinder typ' (Just (p, name))
 
-toExpr :: (MonadNameContext m) => (a -> m (S.Expr LossBuiltin)) -> LossBuiltin -> [a] -> m (S.Expr LossBuiltin)
+toExpr :: (MonadNameContext m) => (a -> m (S.Expr Builtin)) -> Builtin -> [a] -> m (S.Expr Builtin)
 toExpr f op args = do
   args' <- traverse f args
   return $ normAppList (S.Builtin mempty op) (fmap explicit args')
 
-toConstructor :: (MonadNameContext m) => LossBuiltinConstructor -> [JExpr] -> m (S.Expr LossBuiltin)
-toConstructor op = toExpr fromJExpr (LossBuiltinConstructor op)
+toConstructor :: (MonadNameContext m) => BuiltinConstructor -> [JExpr] -> m (S.Expr Builtin)
+toConstructor op = toExpr fromJExpr (BuiltinConstructor op)
 
-toFunction :: (MonadNameContext m) => LossBuiltinFunction -> [JExpr] -> m (S.Expr LossBuiltin)
-toFunction op = toExpr fromJExpr (LossBuiltinFunction op)
-
-toExtraFunction :: (MonadNameContext m) => LossBuiltinExtraFunction -> [JExpr] -> m (S.Expr LossBuiltin)
-toExtraFunction op = toExpr fromJExpr (LossBuiltinExtraFunction op)
+toFunction :: (MonadNameContext m) => BuiltinFunction -> [JExpr] -> m (S.Expr Builtin)
+toFunction op = toExpr fromJExpr (BuiltinFunction op)
