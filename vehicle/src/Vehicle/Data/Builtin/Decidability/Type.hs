@@ -263,6 +263,7 @@ convertToDecidabilityBuiltins p b args = return $
         Transpose -> sameFunction f
         StackTensor -> sameFunction f
         ConstTensor -> sameFunction f
+        SearchRatTensor {} -> sameFunction f
     BuiltinConstructor c -> do
       let original = normAppList (Builtin p (StandardBuiltinConstructor c)) args
       case c of

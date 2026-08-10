@@ -63,17 +63,10 @@ getDeclProvenance = do
   return prov
 
 getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Expr LossBuiltin)
-getLogicField field = do
-  (logic, _) <- getLogic
-  return $ lookupLogicField field logic
+getLogicField field = lookupLogicField field <$> getLogic
 
 getLogicFieldValue :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Thunk LossBuiltin)
 getLogicFieldValue field = Unforced emptyBoundEnv <$> getLogicField field
-
-getLogicDirection :: (MonadLogic m) => m Bool
-getLogicDirection = do
-  (_, minimise) <- getLogic
-  return minimise
 
 lookupLogicField :: (Ord field, Pretty field) => field -> Map field value -> value
 lookupLogicField field logic = case Map.lookup field logic of

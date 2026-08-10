@@ -726,7 +726,6 @@ instance IsArgs TensorTypeArgs where
 
 data SearchRatTensorArgs expr = SearchRatTensorArgs
   { searchDims :: expr,
-    searchReductionOp :: expr,
     searchLowerBound :: expr,
     searchUpperBound :: expr,
     searchPredicate :: expr
@@ -736,19 +735,17 @@ instance IsArgs SearchRatTensorArgs where
   accessSpine =
     Access
       { getExpr = \case
-          (fmap argExpr -> [dims, op, lower, upper, predicate]) ->
+          (fmap argExpr -> [dims, lower, upper, predicate]) ->
             Just $
               SearchRatTensorArgs
                 { searchDims = dims,
-                  searchReductionOp = op,
                   searchLowerBound = lower,
                   searchUpperBound = upper,
                   searchPredicate = predicate
                 }
           _ -> Nothing,
-        mkExpr = \(SearchRatTensorArgs dims op lower upper predicate) ->
+        mkExpr = \(SearchRatTensorArgs dims lower upper predicate) ->
           [ implicitIrrelevant dims,
-            explicit op,
             explicit lower,
             explicit upper,
             explicit predicate

@@ -32,6 +32,7 @@ import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss
+import Vehicle.Data.Builtin.Loss qualified as L
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (BooleanExpr (..), DisjunctAll (..), andBoolExpr, conjunctDisjunctsM, disjunctDisjuncts, disjunctsToList, elimIfTree, eliminateTrivialDisjunctions, flattenBoolExpr)
 import Vehicle.Data.Code.ForcedValue
@@ -184,31 +185,21 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
           remDoc <- maybe (return "") (fmap lineIndent . prettyFriendlyInCtx) remainingTree
           return $ "remaining-constraints:" <> remDoc
 
-        finalValue <- compileSearch varName dims binder remainder domain
+        finalValue <- compileSearch dims binder remainder domain
         return $ singletonPartition (remainingTree, Just finalValue)
     NonTrivial <$> disjunctPartitions newPartitions
 
 compileSearch ::
   (MonadLogic m) =>
-  Name ->
   Thunk Builtin ->
   UnforcedBinder Builtin ->
   Closure LossBuiltin ->
   Domain (DimensionedTensorValue LossBuiltin) ->
   m (Thunk LossBuiltin)
-compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
+compileSearch dims binder closure (Domain lowerBound upperBound) = do
   -- Convert the binder and the dimensions.
   lossBinder <- traverse convertQuantifierlessExprToLoss binder
   lossDims <- convertQuantifierlessExprToLoss dims
-
-  -- Generate the operation for doing the reduction
-  -- We do not know how many samples the quantifier will generate so we must append
-  -- an explicit lambda that takes them and then applies them appropriately.
-  -- The sample implementation will then provide them at run time.
-  genericReductionOp <- getLogicField ReduceDisjunction
-  let explicitDimsBinder = mkExplicitBinder (IListType INatType) (Just (mempty, "dims"))
-  let explicitDimsReductionOp = Lam mempty explicitDimsBinder (normAppList genericReductionOp [implicitIrrelevant (BoundVar mempty (Ix 0))])
-  let reductionOp = Unforced emptyBoundEnv explicitDimsReductionOp
 
   -- Reform the predicate as if we had no tensor variables at all
   let lossPredicate = Forced $ VLam lossBinder closure
@@ -219,13 +210,11 @@ compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
         mkExpr accessSpine $
           SearchRatTensorArgs
             { searchDims = lossDims,
-              searchReductionOp = reductionOp,
               searchLowerBound = tensorValue $ lowerBoundValue lowerBound,
               searchUpperBound = tensorValue $ upperBoundValue upperBound,
               searchPredicate = lossPredicate
             }
-  minimise <- getLogicDirection
-  return $ Forced $ VBuiltin (LossBuiltinExtraFunction $ SearchRatTensor varName minimise) spine
+  return $ Forced $ VBuiltin (LossBuiltinFunction $ L.SearchRatTensor) spine
 
 findTensorBounds ::
   forall m.

@@ -15,7 +15,7 @@ import Vehicle.Data.Builtin.Standard.Core qualified as S
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor)
-import Vehicle.Prelude (Name, Pretty (..))
+import Vehicle.Prelude (Pretty (..))
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -113,6 +113,7 @@ data LossBuiltinFunction
   | -- Vector
     ForeachVector
   | AtVector
+  | SearchRatTensor
   deriving (Eq, Ord, Show, Generic)
 
 lossToStandardBuiltinFunction :: LossBuiltinFunction -> S.BuiltinFunction
@@ -142,20 +143,10 @@ lossToStandardBuiltinFunction = \case
   AppendList -> S.AppendList
   ForeachVector -> S.ForeachVector
   AtVector -> S.AtVector
+  SearchRatTensor -> S.SearchRatTensor
 
 instance Pretty LossBuiltinFunction where
   pretty = pretty . lossToStandardBuiltinFunction
-
---------------------------------------------------------------------------------
--- Extra loss builtin functions
-
-data LossBuiltinExtraFunction
-  = SearchRatTensor Name LogicDirection
-  deriving (Show, Eq, Ord, Generic)
-
-instance Pretty LossBuiltinExtraFunction where
-  pretty = \case
-    SearchRatTensor name _direction -> "search[" <> pretty name <> "]"
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -166,7 +157,6 @@ data LossBuiltin
   = LossBuiltinFunction LossBuiltinFunction
   | LossBuiltinType LossBuiltinType
   | LossBuiltinConstructor LossBuiltinConstructor
-  | LossBuiltinExtraFunction LossBuiltinExtraFunction
   deriving (Show, Eq, Ord, Generic)
 
 instance Pretty LossBuiltin where
@@ -373,6 +363,7 @@ instance NormalisableBuiltin LossBuiltin where
       ForeachTensor -> Eval evalForeachTensor
       ForeachVector -> Eval evalForeachVector
       AtVector -> Eval evalAtVector
+      SearchRatTensor {} -> None
     _ -> None
 
   isTypeClassOp _ = False
@@ -391,16 +382,11 @@ instance ConvertableBuiltin LossBuiltinConstructor Builtin where
 instance ConvertableBuiltin LossBuiltinFunction Builtin where
   convertBuiltin p = convertBuiltin p . lossToStandardBuiltinFunction
 
-instance ConvertableBuiltin LossBuiltinExtraFunction Builtin where
-  convertBuiltin p b = case b of
-    SearchRatTensor {} -> cheatConvertBuiltin p $ pretty b
-
 instance ConvertableBuiltin LossBuiltin Builtin where
   convertBuiltin p b = case b of
     LossBuiltinType op -> convertBuiltin p op
     LossBuiltinConstructor op -> convertBuiltin p op
     LossBuiltinFunction op -> convertBuiltin p op
-    LossBuiltinExtraFunction op -> convertBuiltin p op
 
 instance PrintableBuiltin LossBuiltin where
   coercionArgs = const Nothing

@@ -700,6 +700,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     Transpose -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_transpose" args
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
+    SearchRatTensor {} -> unsupportedError
     Iterate -> unsupportedError
     Pow {} -> unsupportedError
     Log {} -> unsupportedError

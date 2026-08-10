@@ -227,6 +227,94 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Pi(self, expression: vcl.Pi) -> py.expr:
         raise EraseType()
 
+    def translate_BoolTensor(self, expression: vcl.BoolTensor) -> py.expr:
+        return py_tensor(expression.contents, provenance=vcl.MISSING)
+
+    def translate_BoolNot(self, expression: vcl.BoolNot) -> py.expr:
+        return py_app(
+            py_builtin("BoolNot", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_BoolAnd(self, expression: vcl.BoolAnd) -> py.expr:
+        return py_app(
+            py_builtin("BoolAnd", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_BoolOr(self, expression: vcl.BoolOr) -> py.expr:
+        return py_app(
+            py_builtin("BoolOr", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_BoolImplies(self, expression: vcl.BoolImplies) -> py.expr:
+        return py_app(
+            py_builtin("BoolImplies", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_BoolCompareIndex(self, expression: vcl.BoolCompareIndex) -> py.expr:
+        return py_app(
+            py_builtin("BoolCompareIndex", provenance=vcl.MISSING),
+            py.Constant(value=expression.op, **asdict(vcl.MISSING)),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_BoolCompareNat(self, expression: vcl.BoolCompareNat) -> py.expr:
+        return py_app(
+            py_builtin("BoolCompareNat", provenance=vcl.MISSING),
+            py.Constant(value=expression.op, **asdict(vcl.MISSING)),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_BoolCompareRatTensor(
+        self, expression: vcl.BoolCompareRatTensor
+    ) -> py.expr:
+        return py_app(
+            py_builtin("BoolCompareRatTensor", provenance=vcl.MISSING),
+            py.Constant(value=expression.op, **asdict(vcl.MISSING)),
+            self.translate_expression(expression.p_dims),
+            self.translate_expression(expression.r_dims),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_BoolReduceAnd(self, expression: vcl.BoolReduceAnd) -> py.expr:
+        return py_app(
+            py_builtin("BoolReduceAnd", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_BoolReduceOr(self, expression: vcl.BoolReduceOr) -> py.expr:
+        return py_app(
+            py_builtin("BoolReduceOr", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_BoolIf(self, expression: vcl.BoolIf) -> py.expr:
+        return py_app(
+            py_builtin("BoolIf", provenance=vcl.MISSING),
+            self.translate_expression(expression.c),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
     def translate_RatTensor(self, expression: vcl.RatTensor) -> py.expr:
         """Translate RatTensor to tensor creation."""
         return py_tensor(expression.contents, provenance=vcl.MISSING)
@@ -359,11 +447,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
-        """Translate SearchRatTensor to builtin call.
-
-        The reduction_op is a curried function (λxs. reduce xs) where:
-        - xs is the sequence of samples to reduce
-        """
+        """Translate SearchRatTensor to builtin call."""
         # Call sampler once to get samples
         sampler_call = py_app(
             py_subscript(
@@ -375,35 +459,11 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             self.translate_expression(expression.lower_bound),
             self.translate_expression(expression.upper_bound),
             self.translate_expression(expression.search_lambda),
-            py.Constant(value=expression.minimise, **asdict(vcl.MISSING)),
             provenance=vcl.MISSING,
         )
 
-        # Apply as: (λsamples. reduction_op(len(samples))(samples).
-        # We cannot know the number of samples at compile time, so we pass both the samples and their length to the reduction_op.
-        # The number of samples is important as it may use them to construct constant tensors of the relevant dimension.
-        samples_name = "_samples"
-        samples_var = py_name(samples_name, provenance=vcl.MISSING)
         return py_app(
-            py.Lambda(
-                args=py_binder(
-                    py.arg(arg=samples_name, annotation=None, **asdict(vcl.MISSING))
-                ),
-                body=py_app(
-                    py_app(
-                        self.translate_expression(expression.reduction_op),
-                        py_app(
-                            py_name("len", provenance=vcl.MISSING),
-                            samples_var,
-                            provenance=vcl.MISSING,
-                        ),
-                        provenance=vcl.MISSING,
-                    ),
-                    samples_var,
-                    provenance=vcl.MISSING,
-                ),
-                **asdict(vcl.MISSING),
-            ),
+            py_builtin("ReduceMaxRatTensor", provenance=vcl.MISSING),
             sampler_call,
             provenance=vcl.MISSING,
         )
@@ -613,7 +673,7 @@ def py_tuple(elements: list[py.expr], provenance: vcl.Provenance) -> py.expr:
     )
 
 
-def py_tensor(tensor: vcl.Tensor, provenance: vcl.Provenance) -> py.expr:
+def py_tensor(tensor: vcl.Tensor[vcl.DType], provenance: vcl.Provenance) -> py.expr:
     """Make a tensor by calling appropriate builtin."""
     match tensor:
         case vcl.DenseTensor():
@@ -621,7 +681,7 @@ def py_tensor(tensor: vcl.Tensor, provenance: vcl.Provenance) -> py.expr:
             return py_app(
                 py_builtin("DenseTensor", provenance=provenance),
                 py_tuple(
-                    [py_scalar(val, provenance=provenance) for val in tensor.value],
+                    [py_scalar(val, provenance=provenance) for val in tensor.values],
                     provenance=provenance,
                 ),
                 py_tuple(
