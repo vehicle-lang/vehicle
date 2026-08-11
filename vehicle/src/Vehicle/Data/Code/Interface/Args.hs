@@ -146,6 +146,26 @@ traverseReductionArgs f (TensorReductionArgs keepDs reduceDs e xs) =
   TensorReductionArgs keepDs reduceDs <$> f e <*> f xs
 
 --------------------------------------------------------------------------------
+-- Total reduction args
+
+-- | Arguments for a differentiable logic's reduction field, which is total;
+-- the builtin's partial reduction uses 'TensorReductionArgs'.
+data TotalReductionArgs expr = TotalReductionArgs
+  { totalReductionDims :: expr,
+    totalReductionUnit :: expr,
+    totalReductionTensor :: expr
+  }
+
+instance IsArgs TotalReductionArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [ds, e, xs]) -> Just $ TotalReductionArgs ds e xs
+          _ -> Nothing,
+        mkExpr = \(TotalReductionArgs ds e xs) -> [implicitIrrelevant ds, explicit e, explicit xs]
+      }
+
+--------------------------------------------------------------------------------
 -- Temporal args
 
 data TemporalOp1Args expr = TemporalOp1Args

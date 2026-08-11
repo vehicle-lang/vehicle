@@ -1,0 +1,13 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s spec.vcl",
+    "needs": ["spec.vcl"]
+  },
+  {
+    "name": "SmoothLoss",
+    "run": "vehicle compile loss -s spec.vcl -l SmoothLoss -o SmoothLoss.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["SmoothLoss.vcl"]
+  }
+]

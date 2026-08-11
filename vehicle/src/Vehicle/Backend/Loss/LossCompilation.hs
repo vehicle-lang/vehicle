@@ -243,10 +243,10 @@ reduceWithTrivialSingleton ::
   TensorDifferentiableLogicField ->
   TensorReductionArgs (Value LossBuiltin) ->
   m (Value LossBuiltin)
-reduceWithTrivialSingleton field args@(TensorReductionArgs _ reduceDs _ xs) =
+reduceWithTrivialSingleton field (TensorReductionArgs _keepDs reduceDs e xs) =
   case getDims reduceDs of
     Just [1] -> return xs
-    _ -> convertLogicField field args
+    _ -> convertLogicField field (TotalReductionArgs reduceDs e xs)
 
 -- Emitted as opaque IR nodes; runtime semantics come from the DL record's
 -- pointwise{Conjunction,Disjunction} + {true,false}Element fields, packaged
