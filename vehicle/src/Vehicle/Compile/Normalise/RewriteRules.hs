@@ -617,17 +617,18 @@ rewriteForeachVector ::
   (MonadRewrite builtin m) =>
   ForeachVectorArgs (Thunk builtin) ->
   m (ForcedValue builtin)
-rewriteForeachVector (ForeachVectorArgs vType vDim fn) = do
-  vType' <- forceThunk vType
-  case vType' of
-    IVectorType vElem _vDim -> do
-      vElem' <- forceThunk vElem
-      case vElem' of
-        (ITensorType tElem tDims) -> do
-          let args = ForeachTensorArgs tElem vDim tDims fn
-          rewriteForeachTensor args
-        _ -> return $ mkExpr accessForeachVector (ForeachVectorArgs vType vDim fn)
-    _ -> return $ mkExpr accessForeachVector (ForeachVectorArgs vType vDim fn)
+rewriteForeachVector (ForeachVectorArgs vType vDim fn) =
+  logCompilerSection2 MaxDetail "rewrite-foreachVector" $ do
+    vType' <- forceThunk vType
+    case vType' of
+      IVectorType vElem _vDim -> do
+        vElem' <- forceThunk vElem
+        case vElem' of 
+          (ITensorType tElem tDims) -> do
+            let args = ForeachTensorArgs tElem vDim tDims fn
+            rewriteForeachTensor args
+          _ -> return $ mkExpr accessForeachVector (ForeachVectorArgs vType vDim fn)
+      _ -> return $ mkExpr accessForeachVector (ForeachVectorArgs vType vDim fn)
 
 logRewrite ::
   (MonadNormBuiltin m, HasRatType ForcedValue Thunk builtin, BuiltinHasForeach builtin, PrintableBuiltin builtin) =>
