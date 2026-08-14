@@ -623,7 +623,7 @@ rewriteForeachVector (ForeachVectorArgs vType vDim fn) =
     case vType' of
       IVectorType vElem _vDim -> do
         vElem' <- forceThunk vElem
-        case vElem' of 
+        case vElem' of
           (ITensorType tElem tDims) -> do
             let args = ForeachTensorArgs tElem vDim tDims fn
             rewriteForeachTensor args
