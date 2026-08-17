@@ -1,5 +1,8 @@
-{
-  "name": "Marabou",
-  "run": "vehicle verify --specification spec.vcl --network f:fake.onnx --solver Marabou",
-  "needs": ["spec.vcl", "fake.onnx"]
-}
+[
+  {
+  "name": "error",
+  "run": "vehicle verify --specification spec.vcl --network f:fake.onnx --solver unknown",
+  "needs": ["spec.vcl", "fake.onnx"],
+  "ignore": {"lines": ".*/unknown"}
+  }
+]

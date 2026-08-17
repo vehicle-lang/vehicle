@@ -93,9 +93,9 @@ for the ``verify`` command when ``specification`` is a ``.vcl`` file.
 
 .. option:: --solver, -v
 
-    Location of the executable for the solver. If not provided, then Vehicle
-    will search for the name of the executable in the ``PATH`` environment variable.
-    Any VNN-LIB 2.0 compatible solver is supported + :code:`Marabou`.
+    Location of the executable for the solver. Alternatively, if only the executable name is provided
+    then Vehicle will search for it in the ``PATH`` environment variable.
+    Any solver that is compatible with VNN-LIB 2.0 is supported, as well as :code:`Marabou`.
 
 .. option:: --solver-args, -a
 

@@ -26,7 +26,6 @@ import Vehicle.Prelude.Logging (LoggingLevel (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifyOptions (..))
-import Vehicle.Verify.Solver (SolverID (..))
 
 commandLineParserTests :: TestTree
 commandLineParserTests =
@@ -135,8 +134,7 @@ verifyTests =
         "basic"
         "vehicle verify \
         \--specification queries \
-        \--solver Marabou \
-        \--solver-location bin/Marabou \
+        \--solver bin/Marabou \
         \--cache local/outputFolder"
         Options
           { globalOptions = defaultGlobalOptions,
@@ -149,8 +147,7 @@ verifyTests =
                       networkLocations = mempty,
                       datasetLocations = mempty,
                       parameterValues = mempty,
-                      solverID = Marabou,
-                      solverLocation = Just "bin/Marabou",
+                      solverExecutable = "bin/Marabou",
                       verificationCache = Just "local/outputFolder",
                       solverExtraArgs = Nothing,
                       noSatPrint = False
@@ -173,8 +170,7 @@ verifyTests =
                       networkLocations = Map.fromList [("f", "test/myNetwork.onnx")],
                       datasetLocations = mempty,
                       parameterValues = mempty,
-                      solverID = Marabou,
-                      solverLocation = Nothing,
+                      solverExecutable = "Marabou",
                       verificationCache = Nothing,
                       solverExtraArgs = Nothing,
                       noSatPrint = False
@@ -204,8 +200,7 @@ verifyTests =
                       networkLocations = Map.fromList [("f1", "test/myNetwork1.onnx"), ("f2", "test/myNetwork2.onnx")],
                       datasetLocations = Map.fromList [("d", "test/myDataset.idx")],
                       parameterValues = Map.fromList [("p", "7.3")],
-                      solverID = Marabou,
-                      solverLocation = Nothing,
+                      solverExecutable = "Marabou",
                       verificationCache = Nothing,
                       solverExtraArgs = Just "--verbose=True",
                       noSatPrint = True

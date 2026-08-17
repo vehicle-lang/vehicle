@@ -1,0 +1,4 @@
+Could not locate the solver either at the location:
+  /tmp/error-0f9b5ee83cb88f03/unknown
+or as an executable named 'unknown' on the system PATH.
+Please either provide the path to the solver or add it to the PATH environment variable.

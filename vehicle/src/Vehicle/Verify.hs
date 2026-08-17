@@ -107,7 +107,7 @@ locateSolver solverExecutable = do
     if "Marabou" `isInfixOf` solverPath
       then return $ marabouSolver solverExecutable
       else
-        if "TestVerifier" `isInfixOf` solverPath
+        if "testVerifier" `isInfixOf` solverPath
           then return $ testSolver solverExecutable
           else do
             solverName <- do

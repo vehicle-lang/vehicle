@@ -252,7 +252,7 @@ propertyCompleteText VerificationSettings {..} propertyStatus numberOfQueries qu
               let witnessText = if negated then "counterexample" else "witness"
               case queryResult of
                 UnSAT -> (Just negated, nameOfSolver <+> "proved no" <+> witnessText <+> "exists")
-                SAT Nothing -> (Just (not negated), nameOfSolver <+> "found no" <> witnessText)
+                SAT Nothing -> (Just (not negated), nameOfSolver <+> "found no" <+> witnessText)
                 SAT (Just assignment) -> do
                   let mainResult = nameOfSolver <+> "found a" <+> witnessText
                   let witnessResult = if noSatPrint then "" else line <> indent 6 (prettyUserVariableAssignment assignment)
