@@ -81,7 +81,7 @@ jobs:
           key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
 
       - name: 🛠️ Install OCaml
-        uses: ocaml/setup-ocaml@v3.7.0
+        uses: ocaml/setup-ocaml@v3.7.1
         with:
           ocaml-compiler: ${{ matrix.ocaml.version }}
 
