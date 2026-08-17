@@ -18,6 +18,15 @@
 * The implementation of quantifier search has changed slightly so that samples returned by `Sampler` classes
   are no longer aggregated by the implementation `reduceConjunction` provided by the logic but instead the maximum value is taken.
 
+### Solver backend
+
+* BREAKING: removed the `--verifierLocation` command-line option from both the `vehicle verify` CLI command and the `verify` method in the Python bindings.
+  Instead, you can now pass the file path directly to the `--verifier` argument. Have also renamed the `--verifier` option to `--solver`.
+  The old behaviour of Vehicle searching for the verifier via the PATH environment variable is still present.
+  Therefore if `Marabou` is on your system path, you can pass either `--solver Marabou` or `--solver my/path/to/Marabou` and either should work.
+
+* Added support for any VNN-LIB 2.0 compatible solver. Simply pass a reference to the exectuable via the `--solver` argument.
+
 ### ITP backends
 
 * Fixed bug where the Isabelle backend mis-compiled declarations referencing `@network`, `@dataset`, or `@parameter` resources (#1195).

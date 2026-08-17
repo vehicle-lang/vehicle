@@ -1165,10 +1165,10 @@ supportedNetworkTypeDescription =
     <> "where 'a_i' and 'b_i' are all constants at compile time."
 
 multipleNetworkErrorMessages :: Doc a -> CompleteNamedBoundCtx -> [(Name, Thunk Builtin)] -> Doc a
-multipleNetworkErrorMessages verifier ctx networkNames = do
+multipleNetworkErrorMessages solver ctx networkNames = do
   let prettyApp (n, v) = pretty n <+> prettyFriendly (WithContext v ctx)
   "The"
-    <+> verifier
+    <+> solver
     <+> "currently doesn't support properties that involve"
     <+> "multiple network applications."
     <> line

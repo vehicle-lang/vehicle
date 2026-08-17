@@ -1,4 +1,4 @@
-module Vehicle.Verify.QueryFormat.VNNLib where
+module Vehicle.Verify.QueryFormat.VNNLIB where
 
 import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -14,7 +14,7 @@ import Vehicle.Verify.QueryFormat.Interface
 --------------------------------------------------------------------------------
 -- Marabou query format
 
--- | The query format accepted by the Marabou verifier.
+-- | The query format accepted by the Marabou solver.
 vnnlibQueryFormat :: QueryFormat
 vnnlibQueryFormat =
   QueryFormat
@@ -30,7 +30,7 @@ outputFormat :: ExternalOutputFormat
 outputFormat =
   ExternalOutputFormat
     { formatName = pretty VNNLibQueries,
-      formatVersion = Nothing,
+      formatVersion = Just vnnlibVersion,
       commentStyle = Line lineComment,
       emptyLines = True
     }

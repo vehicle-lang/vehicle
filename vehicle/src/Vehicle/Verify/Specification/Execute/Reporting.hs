@@ -34,8 +34,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Tensor (prettyTensor)
 import Vehicle.Verify.Core
+import Vehicle.Verify.Solver as Core
 import Vehicle.Verify.Specification.Status
-import Vehicle.Verify.Verifier.Core as Core
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -44,9 +44,8 @@ import Vehicle.Verify.Verifier.Core as Core
 -- Mechanism for reporting events that happen during execution of a verification plan
 
 data VerificationSettings = VerificationSettings
-  { verifier :: Verifier,
-    verifierExecutable :: VerifierExecutable,
-    verifierExtraArgs :: [String],
+  { solver :: Solver,
+    solverExtraArgs :: [String],
     specificationCache :: FilePath,
     noSatPrint :: Bool
   }
@@ -54,7 +53,7 @@ data VerificationSettings = VerificationSettings
 class (Monad m, MonadReader VerificationSettings m) => MonadProgressReporter m where
   reportMultiProperty :: PropertyName -> m () -> m ()
   reportProperty :: PropertyAddress -> Int -> m PropertyStatus -> m PropertyStatus
-  reportQuery :: QueryAddress -> m (Either VerifierError (QueryResult UserVariableAssignment)) -> m (Either VerifierError (QueryResult UserVariableAssignment))
+  reportQuery :: QueryAddress -> m (Either SolverError (QueryResult UserVariableAssignment)) -> m (Either SolverError (QueryResult UserVariableAssignment))
 
 {-
 instance (MonadProgressReporter m) => MonadProgressReporter (ReaderT a m) where
@@ -102,7 +101,7 @@ instance ToJSON MultiPropertySummary
 
 makeMultiPropertyStatus :: PropertyStatus -> MultiPropertySummary
 makeMultiPropertyStatus status = case status of
-  PropertyErrored (_, VerifierTimedOut) -> mempty {numberTimedOut = 1}
+  PropertyErrored (_, SolverTimedOut) -> mempty {numberTimedOut = 1}
   PropertyErrored _ -> mempty {numberErrored = 1}
   _
     | isVerified status -> mempty {numberVerified = 1}
@@ -244,7 +243,7 @@ propertyCompleteText VerificationSettings {..} propertyStatus numberOfQueries qu
     closeProgressBar progressBar
 
   -- Print result to command line
-  let verifierName = pretty (verifierID verifier)
+  let nameOfSolver = pretty $ solverName solver
   let (verified, evidenceText) = case propertyStatus of
         PropertyCompleted status -> do
           case status of
@@ -252,15 +251,15 @@ propertyCompleteText VerificationSettings {..} propertyStatus numberOfQueries qu
             NonTrivial (negated, queryResult) -> do
               let witnessText = if negated then "counterexample" else "witness"
               case queryResult of
-                UnSAT -> (Just negated, verifierName <+> "proved no" <+> witnessText <+> "exists")
-                SAT Nothing -> (Just (not negated), verifierName <+> "found no" <> witnessText)
+                UnSAT -> (Just negated, nameOfSolver <+> "proved no" <+> witnessText <+> "exists")
+                SAT Nothing -> (Just (not negated), nameOfSolver <+> "found no" <> witnessText)
                 SAT (Just assignment) -> do
-                  let mainResult = verifierName <+> "found a" <+> witnessText
+                  let mainResult = nameOfSolver <+> "found a" <+> witnessText
                   let witnessResult = if noSatPrint then "" else line <> indent 6 (prettyUserVariableAssignment assignment)
                   (Just (not negated), mainResult <> witnessResult)
         PropertyErrored (_, err) -> do
           let cause = if isTimeoutError err then "timed out" else "errored"
-          (Nothing, verifierName <+> cause)
+          (Nothing, nameOfSolver <+> cause)
   writeStdoutLn (layoutAsText $ "    result: " <> pretty (statusSymbol verified) <+> "-" <+> evidenceText)
 
 statusSymbol :: Maybe Bool -> String
@@ -355,8 +354,8 @@ instance (MonadStdIO m, MonadReader VerificationSettings m) => MonadProgressRepo
     case errorOrResult of
       Right result -> outputEvent $ QueryFinish queryAddress (querySatisified result)
       Left err -> do
-        verifierUsed <- asks verifier
-        outputEvent $ QueryError queryAddress (layoutAsString $ verificationErrorMessage $ convertVerificationError verifierUsed queryAddress err)
+        solverUsed <- asks solver
+        outputEvent $ QueryError queryAddress (layoutAsString $ verificationErrorMessage $ convertVerificationError solverUsed queryAddress err)
     return errorOrResult
 
 instance MonadTrans JSONReporterT where

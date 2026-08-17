@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle verify --specification spec.vcl --network f:fake.onnx --verifier Marabou --verifier-location missing.exe",
+  "run": "vehicle verify --specification spec.vcl --network f:fake.onnx --solver Marabou",
   "needs": ["spec.vcl", "fake.onnx"]
 }

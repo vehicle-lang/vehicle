@@ -113,9 +113,9 @@ compileToQueryFormat ::
   m ()
 compileToQueryFormat QueryOptions {..} typedProg = do
   logCompilerPass Solver $ do
-    let verifier = queryFormats queryFormatID
+    let solver = queryFormats queryFormatID
     let resources = Resources specification networkLocations datasetLocations parameterValues
-    compileToQueries verifier typedProg resources outputFolder
+    compileToQueries solver typedProg resources outputFolder
 
 compileToITP ::
   (MonadCompile m, MonadStdIO m) =>

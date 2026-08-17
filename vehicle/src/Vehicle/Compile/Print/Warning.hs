@@ -30,7 +30,7 @@ instance Pretty SummarisedCompileWarning where
         <+> quotePretty propertyName
         <+> "was found to evaluate to"
         <+> quotePretty status
-        <+> "without needing to call the verifier. This usually indicates a fault with either the"
+        <+> "without needing to call the solver. This usually indicates a fault with either the"
         <+> "specification or any external datasets used."
     UnderSpecifiedProblemSpaceVariablesSummary propertyName unsolvedVars -> do
       "In property"
@@ -53,7 +53,7 @@ instance Pretty SummarisedCompileWarning where
         <> "In order to provide support, Vehicle has automatically converted the"
           <+> "strict inequalities to non-strict inequalites."
           <+> "This is not sound, but errors will be at most the floating point epsilon"
-          <+> "used by the verifier, which is usually very small (e.g. 1e-9)."
+          <+> "used by the solver, which is usually very small (e.g. 1e-9)."
           <+> "However, this may lead to unexpected behaviour (e.g. loss of the law of excluded middle)."
         <> line
         <> line

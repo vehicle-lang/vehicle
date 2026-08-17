@@ -26,7 +26,7 @@ import Vehicle.Prelude.Logging (LoggingLevel (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
 import Vehicle.Verify (VerifyOptions (..))
-import Vehicle.Verify.Verifier (VerifierID (..))
+import Vehicle.Verify.Solver (SolverID (..))
 
 commandLineParserTests :: TestTree
 commandLineParserTests =
@@ -135,8 +135,8 @@ verifyTests =
         "basic"
         "vehicle verify \
         \--specification queries \
-        \--verifier Marabou \
-        \--verifier-location bin/Marabou \
+        \--solver Marabou \
+        \--solver-location bin/Marabou \
         \--cache local/outputFolder"
         Options
           { globalOptions = defaultGlobalOptions,
@@ -149,10 +149,10 @@ verifyTests =
                       networkLocations = mempty,
                       datasetLocations = mempty,
                       parameterValues = mempty,
-                      verifierID = Marabou,
-                      verifierLocation = Just "bin/Marabou",
+                      solverID = Marabou,
+                      solverLocation = Just "bin/Marabou",
                       verificationCache = Just "local/outputFolder",
-                      verifierExtraArgs = Nothing,
+                      solverExtraArgs = Nothing,
                       noSatPrint = False
                     }
           },
@@ -161,7 +161,7 @@ verifyTests =
         "vehicle verify \
         \--specification test/spec.vcl \
         \--network f:test/myNetwork.onnx \
-        \--verifier Marabou"
+        \--solver Marabou"
         Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
@@ -173,10 +173,10 @@ verifyTests =
                       networkLocations = Map.fromList [("f", "test/myNetwork.onnx")],
                       datasetLocations = mempty,
                       parameterValues = mempty,
-                      verifierID = Marabou,
-                      verifierLocation = Nothing,
+                      solverID = Marabou,
+                      solverLocation = Nothing,
                       verificationCache = Nothing,
-                      verifierExtraArgs = Nothing,
+                      solverExtraArgs = Nothing,
                       noSatPrint = False
                     }
           },
@@ -190,8 +190,8 @@ verifyTests =
         \--network f1:test/myNetwork1.onnx \
         \--parameter p:7.3 \
         \--network f2:test/myNetwork2.onnx \
-        \--verifier Marabou \
-        \--verifier-args --verbose=True \
+        \--solver Marabou \
+        \--solver-args --verbose=True \
         \--no-sat-print"
         Options
           { globalOptions = defaultGlobalOptions,
@@ -204,10 +204,10 @@ verifyTests =
                       networkLocations = Map.fromList [("f1", "test/myNetwork1.onnx"), ("f2", "test/myNetwork2.onnx")],
                       datasetLocations = Map.fromList [("d", "test/myDataset.idx")],
                       parameterValues = Map.fromList [("p", "7.3")],
-                      verifierID = Marabou,
-                      verifierLocation = Nothing,
+                      solverID = Marabou,
+                      solverLocation = Nothing,
                       verificationCache = Nothing,
-                      verifierExtraArgs = Just "--verbose=True",
+                      solverExtraArgs = Just "--verbose=True",
                       noSatPrint = True
                     }
           }

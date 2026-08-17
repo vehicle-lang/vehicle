@@ -14,7 +14,7 @@ import Vehicle.Prelude.Supply
 --------------------------------------------------------------------------------
 -- Triviality
 
--- | A single individual query for a verifier. Is either a trivial query or
+-- | A single individual query for a solver. Is either a trivial query or
 -- holds arbitrary data.
 data MaybeTrivial a
   = Trivial !Bool

@@ -546,7 +546,7 @@ Ensure that you have the source code and that you have installed GHC and Cabal.
 
 #### Installing from PyPI
 
-If you only need the published Python package (for example to compile queries for verifiers), install it directly from PyPI:
+If you only need the published Python package (for example to compile queries for solvers), install it directly from PyPI:
 
 ```sh
 pip install vehicle_lang
