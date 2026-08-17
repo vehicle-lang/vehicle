@@ -1,5 +1,5 @@
 {
-  "name": "Marabou",
+  "name": "TestVerifier",
   "run": "vehicle verify -s spec.vcl -v testVerifier --network f:fake.onnx --property p --solver-args='sat 'f_X[0]=0.2,f_X[1]=0.2,f_Y[0]=0.3,f_Y[1]=3.0''",
   "needs": ["spec.vcl", "fake.onnx", "../../../../testVerifier"],
   "external": ["TestVerifier"]

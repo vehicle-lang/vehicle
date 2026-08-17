@@ -105,10 +105,10 @@ locateSolver solverExecutable = do
 
   solver <-
     if "Marabou" `isInfixOf` solverPath
-      then return $ marabouSolver solverExecutable
+      then return $ marabouSolver solverPath
       else
         if "testVerifier" `isInfixOf` solverPath
-          then return $ testSolver solverExecutable
+          then return $ testSolver solverPath
           else do
             solverName <- do
               solverNameOutput <- liftIO $ readProcess solverExecutable ["--name"] ""

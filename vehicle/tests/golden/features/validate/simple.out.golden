@@ -1,6 +1,6 @@
 Verifying properties:
   trivial [........................................................] 0/1 queries  trivial [========================================================] 1/1 queries
-    result: [92m🗸[m - TestVerifier found a witness
+    result: [92m🗸[m - TestSolver found a witness
       
 {
   "tag": "Verified"
