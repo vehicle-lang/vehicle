@@ -111,7 +111,7 @@ convertVerificationError Solver {..} (QueryAddress propertyAddress queryID) = \c
 # ifdef mingw32_HOST_OS
     exitFailureReason exitValue = VerificationErrorAction
         { reproducerIsUseful = True
-        , verificationErrorMessage = basicExitFailureMessage solverID exitValue <+>
+        , verificationErrorMessage = basicExitFailureMessage solverName exitValue <+>
             "Vehicle is unable to interpret this error code on Windows but the most common reasons" <+>
             "are the" <+> solverDoc <+> "either ran out of memory or performed an illegal instruction."
         }
