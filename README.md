@@ -16,7 +16,7 @@ its third input.
 
 These specifications can then automatically be compiled down to loss functions to be
 used when training your network.
-After training, the same specification can be compiled down to low-level neural network verifiers such as Marabou which either prove that the specification holds or produce a counter-example. Such a proof is far better than simply testing, as you can prove that
+After training, the same specification can be compiled down to queries for low-level neural network solvers such as Marabou which either prove that the specification holds or produce a counter-example. Such a proof is far better than simply testing, as you can prove that
 the specification holds for _all_ inputs.
 Verified specifications can also be exported to interactive theorem provers (ITPs)
 such as Agda.
@@ -45,7 +45,7 @@ and the corresponding output of the Vehicle compiler can be found [here](https:/
 
 ## Support
 
-If you are interested in adding support for a particular format/verifier/ITP
+If you are interested in adding support for a particular format or tool
 then open an issue on the [Issue Tracker](https://github.com/wenkokke/vehicle/issues)
 to discuss it with us.
 
@@ -57,8 +57,9 @@ to discuss it with us.
 
 - [IDX](http://yann.lecun.com/exdb/mnist/)
 
-#### Verifier backends
+#### Solver backends
 
+- Any [VNNLIB 2.0](https://www.vnnlib.org/) compatible solver
 - [Marabou](https://github.com/NeuralNetworkVerification/Marabou)
 
 #### Interactive Theorem Prover backends
@@ -72,4 +73,4 @@ to discuss it with us.
 - [Vehicle ITP backend (in ICFP'26)]([https://arxiv.org/abs/2605.02790])
 - [Vehicle tool paper (in FCSD'25)](https://drops.dagstuhl.de/entities/volume/LIPIcs-volume-337)
 - [Vehicle's type checker (in CPP'23)](https://laiv.uk/wp-content/uploads/2022/12/vehicle.pdf)
-- [Vehicle's compilation to verifier queries](https://arxiv.org/abs/2402.01353)
+- [Vehicle's compilation to VNN-LIB queries](https://arxiv.org/abs/2402.01353)

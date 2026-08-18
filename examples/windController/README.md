@@ -23,7 +23,7 @@ The controller can be verified against the specification by running the followin
 vehicle verify \
   --specification examples/windController/windController.vcl \
   --network controller:examples/windController/controller.onnx \
-  --verifier Marabou \
+  --solver Marabou \
   --cache examples/windController/verificationResult
 ```
 

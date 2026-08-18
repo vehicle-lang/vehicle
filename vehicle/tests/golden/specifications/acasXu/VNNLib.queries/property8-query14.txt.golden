@@ -2,6 +2,7 @@
 ; and should not be modified manually!
 ; Metadata:
 ;  - Vehicle version: 0.26.1+dev
+;  - VNN-LIB version: 2.0
 
 (vnnlib-version <2.0>)
 

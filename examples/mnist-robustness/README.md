@@ -43,7 +43,7 @@ vehicle verify \
   --parameter epsilon:0.005 \
   --dataset trainingImages:examples/mnist-robustness/t2-images.idx \
   --dataset trainingLabels:examples/mnist-robustness/t2-labels.idx \
-  --verifier Marabou
+  --solver Marabou
 ```
 
 Note that the epsilon value can be changed, but the memory requirements of
