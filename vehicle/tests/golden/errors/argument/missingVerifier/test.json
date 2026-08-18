@@ -1,8 +1,8 @@
 [
   {
   "name": "error",
-  "run": "vehicle verify --specification spec.vcl --network f:fake.onnx --solver unknown",
+  "run": "vehicle verify --specification spec.vcl --network f:fake.onnx --solver unknownVerifier",
   "needs": ["spec.vcl", "fake.onnx"],
-  "ignore": {"lines": ".*/unknown"}
+  "ignore": {"lines": ".*unknownVerifier"}
   }
 ]
