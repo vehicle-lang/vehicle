@@ -336,17 +336,19 @@ data VectorValue
   | VVectorDataset Identifier
   | VVectorLiteral (VectorLitArgs (Thunk Builtin))
   | VVectorIf (IfArgs (Thunk Builtin))
+  | VVectorAt (AtVectorArgs (Thunk Builtin))
   | VVectorForeach (ForeachVectorArgs (Thunk Builtin))
   | VVectorRecordAcc (Thunk Builtin) (Thunk Builtin) FieldName (UnforcedSpine Builtin)
 
-builtinToVectorValue :: Builtin -> UnforcedSpine Builtin -> VectorValue
+builtinToVectorValue :: (HasCallStack) => Builtin -> UnforcedSpine Builtin -> VectorValue
 builtinToVectorValue b spine = case VBuiltin b spine of
   (getExpr accessVecLit -> Just args) -> VVectorLiteral args
   (getExpr accessIf -> Just args) -> VVectorIf args
   (getExpr accessForeachVector -> Just args) -> VVectorForeach args
-  _ -> developerError $ "ill-typed Vector expression:" <+> pretty b
+  (getExpr accessAtVector -> Just args) -> VVectorAt args
+  _ -> developerError $ "ill-typed Vector builtin:" <+> pretty b <+> prettyVerbose spine
 
-toVectorValue :: ForcedValue Builtin -> VectorValue
+toVectorValue :: (HasCallStack) => ForcedValue Builtin -> VectorValue
 toVectorValue value = case value of
   VBoundVar v spine -> VVectorBoundVar v spine
   VFreeVar ident [] -> VVectorDataset ident
