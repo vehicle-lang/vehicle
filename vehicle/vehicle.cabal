@@ -199,10 +199,11 @@ library
   other-modules:
     Paths_vehicle
     Vehicle.Backend.ITP.Core
-    Vehicle.Backend.Loss
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
     Vehicle.Backend.Loss.Domain.PurifyAssertion
+    Vehicle.Backend.LossSearch
+    Vehicle.Backend.LossTraining
     Vehicle.Backend.Solver
     Vehicle.Backend.Solver.QueryCompilation
     Vehicle.Backend.Solver.QueryCompilation.Core

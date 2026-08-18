@@ -59,7 +59,7 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Syntax.External.Print as External (printTree)
 import Vehicle.Syntax.Internal.Print as Internal (printTree)
 import Vehicle.Verify.QueryFormat.Interface (QueryAssertion (..))
-import Vehicle.Verify.Specification (CompilationStep (..))
+import Vehicle.Verify.Specification (CompilationStep (..), QuerySet (..))
 
 --------------------------------------------------------------------------------
 -- Public methods
@@ -259,6 +259,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags ((a, b) `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   StrategyFor tags (Either a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   StrategyFor tags (Map a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
+  StrategyFor tags (QuerySet a `In` ctx) = 'Functor (StrategyFor tags (DisjunctAll a `In` ctx))
   -------------------------------
   -- Type-checking constraints --
   -------------------------------
@@ -1063,6 +1064,14 @@ instance
       let x' = prettyUsing @('Branch rest1 rest2) (x, ctx)
       let y' = prettyUsing @('Branch rest1 rest2) (y, ctx)
       "If" <+> c' <+> "Then" <+> parens x' <> "Else" <+> parens y'
+
+instance
+  (PrettyUsing rest (DisjunctAll a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (QuerySet a `In` ctx)
+  where
+  prettyUsing (qs, ctx) = case qs of
+    QuerySet negated xs -> do
+      "Negated:" <+> pretty negated <+> prettyUsing @rest (xs, ctx)
 
 instance
   (PrettyUsing rest (a `In` ctx)) =>

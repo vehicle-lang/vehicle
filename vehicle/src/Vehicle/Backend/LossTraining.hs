@@ -1,5 +1,6 @@
-module Vehicle.Backend.Loss
+module Vehicle.Backend.LossTraining
   ( convertToLossTensors,
+    convertMultiProperty,
   )
 where
 
