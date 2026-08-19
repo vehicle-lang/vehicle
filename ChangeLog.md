@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## v0.26.1
+## v0.27.0
 
 ### General
 
