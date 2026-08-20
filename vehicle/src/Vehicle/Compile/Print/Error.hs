@@ -955,7 +955,7 @@ formatCompileError = \case
                 <+> missingBounds unboundedInputs
                 <+> "for tensor"
                 <+> squotes (prettyFriendly (WithContext inputValue ctx))
-          MultiModal _ -> developerError "MultiModal IO is not implmeneted yet"
+          MultiModal _ _ -> developerError "MultiModal IO is not implmeneted yet"
   UnknownDifferentiableLogic name possibleNames ->
     VehicleUserError
       { provenance = Nothing,

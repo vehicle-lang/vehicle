@@ -16,6 +16,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
+import Data.Text (isSuffixOf)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (AdjacencyGraph, emptyAdjacencyGraph, insertEdge, insertNode, topologicalSort)
 import Vehicle.Compile.Error
@@ -102,12 +103,15 @@ checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
             let declsToCompile = Set.fromList requestedDeclNames
             \d -> Set.member (nameOf $ identifierOf d) declsToCompile
 
+  let isComparisonInstanceDecl :: Decl Builtin -> Bool
+      isComparisonInstanceDecl (DefFunction _ name (FunctionDecl _ (Just (AnnInstance {}))) _ _) = "HasComparison" `isSuffixOf` identifierName name
+      isComparisonInstanceDecl _ = True
+
   return $ \d ->
     -- Keep the declarations the users requested
     isRootDecl d
-      ||
-      -- Keep tensor coercions as they may be inserted by Loss or Solver backends.
-      isTensorCoercionDecl d
+      || isTensorCoercionDecl d -- Keep tensor coercions as they may be inserted by Loss or Solver backends.
+      || isComparisonInstanceDecl d -- Keep comparison instances around for multimodal networks
 
 printPropertyTypes ::
   (MonadStdIO m, MonadCompile m, PrintableBuiltin builtin) =>
