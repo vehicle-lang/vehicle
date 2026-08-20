@@ -26,7 +26,7 @@ The controller can be verified against the specification by running the followin
 vehicle verify \
   --specification examples/windController-newStyle/windController.vcl \
   --network controller:examples/windController-newStyle/controller.onnx \
-  --verifier Marabou \
+  --solver Marabou \
   --cache examples/windController-newStyle/verificationResult
 ```
 

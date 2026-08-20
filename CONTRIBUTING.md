@@ -504,7 +504,7 @@ level is set because its simply too verbose. This includes:
 2. If you want to see the current contexts attached lambda `Value` constructors, in
    `Vehicle.Compile.Descope.descopeNormExpr` there is some disabled code that attaches that information to `prettyVerbose`.
 
-#### Installing from source
+#### Installing compiler from source
 
 Ensure that you have the source code and that you have installed GHC and Cabal.
 
@@ -540,26 +540,9 @@ Ensure that you have the source code and that you have installed GHC and Cabal.
    vehicle --version
    ```
 
-   This should print `0.26.1`.
+   This should print `0.27.0`.
 
 ### Building the Vehicle Python bindings
-
-#### Installing from PyPI
-
-If you only need the published Python package (for example to compile queries for verifiers), install it directly from PyPI:
-
-```sh
-pip install vehicle_lang
-```
-
-Loss backends are optional extras so that you only install the deep-learning frameworks you actually need. Add the extras when syncing an environment or installing on CI:
-
-```sh
-pip install "vehicle_lang[pytorch]"
-pip install "vehicle_lang[tensorflow]"
-```
-
-It is safe to mix extras—`pip install "vehicle_lang[test,pytorch]"` installs the pytest stack plus the PyTorch backend in one go.
 
 #### Dependencies
 
@@ -645,7 +628,7 @@ There are three test suites for the Vehicle Python bindings:
 - [The loss function tests](#the-loss-function-tests)
 - [The pygments tests](#the-pygments-tests)
 
-##### Running the full suite for one interpreter
+##### Running the test suite for one Python version
 
 After syncing the project (for example via `uv sync --extra test --extra pygments --extra pytorch`), run every suite for the currently pinned interpreter with:
 
@@ -743,14 +726,14 @@ Follow the Python setup instructions above and then:
   uv build
   ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.26.1-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.27.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.26.1-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.27.0-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
@@ -795,7 +778,7 @@ uv run --extra wheel scripts/build-wheel.sh
    vehicle --version
    ```
 
-   This should print `0.26.1`.
+   This should print `0.27.0`.
 
 4. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -951,11 +934,11 @@ The procedure to create a new release is:
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.26.1-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.26.1-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.26.1-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.26.1-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.26.1-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.27.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.27.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.27.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.27.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.27.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -976,7 +959,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.26.1>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.27.0>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

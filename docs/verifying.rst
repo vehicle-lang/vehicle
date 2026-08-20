@@ -4,7 +4,7 @@ Verifying a specification
 Given a suitable specification, Vehicle can be used to check whether a particular
 neural network satisfies it.
 
-To do this, Vehicle relies on a type of tool called a *neural network verifier*.
+To do this, Vehicle relies on a type of tool called a *neural network solver*.
 As input, such tools take in a *query*, a set
 of equality and inquality constraints relating the inputs and outputs of the neural network.
 They then attempt to find to an assignment to the inputs that satisfy all the constraints
@@ -17,8 +17,8 @@ Consequently they are very difficult to write or read, and a single high-level
 property often needs to be split up into many queries in a non-obvious manner.
 
 However, Vehicle is capable of generating queries automatically from a specification
-and verifying them using neural network verifiers.
-Using the satisfiability results from the verifiers, Vehicle can then reconstruct the
+and verifying them using neural network solvers.
+Using the satisfiability results from the solvers, Vehicle can then reconstruct the
 truth status for the high-level original properties as well as witnesses and counter-examples.
 
 Simple verification
@@ -37,8 +37,8 @@ the value of the ``specification`` argument.
     --dataset trainingImages:my/project/mnist-trainingImages.idx \
     --dataset trainingLabels:my/project/mnist-trainingLabels.idx \
     --parameter epsilon:0.1 \
-    --verifier Marabou \
-    --verifier-args "--seed=1"
+    --solver Marabou \
+    --solver-args "--seed=1"
 
 The table below contains the full list of command line arguments available
 for the ``verify`` command when ``specification`` is a ``.vcl`` file.
@@ -91,19 +91,15 @@ for the ``verify`` command when ``specification`` is a ``.vcl`` file.
 
     Can be used multiple times to provide multiple parameters.
 
-.. option:: --verifier, -v
+.. option:: --solver, -v
 
-    Which verifier should be used to perform the verification.
-    At the moment the only supported option is :code:`Marabou`.
+    Location of the executable for the solver. Alternatively, if only the executable name is provided
+    then Vehicle will search for it in the ``PATH`` environment variable.
+    Any solver that is compatible with VNN-LIB 2.0 is supported, as well as :code:`Marabou`.
 
-.. option:: --verifier-location, -l
+.. option:: --solver-args, -a
 
-    Location of the executable for the verifier. If not provided, then Vehicle
-    will search for the name of the executable in the ``PATH`` environment variable.
-
-.. option:: --verifier-args, -l
-
-    Allows extra arguments to be passed directly to the verifier.
+    Allows extra arguments to be passed directly to the solver.
 
 .. option:: --cache, -c
 
@@ -133,13 +129,10 @@ The ``vehicle_lang.verify`` helper exposes the same functionality programmatical
   result = vcl.verify(
      specification="spec.vcl",
      networks={"controller": "controller.onnx"},
-     verifier=vcl.Verifier.Marabou,
+     solver="Marabou",
   )
 
 All keyword arguments map directly to the CLI flags documented above, and the helper raises ``VehicleError`` if the underlying executable reports a failure. This makes it easy to embed verification in integration tests without invoking subprocesses manually.
-
-.. autoclass:: vehicle_lang.Verifier
-  :members:
 
 .. autofunction:: vehicle_lang.verify
 
@@ -178,7 +171,7 @@ Next, for each property named ``<property>`` in the original specification
 the cache initially contains the following files:
 
 - ``<property>-query1.txt``, ``<property>-query2.txt``, etc. - these files are the
-  list of queries that need to passed to the verifier to ascertain whether the
+  list of queries that need to passed to the solver to ascertain whether the
   property holds or not.
 
 - ``<property>.vcl-plan`` - this file contains all the information necessary
@@ -191,7 +184,7 @@ After verification, the cache will also contain the following files:
   whether the property was found to be true or false.
 
 - ``<property>-assignments`` - this folder contains `.idx` files that store
-  any assignments found by the verifier for the infinite quantified variables in
+  any assignments found by the solver for the infinite quantified variables in
   the original specification.
   These assignments represent either counter-examples to ``forall`` statements or
   witnesses to ``exists`` statements.
@@ -228,8 +221,8 @@ The full list of relevant command line options are:
 
 Other arguments are the same as those described in ``verify`` mode above.
 
-Calling the verifier
-++++++++++++++++++++
+Calling the solver
+++++++++++++++++++
 
 It is possible to use the ``verify`` command to verify a specification via its
 pre-generated verification cache.
@@ -242,7 +235,7 @@ the original ``.vcl`` file, e.g.
 
   vehicle verify \
     --specification my/project/robustness-cache
-    --verifier Marabou
+    --solver Marabou
 
 The full list of available command line arguments are as follows:
 
@@ -250,11 +243,7 @@ The full list of available command line arguments are as follows:
 
     The location of the verification cache previously generated by Vehicle.
 
-.. option:: --verifier, -v
-
-    See description above for ``verify`` mode.
-
-.. option:: --verifier-location, -l
+.. option:: --solver, -v
 
     See description above for ``verify`` mode.
 
@@ -290,7 +279,7 @@ otherwise the ``validate`` command will exit with an error.
 Inspecting the queries
 ++++++++++++++++++++++
 
-If you would like to inspect the queries for the verifier generated by Vehicle, there are
+If you would like to inspect the queries for the solver generated by Vehicle, there are
 two options:
 
   1. Call the ``compile`` command and omit the ``--output`` argument entirely
@@ -399,7 +388,7 @@ Network architecture
 
 Verifiers tend to only support certain layer types and activation functions.
 At the moment Vehicle doesn't perform any compatability checking, so please
-consult the verifier's own documentation.
+consult the solver's own documentation.
 
 Performance
 +++++++++++
@@ -420,12 +409,12 @@ How long it takes to verify a property depends on several factors:
     iii. ``or`` statements underneath a ``exists`` quantifier
 
   2. The complexity of the network. The larger the number of nodes in the
-  network, the longer it will take the verifier to run the query.
+  network, the longer it will take the solver to run the query.
   In general, networks with a small number of wide layers will be easier to
   verify than networks with a large number of narrow layers.
 
   3. How "close" the network is to satisfying each query. If a query is easily
-  satisfiable, or easily non-satisfiable then the verifier will return an
+  satisfiable, or easily non-satisfiable then the solver will return an
   answer quickly. The closer to the boundary the network lies with respect to
-  the query, the longer it will take the verifier to make a decision.
+  the query, the longer it will take the solver to make a decision.
   Unfortunately this is almost impossible to quantify to advance.

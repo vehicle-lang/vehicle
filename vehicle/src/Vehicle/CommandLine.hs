@@ -11,7 +11,6 @@ module Vehicle.CommandLine
   )
 where
 
-import Data.List (delete)
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
@@ -36,7 +35,7 @@ import Vehicle.Prelude
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..))
 import Vehicle.Validate (ValidateOptions (..))
-import Vehicle.Verify (VerifierID (..), VerifyOptions (..))
+import Vehicle.Verify (VerifyOptions (..))
 import Vehicle.Verify.QueryFormat
 
 --------------------------------------------------------------------------------
@@ -94,7 +93,7 @@ declaration = Opt "e" "declaration"
 --  - i
 --  - j
 --  - k
-verifier-location = Opt "l" "verifier-location"
+solver-location = Opt "l" "solver-location"
 module-name       = Opt "m" "module-name"
 network           = Opt "n" "network"
 output            = Opt "o" "output"
@@ -104,7 +103,7 @@ queries           = Opt "q" "queries"
 specification     = Opt "s" "specification"
 target            = Opt "t" "target"
 --  - u
-verifier          = Opt "v" "verifier"
+solver            = Opt "v" "solver"
 --  - x
 property          = Opt "y" "property"
 --  - z
@@ -251,7 +250,7 @@ compileQueryParserInfo = info (QueryTarget <$> compileQueryParser) compileQueryD
 compileQueryDescription :: InfoMod CompileOptions
 compileQueryDescription =
   progDesc
-    "Compile a specification to verifier queries."
+    "Compile a specification to VNN-LIB queries for a solver."
 
 compileQueryParser :: Parser QueryOptions
 compileQueryParser =
@@ -271,7 +270,7 @@ queryFormatParser =
     long "format"
       <> short 'f'
       <> metavar "FORMAT"
-      <> helpDoc (Just ("The query format to export to." <+> supportedOptions allVerifiersFormats))
+      <> helpDoc (Just ("The query format to export to." <+> supportedOptions allSolversFormats))
 
 --------------------------------------------------------------------------------
 -- Compile ITP mode
@@ -317,9 +316,8 @@ verifyParser =
     <*> datasetParser
     <*> parameterParser
     <*> verifyCacheParser
-    <*> verifierParser
-    <*> verifierLocationParser
-    <*> verifierExtraArgsParser
+    <*> solverParser
+    <*> solverExtraArgsParser
     <*> noSatPrintParser
 
 verifyParserInfo :: ParserInfo ModeOptions
@@ -372,11 +370,8 @@ repeatedParameterHelp = "Can be provided multiple times."
 allITPs :: [String]
 allITPs = map show (enumerate @InteractiveTheoremProverID)
 
-allVerifiers :: [String]
-allVerifiers = map show (delete TestVerifier (enumerate @VerifierID))
-
-allVerifiersFormats :: [String]
-allVerifiersFormats = map show (enumerate @QueryFormatID)
+allSolversFormats :: [String]
+allSolversFormats = map show (enumerate @QueryFormatID)
 
 allBuiltinDifferentiableLogics :: [String]
 allBuiltinDifferentiableLogics = map show (enumerate @BuiltinDifferentiableLogicID)
@@ -587,36 +582,23 @@ declarationParser =
             )
     )
 
-verifierParser :: Parser VerifierID
-verifierParser =
-  option auto $
-    long "verifier"
+solverParser :: Parser String
+solverParser =
+  strOption $
+    long "solver"
       <> short 'v'
-      <> metavar "VERIFIER"
-      <> helpDoc (Just ("Verifier to use." <+> supportedOptions allVerifiers))
+      <> metavar "FILE"
+      <> helpDoc (Just "The solver to use. Can be either a path to a solver executable or the name of a solver executable available via the system PATH environment variable.")
 
-verifierLocationParser :: Parser (Maybe FilePath)
-verifierLocationParser =
+solverExtraArgsParser :: Parser (Maybe String)
+solverExtraArgsParser =
   optional $
     strOption $
-      long "verifier-location"
-        <> short 'l'
-        <> metavar "FILE"
-        <> help
-          ( "Location of the executable for the verifier. "
-              <> "If not provided then Vehicle will search for it in the PATH "
-              <> "environment variable."
-          )
-
-verifierExtraArgsParser :: Parser (Maybe String)
-verifierExtraArgsParser =
-  optional $
-    strOption $
-      long "verifier-args"
+      long "solver-args"
         <> short 'a'
         <> metavar "STRING"
         <> help
-          "Extra arguments to pass through to the verifier when verifying each query."
+          "Extra arguments to pass through to the solver when verifying each query."
 
 noSatPrintParser :: Parser Bool
 noSatPrintParser = do

@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.26.1
+version:            0.27.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -193,7 +193,7 @@ library
     Vehicle.Validate
     Vehicle.Verify
     Vehicle.Verify.QueryFormat
-    Vehicle.Verify.Verifier
+    Vehicle.Verify.Solver
 
   other-modules:
     Paths_vehicle
@@ -333,15 +333,15 @@ library
     Vehicle.Verify.QueryFormat.Core
     Vehicle.Verify.QueryFormat.Interface
     Vehicle.Verify.QueryFormat.Marabou
-    Vehicle.Verify.QueryFormat.VNNLib
+    Vehicle.Verify.QueryFormat.VNNLIB
+    Vehicle.Verify.Solver.Marabou
+    Vehicle.Verify.Solver.Test
+    Vehicle.Verify.Solver.VNNLIB
     Vehicle.Verify.Specification
     Vehicle.Verify.Specification.Execute
     Vehicle.Verify.Specification.Execute.Reporting
     Vehicle.Verify.Specification.IO
     Vehicle.Verify.Specification.Status
-    Vehicle.Verify.Verifier.Core
-    Vehicle.Verify.Verifier.Marabou
-    Vehicle.Verify.Verifier.Test
 
   autogen-modules: Paths_vehicle
   build-depends:
@@ -385,7 +385,7 @@ library
     , vehicle-syntax
 
   if (os(linux) || os(osx))
-    -- For Verifier exit code analysis
+    -- For Solver exit code analysis
     build-depends: unix >=2.7
 
 executable vehicle

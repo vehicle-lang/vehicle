@@ -21,7 +21,7 @@ The following command verifies `property3` for the network `acasXu_1_7.onnx`:
 vehicle \
   verify \
   --specification examples/acasXu/acasXu.vcl \
-  --verifier Marabou \
+  --solver Marabou \
   --network acasXu:examples/acasXu/acasXu_1_7.onnx \
   --property property3
 ```

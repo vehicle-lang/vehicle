@@ -1,8 +1,8 @@
 Usage: vehicle verify (-s|--specification FILE) [-y|--property NAME] 
                       [-n|--network NAME:FILE] [-d|--dataset NAME:FILE] 
                       [-p|--parameter NAME:VALUE] [-c|--cache FILE]
-                      (-v|--verifier VERIFIER) [-l|--verifier-location FILE] 
-                      [-a|--verifier-args STRING] [--no-sat-print]
+                      (-v|--solver FILE) [-a|--solver-args STRING] 
+                      [--no-sat-print]
 
   Verify whether properties in a .vcl specification file are true or false.
 
@@ -32,14 +32,8 @@ Available options:
   -c,--cache FILE          The location that the verification cache for the
                            specification will be generated. If not provided then
                            no cache will be created.
-  -v,--verifier VERIFIER   Verifier to use. Supported options: 
-                             * Marabou
-  -l,--verifier-location FILE
-                           Location of the executable for the verifier. If not
-                           provided then Vehicle will search for it in the PATH
-                           environment variable.
-  -a,--verifier-args STRING
-                           Extra arguments to pass through to the verifier when
+  -v,--solver FILE         The solver to use. Can be either a path to a solver executable or the name of a solver executable available via the system PATH environment variable.
+  -a,--solver-args STRING  Extra arguments to pass through to the solver when
                            verifying each query.
   --no-sat-print           Suppress the printing of witnesses and
                            counter-examples found during verification.

@@ -5,7 +5,6 @@
 
 building.md
 releasing.md
-verifiers.md
 ```
 
 ```
