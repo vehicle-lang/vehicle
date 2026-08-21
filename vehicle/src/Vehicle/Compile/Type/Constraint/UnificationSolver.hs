@@ -307,7 +307,7 @@ solveFlexFlex info (meta1, spine1) (meta2, spine2) = do
       maybeRenaming <- invert (infoBoundCtx info) (meta1, spine1)
       case maybeRenaming of
         Nothing -> solveFlexRigid info (meta2, spine2) (VMeta meta1 spine1)
-        Just renaming -> solveFlexRigidWithRenaming (infoBoundCtx info) (meta1, spine1) renaming (VMeta meta2 spine2)
+        Just renaming -> solveFlexRigidWithRenaming (infoBoundCtx info) (meta1, spine1) renaming (Forced $ VMeta meta2 spine2)
 
 solveFlexRigid ::
   (MonadUnify builtin m) =>
@@ -321,7 +321,7 @@ solveFlexRigid info (metaID, spine) solution = do
   -- that renames the variables in `solution` to ones available to `meta`
   maybeRenaming <- invert ctx (metaID, spine)
   case maybeRenaming of
-    Just renaming -> solveFlexRigidWithRenaming ctx (metaID, spine) renaming solution
+    Just renaming -> solveFlexRigidWithRenaming ctx (metaID, spine) renaming (Forced solution)
     -- This constraint is stuck because it is not pattern; shelve
     -- it for now and hope that another constraint allows us to
     -- progress.
@@ -333,12 +333,14 @@ solveFlexRigidWithRenaming ::
   BoundCtx (Type builtin) ->
   (MetaID, UnforcedSpineWithMetas builtin) ->
   Renaming ->
-  ForcedValueWithMetas builtin ->
+  ThunkWithMetas builtin ->
   m (UnificationResult builtin)
-solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
+solveFlexRigidWithRenaming ctx (metaID, spine) renaming solution = do
   prunedSolution <-
     if useDependentMetas (Proxy @builtin)
-      then pruneMetaDependencies ctx meta solution
+      then do
+        (deps, _) <- getNormMetaDependencies metaID spine
+        pruneMetaDependencies ctx metaID deps solution
       else return solution
 
   let unnormSolution = quote mempty (boundCtxLv ctx) prunedSolution
@@ -350,11 +352,12 @@ pruneMetaDependencies ::
   forall builtin m.
   (MonadUnify builtin m) =>
   BoundCtx (Type builtin) ->
-  (MetaID, UnforcedSpineWithMetas builtin) ->
-  ForcedValueWithMetas builtin ->
-  m (ForcedValueWithMetas builtin)
-pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = do
-  goForcedValue attemptedSolution
+  MetaID ->
+  [Lv] ->
+  ThunkWithMetas builtin ->
+  m (ThunkWithMetas builtin)
+pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies attemptedSolution = do
+  goThunk attemptedSolution
   where
     goThunk ::
       (MonadUnify builtin m) =>
@@ -404,38 +407,45 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
             Just solution -> do
               forceApplicationWithMetas (toNamedBoundCtx ctx) (normalised solution) spine
             Nothing -> do
-              (deps, _) <- getNormMetaDependencies solvingMetaID solvingMetaSpine
               (jDeps, remainingSpine) <- getNormMetaDependencies m spine
-              let sharedDependencies = deps `intersect` jDeps
+              let sharedDependencies = solvingMetaDependencies `intersect` jDeps
               if sharedDependencies /= jDeps
-                then createMetaWithRestrictedDependencies ctx m sharedDependencies remainingSpine
+                then do
+                  -- We first recursive prune the type of the meta-variable
+                  metaType <- getMetaType m
+                  prunedMetaType <- pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies (Unforced (boundContextToEnv ctx) metaType)
+                  let unnormalisedPrunedMetaType = unnormalise (boundCtxLv ctx) prunedMetaType
+                  -- And then create a new meta-variable recursively.
+                  createMetaWithRestrictedDependencies ctx m unnormalisedPrunedMetaType sharedDependencies remainingSpine
                 else return $ VMeta m spine
 
-    getNormMetaDependencies ::
-      MetaID ->
-      UnforcedSpineWithMetas builtin ->
-      m ([Lv], UnforcedSpineWithMetas builtin)
-    getNormMetaDependencies meta spine = do
-      metaCtx <- getMetaCtx (Proxy @builtin) meta
-      let (deps, remainingArgs) = splitAt (length metaCtx) spine
-      forcedDeps <- traverse (\a -> fst <$> forceThunkWithMetas (toNamedBoundCtx metaCtx) (argExpr a)) deps
-      let getLv a = case a of
-            VBoundVar i [] -> i
-            _ -> developerError $ "Meta variable" <+> pretty meta <+> "has non-index arg"
-      let lvs = fmap getLv forcedDeps
-      return (lvs, remainingArgs)
+getNormMetaDependencies ::
+  forall builtin m.
+  (MonadUnify builtin m) =>
+  MetaID ->
+  UnforcedSpineWithMetas builtin ->
+  m ([Lv], UnforcedSpineWithMetas builtin)
+getNormMetaDependencies meta spine = do
+  metaCtx <- getMetaCtx (Proxy @builtin) meta
+  let (deps, remainingArgs) = splitAt (length metaCtx) spine
+  forcedDeps <- traverse (\a -> fst <$> forceThunkWithMetas (toNamedBoundCtx metaCtx) (argExpr a)) deps
+  let getLv a = case a of
+        VBoundVar i [] -> i
+        _ -> developerError $ "Meta variable" <+> pretty meta <+> "has non-index arg"
+  let lvs = fmap getLv forcedDeps
+  return (lvs, remainingArgs)
 
 createMetaWithRestrictedDependencies ::
   forall builtin m.
   (MonadUnify builtin m) =>
   BoundCtx (Type builtin) ->
   MetaID ->
+  Type builtin ->
   [Lv] ->
   UnforcedSpineWithMetas builtin ->
   m (ForcedValueWithMetas builtin)
-createMetaWithRestrictedDependencies ctx meta newDependencies spine = do
+createMetaWithRestrictedDependencies ctx meta metaType newDependencies spine = do
   p <- getMetaProvenance (Proxy @builtin) meta
-  metaType <- getMetaType meta
 
   let constraintLevel = boundCtxLv ctx
   let dbIndices = fmap (dbLevelToIndex constraintLevel) newDependencies
