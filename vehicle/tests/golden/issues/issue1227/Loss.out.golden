@@ -1,0 +1,3 @@
+@property;
+robust : Vector (Tensor Real);
+robust = foreach i . - infinity

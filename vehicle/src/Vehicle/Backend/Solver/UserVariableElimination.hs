@@ -268,8 +268,7 @@ unblockingActions ::
   UnblockingActions m
 unblockingActions =
   UnblockingActions
-    { unblockRatTensorBoundVar = unblockQuantifiedBoundVar,
-      unblockRecordBoundVar = unblockQuantifiedBoundVar,
+    { unblockBoundVar = unblockQuantifiedBoundVar,
       unblockNetworkApp = unblockNetworkApplication,
       unblockDatasetOrParameter = \_ _ -> unexpectedExprError "solver compilation" "dataset or parameter"
     }
@@ -278,9 +277,11 @@ unblockQuantifiedBoundVar ::
   (MonadQuantifierBody m) =>
   TypeUnblockingFunction (Thunk Builtin) m ->
   Lv ->
+  UnforcedSpine Builtin ->
   m (IfTree (Thunk Builtin) (Thunk Builtin))
-unblockQuantifiedBoundVar unblock lv =
-  unblock =<< replaceTensorVariableWithStackedChildren (SliceVariable lv)
+unblockQuantifiedBoundVar unblock lv spine = case spine of
+  _ : _ -> unexpectedExprError "purification" "bound var with non-empty spine"
+  [] -> unblock =<< replaceTensorVariableWithStackedChildren (SliceVariable lv)
 
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
