@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Loss backend
+
+* Fixed an occasional internal compiler error when using `@dataset`.
+
 ## v0.27.0
 
 ### General
