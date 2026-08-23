@@ -385,7 +385,7 @@ data RatTensorValue
   | VIfRatTensor (IfArgs (Thunk Builtin))
   | VNetworkApplication Identifier (NetworkAppArgs (Thunk Builtin))
   | VParameterOrDataset Identifier
-  | VRatTensorBoundVar Lv
+  | VRatTensorBoundVar Lv (UnforcedSpine Builtin)
   | VRatTensorRecordAcc (Thunk Builtin) (Thunk Builtin) FieldName (UnforcedSpine Builtin)
 
 toRatTensorValueFromBuiltin ::
@@ -422,9 +422,7 @@ toRatTensorValueFromBuiltin b spine = case VBuiltin b spine of
 toRatTensorValue :: ForcedValue Builtin -> RatTensorValue
 toRatTensorValue = \case
   VBuiltin b spine -> toRatTensorValueFromBuiltin b spine
-  VBoundVar lv spine -> case spine of
-    [] -> VRatTensorBoundVar lv
-    _ -> illTyped "VBoundVar"
+  VBoundVar lv spine -> VRatTensorBoundVar lv spine
   VFreeVar ident spine -> case spine of
     (getExpr accessSpine -> Just args) -> VNetworkApplication ident args
     [] -> VParameterOrDataset ident
