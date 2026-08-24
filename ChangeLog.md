@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## Next release
+## v0.27.1
 
 ### Loss backend
 
