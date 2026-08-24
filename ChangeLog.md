@@ -6,6 +6,10 @@
 
 * Fixed an occasional internal compiler error when using `@dataset`.
 
+### ITP backend
+
+* Fixed an internal compiler error when compiling non-Prop comparisons.
+
 ## v0.27.0
 
 ### General
