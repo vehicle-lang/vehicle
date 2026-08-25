@@ -35,7 +35,10 @@ type RewritableBuiltin builtin =
     BuiltinHasBoolLiterals builtin,
     HasTensorLiterals ForcedValue builtin,
     HasLiftableTensorOperations ForcedValue Thunk builtin,
-    BuiltinHasRatType builtin
+    BuiltinHasRatType builtin,
+    BuiltinHasVectors builtin,
+    BuiltinHasVectorType builtin,
+    BuiltinHasTensorType builtin
   )
 
 type MonadRewrite builtin m =
@@ -64,6 +67,7 @@ forceAndRewriteTensor value = do
     (getExpr accessReduceAddRat -> Just args) -> rewriteReduceAddTensor args
     (getExpr accessReduceMulRat -> Just args) -> rewriteReduceMulTensor args
     (getExpr accessNotTensor -> Just args) -> rewriteNotTensor args
+    (getExpr accessForeachVector -> Just args) -> rewriteForeachVector args
     _ -> return forcedValue
 
 forceAndRewriteDims ::
@@ -606,6 +610,25 @@ liftForeach outputCtx createForeachArgs lv dim = go
 
     doesNotReferenceBoundVar :: Thunk builtin -> Bool
     doesNotReferenceBoundVar value = lv `Set.notMember` Forced.boundVariablesIn (lv + 1) value
+
+  -- rewrite ForeachVector into a ForeachTensor IF is over type tensor, and then call rewriteForeachTensor
+rewriteForeachVector ::
+  forall builtin m.
+  (MonadRewrite builtin m) =>
+  ForeachVectorArgs (Thunk builtin) ->
+  m (ForcedValue builtin)
+rewriteForeachVector (ForeachVectorArgs vType vDim fn) =
+  logCompilerSection2 MaxDetail "rewrite-foreachVector" $ do
+    vType' <- forceThunk vType
+    case vType' of
+      IVectorType vElem _vDim -> do
+        vElem' <- forceThunk vElem
+        case vElem' of
+          (ITensorType tElem tDims) -> do
+            let args = ForeachTensorArgs tElem vDim tDims fn
+            rewriteForeachTensor args
+          _ -> return $ mkExpr accessForeachVector (ForeachVectorArgs vType vDim fn)
+      _ -> return $ mkExpr accessForeachVector (ForeachVectorArgs vType vDim fn)
 
 logRewrite ::
   (MonadNormBuiltin m, HasRatType ForcedValue Thunk builtin, BuiltinHasForeach builtin, PrintableBuiltin builtin) =>
