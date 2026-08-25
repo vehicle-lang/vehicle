@@ -1,10 +1,18 @@
 @network
 f: Real -> Real
 
+-- @property
+-- working1: Bool
+-- working1 = (exists (x1 : Real) . 0 < x1 < 1) and (exists (x2 : Real) . 1 < x2 < 2)
+
+-- @property
+-- notWorking: Bool
+--notWorking = (forall (x1 : Real) . 0 < x1 < 1) or (forall (x2 : Real) . 1 < x2 < 2)
+
 -- All quantifiers lifted to top level
 @property
 liftable: Bool
-liftable = forall (x1 : Real) . (0 < x1 < 1 and (forall (x2 : Real) . x2 < x1))
+liftable = forall (x1 : Real) . (0 < x1 < 1 and (forall (x2 : Real) . 0 < x2 < x1))
 
 -- Should not throw error (quantifiers are not alternating)
 -- @property

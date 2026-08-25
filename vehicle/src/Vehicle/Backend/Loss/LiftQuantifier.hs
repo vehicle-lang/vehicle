@@ -25,17 +25,13 @@ import Vehicle.Data.Variable.Bound.Context.Name.Class
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Verify.Specification (Property, QuerySet (..), propertySize)
 
-type OldContextValue = Thunk Builtin
-
-type NewContextValue = Thunk Builtin
-
 type QuantifierData = (Quantifier, Either (UnforcedDims Builtin, UnforcedDims Builtin) (UnforcedType Builtin), UnforcedBinder Builtin)
 
 type HasForall = Bool
 
 type HasExists = Bool
 
-type LiftedData = ([QuantifierData], NewContextValue, HasForall, HasExists)
+type LiftedData = ([QuantifierData], Thunk Builtin, HasForall, HasExists)
 
 type MonadLiftQuantifiers m =
   ( MonadCompile m,
@@ -46,7 +42,7 @@ type MonadLiftQuantifiers m =
 
 liftQuantifiers ::
   (MonadLiftQuantifiers m) =>
-  (OldContextValue, Lv) ->
+  (Thunk Builtin, Lv) ->
   m (Property LiftedData, Lv)
 liftQuantifiers (value, ctxDelta) = do
   forcedValue <- forceThunk value

@@ -1,5 +1,7 @@
 module Vehicle.Backend.LossTraining
   ( convertToLossTensors,
+    convertResourceDecl,
+    convertDeclType,
     convertMultiProperty,
   )
 where

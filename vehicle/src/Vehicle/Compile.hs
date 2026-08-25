@@ -16,7 +16,7 @@ import Vehicle.Backend.ITP.Imandra
 import Vehicle.Backend.ITP.Isabelle
 import Vehicle.Backend.ITP.Rocq
 import Vehicle.Backend.Loss.JSON
-import Vehicle.Backend.LossSearch (SearchDecl (..), SearchProg (..), convertToSearchLoss)
+import Vehicle.Backend.LossSearch (convertToSearchLoss)
 import Vehicle.Backend.LossTraining (convertToLossTensors)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Solver
@@ -24,7 +24,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Prelude as CompilePrelude hiding (programDeclarations)
-import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface.Print (ConvertableBuiltin (..), PrintableBuiltin)
@@ -32,7 +32,6 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
-import Vehicle.Verify.Specification (traverseProperty)
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -202,22 +201,18 @@ compileToSearchLoss ::
   m ()
 compileToSearchLoss differentiableLogicID outputFile declsToCompile typedProg outputAsJSON = do
   let requestedDecls = Set.fromList declsToCompile
-  lossSearchProg <- convertToSearchLoss differentiableLogicID requestedDecls typedProg
-  builtinProg <- SearchMain <$> traverse convertToBuiltin (programDeclarations lossSearchProg)
-  jsonSearchProg <- convertToJSONSearchProg builtinProg
+  (searchTrees, lossTensorProg) <- convertToSearchLoss differentiableLogicID requestedDecls typedProg
+  builtinProg <- traverse (traverseBuiltinsM toStandardBuiltins) lossTensorProg
+  jsonSearchProg <- convertToJSONSearchProg (searchTrees, builtinProg)
   let outputText
         | outputAsJSON = prettyAsJSON jsonSearchProg
-        | otherwise = prettyFriendly (convertFromJSONSearchProg jsonSearchProg)
+        | otherwise =
+            let (_, prog) = convertFromJSONSearchProg jsonSearchProg
+             in prettyFriendly prog
   writeResultToFile Nothing outputFile outputText
   where
     toStandardBuiltins p b args =
       return $ normAppList (convertBuiltin p b :: Expr Builtin) args
-
-    convertToBuiltin decl = case decl of
-      StandardDecl d -> StandardDecl <$> traverse (traverseBuiltinsM toStandardBuiltins) d -- I think this is redundant
-      PropertyDecl prov ident prop -> do
-        prop' <- traverseProperty (traverseBuiltinsM toStandardBuiltins) prop
-        return $ PropertyDecl prov ident prop'
 
 hoistInferableParameters ::
   (MonadCompile m, PrintableBuiltin builtin) =>

@@ -14,7 +14,7 @@ import Data.List (elemIndex)
 import Data.Proxy (Proxy (..))
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Backend.LossSearch qualified as L (SearchDecl (..), SearchProg (..))
+import Vehicle.Backend.LossSearch qualified as L (SearchTree (..))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Force
@@ -43,7 +43,7 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext, runFreshFreeContext
 import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, stdlibIdentifier, userModulePath)
 import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Logging.Class
-import Vehicle.Verify.Specification (Property, QuerySet (..))
+import Vehicle.Verify.Specification (QuerySet (..))
 
 --------------------------------------------------------------------------------
 -- Public method
@@ -57,17 +57,17 @@ convertToJSONProg prog =
       runFreshNameBoundContextT $
         convertProg prog
 
-convertToJSONSearchProg :: (MonadCompile m) => L.SearchProg Builtin -> m JSearchProg
-convertToJSONSearchProg searchProg =
+convertToJSONSearchProg :: (MonadCompile m) => ([L.SearchTree], S.Prog Builtin) -> m JSearchProg
+convertToJSONSearchProg (searchTrees, prog) =
   logCompilerSection2 MinDetail currentPass $ do
     runFreshFreeContextT (Proxy @Builtin) $
       runFreshNameBoundContextT $
-        convertSearchProg searchProg
+        convertSearchProg searchTrees prog
 
 convertFromJSONProg :: JProg -> S.Prog Builtin
 convertFromJSONProg = fromJProg
 
-convertFromJSONSearchProg :: JSearchProg -> L.SearchProg Builtin
+convertFromJSONSearchProg :: JSearchProg -> ([L.SearchTree], S.Prog Builtin)
 convertFromJSONSearchProg = fromJSearchProg
 
 --------------------------------------------------------------------------------
@@ -78,24 +78,25 @@ newtype JProg
   = Main [JDecl]
   deriving (Generic)
 
-newtype JSearchProg
-  = SearchMain [JSearchDecl]
+data JSearchProg = SearchMain
+  { searchTrees :: [JSearchTree],
+    prog :: JProg
+  }
+  deriving (Generic)
+
+data JSearchTree
+  = SearchTree Provenance Name JBooleanExpr
+  deriving (Generic)
+
+data JBooleanExpr
+  = Conjunct (P.ConjunctAll JBooleanExpr)
+  | Disjunct (P.DisjunctAll JBooleanExpr)
+  | Query (QuerySet Name)
   deriving (Generic)
 
 data JDecl
   = DefFunction Provenance Name JType JExpr
   | DefAbstract Provenance Name JSort JType
-  deriving (Generic)
-
-data JSearchDecl
-  = StandardDecl JDecl
-  | PropertyDecl Provenance Name JProperty
-  deriving (Generic)
-
-data JProperty
-  = Conjunct (P.ConjunctAll JProperty)
-  | Disjunct (P.DisjunctAll JProperty)
-  | Query (QuerySet JExpr)
   deriving (Generic)
 
 data JBinder
@@ -178,10 +179,10 @@ instance ToJSON JSearchProg where
 instance ToJSON JDecl where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JSearchDecl where
+instance ToJSON JSearchTree where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JProperty where
+instance ToJSON JBooleanExpr where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JExpr where
@@ -239,17 +240,18 @@ convertDecl = \case
     expr' <- convertExpr emptyBoundEnv body
     return $ DefFunction p (nameOf ident) typ' expr'
 
-convertSearchProg :: (MonadJSON m) => L.SearchProg Builtin -> m JSearchProg
-convertSearchProg (L.SearchMain decls) = SearchMain <$> traverse convertSearchDecl decls
+convertSearchProg :: (MonadJSON m) => [L.SearchTree] -> S.Prog Builtin -> m JSearchProg
+convertSearchProg searchTrees prog = do
+  searchTrees' <- traverse convertSearchTree searchTrees
+  prog' <- convertProg prog
+  return $ SearchMain searchTrees' prog'
 
-convertSearchDecl :: (MonadJSON m) => L.SearchDecl Builtin -> m JSearchDecl
-convertSearchDecl = \case
-  L.StandardDecl decl -> do
-    decl' <- convertDecl decl
-    return $ StandardDecl decl'
-  L.PropertyDecl p ident property -> do
-    property' <- convertProperty property
-    return $ PropertyDecl p (nameOf ident) property'
+convertSearchTree :: (MonadJSON m) => L.SearchTree -> m JSearchTree
+convertSearchTree = \case
+  L.SearchTree p ident (NonTrivial expr) -> do
+    expr' <- convertBooleanExpr expr
+    return $ SearchTree p (nameOf ident) expr'
+  L.SearchTree _ _ (Trivial _) -> developerError "Empty search tree"
 
 --------------------------------------------------------------------------------
 -- Types
@@ -319,12 +321,7 @@ convertListType spine = case spine of
 --------------------------------------------------------------------------------
 -- Expressions
 
-convertProperty :: (MonadJSON m) => Property (S.Expr Builtin) -> m JProperty
-convertProperty = \case
-  NonTrivial expr -> convertBooleanExpr expr
-  Trivial _ -> developerError "Trivial property"
-
-convertBooleanExpr :: (MonadJSON m) => P.BooleanExpr (QuerySet (S.Expr Builtin)) -> m JProperty
+convertBooleanExpr :: (MonadJSON m) => P.BooleanExpr (QuerySet Name) -> m JBooleanExpr
 convertBooleanExpr = \case
   P.Conjunct es -> do
     es' <- traverse convertBooleanExpr es
@@ -333,8 +330,7 @@ convertBooleanExpr = \case
     es' <- traverse convertBooleanExpr es
     return $ Disjunct es'
   P.Query (QuerySet negated disjuncts) -> do
-    e' <- traverse (convertExpr emptyBoundEnv) disjuncts
-    return $ Query (QuerySet negated e')
+    return $ Query (QuerySet negated disjuncts)
 
 convertExpr :: (MonadJSON m) => BoundEnv Builtin -> S.Expr Builtin -> m JExpr
 convertExpr env body = do
@@ -618,30 +614,25 @@ fromJProg :: JProg -> S.Prog Builtin
 fromJProg = \case
   Main decls -> S.Main (fmap fromJDecl decls)
 
-fromJSearchProg :: JSearchProg -> L.SearchProg Builtin
+fromJSearchProg :: JSearchProg -> ([L.SearchTree], S.Prog Builtin)
 fromJSearchProg = \case
-  SearchMain decls -> L.SearchMain (fmap fromJSearchDecl decls)
+  SearchMain searchTrees prog ->
+    let searchTrees' = fmap fromJSearchTree searchTrees
+        prog' = fromJProg prog
+     in (searchTrees', prog')
 
-fromJSearchDecl :: JSearchDecl -> L.SearchDecl Builtin
-fromJSearchDecl = \case
-  StandardDecl decl -> L.StandardDecl (fromJDecl decl)
-  PropertyDecl p name property ->
-    runFreshNameBoundContext $ do
-      let ident = Identifier userModulePath name
-      property' <- fromJProperty property
-      return $ L.PropertyDecl p ident (NonTrivial property')
+fromJSearchTree :: JSearchTree -> L.SearchTree
+fromJSearchTree = \case
+  SearchTree p name expr ->
+    let ident = Identifier userModulePath name
+        expr' = fromJBooleanExpr expr
+     in L.SearchTree p ident (NonTrivial expr')
 
-fromJProperty :: (MonadNameContext m) => JProperty -> m (P.BooleanExpr (QuerySet (S.Expr Builtin)))
-fromJProperty = \case
-  Conjunct es -> do
-    es' <- traverse fromJProperty es
-    return $ P.Conjunct es'
-  Disjunct es -> do
-    es' <- traverse fromJProperty es
-    return $ P.Disjunct es'
-  Query (QuerySet negated es) -> do
-    es' <- traverse fromJExpr es
-    return $ P.Query (QuerySet negated es')
+fromJBooleanExpr :: JBooleanExpr -> P.BooleanExpr (QuerySet Name)
+fromJBooleanExpr = \case
+  Conjunct es -> P.Conjunct (fmap fromJBooleanExpr es)
+  Disjunct es -> P.Disjunct (fmap fromJBooleanExpr es)
+  Query (QuerySet negated es) -> P.Query (QuerySet negated es)
 
 fromJDecl :: JDecl -> S.Decl Builtin
 fromJDecl = \case
