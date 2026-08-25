@@ -229,6 +229,7 @@ unblockVectorValue actions value = showEntry value $ do
   case toVectorValue forcedValue of
     VVectorLiteral {} -> return $ IfLeaf $ Forced forcedValue
     VVectorIf args -> unblockIf (unblockVectorValue actions) args
+    VVectorAt args -> unblockAtVector (unblockVectorValue actions) (unblockVectorValue actions) args
     VVectorForeach args -> unblockForeachVector args
     VVectorBoundVar {} -> unexpectedExprError currentPass (prettyVerbose forcedValue)
     VVectorDataset {} -> unexpectedExprError currentPass (prettyVerbose forcedValue)

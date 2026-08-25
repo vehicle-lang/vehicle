@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# A simple test verifier that takes as arguments what it should output
+# A simple test solver that takes as arguments what it should output
 
 # First find the index of the variable representing the query file
 file_index=0

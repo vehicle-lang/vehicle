@@ -1,0 +1,4 @@
+Could not locate the solver either at the location:
+  /tmp/error-842fbbf3eb8104f8/unknownVerifier
+or as an executable named 'unknownVerifier' on the system PATH.
+Please either provide the path to the solver or add it to the PATH environment variable.

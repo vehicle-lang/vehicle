@@ -1,5 +1,5 @@
-module Vehicle.Verify.Verifier.Test
-  ( testVerifier,
+module Vehicle.Verify.Solver.Test
+  ( testSolver,
   )
 where
 
@@ -7,43 +7,45 @@ import Control.Monad.Except (MonadError (..))
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text (pack, splitOn, strip)
-import Vehicle.Compile.Prelude
+import Data.Version (Version (..))
+import Vehicle.Compile.Prelude hiding (Solver)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.Solver
 import Vehicle.Verify.Specification.Status
-import Vehicle.Verify.Verifier.Core
 
--- This is a verifier only used for testing.
+-- This is a solver only used for testing.
 -- Ideally when we have a standard input/output/interaction format we won't need this anymore.
 
-testVerifier :: Verifier
-testVerifier =
-  Verifier
-    { verifierID = TestVerifier,
-      verifierQueryFormatID = VNNLibQueries,
-      verifierExecutableName = "testVerifier",
-      prepareArgs = prepareTestVerifierArgs,
-      parseOutput = parseTestVerifierOutput,
+testSolver :: SolverExecutable -> Solver
+testSolver executable =
+  Solver
+    { solverName = "TestSolver",
+      solverVersion = Version [1, 0] [],
+      solverQueryFormatID = VNNLibQueries,
+      solverExecutable = executable,
+      prepareArgs = prepareTestSolverArgs,
+      parseOutput = parseTestSolverOutput,
       supportsMultipleNetworkApplications = True
     }
 
-prepareTestVerifierArgs :: PrepareVerifierArgs
-prepareTestVerifierArgs metaNetwork queryFile = case metaNetwork of
+prepareTestSolverArgs :: PrepareSolverArgs
+prepareTestSolverArgs metaNetwork queryFile = case metaNetwork of
   [(_name, info, 1)] -> [networkFilepath info, queryFile]
   _ -> developerError "Should have caught unsupported multiple network applications earlier"
 
-parseTestVerifierOutput :: ParseVerifierOutput
-parseTestVerifierOutput output = do
+parseTestSolverOutput :: ParseSolverOutput
+parseTestSolverOutput output = do
   let outputLines = fmap Text.pack (lines output)
   case outputLines of
-    [] -> throwError $ VerifierOutputMalformed "No output lines"
+    [] -> throwError $ SolverOutputMalformed "No output lines"
     l : ls
       | l == "unsat" -> return UnSAT
-      | l == "timeout" -> throwError VerifierTimedOut
+      | l == "timeout" -> throwError SolverTimedOut
       | otherwise -> SAT . Just <$> parseSATAssignment ls
 
 parseSATAssignment ::
-  (MonadError VerifierError m, MonadLogger m) =>
+  (MonadError SolverError m, MonadLogger m) =>
   [Text] ->
   m QueryVariableAssignment
 parseSATAssignment ls = do
@@ -51,11 +53,11 @@ parseSATAssignment ls = do
   return $ QueryVariableAssignment $ Map.fromList values
 
 parseSATAssignmentLine ::
-  (MonadError VerifierError m) =>
+  (MonadError SolverError m) =>
   Text ->
   m (QueryVariable, Rational)
 parseSATAssignmentLine txt = do
   let parts = Text.strip <$> Text.splitOn "=" txt
   case parts of
     [namePart, valuePart] -> return (namePart, readFloatAsRational valuePart)
-    _ -> throwError $ VerifierOutputMalformed $ "Could not split assignment line" <+> quotePretty txt <+> "on '=' sign"
+    _ -> throwError $ SolverOutputMalformed $ "Could not split assignment line" <+> quotePretty txt <+> "on '=' sign"
