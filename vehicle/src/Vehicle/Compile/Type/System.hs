@@ -2,7 +2,7 @@ module Vehicle.Compile.Type.System where
 
 import Data.Proxy (Proxy)
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Constraint.Core (instantiateInstanceConstraintSolution)
@@ -101,7 +101,7 @@ handleAuxiliaryConstraintProgress ::
 handleAuxiliaryConstraintProgress solution originalConstraint@(WithContext _ ctx) = \case
   Stuck metas -> addAuxiliaryInstanceConstraints [blockConstraintOn originalConstraint metas]
   Progress newUnificationConstraints newAuxiliaryConstraints -> do
-    let unnormSolution = quote mempty (boundCtxLv $ boundContextOf ctx) solution
+    let unnormSolution = unnormalise (boundCtxLv $ boundContextOf ctx) solution
     instantiateInstanceConstraintSolution originalConstraint unnormSolution
     addUnificationConstraints newUnificationConstraints
     addAuxiliaryInstanceConstraints newAuxiliaryConstraints

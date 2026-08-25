@@ -21,7 +21,7 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (sep)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
@@ -341,7 +341,7 @@ solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
       then pruneMetaDependencies ctx meta solution
       else return solution
 
-  let unnormSolution = quote mempty (boundCtxLv ctx) prunedSolution
+  let unnormSolution = unnormalise (boundCtxLv ctx) prunedSolution
   let substSolution = substDBAll 0 (\v -> unIx v `IntMap.lookup` renaming) unnormSolution
   solveMeta metaID substSolution ctx
   return Success

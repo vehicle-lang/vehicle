@@ -13,7 +13,7 @@ import Control.Monad.Except (MonadError (..))
 import Vehicle.Backend.Loss.Core hiding (currentPass)
 import Vehicle.Compile.Error (CompileError (UnsupportedLossOperation))
 import Vehicle.Compile.Normalise.Force (forceApplication, forceFreeVar, forceThunk)
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -254,7 +254,7 @@ convertClosure convertValue binder closure = do
   lossBody <- addNonTensorBinderToContext binder $ do
     logDebugM MaxDetail $ pretty <$> getNestedVariableCtx
     normLossBody <- convertValue normBody
-    return $ quote mempty (1 + boundCtxLv finalCtx) normLossBody
+    return $ unnormalise (1 + boundCtxLv finalCtx) normLossBody
   return $ Closure (boundContextToEnv finalCtx) lossBody
 
 convertBoolTensorLiteral :: (MonadLogic m) => Tensor Bool -> m (ForcedValue LossBuiltin)

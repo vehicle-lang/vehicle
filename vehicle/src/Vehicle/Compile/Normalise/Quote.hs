@@ -1,96 +1,99 @@
-module Vehicle.Compile.Normalise.Quote where
+module Vehicle.Compile.Normalise.Quote
+  ( unnormalise,
+  )
+where
 
 import Data.Map.Ordered qualified as OMap
 import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Normalise.Core (MetaLike (..))
-import Vehicle.Data.AST.Expr.Scoped (Expr (..), Substitution, normAppList, substituteDB)
+import Vehicle.Data.AST.Expr.Scoped (Arg, Binder, Expr (..), Substitution, normAppList, substituteDB)
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.ForcedValue (GenericForcedValue, GenericThunk)
-import Vehicle.Data.Code.ForcedValue qualified as F
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Variable.Bound.Level (Lv, dbLevelToIndex)
 import Vehicle.Prelude
 
 -- | Converts from a normalised representation to an unnormalised representation.
 -- Do not call except for logging and debug purposes, very expensive with nested
 -- lambdas.
-unnormalise :: forall a b. (HasCallStack, Quote a b) => Lv -> a -> b
-unnormalise = quote mempty
+unnormalise :: (HasCallStack, Quote a b builtin) => Lv -> a -> b
+unnormalise = quote $ \level var -> BoundVar mempty (dbLevelToIndex level var)
 
 -----------------------------------------------------------------------------
--- Quoting closures
+-- Quoting
 
-class Quote a b where
-  quote :: (HasCallStack) => Provenance -> Lv -> a -> b
+type BoundVarHandler builtin = Lv -> Lv -> Expr builtin
 
-instance (Quote expr1 expr2) => Quote (GenericBinder expr1) (GenericBinder expr2) where
-  quote p level = fmap (quote p level)
+class Quote a b builtin | a -> builtin where
+  quote :: (HasCallStack) => BoundVarHandler builtin -> Lv -> a -> b
 
-instance (Quote expr1 expr2) => Quote (GenericArg expr1) (GenericArg expr2) where
-  quote p level = fmap (quote p level)
+instance (MetaLike meta) => Quote (GenericUnforcedBinder meta builtin) (Binder builtin) builtin where
+  quote handler level = fmap (quote handler level)
 
-quoteApp :: (HasCallStack, Quote a (Expr builtin2)) => Lv -> Provenance -> Expr builtin2 -> [GenericArg a] -> Expr builtin2
-quoteApp l p fn spine = normAppList fn $ fmap (quote p l) spine
+instance (MetaLike meta) => Quote (GenericUnforcedArg meta builtin) (Arg builtin) builtin where
+  quote handler level = fmap (quote handler level)
 
------------------------------------------------------------------------------
--- Quoting forced values
+instance (MetaLike meta) => Quote (GenericThunk meta builtin) (Expr builtin) builtin where
+  quote handler level = \case
+    Forced value -> quote handler level value
+    Unforced env expr -> do
+      let subst = quoteForcedCtx handler level env
+      substituteDB 0 subst expr
 
-instance (ConvertableBuiltin builtin1 builtin2, MetaLike meta) => Quote (GenericThunk meta builtin1) (Expr builtin2) where
-  quote p level = \case
-    F.Forced value -> quote p level value
-    F.Unforced env expr -> do
-      let subst = quoteForcedCtx p level env
-      substituteDB 0 subst (convertExprBuiltins expr)
-
-instance (ConvertableBuiltin builtin1 builtin2, MetaLike meta) => Quote (GenericForcedValue meta builtin1) (Expr builtin2) where
-  quote p level = \case
-    F.VUniverse u -> Universe p u
-    F.VMeta m spine -> quoteApp level p (Meta p (toMetaID m)) spine
-    F.VFreeVar v spine -> quoteApp level p (FreeVar p v) spine
-    F.VBoundVar v spine -> do
+instance (MetaLike meta) => Quote (GenericForcedValue meta builtin) (Expr builtin) builtin where
+  quote handler level = \case
+    VUniverse u ->
+      Universe p u
+    VMeta m spine ->
+      quoteApp handler level (Meta p (toMetaID m)) spine
+    VFreeVar v spine ->
+      quoteApp handler level (FreeVar p v) spine
+    VBoundVar v spine -> do
       let var = BoundVar p (dbLevelToIndex level v)
-      quoteApp level p var spine
-    F.VBuiltin b spine -> do
+      quoteApp handler level var spine
+    VBuiltin b spine -> do
       let fn = convertBuiltin p b
-      quoteApp level p fn spine
-    F.VPi binder closure -> do
-      let quotedBinder = quote p level binder
-      let quotedBody = quoteClosure p level (binder, closure)
+      quoteApp handler level fn spine
+    VPi binder closure -> do
+      let quotedBinder = quote handler level binder
+      let quotedBody = quoteClosure handler level (binder, closure)
       Pi p quotedBinder quotedBody
-    F.VLam binder closure -> do
-      let quotedBinder = quote p level binder
-      let quotedBody = quoteClosure p level (binder, closure)
+    VLam binder closure -> do
+      let quotedBinder = quote handler level binder
+      let quotedBody = quoteClosure handler level (binder, closure)
       Lam mempty quotedBinder quotedBody
-    F.VRecord recordType fields -> do
-      let quotedRecordType = quote p level recordType
-      let quotedFields = mapRecordFields (quote p level) $ OMap.assocs fields
+    VRecord recordType fields -> do
+      let quotedRecordType = quote handler level recordType
+      let quotedFields = mapRecordFields (quote handler level) $ OMap.assocs fields
       Record p quotedRecordType quotedFields
-    F.VRecordAcc recordType record field spine -> do
-      let quotedRecordType = quote p level recordType
-      let quotedRecord = quote p level record
+    VRecordAcc recordType record field spine -> do
+      let quotedRecordType = quote handler level recordType
+      let quotedRecord = quote handler level record
       let quotedProj = RecordProj p quotedRecordType quotedRecord field
-      quoteApp level p quotedProj spine
+      quoteApp handler level quotedProj spine
+    where
+      p = mempty
+
+quoteApp :: (MetaLike meta) => BoundVarHandler builtin -> Lv -> Expr builtin -> GenericUnforcedSpine meta builtin -> Expr builtin
+quoteApp handler level fn spine = normAppList fn $ fmap (quote handler level) spine
 
 quoteForcedCtx ::
-  (ConvertableBuiltin builtin1 builtin2, MetaLike meta) =>
-  Provenance ->
+  (MetaLike meta) =>
+  BoundVarHandler builtin ->
   Lv ->
-  F.GenericBoundEnv meta builtin1 ->
-  Substitution (Expr builtin2)
-quoteForcedCtx p level env i = Right (quote p level (F.lookupIxInEnv env i))
+  GenericBoundEnv meta builtin ->
+  Substitution (Expr builtin)
+quoteForcedCtx handler level env i = Right (quote handler level (lookupIxInEnv env i))
 
 quoteClosure ::
-  (ConvertableBuiltin builtin1 builtin2, MetaLike meta) =>
-  Provenance ->
+  (MetaLike meta) =>
+  BoundVarHandler builtin ->
   Lv ->
-  (GenericBinder expr, F.GenericClosure meta builtin1) ->
-  Expr builtin2
-quoteClosure p lv (binder, F.Closure env body) = do
+  (GenericBinder expr, GenericClosure meta builtin) ->
+  Expr builtin
+quoteClosure handler lv (binder, Closure env body) = do
   -- Here we deliberately avoid using the standard `quote . eval` approach below
   -- on the body of the lambda, in order to avoid the dependency cycles that
   -- prevent us from printing during NBE.
-  --
-  -- normBody <- runReaderT (eval (liftEnvOverBinder p env) body) mempty
-  -- quotedBody <- quote (level + 1) normBody
-  let newEnv = F.extendEnvWithBound lv binder env
-  let subst = quoteForcedCtx p (lv + 1) newEnv
+  let newEnv = extendEnvWithBound lv binder env
+  let subst = quoteForcedCtx handler (lv + 1) newEnv
   substituteDB 0 subst (convertExprBuiltins body)

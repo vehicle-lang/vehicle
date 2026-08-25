@@ -22,7 +22,7 @@ import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
 import Vehicle.Compile.Normalise.Builtin (elimImplies)
 import Vehicle.Compile.Normalise.Force
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
@@ -156,7 +156,7 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
 
     -- Reform the closure around the body. Note that this needs to be done
     -- in the final context (i.e. without any reference to slice variables!)
-    let lossBody = quote mempty (1 + boundCtxLv finalCtx) remainingBody
+    let lossBody = unnormalise (1 + boundCtxLv finalCtx) remainingBody
     let finalEnv = boundContextToEnv finalCtx
     let remainder = Closure finalEnv lossBody
 

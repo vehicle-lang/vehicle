@@ -51,7 +51,7 @@ import Data.Maybe (isJust)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error (CompileError (..), TypingError (..), compilerDeveloperError)
 import Vehicle.Compile.Normalise.Core
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyExternal, prettyExternal, prettyVerbose)
 import Vehicle.Compile.Type.Core
@@ -182,7 +182,7 @@ createDerivedInstanceConstraint ::
 createDerivedInstanceConstraint (ctx, origin) r t = do
   let p = provenanceOf ctx
   let dbLevel = contextDBLevel ctx
-  let newTypeClassExpr = quote p dbLevel t
+  let newTypeClassExpr = unnormalise dbLevel t
   (metaID, metaExpr) <- freshSolutionMeta p newTypeClassExpr (boundContextOf ctx)
   goal <- parseInstanceGoal (boundContextOf ctx) t
   let newConstraint = Resolve origin metaID r Nothing goal

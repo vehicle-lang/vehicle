@@ -14,7 +14,7 @@ import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint.UnificationSolver (solveUnificationConstraint)
@@ -459,7 +459,7 @@ forceApplicationHeadType ::
 forceApplicationHeadType ctx typ = do
   let normType = Unforced (boundContextToEnv ctx) typ
   (forcedType, blockingMetas) <- forceThunkWithMetas (toNamedBoundCtx ctx) normType
-  return (quote (provenanceOf typ) (boundCtxLv ctx) forcedType, blockingMetas)
+  return (unnormalise (boundCtxLv ctx) forcedType, blockingMetas)
 
 checkArgsAgainstPiType ::
   (TCM builtin m) =>

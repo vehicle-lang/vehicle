@@ -11,7 +11,7 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Force
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Core (Negatable (..))
@@ -446,7 +446,7 @@ negateForeachArgs (ForeachTensorArgs t d ds fn) = do
     VLam binder closure -> return (binder, closure)
     _ -> developerError "Malformed foreachTensor"
   lv <- getBinderDepth
-  let ds' = quote mempty lv ds
+  let ds' = unnormalise lv ds
   let newBody = mkExpr accessNotTensor $ TensorOp1Args ds' body
   let newFn = Forced $ VLam binder (Closure env newBody)
   return $ ForeachTensorArgs t d ds newFn
@@ -471,7 +471,7 @@ rewriteForeachTensor (ForeachTensorArgs t d ds fn) =
         let body = extendClosureWithBound closure binder lv
 
         let createForeachArgs tElem newBody = do
-              let newBody' = quote mempty (lv + 1) newBody
+              let newBody' = unnormalise (lv + 1) newBody
               let newLam = mkExpr accessForcedLamC (binder, Closure (namedBoundContextToEnv ctx) newBody')
               ForeachTensorArgs tElem d ds newLam
 
