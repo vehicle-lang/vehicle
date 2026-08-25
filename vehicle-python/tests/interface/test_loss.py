@@ -63,7 +63,7 @@ def validate_loss_function_output(
         (
             "test_at.vcl",
             None,
-            {"prop": float("inf")},
+            {"prop": -1.0},
         ),
         (
             "test_constant.vcl",
@@ -78,12 +78,12 @@ def validate_loss_function_output(
         (
             "test_indicator.vcl",
             None,
-            {"prop": float("inf")},
+            {"prop": 0.0},
         ),
         (
             "test_maximum.vcl",
             None,
-            {"prop": float("inf")},
+            {"prop": 3.5},
         ),
         (
             "test_minimum.vcl",

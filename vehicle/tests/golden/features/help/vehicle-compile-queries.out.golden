@@ -4,7 +4,7 @@ Usage: vehicle compile queries (-f|--format FORMAT) (-s|--specification FILE)
                                [-p|--parameter NAME:VALUE] [-o|--output FILE] 
                                [-c|--cache FILE]
 
-  Compile a specification to verifier queries.
+  Compile a specification to VNN-LIB queries for a solver.
 
 Available options:
   -f,--format FORMAT       The query format to export to. Supported options: 

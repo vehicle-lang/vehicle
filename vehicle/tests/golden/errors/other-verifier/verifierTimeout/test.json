@@ -1,7 +1,7 @@
 [
   {
     "name": "TestVerify",
-    "run": "vehicle verify -s spec.vcl -v TestVerifier --network f:fake.onnx --verifier-location=testVerifier --verifier-args='timeout'",
+    "run": "vehicle verify -s spec.vcl -v testVerifier --network f:fake.onnx --solver-args='timeout'",
     "needs": ["spec.vcl", "fake.onnx", "../../../../testVerifier"],
     "external": ["TestVerifier"]
   }

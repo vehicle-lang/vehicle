@@ -336,17 +336,19 @@ data VectorValue
   | VVectorDataset Identifier
   | VVectorLiteral (VectorLitArgs (Thunk Builtin))
   | VVectorIf (IfArgs (Thunk Builtin))
+  | VVectorAt (AtVectorArgs (Thunk Builtin))
   | VVectorForeach (ForeachVectorArgs (Thunk Builtin))
   | VVectorRecordAcc (Thunk Builtin) (Thunk Builtin) FieldName (UnforcedSpine Builtin)
 
-builtinToVectorValue :: Builtin -> UnforcedSpine Builtin -> VectorValue
+builtinToVectorValue :: (HasCallStack) => Builtin -> UnforcedSpine Builtin -> VectorValue
 builtinToVectorValue b spine = case VBuiltin b spine of
   (getExpr accessVecLit -> Just args) -> VVectorLiteral args
   (getExpr accessIf -> Just args) -> VVectorIf args
   (getExpr accessForeachVector -> Just args) -> VVectorForeach args
-  _ -> developerError $ "ill-typed Vector expression:" <+> pretty b
+  (getExpr accessAtVector -> Just args) -> VVectorAt args
+  _ -> developerError $ "ill-typed Vector builtin:" <+> pretty b <+> prettyVerbose spine
 
-toVectorValue :: ForcedValue Builtin -> VectorValue
+toVectorValue :: (HasCallStack) => ForcedValue Builtin -> VectorValue
 toVectorValue value = case value of
   VBoundVar v spine -> VVectorBoundVar v spine
   VFreeVar ident [] -> VVectorDataset ident
@@ -383,7 +385,7 @@ data RatTensorValue
   | VIfRatTensor (IfArgs (Thunk Builtin))
   | VNetworkApplication Identifier (NetworkAppArgs (Thunk Builtin))
   | VParameterOrDataset Identifier
-  | VRatTensorBoundVar Lv
+  | VRatTensorBoundVar Lv (UnforcedSpine Builtin)
   | VRatTensorRecordAcc (Thunk Builtin) (Thunk Builtin) FieldName (UnforcedSpine Builtin)
 
 toRatTensorValueFromBuiltin ::
@@ -420,9 +422,7 @@ toRatTensorValueFromBuiltin b spine = case VBuiltin b spine of
 toRatTensorValue :: ForcedValue Builtin -> RatTensorValue
 toRatTensorValue = \case
   VBuiltin b spine -> toRatTensorValueFromBuiltin b spine
-  VBoundVar lv spine -> case spine of
-    [] -> VRatTensorBoundVar lv
-    _ -> illTyped "VBoundVar"
+  VBoundVar lv spine -> VRatTensorBoundVar lv spine
   VFreeVar ident spine -> case spine of
     (getExpr accessSpine -> Just args) -> VNetworkApplication ident args
     [] -> VParameterOrDataset ident

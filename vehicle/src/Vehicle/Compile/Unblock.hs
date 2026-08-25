@@ -56,32 +56,31 @@ type MonadUnblock m =
 type MonadPurify m = MonadUnblock m
 
 data UnblockingActions m = UnblockingActions
-  { unblockRatTensorBoundVar ::
+  { -- | How to handle a bound variable. The bound variable can be of any type.
+    unblockBoundVar ::
       TypeUnblockingFunction (Thunk Builtin) m ->
       Lv ->
+      UnforcedSpine Builtin ->
       m (IfTree (Thunk Builtin) (Thunk Builtin)),
+    -- | How to handle a network application.
     unblockNetworkApp ::
       TypeUnblockingFunction (Thunk Builtin) m ->
       TypeUnblockingFunction (Thunk Builtin) m ->
       Identifier ->
       OperationUnblockingFunction NetworkAppArgs (Thunk Builtin) m,
+    -- | How to handle a dataset or parameter. The dataset or parameter can be any type.
     unblockDatasetOrParameter ::
       TypeUnblockingFunction (Thunk Builtin) m ->
       Identifier ->
-      m (IfTree (Thunk Builtin) (Thunk Builtin)),
-    unblockRecordBoundVar ::
-      TypeUnblockingFunction (Thunk Builtin) m ->
-      Lv ->
       m (IfTree (Thunk Builtin) (Thunk Builtin))
   }
 
 noUnblocking :: (MonadError BlockingReason m) => UnblockingActions m
 noUnblocking =
   UnblockingActions
-    { unblockRatTensorBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v [],
+    { unblockBoundVar = \_ v _ -> return $ IfLeaf $ Forced $ VBoundVar v [],
       unblockNetworkApp = \_ _ ident _args -> throwError $ BlockingNetwork ident,
-      unblockDatasetOrParameter = \_ ident -> throwError $ BlockingDatasetOrParameter ident,
-      unblockRecordBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v []
+      unblockDatasetOrParameter = \_ ident -> throwError $ BlockingDatasetOrParameter ident
     }
 
 -- | Lifts all `if`s in the provided expression `e` to the top-level, while
@@ -127,10 +126,10 @@ unblockBoolTensorValue actions value = showEntry value $ do
     VBoolTensorReduceAnd args -> unblockReduceTensor unblock (forceEval evalReduceAndTensor) args
     VBoolTensorReduceOr args -> unblockReduceTensor unblock (forceEval evalReduceOrTensor) args
     VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (unblockIndexValue actions) (evalCompareIndex op) args
-    VBoolTensorCompareNat (op, args) -> unblockOp2 unblockNatValue (evalCompareNat op) args
+    VBoolTensorCompareNat (op, args) -> unblockOp2 (unblockNatValue actions) (evalCompareNat op) args
     VBoolTensorTensorAt args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
     VBoolTensorVectorAt args -> unblockAtVector unblock (unblockIndexValue actions) args
-    VBoolTensorForeach args -> unblockForeachTensor args
+    VBoolTensorForeach args -> unblockForeachTensor actions args
     VBoolTensorFoldList args -> unblockFoldList actions args
   where
     unblock = unblockBoolTensorValue actions
@@ -163,12 +162,12 @@ unblockRatTensorValue actions@UnblockingActions {..} expr =
       VReduceMaxRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMaxRatTensor) args
       VMinRatTensor args -> unblockMinRatTensor unblock args
       VMaxRatTensor args -> unblockMaxRatTensor unblock args
-      VRatTensorBoundVar v -> unblockRatTensorBoundVar unblock v
+      VRatTensorBoundVar v spine -> unblockBoundVar unblock v spine
       VNetworkApplication n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
       VParameterOrDataset ident -> unblockDatasetOrParameter unblock ident
       VRatAtTensor args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
       VRatAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
-      VRatForeach args -> unblockForeachTensor args
+      VRatForeach args -> unblockForeachTensor actions args
       VRatTensorTranspose args -> unblockTransposeTensor unblock args
       VRatTensorRecordAcc typ value fieldName args -> unblockRecordAcc actions typ value fieldName args
   where
@@ -181,10 +180,7 @@ unblockRecordValue actions@UnblockingActions {..} expr = showEntry expr $ do
   forcedValue <- forceThunk expr
   case toRecordValue forcedValue of
     VRecordRecord {} -> return $ IfLeaf expr
-    -- VRecordNetworkApp n args -> unblockNetworkApp unblockTensor unblockRecord n args
-    VRecordBoundVar v spine -> case spine of
-      [] -> unblockRecordBoundVar unblockRecord v
-      _ -> unexpectedExprError currentPass "record boundVar with args"
+    VRecordBoundVar v spine -> unblockBoundVar unblockRecord v spine
     VRecordNetworkApp n args -> unblockNetworkApp (unblockRatTensorValue actions) unblockRecord n args
     VRecordMeta {} -> unexpectedExprError currentPass "record meta"
     VRecordBuiltin b spine -> case VBuiltin b spine of
@@ -201,25 +197,24 @@ unblockIndexValue actions value = showEntry value $ do
   forcedValue <- forceThunk value
   case toIndexValue forcedValue of
     VIndexLiteral {} -> return $ IfLeaf value
-    VIndexParameter {} -> return $ IfLeaf value
+    VIndexParameter ident -> unblockDatasetOrParameter actions (unblockIndexValue actions) ident
     VIndexIf args -> unblockIf (unblockIndexValue actions) args
     VIndexAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
     VIndexRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
-    VIndexBoundVar {} -> do
-      -- There can be no bound index variables as quantifiers over indices
-      -- should be normalised out.
-      unexpectedExprError currentPass (prettyVerbose value)
+    VIndexBoundVar v spine -> unblockBoundVar actions (unblockIndexValue actions) v spine
 
-unblockNatValue :: TypeUnblockingFunction (Thunk Builtin) m
-unblockNatValue value = showEntry value $ do
+unblockNatValue ::
+  UnblockingActions m ->
+  TypeUnblockingFunction (Thunk Builtin) m
+unblockNatValue actions value = showEntry value $ do
   forcedValue <- forceThunk value
   case toNatValue forcedValue of
     VNatLiteral {} -> return $ IfLeaf value
-    VNatIf ifArgs -> unblockIf unblockNatValue ifArgs
-    VNatAdd args -> unblockOp2 unblockNatValue evalAddNat args
-    VNatMul args -> unblockOp2 unblockNatValue evalMulNat args
-    VNatBoundVar {} -> unexpectedExprError currentPass (prettyVerbose value)
-    VNatParameter {} -> unexpectedExprError currentPass (prettyVerbose value)
+    VNatIf ifArgs -> unblockIf (unblockNatValue actions) ifArgs
+    VNatAdd args -> unblockOp2 (unblockNatValue actions) evalAddNat args
+    VNatMul args -> unblockOp2 (unblockNatValue actions) evalMulNat args
+    VNatBoundVar v spine -> unblockBoundVar actions (unblockNatValue actions) v spine
+    VNatParameter ident -> unblockDatasetOrParameter actions (unblockNatValue actions) ident
 
 unblockVectorValue ::
   UnblockingActions m ->
@@ -229,9 +224,10 @@ unblockVectorValue actions value = showEntry value $ do
   case toVectorValue forcedValue of
     VVectorLiteral {} -> return $ IfLeaf $ Forced forcedValue
     VVectorIf args -> unblockIf (unblockVectorValue actions) args
-    VVectorForeach args -> unblockForeachVector args
-    VVectorBoundVar {} -> unexpectedExprError currentPass (prettyVerbose forcedValue)
-    VVectorDataset {} -> unexpectedExprError currentPass (prettyVerbose forcedValue)
+    VVectorAt args -> unblockAtVector (unblockVectorValue actions) (unblockVectorValue actions) args
+    VVectorForeach args -> unblockForeachVector actions args
+    VVectorBoundVar v spine -> unblockBoundVar actions (unblockVectorValue actions) v spine
+    VVectorDataset ident -> unblockDatasetOrParameter actions (unblockVectorValue actions) ident
     VVectorRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
 
 unblockListValue ::
@@ -244,8 +240,8 @@ unblockListValue actions value = showEntry value $ do
     VListCons {} -> return $ IfLeaf value
     VListMap args -> unblockMapList actions args
     VListIf args -> unblockIf (unblockListValue actions) args
-    VListBoundVar {} -> unexpectedExprError currentPass (prettyVerbose value)
-    VListDataset {} -> unexpectedExprError currentPass (prettyVerbose value)
+    VListBoundVar v spine -> unblockBoundVar actions (unblockListValue actions) v spine
+    VListDataset ident -> unblockDatasetOrParameter actions (unblockListValue actions) ident
     VListRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
 
 --------------------------------------------------------------------------------
@@ -386,9 +382,10 @@ unblockRecordAcc actions typ value fieldName args = do
 
 unblockForeachTensor ::
   (MonadUnblock m) =>
+  UnblockingActions m ->
   OperationUnblockingFunction ForeachTensorArgs (Thunk Builtin) m
-unblockForeachTensor (ForeachTensorArgs tElem d ds fn) = do
-  d' <- unblockNatValue d
+unblockForeachTensor actions (ForeachTensorArgs tElem d ds fn) = do
+  d' <- unblockNatValue actions d
   forIfTreeM d' $ \d'' ->
     IfLeaf <$> do
       let result = forceEval evalForeachTensor
@@ -419,9 +416,10 @@ unblockMaxRatTensor = unblockRatTensorExtrema Ge
 
 unblockForeachVector ::
   (MonadUnblock m) =>
+  UnblockingActions m ->
   OperationUnblockingFunction ForeachVectorArgs (Thunk Builtin) m
-unblockForeachVector (ForeachVectorArgs tElem d fn) = do
-  d' <- unblockNatValue d
+unblockForeachVector actions (ForeachVectorArgs tElem d fn) = do
+  d' <- unblockNatValue actions d
   forIfTreeM d' $ \d'' ->
     IfLeaf <$> do
       forceEval evalForeachVector $ ForeachVectorArgs tElem d'' fn

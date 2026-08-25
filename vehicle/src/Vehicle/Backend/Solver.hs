@@ -49,7 +49,7 @@ import Vehicle.Verify.Specification.IO
 -- Compilation to individual queries
 
 -- | Compiles the provided program to individual queries suitable for a
--- verifier and outputs them. We need to output them as they are generated as
+-- solver and outputs them. We need to output them as they are generated as
 -- otherwise storing all the queries can result in an out-of-memory errors.
 compileToQueries ::
   (MonadStdIO m, MonadCompile m) =>
@@ -318,8 +318,7 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
 topLevelUnblockingActions :: (Monad m) => UnblockingActions m
 topLevelUnblockingActions =
   UnblockingActions
-    { unblockRatTensorBoundVar = \_ _ -> developerError "No bound variables should exist at top-level",
-      unblockRecordBoundVar = \_ _ -> developerError "No bound variables should exist at top-level",
+    { unblockBoundVar = \_ _ -> developerError "No bound variables should exist at top-level",
       unblockNetworkApp = \_ _ ident args -> return $ IfLeaf $ Forced $ VFreeVar ident (mkExpr accessSpine args),
       unblockDatasetOrParameter = \_ _ -> developerError "Should not be unblocking datasets or parameters"
     }

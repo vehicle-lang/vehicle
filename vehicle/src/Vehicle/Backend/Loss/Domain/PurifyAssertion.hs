@@ -88,7 +88,7 @@ compileLinearExpr dims expr =
       ---------------------
       VRatTensorLiteral {} -> compileAsConstantExpr dims expr
       VParameterOrDataset {} -> compileAsConstantExpr dims expr
-      VRatTensorBoundVar var -> compileRatTensorVar dims var
+      VRatTensorBoundVar var spine -> compileRatTensorVar dims var spine
       VNegRatTensor args -> compileNegRatTensor recCompile args
       VAddRatTensor args -> compileAddRatTensor recCompile args
       VSubRatTensor args -> compileSubRatTensor recCompile args
@@ -154,15 +154,18 @@ compileRatTensorVar ::
   (MonadPurifyAssertion m) =>
   UnforcedDims Builtin ->
   Lv ->
+  UnforcedSpine Builtin ->
   m BranchingResult
-compileRatTensorVar dims lv = do
-  valueAsLinearExpr <- do
-    (_, maybeSliceVar) <- lookupVariableInNestedCtx lv
-    case maybeSliceVar of
-      Nothing -> return Nothing
-      Just (_, sliceVar) -> do
-        let zeroTensor = Forced $ mkExpr accessConstTensor $ ConstTensorArgs (Forced IRatType) (Forced $ IRatLiteral 0) dims
-        return $ Just $ singletonVarExpr (TensorValue dims zeroTensor) sliceVar
+compileRatTensorVar dims lv spine = do
+  valueAsLinearExpr <- case spine of
+    _ : _ -> return Nothing
+    [] -> do
+      (_, maybeSliceVar) <- lookupVariableInNestedCtx lv
+      case maybeSliceVar of
+        Nothing -> return Nothing
+        Just (_, sliceVar) -> do
+          let zeroTensor = Forced $ mkExpr accessConstTensor $ ConstTensorArgs (Forced IRatType) (Forced $ IRatLiteral 0) dims
+          return $ Just $ singletonVarExpr (TensorValue dims zeroTensor) sliceVar
 
   return $
     IfLeaf $
@@ -287,8 +290,7 @@ unblockingActions ::
   UnblockingActions m
 unblockingActions =
   UnblockingActions
-    { unblockRatTensorBoundVar = purifyBoundVar,
-      unblockRecordBoundVar = purifyBoundVar,
+    { unblockBoundVar = purifyBoundVar,
       unblockNetworkApp = \_ _ ident _ -> throwError $ BlockingNetwork ident,
       unblockDatasetOrParameter = \_ ident -> throwError $ BlockingDatasetOrParameter ident
     }
@@ -297,12 +299,15 @@ purifyBoundVar ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction (Thunk Builtin) m ->
   Lv ->
+  UnforcedSpine Builtin ->
   m (IfTree (Thunk Builtin) (Thunk Builtin))
-purifyBoundVar unblock lv = do
-  (_, maybeChildVars) <- lookupVariableInNestedCtx lv
-  case maybeChildVars of
-    Nothing -> return $ IfLeaf $ Forced $ VBoundVar lv []
-    Just (_tensorVar, sliceVar) -> unblock =<< replaceTensorVariableWithStackedChildren sliceVar
+purifyBoundVar unblock lv spine = case spine of
+  _ : _ -> unexpectedExprError "purification" "bound var with non-empty spine"
+  [] -> do
+    (_, maybeChildVars) <- lookupVariableInNestedCtx lv
+    case maybeChildVars of
+      Nothing -> return $ IfLeaf $ Forced $ VBoundVar lv []
+      Just (_tensorVar, sliceVar) -> unblock =<< replaceTensorVariableWithStackedChildren sliceVar
 
 --------------------------------------------------------------------------------
 -- Utility functions

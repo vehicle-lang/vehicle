@@ -81,7 +81,7 @@ purifyExpr actions incrDims value = do
         VRatAtTensor args -> purifyAtTensor args
         VRatForeach args -> purifyForeachTensor args
         VRatTensorTranspose args -> purifyTransposeTensor args
-        VRatTensorBoundVar v -> purifyBoundVar v
+        VRatTensorBoundVar v spine -> purifyBoundVar v spine
         VNetworkApplication ident args -> purifyNetworkVar ident args
         VRatTensorRecordAcc typ record fieldName spine -> purifyRecordAcc typ record fieldName spine
         VRatAtVector args -> purifyAtVector args
@@ -102,9 +102,11 @@ purifyRatTensor tensor _actions _incrDims = do
 
 purifyBoundVar ::
   Lv ->
+  UnforcedSpine Builtin ->
   PurifyFn m
-purifyBoundVar v actions@UnblockingActions {..} incrDims
-  | incrDims > 0 = unblockRatTensorBoundVar (purifyExpr actions incrDims) v
+purifyBoundVar v spine actions@UnblockingActions {..} incrDims
+  | not (null spine) = unexpectedExprError "purification" "BoundVar with spine"
+  | incrDims > 0 = unblockBoundVar (purifyExpr actions incrDims) v []
   | otherwise = return $ IfLeaf $ Forced $ VBoundVar v []
 
 purifyNetworkVar ::
@@ -194,8 +196,8 @@ purifyRecordAcc typ record fieldName spine actions _incrDims = do
   unblockRecordAcc actions typ record fieldName spine
 
 purifyForeachTensor :: ForeachTensorArgs (Thunk Builtin) -> PurifyFn m
-purifyForeachTensor args _actions _incrDims = do
-  unblockForeachTensor args
+purifyForeachTensor args actions _incrDims = do
+  unblockForeachTensor actions args
 
 purifyAtTensor :: AtTensorArgs (Thunk Builtin) -> PurifyFn m
 purifyAtTensor args actions incrDims = do

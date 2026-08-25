@@ -89,7 +89,7 @@ compilePartitionToQuery metaNetworkApps compilationSteps (BoundedAssertions boun
     let reconstruction = Reconstruction compilationSteps
     let queryMetaData = QueryMetaData queryAddress metaNetwork variableStore reconstruction
 
-    -- Convert the compiled bounds and assertions to the format expected by the verifier interface
+    -- Convert the compiled bounds and assertions to the format expected by the solver interface
     nameCtx <- getCompleteNamedCtx
     let queryBounds = substBounds nameCtx variableSubstitution bounds
     queryAssertions <- substAssertions nameCtx variableSubstitution assertions
