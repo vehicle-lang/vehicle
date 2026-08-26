@@ -76,7 +76,7 @@ typeCheckUserProg TypeCheckOptions {..} = do
 
   -- Post-process the program to simplify it
   keepUnusedDeclarationFn <- checkDeclarationNamesPresent userProg declarationsToCompile
-  monomorphisedProg <- monomorphise userProg keepUnusedDeclarationFn
+  monomorphisedProg <- monomorphise userProg (\d -> not (isInstanceDecl d || isProjectionDecl d) && keepUnusedDeclarationFn d)
 
   prog <- flattenProgram monomorphisedProg importedModules moduleGraph
   castFreeProg <- resolveInstanceArgumentsAndCasts prog
@@ -105,7 +105,7 @@ checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
 
   let isComparisonInstanceDecl :: Decl Builtin -> Bool
       isComparisonInstanceDecl (DefFunction _ name (FunctionDecl _ (Just (AnnInstance {}))) _ _) = "HasComparison" `isSuffixOf` identifierName name
-      isComparisonInstanceDecl _ = True
+      isComparisonInstanceDecl _ = False
 
   return $ \d ->
     -- Keep the declarations the users requested

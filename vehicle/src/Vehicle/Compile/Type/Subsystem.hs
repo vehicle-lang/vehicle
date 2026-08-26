@@ -49,7 +49,7 @@ polarityTypeCheck ::
   m (Either CompileError (Prog PolarityBuiltin))
 polarityTypeCheck prog declarationsToCompile = do
   let keepUnused = if Set.null declarationsToCompile then isUserCode else (\d -> identifierOf d `Set.member` declarationsToCompile)
-  monomorphisedProg <- monomorphise prog keepUnused
+  monomorphisedProg <- monomorphise prog (\d -> not (isInstanceDecl d || isProjectionDecl d) && keepUnused d)
   irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
   implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
   instanceFreeProg <- resolveInstanceArgumentsAndCasts implicitFreeProg
@@ -62,7 +62,7 @@ linearityTypeCheck ::
   m (Either CompileError (Prog LinearityBuiltin))
 linearityTypeCheck prog declarationsToCompile = do
   let keepUnused = if Set.null declarationsToCompile then isUserCode else (\d -> identifierOf d `Set.member` declarationsToCompile)
-  monomorphisedProg <- monomorphise prog keepUnused
+  monomorphisedProg <- monomorphise prog (\d -> not (isInstanceDecl d || isProjectionDecl d) && keepUnused d)
   irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
   implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
   instanceFreeProg <- resolveInstanceArgumentsAndCasts implicitFreeProg
@@ -79,7 +79,7 @@ decidabilityTypeCheck prog = do
     Left err -> developerError $ errorInSubsystemMessage "determine the decidability of the program for export to ITP" err
     Right decProg -> return decProg
 
-  monoDecProg <- monomorphise decProg isUserCode
+  monoDecProg <- monomorphise decProg (\d -> not (isInstanceDecl d || isProjectionDecl d) && isUserCode d)
   resolveInstanceArgumentsAndCasts monoDecProg
 
 typeCheckWithSubsystem ::

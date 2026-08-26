@@ -341,13 +341,13 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
             }
         )
     other -> do
-      let recordComp = case other of
-            UniModal (RecordIOType tl) -> mkRecordEqTypeFromTensorLike tl
-            MultiModal recordTyp fields -> mkRecordEqTypeFromMultiModal recordTyp fields
+      let (recordComp, recordIdent) = case other of
+            UniModal (RecordIOType tl) -> (mkRecordEqTypeFromTensorLike tl, recordTypeIdent tl)
+            MultiModal recordTyp fields -> (mkRecordEqTypeFromMultiModal recordTyp fields, recordTyp)
 
-      let recordCompTy = undefined
-      let eqFn = RecordProj mempty recordCompTy recordComp (FieldName mempty "eq")
-      pure $ Unforced (namedBoundContextToEnv ctx) eqFn
+      let recordCompTy = Forced $ VFreeVar recordIdent []
+      let eqFn = Forced $ VRecordAcc recordCompTy (Unforced (namedBoundContextToEnv ctx) recordComp) (FieldName mempty "eq") [explicit inputVarExpr, explicit arg]
+      pure eqFn
 
   tell [inputEquality]
 
