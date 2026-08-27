@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Solver backend
+
+* Fixed bug where VNNLIB 2.0 queries were incorrectly being generated with `equalTo` instead of `equal-to`.
+
 ## v0.27.1
 
 ### Loss backend
