@@ -12,7 +12,7 @@
   (declare-output classifier_Y Real [10])
 )
 (declare-network classifier_2
-  (equalTo classifier)
+  (equal-to classifier)
   (declare-input classifier_2_X Real [28, 28])
   (declare-output classifier_2_Y Real [10])
 )

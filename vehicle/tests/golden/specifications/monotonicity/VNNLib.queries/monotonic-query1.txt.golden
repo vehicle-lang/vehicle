@@ -12,7 +12,7 @@
   (declare-output f_Y Real [])
 )
 (declare-network f_2
-  (equalTo f)
+  (equal-to f)
   (declare-input f_2_X Real [])
   (declare-output f_2_Y Real [])
 )
