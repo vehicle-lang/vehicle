@@ -52,6 +52,7 @@ data CompilerPass
   | ITP
   | Loss
   | LossLogic
+  | LossQuantifierLifting
   | TypingSubsystem
   | Verification
   deriving (Eq, Show, Read, Bounded, Enum)
@@ -64,6 +65,7 @@ instance Pretty CompilerPass where
     ITP -> "ITP compilation"
     Loss -> "loss compilation"
     LossLogic -> "loss logic compilation"
+    LossQuantifierLifting -> "loss quantifier lifting"
     TypingSubsystem -> "subsystem type checking"
     Verification -> "actual verification"
 

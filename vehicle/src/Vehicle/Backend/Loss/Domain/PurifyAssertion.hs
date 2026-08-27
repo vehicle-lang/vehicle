@@ -279,6 +279,7 @@ tryAndUnblock dims expr = do
       logDebug MaxDetail $ "contains network" <+> quotePretty ident <+> "so cannot be constraint"
       return $ IfLeaf $ Result expr Nothing
     Left BlockingDatasetOrParameter {} -> compileAsConstantExpr dims expr
+    Left (BlockingVar _) -> developerError "should not be possible to be blocked on a var in quantifier lifting"
     Right unblocked -> forIfTreeM unblocked $ \unblockedExpr ->
       compileLinearExpr dims unblockedExpr
 

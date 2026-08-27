@@ -39,7 +39,7 @@ import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (ExtendedRatTensor, Tensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext, runFreshFreeContextT)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (addDeclEntryToContext), runFreshFreeContextT)
 import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, stdlibIdentifier, userModulePath)
 import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Logging.Class
@@ -223,7 +223,15 @@ dependentTypesError b = developerError $ "Conversion of" <+> pretty b <+> "is no
 -- Programs and declarations
 
 convertProg :: (MonadJSON m) => S.Prog Builtin -> m JProg
-convertProg (S.Main decls) = Main <$> traverse convertDecl decls
+convertProg (S.Main decls) = Main <$> convertDecls decls
+
+convertDecls :: (MonadJSON m) => [S.Decl Builtin] -> m [JDecl]
+convertDecls = \case
+  [] -> return []
+  decl : decls -> do
+    decl' <- convertDecl decl
+    decls' <- addDeclEntryToContext decl $ convertDecls decls
+    return (decl' : decls')
 
 convertDecl :: (MonadJSON m) => S.Decl Builtin -> m JDecl
 convertDecl = \case

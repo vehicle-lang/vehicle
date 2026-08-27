@@ -1012,7 +1012,8 @@ formatCompileError = \case
                 ":"
                   <+> lineIndent (prettyFriendlyEmptyCtx value)
               Left (BlockingDatasetOrParameter blockingIdent) -> quotePretty (nameOf blockingIdent)
-              Left (BlockingNetwork blockingIdent) -> quotePretty (nameOf blockingIdent),
+              Left (BlockingNetwork blockingIdent) -> quotePretty (nameOf blockingIdent)
+              Left (BlockingVar lv) -> quotePretty lv,
         fix =
           Just $
             "ensure that the expression" <+> squotes comp <+> "evaluates to either `true` or `false`."

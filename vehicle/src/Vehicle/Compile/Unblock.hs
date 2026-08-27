@@ -78,10 +78,10 @@ data UnblockingActions m = UnblockingActions
 noUnblocking :: (MonadError BlockingReason m) => UnblockingActions m
 noUnblocking =
   UnblockingActions
-    { unblockRatTensorBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v [],
+    { unblockRatTensorBoundVar = \_ v -> throwError $ BlockingVar v,
       unblockNetworkApp = \_ _ ident _args -> throwError $ BlockingNetwork ident,
       unblockDatasetOrParameter = \_ ident -> throwError $ BlockingDatasetOrParameter ident,
-      unblockRecordBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v []
+      unblockRecordBoundVar = \_ v -> throwError $ BlockingVar v
     }
 
 -- | Lifts all `if`s in the provided expression `e` to the top-level, while

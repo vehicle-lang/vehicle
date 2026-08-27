@@ -1,5 +1,5 @@
 module Vehicle.Backend.Loss.LiftQuantifier
-  ( liftQuantifiers,
+  ( compileHardBooleanTree,
     QuantifierData,
     LiftedData,
   )
@@ -9,6 +9,7 @@ import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.RWS (MonadReader, ask)
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
+import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody, negateRecordQuantifierBody)
 import Vehicle.Compile.Normalise.Builtin (elimImplies)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.TypedValue
@@ -21,17 +22,14 @@ import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Interface.Operations
 import Vehicle.Data.MaybeTrivial
+import Vehicle.Data.Variable.Bound.Context.Name (prettyFriendlyInCtx)
 import Vehicle.Data.Variable.Bound.Context.Name.Class
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
-import Vehicle.Verify.Specification (Property, QuerySet (..), propertySize)
+import Vehicle.Verify.Specification (Property, QuerySet (..))
 
 type QuantifierData = (Quantifier, Either (UnforcedDims Builtin, UnforcedDims Builtin) (UnforcedType Builtin), UnforcedBinder Builtin)
 
-type HasForall = Bool
-
-type HasExists = Bool
-
-type LiftedData = ([QuantifierData], Thunk Builtin, HasForall, HasExists)
+type LiftedData = ([QuantifierData], Thunk Builtin, Lv)
 
 type MonadLiftQuantifiers m =
   ( MonadCompile m,
@@ -40,105 +38,70 @@ type MonadLiftQuantifiers m =
     MonadReader DeclProvenance m
   )
 
-liftQuantifiers ::
+-- if at some point we hit an exists, then we call liftQuantifiers
+-- if we hit a forall, then we convert it to not exists not and call liftQuantifiers on (exists not)
+-- if we encounter a not, call lowerNot
+compileHardBooleanTree ::
   (MonadLiftQuantifiers m) =>
-  (Thunk Builtin, Lv) ->
-  m (Property LiftedData, Lv)
-liftQuantifiers (value, ctxDelta) = do
+  Thunk Builtin ->
+  m (Property LiftedData)
+compileHardBooleanTree value = do
   forcedValue <- forceThunk value
   case toBoolValue forcedValue of
-    VBoolLiteral _ ->
-      return (NonTrivial $ Query $ QuerySet False (DisjunctAll [([], value, False, False)]), 0)
-    VAnd (TensorOp2Args dims arg1 arg2) -> do
-      (arg1', ctxSize1) <- liftQuantifiers (arg1, ctxDelta)
-      (arg2', ctxSize2) <- liftQuantifiers (arg2, ctxDelta + ctxSize1)
-      case (arg1', arg2') of
-        (NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers1, liftedValue1, hasForall1, hasExists1)]))), NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers2, liftedValue2, hasForall2, hasExists2)])))) -> do
-          let hasForall = hasForall1 || hasForall2
-          let hasExists = hasExists1 || hasExists2
-          if hasExists
-            then do
-              -- Undo the offset in the RHS arg when we don't lift
-              liftedValue2' <- updateVarLevels (-(unLv $ ctxDelta + ctxSize1)) liftedValue2
-              let query1 = Query (QuerySet hasForall1 (DisjunctAll [(quantifiers1, liftedValue1, hasForall1, hasExists1)]))
-              let query2 = Query (QuerySet hasForall2 (DisjunctAll [(quantifiers2, liftedValue2', hasForall2, hasExists2)]))
-              return (NonTrivial $ Conjunct $ ConjunctAll [query1, query2], ctxSize1 + ctxSize2)
-            else do
-              let newQuery = Query $ QuerySet hasForall (DisjunctAll [(quantifiers1 ++ quantifiers2, Forced $ mkExpr accessAndTensor (TensorOp2Args dims liftedValue1 liftedValue2), hasForall, hasExists)])
-              return (NonTrivial newQuery, ctxSize1 + ctxSize2)
-        (NonTrivial conjunctOrDisjunct1, NonTrivial conjunctOrDisjunct2) -> return (NonTrivial $ Conjunct $ ConjunctAll [conjunctOrDisjunct1, conjunctOrDisjunct2], ctxSize1 + ctxSize2)
-        _ -> developerError "Conjunct cannot contain trivial args"
-    VOr (TensorOp2Args dims arg1 arg2) -> do
-      (arg1', ctxSize1) <- liftQuantifiers (arg1, ctxDelta)
-      (arg2', ctxSize2) <- liftQuantifiers (arg2, ctxDelta + ctxSize1)
-      case (arg1', arg2') of
-        (NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers1, liftedValue1, hasForall1, hasExists1)]))), NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers2, liftedValue2, hasForall2, hasExists2)])))) -> do
-          let hasForall = hasForall1 || hasForall2
-          let hasExists = hasExists1 || hasExists2
-          if hasForall
-            then do
-              -- Undo the offset in the RHS arg when we don't lift
-              liftedValue2' <- updateVarLevels (-(unLv $ ctxDelta + ctxSize1)) liftedValue2
-              let query1 = Query (QuerySet hasForall1 (DisjunctAll [(quantifiers1, liftedValue1, hasForall1, hasExists1)]))
-              let query2 = Query (QuerySet hasForall2 (DisjunctAll [(quantifiers2, liftedValue2', hasForall2, hasExists2)]))
-              return (NonTrivial $ Disjunct $ DisjunctAll [query1, query2], ctxSize1 + ctxSize2)
-            else do
-              let newQuery = Query $ QuerySet hasForall (DisjunctAll [(quantifiers1 ++ quantifiers2, Forced $ mkExpr accessOrTensor (TensorOp2Args dims liftedValue1 liftedValue2), hasForall, hasExists)])
-              return (NonTrivial newQuery, ctxSize1 + ctxSize2)
-        (NonTrivial conjunctOrDisjunct1, NonTrivial conjunctOrDisjunct2) -> return (NonTrivial $ Disjunct $ DisjunctAll [conjunctOrDisjunct1, conjunctOrDisjunct2], ctxSize1 + ctxSize2)
-        _ -> developerError "Disjunct cannot contain trivial args"
-    VNot (TensorOp1Args dims arg) -> do
-      (arg', ctxSize) <- liftQuantifiers (arg, ctxDelta)
-      case arg' of
-        NonTrivial (Query (QuerySet _ (DisjunctAll [(quantifiers, newValue, hasForall, hasExists)]))) -> do
-          let newQuery = Query $ QuerySet hasForall (DisjunctAll [(quantifiers, Forced $ mkExpr accessNotTensor $ TensorOp1Args dims newValue, hasForall, hasExists)])
-          return (NonTrivial newQuery, ctxSize)
-        NonTrivial _ -> developerError "Negation must be pushed below and/or"
-        _ -> developerError "Negation cannot contain trivial args"
-    VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs pDims bDims binder closure) -> do
-      lv <- getBinderDepth
-      let normBody = extendClosureWithBound closure binder lv
-      let quantifierData = (quantifier, Left (pDims, bDims), binder)
-      (body', ctxSize) <- addNameToContext binder $ liftQuantifiers (normBody, ctxDelta)
-      case body' of
-        NonTrivial (Query querySet) -> do
-          newQuerySet <- addQuantifierToQuerySet quantifierData querySet
-          return (NonTrivial $ Query newQuerySet, ctxSize + 1)
-        NonTrivial conjunctOrDisjunct -> do
-          (lowered, newCtxSize) <- lowerQuantifier quantifierData ctxSize (NonTrivial conjunctOrDisjunct)
-          return (lowered, newCtxSize)
-        _ -> developerError "Quantifier body cannot be trivial"
-    VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder closure) -> do
-      lv <- getBinderDepth
-      let normBody = extendClosureWithBound closure binder lv
-      let quantifierData = (quantifier, Right typ, binder)
-      (body', ctxSize) <- addNameToContext binder $ liftQuantifiers (normBody, ctxDelta)
-      case body' of
-        NonTrivial (Query querySet) -> do
-          newQuerySet <- addQuantifierToQuerySet quantifierData querySet
-          return (NonTrivial $ Query newQuerySet, ctxSize + 1)
-        NonTrivial conjunctOrDisjunct -> do
-          (lowered, newCtxSize) <- lowerQuantifier quantifierData ctxSize (NonTrivial conjunctOrDisjunct)
-          return (lowered, newCtxSize)
-        _ -> developerError "Quantifier body cannot be trivial"
-    VCompareIndex _ -> do
-      newExpr <- updateVarLevels (unLv ctxDelta) value
-      let newQuery = Query $ QuerySet False (DisjunctAll [([], newExpr, False, False)])
-      return (NonTrivial newQuery, 0)
-    VCompareNat _ -> do
-      newExpr <- updateVarLevels (unLv ctxDelta) value
-      let newQuery = Query $ QuerySet False (DisjunctAll [([], newExpr, False, False)])
-      return (NonTrivial newQuery, 0)
-    VCompareRatTensor _ -> do
-      newExpr <- updateVarLevels (unLv ctxDelta) value
-      let newQuery = Query $ QuerySet False (DisjunctAll [([], newExpr, False, False)])
-      return (NonTrivial newQuery, 0)
+    VBoolLiteral bool ->
+      return $ Trivial bool
+    VAnd (TensorOp2Args _ arg1 arg2) -> do
+      arg1' <- compileHardBooleanTree arg1
+      arg2' <- compileHardBooleanTree arg2
+      return $ andTrivial (\x y -> andBoolExpr x y) arg1' arg2'
+    VOr (TensorOp2Args _ arg1 arg2) -> do
+      arg1' <- compileHardBooleanTree arg1
+      arg2' <- compileHardBooleanTree arg2
+      return $ orTrivial (\x y -> orBoolExpr x y) arg1' arg2'
+    VNot args -> do
+      errorOrResult <- runExceptT $ lowerNot noUnblocking args
+      case errorOrResult of
+        Left _ -> do
+          declProv <- ask
+          throwError $ UnableToLiftQuantifiersInProperty declProv
+        Right result -> compileHardBooleanTree result
+    VQuantifyRatTensor (quantifier, args) -> do
+      case quantifier of
+        Forall -> do
+          let negatedBody = negateQuantifierBody args
+          let existsExpr = Forced $ mkExpr accessQuantifyRatTensor (Exists, negatedBody)
+          subtrees <- liftQuantifiers (existsExpr, 0)
+          case subtrees of
+            NonTrivial disjuncts -> return $ NonTrivial $ Query $ QuerySet True disjuncts
+            Trivial bool -> return $ Trivial $ not bool
+        Exists -> do
+          subtrees <- liftQuantifiers (Forced forcedValue, 0)
+          case subtrees of
+            NonTrivial disjuncts -> return $ NonTrivial $ Query $ QuerySet False disjuncts
+            Trivial bool -> return $ Trivial bool
+    VQuantifyRecord (quantifier, args) -> do
+      case quantifier of
+        Forall -> do
+          let negatedBody = negateRecordQuantifierBody args
+          let existsExpr = Forced $ mkExpr accessQuantifyRecord (Exists, negatedBody)
+          subtrees <- liftQuantifiers (existsExpr, 0)
+          case subtrees of
+            NonTrivial disjuncts -> return $ NonTrivial $ Query $ QuerySet True disjuncts
+            Trivial bool -> return $ Trivial $ not bool
+        Exists -> do
+          subtrees <- liftQuantifiers (Forced forcedValue, 0)
+          case subtrees of
+            NonTrivial disjuncts -> return $ NonTrivial $ Query $ QuerySet False disjuncts
+            Trivial bool -> return $ Trivial bool
+    VCompareIndex _ -> unblock
+    VCompareNat _ -> unblock
+    VCompareRatTensor _ -> unblock
     VBoolIf args -> do
       unfolded <- unfoldIf args
-      liftQuantifiers (unfolded, ctxDelta)
+      compileHardBooleanTree unfolded
     VImplies args -> do
       let unfolded = elimImplies args
-      liftQuantifiers (unfolded, ctxDelta)
+      compileHardBooleanTree unfolded
     VBoolVectorAt {} -> unblock
     VBoolFoldList {} -> unblock
     VReduceAndTensor {} -> unblock
@@ -147,80 +110,123 @@ liftQuantifiers (value, ctxDelta) = do
   where
     unblock = do
       errorOrResult <- runExceptT $ unblockBoolExpr noUnblocking value
+      logDebug MaxDetail "compileHardBooleanTree"
+      case errorOrResult of
+        Left _ -> do
+          declProv <- ask
+          throwError $ UnableToLiftQuantifiersInProperty declProv
+        Right result -> compileHardBooleanTree result
+
+type SubTrees = MaybeTrivial (DisjunctAll LiftedData)
+
+andResult ::
+  forall m.
+  (MonadLiftQuantifiers m) =>
+  UnforcedDims Builtin ->
+  Thunk Builtin ->
+  Thunk Builtin ->
+  Lv ->
+  m SubTrees
+andResult dims arg1 arg2 ctxDelta = do
+  arg1' <- liftQuantifiers (arg1, ctxDelta)
+  case arg1' of
+    NonTrivial disjuncts -> do
+      things <- traverse (flip compileRHS arg2) disjuncts
+      let eliminateTrivial = eliminateTrivialDisjunctions things
+      case eliminateTrivial of
+        NonTrivial disjuncts' -> return $ NonTrivial $ disjunctDisjuncts disjuncts'
+        Trivial True -> return arg1'
+        Trivial False -> return $ Trivial False
+    Trivial False -> return $ Trivial False
+    Trivial True -> liftQuantifiers (arg2, ctxDelta)
+  where
+    compileRHS :: (MonadLiftQuantifiers m) => LiftedData -> Thunk Builtin -> m SubTrees
+    compileRHS leftLiftedData@(_, _, ctxSizeLeft) arg = do
+      subtreesRHS <- liftQuantifiers (arg, ctxDelta + ctxSizeLeft)
+      case subtreesRHS of
+        NonTrivial disjuncts -> return $ NonTrivial $ fmap (constructAnd leftLiftedData) disjuncts
+        Trivial True -> return $ NonTrivial $ DisjunctAll [leftLiftedData]
+        Trivial False -> return $ Trivial False
+
+    constructAnd :: LiftedData -> LiftedData -> LiftedData
+    constructAnd (quantifiersLeft, leftExpr, ctxSizeLeft) (quantifiersRight, rightExpr, ctxSizeRight) =
+      ( quantifiersLeft ++ quantifiersRight,
+        Forced $ mkExpr accessAndTensor (TensorOp2Args dims leftExpr rightExpr),
+        ctxSizeLeft + ctxSizeRight
+      )
+
+orResult ::
+  (MonadLiftQuantifiers m) =>
+  Thunk Builtin ->
+  Thunk Builtin ->
+  Lv ->
+  m SubTrees
+orResult arg1 arg2 ctxDelta = do
+  arg1' <- liftQuantifiers (arg1, ctxDelta)
+  arg2' <- liftQuantifiers (arg2, ctxDelta)
+  return $ orTrivial (<>) arg1' arg2'
+
+-- throw an error if we encounter a forall here
+liftQuantifiers ::
+  (MonadLiftQuantifiers m) =>
+  (Thunk Builtin, Lv) ->
+  m SubTrees
+liftQuantifiers (value, ctxDelta) = logEntryAndExit value $ do
+  forcedValue <- forceThunk value
+  case toBoolValue forcedValue of
+    VBoolLiteral bool ->
+      return $ Trivial bool
+    VAnd (TensorOp2Args dims arg1 arg2) -> andResult dims arg1 arg2 ctxDelta
+    VOr (TensorOp2Args _ arg1 arg2) -> orResult arg1 arg2 ctxDelta
+    VNot args -> do
+      -- call lowerNot, then call liftQuantifiers on result
+      errorOrResult <- runExceptT $ lowerNot noUnblocking args
       case errorOrResult of
         Left _ -> do
           declProv <- ask
           throwError $ UnableToLiftQuantifiersInProperty declProv
         Right result -> liftQuantifiers (result, ctxDelta)
-
-lowerQuantifier ::
-  (MonadLiftQuantifiers m) =>
-  QuantifierData ->
-  Lv ->
-  Property LiftedData ->
-  m (Property LiftedData, Lv)
-lowerQuantifier quantifierData ctxSize property = case property of
-  NonTrivial expr -> do
-    newExpr <- traverse (addQuantifierToQuerySet quantifierData) expr
-    let newProperty = NonTrivial newExpr
-    let newPropertySize = propertySize newProperty
-    -- When a quantifier is lowered, it is prepended to every LiftedData's list of quantifier data
-    -- so the property's context size grows by how many LiftedData leaves there are
-    let newCtxSize = ctxSize + Lv newPropertySize
-    return (newProperty, newCtxSize)
-  _ -> developerError "Cannot lower a quantifier into an empty property"
-
-addQuantifierToQuerySet ::
-  (MonadLiftQuantifiers m) =>
-  QuantifierData ->
-  QuerySet LiftedData ->
-  m (QuerySet LiftedData)
-addQuantifierToQuerySet (quantifier, dimsOrType, binder) querySet = case querySet of
-  QuerySet _ (DisjunctAll [(quantifiers, value, hasForall, hasExists)]) -> do
-    let newQuantifiers = (quantifier, dimsOrType, binder) : quantifiers
-    if quantifier == Forall
-      then return $ QuerySet True (DisjunctAll [(newQuantifiers, value, True, hasExists)])
-      else return $ QuerySet hasForall (DisjunctAll [(newQuantifiers, value, hasForall, True)])
-  _ -> developerError "Missing lifted expression"
-
-updateVarLevels ::
-  (MonadLiftQuantifiers m) =>
-  Int ->
-  Thunk Builtin ->
-  m (Thunk Builtin)
-updateVarLevels offset value = do
-  forcedValue <- forceThunk value
-  case toBoolValue forcedValue of
-    VBoolLiteral _ -> return value
-    VAnd args -> do
-      args' <- traverseTensorOp2Args (updateVarLevels offset) args
-      return (Forced $ mkExpr accessAndTensor args')
-    VOr args -> do
-      args' <- traverseTensorOp2Args (updateVarLevels offset) args
-      return (Forced $ mkExpr accessOrTensor args')
-    VNot (TensorOp1Args dims arg) -> do
-      arg' <- updateVarLevels offset arg
-      return (Forced $ mkExpr accessNotTensor $ TensorOp1Args dims arg')
-    VQuantifyRatTensor _ -> developerError "value should not contain a quantifier"
-    VQuantifyRecord _ -> developerError "value should not contain a quantifier"
-    VCompareIndex (op, IndexComparisonArgs size1 size2 arg1 arg2) -> do
-      arg1' <- updateIndexBoundVar offset arg1
-      arg2' <- updateIndexBoundVar offset arg2
-      return (Forced $ mkExpr accessCompareIndex (op, IndexComparisonArgs size1 size2 arg1' arg2'))
-    VCompareNat (op, args) -> do
-      args' <- traverseOp2Args (updateNatBoundVar offset) args
-      return (Forced $ mkExpr accessCompareNat (op, args'))
-    VCompareRatTensor (op, TensorComparisonArgs rDims pDims xs ys) -> do
-      xs' <- updateRatTensorBoundVar offset xs
-      ys' <- updateRatTensorBoundVar offset ys
-      let args' = TensorComparisonArgs rDims pDims xs' ys'
-      return (Forced $ mkExpr accessCompareRatTensor (op, args'))
+    VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs pDims bDims binder closure) -> do
+      case quantifier of
+        Forall -> do
+          declProv <- ask
+          throwError $ UnableToLiftQuantifiersInProperty declProv
+        Exists -> do
+          lv <- getBinderDepth
+          let normBody = extendClosureWithBound closure binder lv
+          let quantifierData = (quantifier, Left (pDims, bDims), binder)
+          subtrees <- addNameToContext binder $ liftQuantifiers (normBody, ctxDelta)
+          case subtrees of
+            NonTrivial disjuncts -> return $ NonTrivial $ fmap (lowerQuantifier quantifierData) disjuncts
+            Trivial bool -> return $ Trivial bool
+    VQuantifyRecord (quantifier, QuantifyRecordArgs typ binder closure) -> do
+      case quantifier of
+        Forall -> do
+          declProv <- ask
+          throwError $ UnableToLiftQuantifiersInProperty declProv
+        Exists -> do
+          lv <- getBinderDepth
+          let normBody = extendClosureWithBound closure binder lv
+          let quantifierData = (quantifier, Right typ, binder)
+          subtrees <- addNameToContext binder $ liftQuantifiers (normBody, ctxDelta)
+          case subtrees of
+            NonTrivial disjuncts -> return $ NonTrivial $ fmap (lowerQuantifier quantifierData) disjuncts
+            Trivial bool -> return $ Trivial bool
+    VCompareIndex _ -> do
+      newExpr <- updateVarLevels ctxDelta value
+      return $ NonTrivial $ DisjunctAll [([], newExpr, 0)]
+    VCompareNat _ -> do
+      newExpr <- updateVarLevels ctxDelta value
+      return $ NonTrivial $ DisjunctAll [([], newExpr, 0)]
+    VCompareRatTensor _ -> do
+      newExpr <- updateVarLevels ctxDelta value
+      return $ NonTrivial $ DisjunctAll [([], newExpr, 0)]
     VBoolIf args -> do
       unfolded <- unfoldIf args
-      updateVarLevels offset unfolded
+      liftQuantifiers (unfolded, ctxDelta)
     VImplies args -> do
       let unfolded = elimImplies args
-      updateVarLevels offset unfolded
+      liftQuantifiers (unfolded, ctxDelta)
     VBoolVectorAt {} -> unblock
     VBoolFoldList {} -> unblock
     VReduceAndTensor {} -> unblock
@@ -229,13 +235,41 @@ updateVarLevels offset value = do
   where
     unblock = do
       errorOrResult <- runExceptT $ unblockBoolExpr noUnblocking value
+      logDebug MaxDetail "liftQuantifiers"
       case errorOrResult of
         Left _ -> do
-          declProv <- ask
-          throwError $ UnableToLiftQuantifiersInProperty declProv
-        Right result -> updateVarLevels offset result
+          -- TODO: In order for this to be sound, we need to check that there are no quantifiers in value
+          newExpr <- updateVarLevels ctxDelta value
+          return $ NonTrivial $ DisjunctAll [([], newExpr, 0)]
+        Right result -> liftQuantifiers (result, ctxDelta)
 
-updateIndexBoundVar ::
+lowerQuantifier ::
+  QuantifierData ->
+  LiftedData ->
+  LiftedData
+lowerQuantifier quantifierData (quantifiers, expr, ctxSize) = (quantifierData : quantifiers, expr, ctxSize + 1)
+
+updateVarLevels ::
+  (MonadLiftQuantifiers m) =>
+  Lv ->
+  Thunk Builtin ->
+  m (Thunk Builtin)
+updateVarLevels offset value = do
+  forcedValue <- forceThunk value
+  Forced <$> case forcedValue of
+    VFreeVar ident spine -> VFreeVar ident <$> traverseArgs (updateVarLevels offset) spine
+    VBuiltin ident spine -> VBuiltin ident <$> traverseArgs (updateVarLevels offset) spine
+    VUniverse args -> return $ VUniverse args
+    VBoundVar lv spine -> VBoundVar (lv + offset) <$> traverseArgs (updateVarLevels offset) spine
+    VPi {} -> developerError "Cannot have VPi when updating variable levels"
+    VLam {} -> developerError "Cannot have VLam when updating variable levels"
+    VRecord i fs -> VRecord i <$> traverse (updateVarLevels offset) fs
+    VRecordAcc typ record field spine -> do
+      typ' <- updateVarLevels offset typ
+      record' <- updateVarLevels offset record
+      VRecordAcc typ' record' field <$> traverseArgs (updateVarLevels offset) spine
+
+{-updateIndexBoundVar ::
   (MonadLiftQuantifiers m) =>
   Int ->
   Thunk Builtin ->
@@ -370,13 +404,21 @@ updateRatTensorBoundVar offset value = do
       return value
     VRatAtVector (AtVectorArgs typ dim vector idx) -> do
       vector' <- updateRatTensorBoundVar offset vector
-      return (Forced $ mkExpr accessAtVector (AtVectorArgs typ dim vector' idx))
+      return (Forced $ mkExpr accessAtVector (AtVectorArgs typ dim vector' idx))-}
 
-{-unblockingActions :: (MonadLiftQuantifiers m) => UnblockingActions m
-unblockingActions =
-  UnblockingActions
-    { unblockRatTensorBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v [],
-      unblockRecordBoundVar = \_ v -> return $ IfLeaf $ Forced $ VBoundVar v [],
-      unblockNetworkApp = \_ _ ident args -> return $ IfLeaf $ Forced $ VFreeVar ident (mkExpr accessSpine args),
-      unblockDatasetOrParameter = \_ ident -> return $ IfLeaf $ Forced $ VFreeVar ident []
-    }-}
+logEntryAndExit ::
+  (MonadLiftQuantifiers m) =>
+  Thunk Builtin ->
+  m SubTrees ->
+  m SubTrees
+logEntryAndExit start action = do
+  logDebugM MaxDetail $ do
+    doc <- prettyFriendlyInCtx start
+    return $ "lift-enter:" <+> doc
+  incrCallDepth
+  result <- action
+  decrCallDepth
+  logDebugM MaxDetail $ do
+    -- doc <- prettyFriendlyInCtx result
+    return "lift-exit:" -- <+> lineIndent doc
+  return result

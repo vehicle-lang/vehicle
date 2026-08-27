@@ -246,6 +246,7 @@ deriving instance Show CompileError
 data BlockingReason
   = BlockingNetwork Identifier
   | BlockingDatasetOrParameter Identifier
+  | BlockingVar Lv
 
 deriving instance Show BlockingReason
 
