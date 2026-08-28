@@ -147,7 +147,6 @@ compilePropertyDecl ::
 compilePropertyDecl CompilationSettings {..} prov typ body = do
   let normType = Unforced emptyBoundEnv typ
   let normBody = Unforced emptyBoundEnv body
-
   logCompilerSection2 MinDetail ("property" <+> quotePretty propertyAddress) $ do
     let propertyAdd = PropertyAddress {
                 propertyName = nameOf prov,
