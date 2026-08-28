@@ -21,7 +21,7 @@ import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot
-import Vehicle.Compile.Normalise.Builtin (elimImplies, evalAnd, evalOr)
+import Vehicle.Compile.Normalise.Builtin (elimImplies, evalAnd, evalOr, getDim, getDims)
 import Vehicle.Compile.Normalise.Core (BuiltinEvaluationResult (..))
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
@@ -44,6 +44,8 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
+import Vehicle.Data.Tensor (TensorShape)
+import Vehicle.Compile.Normalise.Force (forceThunk)
 
 --------------------------------------------------------------------------------
 -- Compilation to individual queries
@@ -143,47 +145,82 @@ compilePropertyDecl ::
   Type Builtin ->
   Expr Builtin ->
   m (MultiProperty PropertyAddress)
-compilePropertyDecl settings prov typ body = do
-  let compilePropertyFn = compileSingleProperty settings prov
+compilePropertyDecl CompilationSettings {..} prov typ body = do
   let normType = Unforced emptyBoundEnv typ
   let normBody = Unforced emptyBoundEnv body
-  errorOrResult <- traverseMultiProperty compilePropertyFn (nameOf prov) normType normBody
-  case errorOrResult of
-    Left err -> throwError $ MultiPropertyTraveralError prov err
-    Right result -> return result
-
--- Compiles an individual property of type `Bool`
-compileSingleProperty ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
-  CompilationSettings ->
-  DeclProvenance ->
-  PropertyAddress ->
-  Thunk Builtin ->
-  m PropertyAddress
-compileSingleProperty CompilationSettings {..} prov propertyAddress expr =
+  
   logCompilerSection2 MinDetail ("property" <+> quotePretty propertyAddress) $ do
+    let propertyAdd = PropertyAddress {
+                propertyName = nameOf prov,
+                propertyIndices = [0]
+              }
     let propertyMetaData =
           PropertyMetaData
             { propertyProvenance = prov,
-              propertyAddress = propertyAddress,
+              propertyAddress = propertyAdd,
+              -- propertyAddress = PropertyAddress {
+              --   propertyName = nameOf prov,
+              --   propertyIndices = [0]
+              -- },
               ..
             }
-
+            
+    let shape = getExprShape normType
     queries <-
       flip runReaderT propertyMetaData $
         runSupplyT [1 :: QueryID ..] $
-          compileQueries expr
+          -- compileQueries normBody
+          compileQueries normBody shape
 
     -- Warn if trivial.
     case queries of
-      Trivial status -> logWarning (TrivialProperty propertyAddress status)
+      Trivial status -> logWarning (TrivialProperty propertyAdd status)
       _ -> return ()
 
     case outputLocation of
       Nothing -> return ()
-      Just folder -> writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan queries)
+      Just folder -> writePropertyVerificationPlan folder propertyAdd (PropertyVerificationPlan queries)
 
-    return propertyAddress
+    return propertyAdd
+
+  -- errorOrResult <- compileQueries compilePropertyFn (nameOf prov) normType normBody
+  -- -- errorOrResult <- traverseMultiProperty compilePropertyFn (nameOf prov) normType normBody
+  -- case errorOrResult of
+  --   Left err -> throwError $ MultiPropertyTraveralError prov err
+  --   Right result -> return result
+
+-- -- Compiles an individual property of type `Bool`
+-- compileSingleProperty ::
+--   (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+--   CompilationSettings ->
+--   DeclProvenance ->
+--   PropertyAddress ->
+--   Thunk Builtin ->
+--   m PropertyAddress
+-- compileSingleProperty CompilationSettings {..} prov propertyAddress expr =
+--   logCompilerSection2 MinDetail ("property" <+> quotePretty propertyAddress) $ do
+--     let propertyMetaData =
+--           PropertyMetaData
+--             { propertyProvenance = prov,
+--               propertyAddress = propertyAddress,
+--               ..
+--             }
+
+--     queries <-
+--       flip runReaderT propertyMetaData $
+--         runSupplyT [1 :: QueryID ..] $
+--           compileQueries expr
+
+--     -- Warn if trivial.
+--     case queries of
+--       Trivial status -> logWarning (TrivialProperty propertyAddress status)
+--       _ -> return ()
+
+--     case outputLocation of
+--       Nothing -> return ()
+--       Just folder -> writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan queries)
+
+--     return propertyAddress
 
 type MonadCompileQuery m =
   ( MonadPropertyStructure m,
@@ -193,50 +230,58 @@ type MonadCompileQuery m =
   )
 
 -- | Compiles the top-level structure of a property until it hits the first quantifier.
--- Assumptions - expression is well-typed in the empty context and of type Bool.
+-- Assumptions - expression is well-typed in the empty context and of type Bool Tensor.
+-- J: this function should now be working over tensors of queries instead of single queries.
 compileQueries ::
   forall m.
   (MonadCompileQuery m) =>
   Thunk Builtin ->
-  m (Property QueryMetaData)
+  TensorShape -> 
+  -- m (Property QueryMetaData)
+  m (MultiProperty (Property QueryMetaData))
 compileQueries expr = do
   showTopLevelEntry expr
   forcedValue <- runFreshTensorBoundContextT $ forceAndRewriteTensor expr
-  showTopLevelExit =<< case toBoolValue forcedValue of
+  showTopLevelExit =<< case toBoolTensorValue forcedValue of
     ----------------
     -- Base cases --
     ----------------
-    VBoolLiteral b -> return $ Trivial b
-    VQuantifyRatTensor (Exists, args) ->
+    VBoolTensorLiteral b -> return $ Trivial b -- once you know shape, create a MultiProperty containing each Trivial from the Tensor (coming from each value) 
+      -- need to traverse thru the boolean tensor
+      -- look at tensor for helper functions -- foldMapTensor with Trivial and MultiProperty constructor
+    VBoolConstTensor args -> _
+    VBoolTensorQuantifyRat (Exists, args) ->
       compileQuantifiedQuerySet False (Left args)
-    VQuantifyRecord (Exists, args) ->
+    VBoolTensorQuantifyRecord (Exists, args) ->
       compileQuantifiedQuerySet False (Right args)
-    VQuantifyRatTensor (Forall, args) -> do
+    VBoolTensorQuantifyRat (Forall, args) -> do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       let negatedArgs = negateQuantifierBody args
       compileQuantifiedQuerySet True (Left negatedArgs)
-    VQuantifyRecord (Forall, args) -> do
+    VBoolTensorQuantifyRecord (Forall, args) -> do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       let negatedArgs = negateRecordQuantifierBody args
       compileQuantifiedQuerySet True (Right negatedArgs)
+    VBoolTensorForeach args -> _
     ---------------------
     -- Recursive cases --
     ---------------------
-    VNot args -> compileNot args
-    VAnd args -> compileAnd args
-    VOr args -> compileOr args
-    VBoolIf args -> compileQueries =<< runFreshNameBoundContextT (unfoldIf args)
-    VImplies args -> compileQueries $ elimImplies args
+    VBoolTensorNot args -> compileNot args
+    VBoolTensorAnd args -> compileAnd args
+    VBoolTensorOr args -> compileOr args
+    VBoolTensorIf args -> compileQueries =<< runFreshNameBoundContextT (unfoldIf args)
+    VBoolTensorImplies args -> compileQueries $ elimImplies args
     -------------------------
     -- Blocked expressions --
     -------------------------
-    VReduceAndTensor {} -> unblock forcedValue
-    VReduceOrTensor {} -> unblock forcedValue
-    VBoolTensorAt {} -> unblock forcedValue
-    VBoolVectorAt {} -> unblock forcedValue
-    VBoolFoldList {} -> unblock forcedValue
-    VCompareIndex {} -> unblock forcedValue
-    VCompareNat {} -> unblock forcedValue
+    VBoolTensorReduceAnd {} -> unblock forcedValue
+    VBoolTensorReduceOr {} -> unblock forcedValue
+    VBoolTensorTensorAt {} -> unblock forcedValue
+    VBoolTensorVectorAt {} -> unblock forcedValue
+    VBoolTensorFoldList {} -> unblock forcedValue
+    VBoolTensorCompareIndex {} -> unblock forcedValue
+    VBoolTensorCompareNat {} -> unblock forcedValue
+    VBoolStackTensor {} -> unblock forcedValue
     -----------------
     -- Mixed cases --
     -----------------
@@ -247,7 +292,8 @@ compileQueries expr = do
     --
     -- When we have the ability to evaluate networks then this case can be turned to a
     -- call to purify.
-    VCompareRatTensor {} -> compileUnquantifiedQuerySet expr
+    VBoolTensorCompareRatTensor {} -> compileUnquantifiedQuerySet expr
+    -- _ -> _
   where
     unblock value = compileQueries =<< runFreshNameBoundContextT (unblockBoolExpr topLevelUnblockingActions (Forced value))
 
@@ -350,3 +396,30 @@ showTopLevelExit v = do
     -- vDoc <- prettyExternalInCtx v
     return "top-elim-exit" -- vDoc
   return v
+
+getExprShape :: Thunk Builtin -> TensorShape
+-- getExprShape :: (MonadCompile m) => Thunk Builtin -> TensorShape
+getExprShape typ = do
+  forcedType <- runFreshNameBoundContextT $ forceThunk typ
+  case toTypeValue forcedType of
+    VVectorType elemType dimValue -> do
+      maybeDim <- runFreshNameBoundContextT $ getDim dimValue
+      case maybeDim of
+        Nothing -> []
+        Just dim -> dim : getExprShape elemType
+        -- Nothing -> throwError $ UnsupportedVectorDimension dimValue
+        -- Just dim -> goVector elemType dim indices body
+    VTensorType elemType dimsValue -> do
+      maybeDims <- runFreshNameBoundContextT $ getDims dimsValue
+      case maybeDims of
+        Nothing -> []
+        Just dims -> dims
+        -- Nothing -> throwError $ UnsupportedTensorDimensions dimsValue
+        -- Just dims -> goTensor dims indices body
+    _ -> []
+    -- _ -> throwError $ UnreducableType typ
+
+    -- if unreducable type (0-dimensional), return [] (empty list) instead of 
+    -- if see a Vector, need to traverse into elemType and continue grabbing shape
+    -- if a Tensor, the bottom has reached and can just return shape
+    -- shapes will need to be passed back up the recursive calls and appended to the prev calls (to get the full shape)
