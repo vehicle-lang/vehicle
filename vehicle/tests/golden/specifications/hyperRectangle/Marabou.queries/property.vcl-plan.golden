@@ -9,40 +9,6 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "classifier₃[output]!1",
-                  "classifier₃[output]!0",
-                  "classifier₃[output]",
-                  "classifier₃[input]!29",
-                  "classifier₃[input]!28",
-                  "classifier₃[input]!27",
-                  "classifier₃[input]!26",
-                  "classifier₃[input]!25",
-                  "classifier₃[input]!24",
-                  "classifier₃[input]!23",
-                  "classifier₃[input]!22",
-                  "classifier₃[input]!21",
-                  "classifier₃[input]!20",
-                  "classifier₃[input]!19",
-                  "classifier₃[input]!18",
-                  "classifier₃[input]!17",
-                  "classifier₃[input]!16",
-                  "classifier₃[input]!15",
-                  "classifier₃[input]!14",
-                  "classifier₃[input]!13",
-                  "classifier₃[input]!12",
-                  "classifier₃[input]!11",
-                  "classifier₃[input]!10",
-                  "classifier₃[input]!9",
-                  "classifier₃[input]!8",
-                  "classifier₃[input]!7",
-                  "classifier₃[input]!6",
-                  "classifier₃[input]!5",
-                  "classifier₃[input]!4",
-                  "classifier₃[input]!3",
-                  "classifier₃[input]!2",
-                  "classifier₃[input]!1",
-                  "classifier₃[input]!0",
-                  "classifier₃[input]",
                   "classifier₂[output]!1",
                   "classifier₂[output]!0",
                   "classifier₂[output]",
@@ -369,80 +335,6 @@
                           ]
                         },
                         "nestedStartingVariable": 99
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              30
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            31,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            2
-                          ]
-                        },
-                        "nestedStartingVariable": 164
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              2
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            62,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            30
-                          ]
-                        },
-                        "nestedStartingVariable": 133
                       },
                       {
                         "constantValue": {

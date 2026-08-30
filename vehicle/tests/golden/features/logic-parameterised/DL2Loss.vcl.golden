@@ -1,0 +1,6 @@
+CustomLogic : Tensor Real -> DifferentiableTensorLogic;
+CustomLogic = \ p -> {trueElement = - infinity, falseElement = infinity, pointwiseNegation = \ dims -> \ x -> x, pointwiseConjunction = \ dims -> \ x -> \ y -> const (1.0 / p) dims * (x + y), pointwiseDisjunction = \ dims -> \ x -> \ y -> x + y, pointwiseLessThan = \ dims -> \ x -> \ y -> x + y, pointwiseLessEqualThan = \ dims -> \ x -> \ y -> x + y, pointwiseGreaterThan = \ dims -> \ x -> \ y -> x + y, pointwiseGreaterEqualThan = \ dims -> \ x -> \ y -> x + y, pointwiseEqual = \ dims -> \ x -> \ y -> x + y, pointwiseNotEqual = \ dims -> \ x -> \ y -> x + y, reduceConjunction = \ dims -> \ xs -> reduceAdd xs, reduceDisjunction = \ dims -> \ xs -> reduceAdd xs} 
+
+@property;
+property : Tensor Real -> (Tensor Real -> Tensor Real) -> Tensor Real;
+property = \ p -> \ f -> (CustomLogic p).pointwiseNegation nil (search nil 0.0 1.0 (\ x -> (CustomLogic p).pointwiseDisjunction nil ((CustomLogic p).pointwiseGreaterEqualThan nil 0.0 (f x)) ((CustomLogic p).pointwiseGreaterEqualThan nil (f x) 1.0)))
