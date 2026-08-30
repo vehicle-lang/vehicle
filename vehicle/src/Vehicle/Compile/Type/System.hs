@@ -28,8 +28,8 @@ type TCM builtin m =
 class (TypableBuiltin builtin) => HasTypeSystem builtin where
   convertFromStandardBuiltins ::
     (MonadTypeChecker builtin m) =>
-    Expr Builtin ->
-    m (Expr builtin)
+    Decl Builtin ->
+    m (Decl builtin)
 
   restrictDeclType ::
     (MonadTypeChecker builtin m) =>

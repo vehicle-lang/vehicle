@@ -50,7 +50,7 @@ data CompilerPass
   | Typing
   | Solver
   | ITP
-  | Loss
+  | LossBounds
   | LossLogic
   | TypingSubsystem
   | Verification
@@ -62,7 +62,7 @@ instance Pretty CompilerPass where
     Typing -> "type checking"
     Solver -> "solver compilation"
     ITP -> "ITP compilation"
-    Loss -> "loss compilation"
+    LossBounds -> "loss bounds compilation"
     LossLogic -> "loss logic compilation"
     TypingSubsystem -> "subsystem type checking"
     Verification -> "actual verification"

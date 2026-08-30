@@ -29,6 +29,7 @@ type MonadDropNot m =
   )
 
 -- | Pushes a `Not` into a boolean expression.
+-- TODO: can uses of this be removed now that is part of `RewriteRules`?
 lowerNot ::
   forall m.
   (MonadDropNot m) =>

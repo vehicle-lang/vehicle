@@ -9,6 +9,7 @@ import Vehicle.Data.AST.Binder (GenericTelescope)
 import Vehicle.Data.AST.Name
 import Vehicle.Data.AST.Provenance
 import Vehicle.Data.AST.Record (GenericRecordFields)
+import Vehicle.Prelude.Error (developerError)
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -72,11 +73,6 @@ isPropertyDecl = \case
   DefFunction _ _ anns _ _ -> isAnnotatedAsProperty anns
   DefRecord {} -> False
 
-isTypeDecl :: GenericDecl expr -> Bool
-isTypeDecl = \case
-  DefFunction _ _ (TypeDecl {}) _ _ -> True
-  _ -> False
-
 isTypeClassDecl :: GenericDecl expr -> Bool
 isTypeClassDecl = \case
   DefAbstract {} -> False
@@ -113,6 +109,11 @@ isExternalResourceDecl = \case
     BuiltinDef {} -> False
   DefFunction {} -> False
   DefRecord {} -> False
+
+getRecordFieldsFromDecl :: GenericDecl expr -> GenericRecordFields expr
+getRecordFieldsFromDecl = \case
+  DefRecord _p _ident _sort _telescope fields _supportedOps -> fields
+  _ -> developerError "Record declaration is not of expected format."
 
 --------------------------------------------------------------------------------
 -- DefAbstract
@@ -178,6 +179,7 @@ isAnnotatedAsExternalResource = \case
 type LHSBinderCount = Int
 
 -- | Possible declaration modes for the `DefFunction` node.
+-- TODO: promote LHSBinderCount into the function itself, possibly creating a record to store all the data.
 data DefFunctionSort
   = -- | The function was declared using `type ... = ...` syntax
     TypeDecl LHSBinderCount
@@ -192,6 +194,13 @@ data DefFunctionSort
 instance NFData DefFunctionSort
 
 instance Serialize DefFunctionSort
+
+incrLHSBinderCount :: DefFunctionSort -> DefFunctionSort
+incrLHSBinderCount = \case
+  TypeDecl count -> TypeDecl (count + 1)
+  FunctionDecl count ann -> FunctionDecl (count + 1) ann
+  ProjectionDecl count -> ProjectionDecl (count + 1)
+  TensorCoercionDecl count -> TensorCoercionDecl (count + 1)
 
 -- | The priority of the candidate when trying to find a default.
 -- Instances with lower priority will be used as a default in

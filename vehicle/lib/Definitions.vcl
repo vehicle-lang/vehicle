@@ -10,9 +10,6 @@ typeAnn t a = a
 -- Bool
 --------------------------------------------------------------------------------
 
-implies : Tensor Bool dims -> Tensor Bool dims -> Tensor Bool dims
-implies x y = (not x) or y
-
 forallInList : (A -> Bool) -> List A -> Bool
 forallInList f xs = fold (\x y -> x and y) True (map f xs)
 

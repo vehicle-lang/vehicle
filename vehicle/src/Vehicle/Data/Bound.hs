@@ -15,8 +15,8 @@ import Vehicle.Data.Assertion
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorIndices, TensorShape, allTensor, anyTensor, zipWithTensor)
-import Vehicle.Data.Tensor.Traversal
 import Vehicle.Data.Variable.Bound.Context.Name.Class
+import Vehicle.Data.Variable.Bound.Context.Tensor.Core (KnownPrefixOfTensorShape)
 import Vehicle.Data.Variable.Bound.Level
 
 --------------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import Data.Map.Ordered (OMap)
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Vector.Internal.Check (HasCallStack)
 import Data.Void (Void)
 import GHC.Generics
 import Vehicle.Data.AST.Expr.Scoped (Expr (..), traverseBoundVariables_)
@@ -90,6 +91,11 @@ type GenericUnforcedBinder meta builtin = GenericBinder (GenericThunk meta built
 
 type GenericUnforcedRecordFields meta builtin = OMap FieldName (GenericThunk meta builtin)
 
+isVTypeUniverse :: GenericForcedValue meta builtin -> Bool
+isVTypeUniverse = \case
+  VUniverse {} -> True
+  _ -> False
+
 ----------------------------------------------------------------------------
 -- Operations over bound environments
 
@@ -124,7 +130,7 @@ extendClosure (Closure env expr) binder value = Unforced (extendEnvWithDefined v
 extendClosureWithBound :: GenericClosure meta builtin -> GenericUnforcedBinder meta builtin -> Lv -> GenericThunk meta builtin
 extendClosureWithBound (Closure env expr) binder lv = Unforced (extendEnvWithBound lv binder env) expr
 
-lookupIxInEnv :: GenericBoundEnv meta builtin -> Ix -> GenericThunk meta builtin
+lookupIxInEnv :: (HasCallStack) => GenericBoundEnv meta builtin -> Ix -> GenericThunk meta builtin
 lookupIxInEnv (BoundEnv env) i = snd $ lookupIxInBoundCtx i env
 
 boundContextToEnv :: BoundCtx expr -> GenericBoundEnv meta builtin
@@ -259,13 +265,6 @@ instance HasLambdaConstructor (GenericForcedValue meta) (GenericThunk meta) (Gen
           Unforced env (Lam _p binder body) -> Just (fmap (Unforced env) binder, Closure env body)
           _ -> Nothing,
         mkExpr = \(binder, closure) -> Forced $ VLam binder closure
-      }
-  accessBoundVarC =
-    Access
-      { getExpr = \case
-          VBoundVar lv spine -> Just (lv, spine)
-          _ -> Nothing,
-        mkExpr = uncurry VBoundVar
       }
 
 -----------------------------------------------------------------------------

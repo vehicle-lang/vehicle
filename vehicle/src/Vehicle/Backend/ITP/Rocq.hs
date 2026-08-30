@@ -578,6 +578,7 @@ compileBuiltin b args = case b of
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyRecord q -> compileQuantifierFunction q args
     SearchRatTensor {} -> unsupportedError
+    WhereTensor {} -> unsupportedError
     Iterate -> unsupportedError
     Pow {} -> unsupportedError
     Log {} -> unsupportedError

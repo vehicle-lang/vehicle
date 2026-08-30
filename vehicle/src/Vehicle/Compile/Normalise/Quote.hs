@@ -1,5 +1,6 @@
 module Vehicle.Compile.Normalise.Quote
   ( unnormalise,
+    unnormaliseInTensorCtx,
   )
 where
 
@@ -7,16 +8,51 @@ import Data.Map.Ordered qualified as OMap
 import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Normalise.Core (MetaLike (..))
 import Vehicle.Data.AST.Expr.Scoped (Arg, Binder, Expr (..), Substitution, normAppList, substituteDB)
+import Vehicle.Data.Builtin.Interface (BuiltinHasRatType)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.ForcedValue
-import Vehicle.Data.Variable.Bound.Level (Lv, dbLevelToIndex)
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Tensor (HasShape (..))
+import Vehicle.Data.Variable.Bound.Context.Core (boundCtxLv)
+import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadReadableTensorBoundContext (..))
+import Vehicle.Data.Variable.Bound.Context.Tensor.Core
+import Vehicle.Data.Variable.Bound.Level (Lv, dbLevelToIndex, findSliceIndices)
 import Vehicle.Prelude
 
 -- | Converts from a normalised representation to an unnormalised representation.
 -- Do not call except for logging and debug purposes, very expensive with nested
 -- lambdas.
-unnormalise :: (HasCallStack, Quote a b builtin) => Lv -> a -> b
+unnormalise ::
+  (HasCallStack, Quote a b builtin) =>
+  Lv ->
+  a ->
+  b
 unnormalise = quote $ \level var -> BoundVar mempty (dbLevelToIndex level var)
+
+-- | Converts from a normalised representation to an unnormalised representation.
+-- Crucially if the variable represents a slice of a quantified user variable
+-- (e.g. X[0,1]) then it is replaced in terms of the original tensor variable
+-- (e.g. X ! 0 ! 1). This ensures that the resulting expression lives in the
+-- original context which has no slice variables.
+unnormaliseInTensorCtx ::
+  forall m builtin.
+  (MonadReadableTensorBoundContext m, HasTensorExpr Expr Expr builtin, BuiltinHasRatType builtin) =>
+  Thunk builtin ->
+  m (Expr builtin)
+unnormaliseInTensorCtx value = do
+  ctx <- getNestedVariableCtx
+  let lv = boundCtxLv $ originalCtx ctx
+  return $ quote (processBoundVar ctx) lv value
+  where
+    processBoundVar :: NestedTensorVariableCtx -> BoundVarHandler builtin
+    processBoundVar ctx lv var = do
+      let (originalVar, maybeVars) = findOriginalVariableInCtx ctx var
+      let tensorVar = BoundVar mempty (dbLevelToIndex lv originalVar)
+      case maybeVars of
+        Nothing -> tensorVar
+        Just (parentVar, sliceVar) -> do
+          let indices = findSliceIndices parentVar sliceVar
+          mkIndexInto IRatType tensorVar (shapeOf parentVar) indices
 
 -----------------------------------------------------------------------------
 -- Quoting
@@ -48,7 +84,7 @@ instance (MetaLike meta) => Quote (GenericForcedValue meta builtin) (Expr builti
     VFreeVar v spine ->
       quoteApp handler level (FreeVar p v) spine
     VBoundVar v spine -> do
-      let var = BoundVar p (dbLevelToIndex level v)
+      let var = handler level v
       quoteApp handler level var spine
     VBuiltin b spine -> do
       let fn = convertBuiltin p b

@@ -17,6 +17,11 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- Tensor variables
 
+-- | We may not be able to calculate the exact dimensions a tensor, but this
+-- value represents the prefix that of the shape that is known, e.g.
+-- [1,2,n] would have a prefix of [1,2]
+type KnownPrefixOfTensorShape = TensorShape
+
 -- | The level of a variable in the original context (i.e. without all the
 -- tensor variables have being expanded out).
 type OriginalLv = Lv
@@ -59,6 +64,19 @@ findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx _) vars
           let endPoint = currentLv + Lv (numberOfSliceVariablesIn $ shapeOf tensorVar)
           let (found, notFound) = span (\x -> toLv x < endPoint) (v : vs)
           fmap (const (currentOriginalLv, Just tensorVar)) found ++ go ctx notFound (currentOriginalLv + 1, endPoint)
+
+-- | Looks up a level in the tensor variable context. It returns
+--    1. The level in the original context without any slice variables.
+--    2. If a slice variable, then the parent tensor variable as well as the slice variable it represents.
+findOriginalVariableInCtx ::
+  NestedTensorVariableCtx ->
+  Lv ->
+  (OriginalLv, Maybe (NestedSliceVariable, SliceVariable))
+findOriginalVariableInCtx ctx lv =
+  -- TODO turn this into a binary search for added efficiency?
+  case findCorrespondingVariableInOriginalCtx ctx (Set.singleton lv) of
+    [(originalCtxLv, maybeParentVar)] -> (originalCtxLv, fmap (,SliceVariable lv) maybeParentVar)
+    _ -> developerError "could not find variable in nested context"
 
 appendNonTensorVariableToNestedCtx :: GenericBinder () -> NestedTensorVariableCtx -> NestedTensorVariableCtx
 appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx) = do

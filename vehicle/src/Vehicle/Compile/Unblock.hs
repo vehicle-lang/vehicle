@@ -93,7 +93,7 @@ unblockBoolExpr ::
   m (Thunk Builtin)
 unblockBoolExpr actions expr = do
   exprDoc <- prettyFriendlyInCtx expr
-  logCompilerSection MaxDetail ("unblocking" <+> exprDoc) $ do
+  logCompilerSection2 MaxDetail ("unblocking" <+> exprDoc) $ do
     ifTree <- unblockBoolTensorValue actions expr
     let elimIf c x y = unfoldIf $ IfArgs (Forced IBoolType) c x y
     elimIfTree elimIf return ifTree

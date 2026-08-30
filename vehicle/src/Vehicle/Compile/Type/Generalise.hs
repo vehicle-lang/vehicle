@@ -6,7 +6,7 @@ module Vehicle.Compile.Type.Generalise
   )
 where
 
-import Control.Monad (forM, forM_, void, when)
+import Control.Monad (forM, forM_, void)
 import Data.Data (Proxy (..))
 import Data.Foldable (foldlM)
 import Data.Graph (graphFromEdges, topSort)
@@ -70,10 +70,12 @@ removeAllDependencies decl = do
   logCompilerSection2 MaxDetail "removing dependencies of unsolved metas" $ do
     -- Remove meta dependencies
     metaVariableCtx <- getMetaVariableCtx @builtin
-    forM_ (MetaMap.toList metaVariableCtx) $ \(meta, metaInfo) -> do
-      when (isNothing (metaSolution metaInfo) && not (null $ metaCtx metaInfo)) $
-        logCompilerSection2 MaxDetail ("removing dependences of" <+> pretty meta) $ do
-          void $ solveInTermsOfNewMetaWithDependencies meta metaInfo mempty
+    let hasDepedendencies metaInfo = isNothing (metaSolution metaInfo) && not (null $ metaCtx metaInfo)
+    let metasToRemove = MetaMap.filter hasDepedendencies metaVariableCtx
+    orderedMetasToRemove <- orderMetasByTypeDependencies metasToRemove
+    forM_ orderedMetasToRemove $ \(meta, metaInfo) -> do
+      logCompilerSection2 MaxDetail ("removing dependencies of" <+> pretty meta) $ do
+        void $ solveInTermsOfNewMetaWithDependencies meta metaInfo mempty
 
   logCompilerSection2 MaxDetail "removing dependencies from and merging instance constraints" $ do
     -- Remove instance constraint dependencies
@@ -98,6 +100,15 @@ removeAllDependencies decl = do
   resultDecl <- substMetaVariables decl
   logUnsolvedUnknowns (Proxy @builtin)
   return resultDecl
+
+orderMetasByTypeDependencies ::
+  (MonadGeneralise builtin m) =>
+  MetaMap (MetaInfo builtin) ->
+  m [(MetaID, MetaInfo builtin)]
+orderMetasByTypeDependencies metaCtx = do
+  sortedMetas <- sortMetasByTypeDependencies metaCtx
+  let lookupInfo meta = (meta, fromMaybe (developerError "Meta sorting gone wrong") $ MetaMap.lookup meta metaCtx)
+  return $ reverse $ fmap lookupInfo sortedMetas
 
 removeInstanceDependencies ::
   (MonadGeneralise builtin m) =>
@@ -167,7 +178,7 @@ generaliseOverUnsolvedMetas ::
 generaliseOverUnsolvedMetas decl = do
   metaVariableCtx <- getMetaVariableCtx @builtin
   let unsolvedMetas = MetaMap.filter (isNothing . metaSolution) metaVariableCtx
-  sortedUnsolvedMetas <- sortGeneralisableMetas unsolvedMetas
+  sortedUnsolvedMetas <- sortMetasByTypeDependencies unsolvedMetas
 
   unsolvedInstanceConstraints <- getActiveInstanceConstraints
   unsolvedAuxInstanceConstraints <- getActiveAuxiliaryInstanceConstraints
@@ -184,12 +195,12 @@ generaliseOverUnsolvedMetas decl = do
   logUnsolvedUnknowns (Proxy @builtin)
   return generalisedDecl
 
-sortGeneralisableMetas ::
+sortMetasByTypeDependencies ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
   MetaVariableContext builtin ->
   m [MetaID]
-sortGeneralisableMetas unsolvedMetas = do
+sortMetasByTypeDependencies unsolvedMetas = do
   logCompilerSection2 MaxDetail "sorting generalisable constraints" $ do
     adjacencyMap <- traverse (metasIn (Proxy @builtin) . metaType) unsolvedMetas
     let adjacencyList = (\(x, ys) -> (x, x, MetaSet.toList ys)) <$> MetaMap.toList adjacencyMap
@@ -209,15 +220,16 @@ createBinderForMeta ::
   (Int, MetaID) ->
   m (MetaID, Binder builtin)
 createBinderForMeta constraints p (index, meta) = do
-  metaType <- getSubstMetaType meta
-  let (visibility, relevance) = case MetaMap.lookup meta constraints of
-        Just constraint -> (Instance True, instanceRelevance constraint)
-        Nothing -> (Implicit True, Relevant)
+  MetaInfo {..} <- getMetaInfo meta
+  substMetaType <- substMetaVariablesAt (toNamedBoundCtx metaCtx) metaType
+  let visibility = case MetaMap.lookup meta constraints of
+        Just {} -> Instance True
+        Nothing -> Implicit True
 
   -- Prepend the implicit binders for the new generalised variable.
   let binderName = "_t" <> Text.pack (show index)
   let binderDisplayForm = BinderDisplayForm (NameAndType binderName p) True
-  let binder = Binder binderDisplayForm visibility relevance metaType
+  let binder = Binder binderDisplayForm visibility metaRelevance substMetaType
   return (meta, binder)
 
 --------------------------------------------------------------------------------
@@ -251,7 +263,7 @@ prependBinderAndSolve decl (meta, binder) =
     let alterType t = return $ Pi p typeBinder t
     let alterBody e = return $ Lam p bodyBinder e
     finalDecl <- case substDecl of
-      DefFunction _ i s t e -> DefFunction p i s <$> alterType t <*> alterBody e
+      DefFunction _ i s t e -> DefFunction p i (incrLHSBinderCount s) <$> alterType t <*> alterBody e
       DefAbstract _ i s t -> DefAbstract p i s <$> alterType t
       _ ->
         developerError $
@@ -261,7 +273,7 @@ prependBinderAndSolve decl (meta, binder) =
     -- Substitute the new meta solution through.
     setCurrentDecl $ Just (finalDecl, False)
 
-    logCompilerPassOutput $ prettyExternal finalDecl
+    logDebug MaxDetail $ "Result:" <+> lineIndent (prettyExternal finalDecl)
     return finalDecl
 
 solveInTermsOfNewMetaWithDependencies ::
@@ -270,7 +282,8 @@ solveInTermsOfNewMetaWithDependencies ::
   MetaInfo builtin ->
   BoundCtx (Type builtin) ->
   m MetaID
-solveInTermsOfNewMetaWithDependencies meta (MetaInfo p typ _ _) newCtx = do
-  (newMeta, newMetaExpr) <- freshMeta p typ newCtx
+solveInTermsOfNewMetaWithDependencies meta (MetaInfo p typ relevance oldCtx _) newCtx = do
+  substType <- substMetaVariablesAt (toNamedBoundCtx oldCtx) typ
+  (newMeta, newMetaExpr) <- freshMeta p substType relevance newCtx
   solveMeta meta newMetaExpr newCtx
   return newMeta

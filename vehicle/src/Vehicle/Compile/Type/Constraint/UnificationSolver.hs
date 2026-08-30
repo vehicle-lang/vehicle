@@ -445,7 +445,8 @@ createMetaWithRestrictedDependencies ::
   UnforcedSpineWithMetas builtin ->
   m (ForcedValueWithMetas builtin)
 createMetaWithRestrictedDependencies ctx meta metaType newDependencies spine = do
-  p <- getMetaProvenance (Proxy @builtin) meta
+  metaInfo <- getMetaInfo @builtin meta
+  let p = metaProvenance metaInfo
 
   let constraintLevel = boundCtxLv ctx
   let dbIndices = fmap (dbLevelToIndex constraintLevel) newDependencies
@@ -456,7 +457,7 @@ createMetaWithRestrictedDependencies ctx meta metaType newDependencies spine = d
     let makeElem (i, v) = if i `IntSet.member` levelSet then Just v else Nothing
     let ctxWithLevels = zip (reverse [0 .. length ctx - 1 :: Int]) ctx
     let restrictedContext = mapMaybe makeElem ctxWithLevels
-    newMetaExpr <- freshMetaExpr p metaType restrictedContext
+    newMetaExpr <- freshMetaExpr p metaType (metaRelevance metaInfo) restrictedContext
 
     let substitution = IntMap.fromAscList (zip [0 ..] (reverse dbIndices))
     let substMetaExpr = substDBAll 0 (\v -> unIx v `IntMap.lookup` substitution) newMetaExpr

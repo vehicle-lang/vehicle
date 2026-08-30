@@ -152,7 +152,7 @@ compilePropertyDecl settings prov typ body = do
     Left err -> throwError $ MultiPropertyTraveralError prov err
     Right result -> return result
 
--- Compiles an individual property of type `Bool`
+-- | Compiles an individual property of type `Bool`
 compileSingleProperty ::
   (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   CompilationSettings ->

@@ -106,16 +106,18 @@ freshMetaExpr ::
   (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
   Provenance ->
   Type builtin ->
+  Relevance ->
   BoundCtx (Type builtin) ->
   m (Expr builtin)
-freshMetaExpr p t boundCtx = do
+freshMetaExpr p t relevance boundCtx = do
   let ctx = if useDependentMetas (Proxy @builtin) then boundCtx else mempty
-  snd <$> freshMeta p t ctx
+  snd <$> freshMeta p t relevance ctx
 
 freshSolutionMeta ::
   (MonadTypeChecker builtin m) =>
   Provenance ->
   Type builtin ->
+  Relevance ->
   BoundCtx (Type builtin) ->
   m (MetaID, Expr builtin)
 freshSolutionMeta = freshMeta
@@ -129,8 +131,8 @@ createFreshApplicationConstraint ::
   m (Expr builtin, Type builtin)
 createFreshApplicationConstraint ctx problem blockingMetas = do
   let p = provenanceOf $ originalFun problem
-  (finalTypeID, finalType) <- freshSolutionMeta p (TypeUniverse p 0) ctx
-  (finalExprID, finalExpr) <- freshSolutionMeta p finalType ctx
+  (finalTypeID, finalType) <- freshSolutionMeta p (TypeUniverse p 0) Relevant ctx
+  (finalExprID, finalExpr) <- freshSolutionMeta p finalType Relevant ctx
 
   let constraint =
         InferArgs
@@ -158,7 +160,7 @@ createFreshInstanceConstraint ::
   m (Expr builtin)
 createFreshInstanceConstraint auxiliaryConstraint boundCtx p origin relevance tcExpr = do
   let env = boundContextToEnv boundCtx
-  (metaID, metaExpr) <- freshSolutionMeta p tcExpr boundCtx
+  (metaID, metaExpr) <- freshSolutionMeta p tcExpr relevance boundCtx
 
   context <- createFreshConstraintCtx p boundCtx
   let nTCExpr = Unforced env tcExpr
@@ -179,13 +181,13 @@ createDerivedInstanceConstraint ::
   Relevance ->
   ThunkWithMetas builtin ->
   m (Expr builtin, WithContext (InstanceConstraint builtin))
-createDerivedInstanceConstraint (ctx, origin) r t = do
+createDerivedInstanceConstraint (ctx, origin) relevance t = do
   let p = provenanceOf ctx
   let dbLevel = contextDBLevel ctx
   let newTypeClassExpr = unnormalise dbLevel t
-  (metaID, metaExpr) <- freshSolutionMeta p newTypeClassExpr (boundContextOf ctx)
+  (metaID, metaExpr) <- freshSolutionMeta p newTypeClassExpr relevance (boundContextOf ctx)
   goal <- parseInstanceGoal (boundContextOf ctx) t
-  let newConstraint = Resolve origin metaID r Nothing goal
+  let newConstraint = Resolve origin metaID relevance Nothing goal
 
   newCtx <- copyContext ctx Nothing
   return (metaExpr, WithContext newConstraint newCtx)
@@ -417,13 +419,15 @@ instantiateTelescope ::
   m (Type builtin, Expr builtin, [Arg builtin])
 instantiateTelescope telescopeType createFreshInstance boundCtx = \case
   (Pi _ piBinder exprBody, Lam _ _solutionBinder solutionBody) -> do
+    let binderProvenance = provenanceOf piBinder
     let binderType = typeOf piBinder
+    let binderRelevance = relevanceOf piBinder
     newArg <- case visibilityOf piBinder of
       Explicit {} -> case telescopeType of
         InstanceTelescope -> compilerDeveloperError "Should not have an explicit argument in instance goal telescope"
-        RecordTelescope -> freshMetaExpr (provenanceOf piBinder) binderType boundCtx
+        RecordTelescope -> freshMetaExpr binderProvenance binderType binderRelevance boundCtx
       Implicit {} ->
-        freshMetaExpr (provenanceOf piBinder) binderType boundCtx
+        freshMetaExpr binderProvenance binderType binderRelevance boundCtx
       Instance {} -> do
         createFreshInstance (relevanceOf piBinder) binderType
     let exprBodyResult = newArg `substDBInto` exprBody

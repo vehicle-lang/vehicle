@@ -34,7 +34,6 @@ type MonadNormBuiltin m =
   )
 
 forceEvaluation ::
-  forall expr thunk builtin args m.
   (MonadNormBuiltin m, NormalisableExpr expr thunk builtin m) =>
   Accessor (expr builtin) (args (thunk builtin)) ->
   EvalSimple expr thunk args builtin m ->
@@ -564,6 +563,7 @@ evalAtVector (AtVectorArgs _t _d vector index) = do
 -----------------------------------------------------------------------------
 -- Generic tensor operations
 -----------------------------------------------------------------------------
+-- At
 
 evalAtTensor ::
   forall expr thunk builtin m.
@@ -774,3 +774,13 @@ evalCompareRatTensor op (TensorComparisonArgs pointwiseDims rDims xs ys) = do
   where
     unstackExpr :: Tensor ExtendedRational -> [thunk builtin]
     unstackExpr t = exprToThunk . mkExpr accessRatTensorLiteral <$> unstack t
+
+-----------------------------------------------------------------------------
+-- Where
+
+evalWhereTensor ::
+  forall expr thunk builtin m.
+  (MonadNormBuiltin m, HasTensorLiterals expr builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasNatType builtin, HasTensorExpr expr thunk builtin) =>
+  EvalSimple expr thunk WhereTensorArgs builtin m
+evalWhereTensor (WhereTensorArgs _dims _input _condition _index) = do
+  developerError "evalWhereTensor not yet implemented"

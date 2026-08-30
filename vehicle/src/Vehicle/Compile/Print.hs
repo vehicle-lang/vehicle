@@ -1147,8 +1147,10 @@ instance Printable (D.Module Builtin) where
 
 -- BNFC printer treats the braces for implicit arguments as layout braces and
 -- therefore adds a ton of tree structured new-lines everywhere. This hack attempts to undo this.
+--
+-- TODO: can probably do this better in terms of rewriting `render` in BNFC.Print file
 bnfcPrintHack :: String -> Text
-bnfcPrintHack = go removeTrailingSpace . removeNewLines . go leftAlignBrackets . Text.pack
+bnfcPrintHack = removeDots . go removeTrailingSpace . removeNewLines . go leftAlignBrackets . Text.pack
   where
     go :: (Text -> Text) -> Text -> Text
     go f t = do
@@ -1173,3 +1175,6 @@ bnfcPrintHack = go removeTrailingSpace . removeNewLines . go leftAlignBrackets .
     removeTrailingSpace =
       Text.replace "{  " "{"
         . Text.replace "}  " "}"
+
+    removeDots :: Text -> Text
+    removeDots = Text.replace " ." "."

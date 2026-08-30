@@ -219,6 +219,25 @@ class Var(Expression):
 
 
 @dataclass(frozen=True)
+class Let(Expression):
+    bound: Expression
+    binder: Binder
+    body: Expression
+
+
+@dataclass(frozen=True)
+class Record(Expression):
+    fields: Sequence[tuple[Name, Expression]]
+
+
+@dataclass(frozen=True)
+class RecordAcc(Expression):
+    record: Expression
+    field: Name
+    arguments: Sequence[Expression]
+
+
+@dataclass(frozen=True)
 class BoolTensor(Expression):
     contents: Tensor[bool]
 
@@ -394,6 +413,14 @@ class SearchRatTensor(Expression):
 
 
 @dataclass(frozen=True)
+class WhereTensor(Expression):
+
+    input_tensor: Expression
+    condition: Expression
+    false_value: Expression
+
+
+@dataclass(frozen=True)
 class Transpose(Expression):
     """Transpose: reverses all axes of a tensor (numpy-style)."""
 
@@ -490,6 +517,7 @@ class Declaration(AST, metaclass=ABCMeta):
 class DefFunction(Declaration):
     provenance: Provenance = field(repr=False)
     name: Name
+    isProperty: bool
     type: BuiltinType
     body: Expression
 
