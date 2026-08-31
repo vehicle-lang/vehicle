@@ -71,6 +71,7 @@ jobs:
           CIBW_BUILD: "*${{ matrix.os.plat }}*"
           CIBW_ARCHS: "${{ matrix.os.arch }}"
           CIBW_TEST_EXTRAS: "${{ matrix.os.test }}"
+          CIBW_TEST_COMMAND: "python -m pytest {package}/tests"
           CIBW_BEFORE_ALL_LINUX: "cabal update"
           MACOSX_DEPLOYMENT_TARGET: "${{ matrix.os.arch == 'x86_64' && '10.10' || '11.0' }}"
 
