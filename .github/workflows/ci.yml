@@ -98,8 +98,10 @@ jobs:
     needs:
       - build-vehicle
       - build-vehicle-python
+      - test-integration-isabelle
+      - test-integration-rocq
       - test-integration-bumpver
-      # - test-integration-marabou
+      - test-integration-citation-cff
       - test-integration-ormolu
 
     environment:
