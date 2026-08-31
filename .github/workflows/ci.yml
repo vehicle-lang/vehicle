@@ -13,6 +13,12 @@ on:
       - reopened
   merge_group:
 
+# Ensures that the previous workflow gets cancelled if a new
+# commit is pushed to the PR or branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: sh
