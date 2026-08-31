@@ -50,7 +50,7 @@ convertToLossTensors logicID prog = do
 
   -- Next we use the gradient type-system to decide which parts of the program should
   -- be translated to loss functions.
-  lossProg <- gradientTypeCheck @_ @Train Train (identifierOf logicDecl) reprunedProg
+  lossProg <- gradientTypeCheck @_ @'Train Train (identifierOf logicDecl) reprunedProg
 
   -- We then convert back to the original builtins for further processing.
   convertedProg <- convertBackFromLossBuiltins lossProg

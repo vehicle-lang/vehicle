@@ -94,7 +94,7 @@ typeOfBuiltinFunction = \case
   Iterate -> typeOfIterate
   Transpose -> forAllPolarities $ \pol -> pol ~> pol
   SearchRatTensor {} -> developerError "SearchRatTensor should not appear in polarity typing"
-  WhereTensor {} -> developerError "WhereTensor should not appear in linearity typing"
+  WhereTensor {} -> developerError "WhereTensor should not appear in polarity typing"
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case

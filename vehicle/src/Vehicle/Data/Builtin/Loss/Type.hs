@@ -31,13 +31,13 @@ import Prelude hiding (iterate, pi)
 -- Typing
 --------------------------------------------------------------------------------
 
-instance TypableBuiltin (LossBuiltin Train) where
+instance TypableBuiltin (LossBuiltin 'Train) where
   typeBuiltin = typeLossBuiltin Train
   useDependentMetas _ = True
   isConstructor = isLossConstructor
   isCastConstraint = isLossCastConstraint
 
-instance TypableBuiltin (LossBuiltin Search) where
+instance TypableBuiltin (LossBuiltin 'Search) where
   typeBuiltin = typeLossBuiltin Search
   useDependentMetas _ = True
   isConstructor = isLossConstructor

@@ -60,7 +60,7 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
         LinearityTypes -> printPropertyTypes =<< linearityTypeCheck prog mempty
         PolarityTypes -> printPropertyTypes =<< polarityTypeCheck prog mempty
         DecidabilityTypes -> printPropertyTypes . Right =<< decidabilityTypeCheck prog
-        GradientCarryingTypes -> printPropertyTypes . Right =<< gradientTypeCheck @_ @Train Train (standardLibIdent (nameOf $ BuiltinLogic VehicleLoss)) prog
+        GradientCarryingTypes -> printPropertyTypes . Right =<< gradientTypeCheck @_ @'Train Train (standardLibIdent (nameOf $ BuiltinLogic VehicleLoss)) prog
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes

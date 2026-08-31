@@ -210,7 +210,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return result
 
     def translate_RecordAcc(self, expression: vcl.RecordAcc) -> py.expr:
-        """Translate record accessor to '<expr>.<field>(<args)."""
+        """Translate record accessor to '<expr>[field](<args>)."""
         return py_app_sequential(
             function=py.Subscript(
                 value=self.translate_expression(expression.record),
