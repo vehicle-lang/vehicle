@@ -24,6 +24,12 @@ jobs:
   build-vehicle-python:
     uses: ./.github/workflows/build-vehicle-python.yml
 
+  test-integration-isabelle:
+    uses: ./.github/workflows/test-integration-isabelle.yml
+
+  test-integration-rocq:
+    uses: ./.github/workflows/test-integration-rocq.yml
+
   test-integration-bumpver:
     runs-on: ubuntu-latest
     steps:
