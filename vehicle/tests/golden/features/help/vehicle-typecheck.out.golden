@@ -12,7 +12,9 @@ Available options:
                            quantified variables are used linearly in the
                            specification. 3. Decidability - check which booleans
                            are decidable and which are undecidable in the
-                           context of Vehicle
+                           context of Vehicle 4. GradientCarryingTypes - check
+                           which parts of the program have gradient information
+                           suitable for conversions to loss functions.
   -e,--declaration NAME    Declarations in the specification to include during
                            compilation. Can be provided multiple times. If not
                            provided then all declarations in the specification

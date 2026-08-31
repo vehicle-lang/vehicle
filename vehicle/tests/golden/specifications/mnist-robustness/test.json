@@ -72,14 +72,6 @@
     "name": "DL2Loss",
     "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl --logging MaxDetail --loggingPass Loss",
     "needs": ["spec.vcl"],
-    "produces": ["DL2Loss.vcl"],
-    "enabled": false
-  },
-  {
-    "name": "VehicleLoss",
-    "run": "vehicle compile -s spec.vcl -t VehicleLoss -o VehicleLoss.vcl",
-    "needs": ["spec.vcl"],
-    "produces": ["VehicleLoss.vcl"],
-    "enabled": false
+    "produces": ["DL2Loss.vcl"]
   }
 ]

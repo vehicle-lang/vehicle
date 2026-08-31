@@ -1,3 +1,6 @@
+VehicleLoss : DifferentiableTensorLogic;
+VehicleLoss = {trueElement = - infinity, falseElement = infinity, pointwiseNegation = \ dims -> \ x -> - x, pointwiseConjunction = \ dims -> \ x -> \ y -> max x y, pointwiseDisjunction = \ dims -> \ x -> \ y -> min x y, pointwiseLessThan = \ dims -> \ x -> \ y -> x - y, pointwiseLessEqualThan = \ dims -> \ x -> \ y -> x - y, pointwiseGreaterThan = \ dims -> \ x -> \ y -> y - x, pointwiseGreaterEqualThan = \ dims -> \ x -> \ y -> y - x, pointwiseEqual = \ dims -> \ x -> \ y -> min (x - y) (y - x), pointwiseNotEqual = \ dims -> \ x -> \ y -> max (x - y) (y - x), reduceConjunction = \ dims -> \ xs -> reduceMax xs, reduceDisjunction = \ dims -> \ xs -> reduceMin xs} 
+
 @property;
 increasing : (Tensor Real -> Tensor Real) -> Tensor Real;
-increasing = \ f -> - search nil 0.0 1.0 (\ x -> f x - x)
+increasing = \ f -> VehicleLoss.pointwiseNegation nil (search nil 0.0 1.0 (\ x -> VehicleLoss.pointwiseGreaterThan nil x (f x)))

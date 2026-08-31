@@ -1,23 +1,23 @@
 @property;
-eqIndex : Tensor Real;
-eqIndex = infinity
+eqIndex : Tensor Bool;
+eqIndex = 0 == 1
 
 @property;
-neqIndex : Tensor Real;
-neqIndex = 0.0
+neqIndex : Tensor Bool;
+neqIndex = 0 != 1
 
 @property;
-leqIndex : Tensor Real;
-leqIndex = 0.0
+leqIndex : Tensor Bool;
+leqIndex = 0 <= 1
 
 @property;
-ltIndex : Tensor Real;
-ltIndex = 0.0
+ltIndex : Tensor Bool;
+ltIndex = 0 < 1
 
 @property;
-geqIndex : Tensor Real;
-geqIndex = infinity
+geqIndex : Tensor Bool;
+geqIndex = 0 >= 1
 
 @property;
-gtIndex : Tensor Real;
-gtIndex = infinity
+gtIndex : Tensor Bool;
+gtIndex = 0 > 1

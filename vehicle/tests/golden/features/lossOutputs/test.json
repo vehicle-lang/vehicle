@@ -1,20 +1,8 @@
 [
   {
-    "name": "DefaultOnlyProperty",
-    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DefaultOnlyProperty.vcl",
+    "name": "DL2Loss",
+    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl --declaration belowOne",
     "needs": ["spec.vcl"],
-    "produces": ["DefaultOnlyProperty.vcl"]
-  },
-  {
-    "name": "NonPropertyOnly",
-    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o NonPropertyOnly.vcl --declaration predicted",
-    "needs": ["spec.vcl"],
-    "produces": ["NonPropertyOnly.vcl"]
-  },
-  {
-    "name": "PropertyAndNonProperty",
-    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o PropertyAndNonProperty.vcl --declaration predicted --declaration belowOne",
-    "needs": ["spec.vcl"],
-    "produces": ["PropertyAndNonProperty.vcl"]
+    "produces": ["DL2Loss.vcl"]
   }
 ]

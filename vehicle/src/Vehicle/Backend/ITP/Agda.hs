@@ -616,6 +616,7 @@ compileBuiltinFunction p f args = case f of
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
   Transpose -> annotateApp [DataTensor] Nothing "transpose" args
   SearchRatTensor {} -> unsupportedError "search"
+  WhereTensor {} -> unsupportedError "where"
   Iterate -> unsupportedError "Iterate"
   Pow {} -> unsupportedError "^"
   Log {} -> unsupportedError "log"

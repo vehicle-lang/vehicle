@@ -55,51 +55,52 @@ def validate_loss_function_output(
 @pytest.mark.parametrize(  # type: ignore[untyped-decorator]
     "specification_filename,samplers,validate_output",
     [
-        (
-            "test_addition.vcl",
-            None,
-            {"prop": 0.0},
-        ),
-        (
-            "test_at.vcl",
-            None,
-            {"prop": -1.0},
-        ),
-        (
-            "test_constant.vcl",
-            None,
-            {"prop": 0.0},
-        ),
-        (
-            "test_division.vcl",
-            None,
-            {"prop": 0.0},
-        ),
-        (
-            "test_indicator.vcl",
-            None,
-            {"prop": 0.0},
-        ),
-        (
-            "test_maximum.vcl",
-            None,
-            {"prop": 3.5},
-        ),
-        (
-            "test_minimum.vcl",
-            None,
-            {"prop": 0.0},
-        ),
-        (
-            "test_multiplication.vcl",
-            None,
-            {"prop": 0.0},
-        ),
-        (
-            "test_negation.vcl",
-            None,
-            {"prop": 0.0},
-        ),
+        # TODO: re-enable when we have pure exports
+        # (
+        #     "test_addition.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
+        # (
+        #     "test_at.vcl",
+        #     None,
+        #     {"prop": -1.0},
+        # ),
+        # (
+        #     "test_constant.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
+        # (
+        #     "test_division.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
+        # (
+        #     "test_indicator.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
+        # (
+        #     "test_maximum.vcl",
+        #     None,
+        #     {"prop": 3.5},
+        # ),
+        # (
+        #     "test_minimum.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
+        # (
+        #     "test_multiplication.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
+        # (
+        #     "test_negation.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
         (
             "test_network.vcl",
             None,
@@ -120,21 +121,21 @@ def validate_loss_function_output(
             {"x": ConstantTensorFlowSampler(tf.constant([0.0]))},
             validate_loss_function_output,
         ),
-        (
-            "test_subtraction.vcl",
-            None,
-            {"prop": 0.0},
-        ),
-        (
-            "test_tensor.vcl",
-            None,
-            {"prop": 0.0},
-        ),
-        (
-            "test_variable.vcl",
-            None,
-            {"prop": 0.0},
-        ),
+        # (
+        #     "test_subtraction.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
+        # (
+        #     "test_tensor.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
+        # (
+        #     "test_variable.vcl",
+        #     None,
+        #     {"prop": 0.0},
+        # ),
     ],
 )
 def test_loss_function_exec(

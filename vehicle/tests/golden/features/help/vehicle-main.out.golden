@@ -16,7 +16,7 @@ Available options:
                              * Typing
                              * Solver
                              * ITP
-                             * Loss
+                             * LossBounds
                              * LossLogic
                              * TypingSubsystem
                              * Verification

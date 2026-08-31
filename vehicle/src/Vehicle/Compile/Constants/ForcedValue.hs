@@ -9,8 +9,6 @@ import Vehicle.Compile.Normalise.TypedValue
   ( etaReduceTensor,
   )
 import Vehicle.Data.Assertion
-import Vehicle.Data.Builtin.Loss
-import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
@@ -42,10 +40,6 @@ tensorValueLinearExprToValue linearExpr = do
   linearExprToExpr id mkTerm (addConstants 1 1) linearExpr
 
 type UserVariableConstraint builtin = Assertion (TensorValueLinearExpr builtin)
-
--- | An `AssertionTree` represents a boolean expression with assertions at
--- each terminal leaf.
-type UserVariableConstraintTree = BooleanExpr (UserVariableConstraint LossBuiltin)
 
 constantDimensionedValue ::
   (HasRatTensors builtin, MonadNorm builtin m) =>

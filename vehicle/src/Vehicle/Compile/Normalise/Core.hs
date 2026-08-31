@@ -45,7 +45,7 @@ type EvalBuiltinFn meta builtin args m =
 data EvalScheme meta builtin m
   = forall args. (IsArgs args) => Eval (EvalBuiltinFn meta builtin args m)
   | Derived Identifier
-  | TypeClassOp
+  | TypeClassOperation
   | None
 
 class (Monad m, HasBuiltinConstructor expr thunk, Show (expr builtin)) => NormalisableExpr expr thunk builtin m | thunk -> expr where
@@ -61,10 +61,15 @@ type TensorOpEvalData expr thunk args builtin =
     expr builtin -- The element type
   )
 
+type TensorComparisonOpEvalData expr thunk builtin =
+  ( RatTensorComparisonAccessor expr thunk builtin,
+    expr builtin -- The element type
+  )
+
 class HasLiftableTensorOperations expr thunk builtin where
   liftableTensorOp1s :: [TensorOpEvalData expr thunk TensorOp1Args builtin]
   liftableTensorOp2s :: [TensorOpEvalData expr thunk TensorOp2Args builtin]
-  liftableTensorComparisons :: [TensorOpEvalData expr thunk TensorComparisonArgs builtin]
+  liftableTensorComparisons :: [TensorComparisonOpEvalData expr thunk builtin]
 
 data TensorLiteralAccessor expr builtin
   = forall a. (Eq a) => Wrapper (Accessor (expr builtin) (Tensor a))

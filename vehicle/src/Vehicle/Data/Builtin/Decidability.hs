@@ -314,7 +314,7 @@ instance NormalisableBuiltin DecidabilityBuiltin where
     StandardBuiltinFunction Iterate -> Eval evalIterate
     StandardBuiltinFunction ReverseList -> Eval evalReverseList
     StandardBuiltinFunction AppendList -> Eval evalAppendList
-    DecidabilityBuiltinTypeClassOp {} -> TypeClassOp
+    DecidabilityBuiltinTypeClassOp {} -> TypeClassOperation
     _ -> None
 
   {-

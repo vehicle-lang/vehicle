@@ -2,6 +2,7 @@ module Vehicle.Compile.Type.Subsystem
   ( polarityTypeCheck,
     linearityTypeCheck,
     decidabilityTypeCheck,
+    gradientTypeCheck,
     resolveInstanceArgumentsAndCasts,
     parseModuleText,
   )
@@ -33,8 +34,13 @@ import Vehicle.Data.Builtin.Decidability.Instances (decidabilityBuiltinInstances
 import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface (BuiltinHasListLiterals)
 import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Builtin.Linearity (LinearityBuiltin)
 import Vehicle.Data.Builtin.Linearity.Type ()
+import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor (WithGradients, WithoutGradients), LossBuiltinType (GradientType), LossBuiltinTypeClass (..), LossMode)
+import Vehicle.Data.Builtin.Loss qualified as Loss
+import Vehicle.Data.Builtin.Loss.Instances (lossBuiltinInstances)
+import Vehicle.Data.Builtin.Loss.Type ()
 import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
@@ -50,7 +56,7 @@ polarityTypeCheck ::
 polarityTypeCheck prog declarationsToCompile = do
   let keepUnused = if Set.null declarationsToCompile then isUserCode else (\d -> identifierOf d `Set.member` declarationsToCompile)
   monomorphisedProg <- monomorphise prog keepUnused
-  irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
+  irrelevantFreeProg <- removeIrrelevantCodeFromProg (const True, const True) monomorphisedProg
   implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
   instanceFreeProg <- resolveInstanceArgumentsAndCasts implicitFreeProg
   typeCheckWithSubsystem PolarityTypes emptyInstanceDatabase instanceFreeProg
@@ -63,7 +69,7 @@ linearityTypeCheck ::
 linearityTypeCheck prog declarationsToCompile = do
   let keepUnused = if Set.null declarationsToCompile then isUserCode else (\d -> identifierOf d `Set.member` declarationsToCompile)
   monomorphisedProg <- monomorphise prog keepUnused
-  irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
+  irrelevantFreeProg <- removeIrrelevantCodeFromProg (const True, const True) monomorphisedProg
   implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
   instanceFreeProg <- resolveInstanceArgumentsAndCasts implicitFreeProg
   typeCheckWithSubsystem LinearityTypes emptyInstanceDatabase instanceFreeProg
@@ -73,7 +79,7 @@ decidabilityTypeCheck ::
   Prog Builtin ->
   m (Prog DecidabilityBuiltin)
 decidabilityTypeCheck prog = do
-  prunedProg <- pruneUnusedDeclarations prog
+  prunedProg <- pruneUnusedDeclarations isUserCode prog
   errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances prunedProg
   decProg <- case errorOrDecProg of
     Left err -> developerError $ errorInSubsystemMessage "determine the decidability of the program for export to ITP" err
@@ -82,8 +88,33 @@ decidabilityTypeCheck prog = do
   monoDecProg <- monomorphise decProg isUserCode
   resolveInstanceArgumentsAndCasts monoDecProg
 
+gradientTypeCheck ::
+  (MonadCompile m, TypableBuiltin (LossBuiltin mode)) =>
+  LossMode ->
+  Identifier ->
+  Prog Builtin ->
+  m (Prog (LossBuiltin mode))
+gradientTypeCheck lossMode differentiableLogic prog = do
+  errorOrGradProg <- typeCheckWithSubsystem GradientCarryingTypes (lossBuiltinInstances lossMode differentiableLogic) prog
+  gradProg <- case errorOrGradProg of
+    Left err -> developerError $ errorInSubsystemMessage "determining the parts of the program with gradients for export to a loss function" err
+    Right gradProg -> return gradProg
+
+  let isGradientType = \case
+        Builtin _ b -> b == LossBuiltinType GradientType
+        App (Builtin _ b) _ -> b == LossBuiltinTypeClass MaxGradients
+        _ -> False
+  let isGradientArg = \case
+        Builtin _ (LossBuiltinConstructor c) -> c == WithGradients || c == WithoutGradients
+        Builtin _ (Loss.StandardBuiltinConstructor c) -> c == UnitLiteral
+        _ -> False
+
+  relevantGradProg <- removeIrrelevantCodeFromProg (isGradientType, isGradientArg) gradProg
+  monoDecProg <- monomorphise relevantGradProg isUserCode
+  resolveInstanceArgumentsAndCasts monoDecProg
+
 typeCheckWithSubsystem ::
-  (MonadIO m, MonadCompile m, HasTypeSystem builtin) =>
+  (MonadCompile m, HasTypeSystem builtin) =>
   SecondaryTypeSystem ->
   InstanceDatabase builtin ->
   Prog Builtin ->
@@ -101,7 +132,7 @@ typeCheckWithSubsystem typingSystem instanceCandidates prog = do
         Right (decls, _, _) -> Right $ Main decls
 
 loadTypeSystemBuiltins ::
-  (MonadIO m, MonadCompile m, HasTypeSystem builtin) =>
+  (MonadCompile m, HasTypeSystem builtin) =>
   SecondaryTypeSystem ->
   InstanceDatabase builtin ->
   m (ImportedModuleContext builtin)
@@ -137,13 +168,13 @@ resolveInstanceArgumentsAndCasts ::
   Prog builtin ->
   m (Prog builtin)
 resolveInstanceArgumentsAndCasts prog =
-  logCompilerSection2 MaxDetail "resolution of instance arguments and casts" $ do
+  logCompilerSection2 MidDetail "resolution of instance arguments and casts" $ do
     prog' <- flip traverseDecls prog $ \decl -> do
       decl1 <- traverse (traverseBuiltinsM removeBuiltinInstances) decl
       decl2 <- traverse (traverseBuiltinsM removeCasts) decl1
       decl3 <- traverse (traverseFreeVarsM (\_b r -> r) removeExternalInstances) decl2
       return decl3
-    logDebug MaxDetail $ prettyExternal prog'
+    logDebug MidDetail $ "Result:" <> lineIndent (prettyExternal prog')
     return prog'
   where
     removeBuiltinInstances :: BuiltinUpdate m builtin builtin
@@ -157,7 +188,14 @@ resolveInstanceArgumentsAndCasts prog =
           let newInst = replaceProvenance p inst
           let result = substArgs newInst remainingArgs
           return result
-      | otherwise = return $ normAppList (Builtin p b) args
+      | otherwise = case Forced.isCast p b of
+          Just f -> f args
+          Nothing -> return $ normAppList (Builtin p b) args
+
+    removeCasts :: BuiltinUpdate m builtin builtin
+    removeCasts p b args = case Forced.isCast p b of
+      Just f -> f args
+      Nothing -> return $ normAppList (Builtin p b) args
 
     removeExternalInstances :: FreeVarUpdate m builtin
     removeExternalInstances recGo p ident args
@@ -179,36 +217,13 @@ resolveInstanceArgumentsAndCasts prog =
           args' <- traverseArgs recGo args
           return $ normAppList (FreeVar p ident) args'
 
-    removeCasts :: BuiltinUpdate m builtin builtin
-    removeCasts p b args = case Forced.isCast p b of
-      Just f -> f args
-      Nothing -> return $ normAppList (Builtin p b) args
-
-    replaceProvenance :: Provenance -> Expr builtin -> Expr builtin
-    replaceProvenance p = go
-      where
-        go :: Expr builtin -> Expr builtin
-        go = \case
-          Meta _p m -> Meta p m
-          App fun args -> App (go fun) (fmap (fmap go) args)
-          Universe _ u -> Universe p u
-          Hole _ h -> Hole p h
-          Builtin _ b -> Builtin p b
-          FreeVar _ v -> FreeVar p v
-          BoundVar _ v -> BoundVar p v
-          Pi _ binder res -> Pi p (fmap go binder) (go res)
-          Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
-          Lam _ binder e -> Lam p (fmap go binder) (go e)
-          Record _ ident fields -> Record p ident (mapRecordFields go fields)
-          RecordProj _ recordType record field -> RecordProj p (go recordType) (go record) field
-
 removeImplicitArgs ::
   forall m builtin.
   (MonadCompile m, PrintableBuiltin builtin) =>
   Prog builtin ->
   m (Prog builtin)
 removeImplicitArgs prog =
-  logCompilerSection2 MaxDetail "removal of implicit arguments" $ do
+  logCompilerSection2 MidDetail "removal of implicit arguments" $ do
     result <- traverse go prog
     logCompilerPassOutput $ prettyExternal result
     return result

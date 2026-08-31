@@ -1,7 +1,10 @@
 {-# LANGUAGE CPP #-}
 
-module Vehicle.Backend.Loss.Domain.PurifyAssertion
-  ( tryPurifyAssertion,
+module Vehicle.Backend.Loss.PurifyAssertion
+  ( tryPurifyRatTensorComparison,
+    purifyNatComparison,
+    purifyIndexComparison,
+    purifyNotEqualRatTensorComparison,
     unblockingActions,
     BlockingReason (..),
   )
@@ -15,19 +18,20 @@ import Control.Monad (liftM2)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Vehicle.Compile.Constants.ForcedValue (TensorValueLinearExpr)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Builtin (evalCompareIndex, evalCompareNat, evalCompareRatTensor, evalConstTensor, forceEvaluation)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue)
 import Vehicle.Data.Assertion (Assertion, comparisonToAssertion)
-import Vehicle.Data.Builtin.Interface (Accessor (..))
+import Vehicle.Data.Builtin.Interface (Accessor (..), applyAccessor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), forIfTreeM, mapIfTreeLeaves)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
-import Vehicle.Data.MaybeTrivial (MaybeTrivial)
+import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Data.Variable.Bound.Context.Name
@@ -41,6 +45,45 @@ type MonadPurifyAssertion m =
     MonadTensorBoundContext m
   )
 
+-- | Goes through a comparison of naturals and attempts to evaluate it. If we can
+-- reduce it to a boolean literal then we can often simplify the final tree structure.
+purifyNatComparison ::
+  (MonadPurifyAssertion m) =>
+  (ComparisonOp, Op2Args (Thunk Builtin)) ->
+  m (MaybeTrivial (Thunk Builtin))
+purifyNatComparison (op, args) = do
+  -- TODO: should actually traverse the whole expression trying to force evaluation
+  result <- forceThunk =<< forceEvaluation (applyAccessor accessCompareNat op) (evalCompareNat op) args
+  return $ case result of
+    IBoolLiteral b -> Trivial b
+    _ -> NonTrivial $ Forced result
+
+-- | Goes through a comparison of indices and attempts to evaluate it. If we can
+-- reduce it to a boolean literal then we can often simplify the final tree structure.
+purifyIndexComparison ::
+  (MonadPurifyAssertion m) =>
+  (ComparisonOp, IndexComparisonArgs (Thunk Builtin)) ->
+  m (MaybeTrivial (Thunk Builtin))
+purifyIndexComparison (op, args) = do
+  -- TODO: should actually traverse the whole expression trying to force evaluation
+  result <- forceThunk =<< forceEvaluation (applyAccessor accessCompareIndex op) (evalCompareIndex op) args
+  return $ case result of
+    IBoolLiteral b -> Trivial b
+    _ -> NonTrivial $ Forced result
+
+-- | Goes through a comparison of indices and attempts to evaluate it. If we can
+-- reduce it to a boolean literal then we can often simplify the final tree structure.
+purifyNotEqualRatTensorComparison ::
+  (MonadPurifyAssertion m) =>
+  TensorComparisonArgs (Thunk Builtin) ->
+  m (MaybeTrivial (Thunk Builtin))
+purifyNotEqualRatTensorComparison args = do
+  -- TODO: should actually traverse the whole expression trying to force evaluation
+  result <- forceThunk =<< forceEvaluation (applyAccessor accessCompareRatTensor Ne) (evalCompareRatTensor Ne) args
+  return $ case result of
+    IBoolLiteral b -> Trivial b
+    _ -> NonTrivial $ Forced result
+
 -- | Takes a tensor level comparison and returns a tree of possible assertions
 -- generated from it over the hierarchical tensor variables in scope.
 --
@@ -48,20 +91,24 @@ type MonadPurifyAssertion m =
 --
 -- The first component of each leaf is the raw value, and the second optional component
 -- is the compiled linear expression that could be used to construct the domain of a bound variable.
-tryPurifyAssertion ::
+tryPurifyRatTensorComparison ::
   (MonadPurifyAssertion m) =>
   ComparisonOp ->
   TensorComparisonArgs (Thunk Builtin) ->
-  m (IfTree (Thunk Builtin) (Thunk Builtin, Maybe (MaybeTrivial (Assertion (TensorValueLinearExpr Builtin)))))
-tryPurifyAssertion op (TensorComparisonArgs _pDims rDims e1 e2) = do
+  m (IfTree (Thunk Builtin) (MaybeTrivial (Thunk Builtin, Maybe (Assertion (TensorValueLinearExpr Builtin)))))
+tryPurifyRatTensorComparison op (TensorComparisonArgs _pDims rDims e1 e2) = do
   e1' <- compileLinearExpr rDims e1
   e2' <- compileLinearExpr rDims e2
   forIfTreeM e1' $ \e1'' ->
     forIfTreeM e2' $ \e2'' -> do
       IfLeaf <$> do
-        let val = Forced $ mkExpr accessCompareRatTensor (op, TensorComparisonArgs (Forced IDimNil) rDims (value e1'') (value e2''))
-        solvedVal <- sequence $ liftA2 (comparisonToAssertion op) (valueAsLinearExpr e1'') (valueAsLinearExpr e2'')
-        return (val, solvedVal)
+        let args = TensorComparisonArgs (Forced IDimNil) rDims (value e1'') (value e2'')
+        let val = Forced $ mkExpr accessCompareRatTensor (op, args)
+        maybeSolvedVal <- sequence $ liftA2 (comparisonToAssertion op) (valueAsLinearExpr e1'') (valueAsLinearExpr e2'')
+        return $ case maybeSolvedVal of
+          Nothing -> NonTrivial (val, Nothing)
+          Just (Trivial b) -> Trivial b
+          Just (NonTrivial le) -> NonTrivial (val, Just le)
 
 --------------------------------------------------------------------------------
 -- Compiling linear expressions
@@ -160,11 +207,11 @@ compileRatTensorVar dims lv spine = do
   valueAsLinearExpr <- case spine of
     _ : _ -> return Nothing
     [] -> do
-      (_, maybeSliceVar) <- lookupVariableInNestedCtx lv
+      maybeSliceVar <- lookupSliceVariableInNestedCtx lv
       case maybeSliceVar of
         Nothing -> return Nothing
-        Just (_, sliceVar) -> do
-          let zeroTensor = Forced $ mkExpr accessConstTensor $ ConstTensorArgs (Forced IRatType) (Forced $ IRatLiteral 0) dims
+        Just sliceVar -> do
+          zeroTensor <- forceEvaluation accessConstTensor evalConstTensor $ ConstTensorArgs (Forced IRatType) (Forced $ IRatLiteral 0) dims
           return $ Just $ singletonVarExpr (TensorValue dims zeroTensor) sliceVar
 
   return $
@@ -263,6 +310,8 @@ compileIf ::
 compileIf compile (IfArgs _t c x y) = do
   x' <- compile x
   y' <- compile y
+  -- TODO: if x' and y' contain no constraints then we don't actually
+  -- have to branch??
   return $ IfTree c x' y'
 
 --------------------------------------------------------------------------------
@@ -304,10 +353,10 @@ purifyBoundVar ::
 purifyBoundVar unblock lv spine = case spine of
   _ : _ -> unexpectedExprError "purification" "bound var with non-empty spine"
   [] -> do
-    (_, maybeChildVars) <- lookupVariableInNestedCtx lv
-    case maybeChildVars of
+    maybeSliceVar <- lookupSliceVariableInNestedCtx lv
+    case maybeSliceVar of
       Nothing -> return $ IfLeaf $ Forced $ VBoundVar lv []
-      Just (_tensorVar, sliceVar) -> unblock =<< replaceTensorVariableWithStackedChildren sliceVar
+      Just sliceVar -> unblock =<< replaceTensorVariableWithStackedChildren sliceVar
 
 --------------------------------------------------------------------------------
 -- Utility functions

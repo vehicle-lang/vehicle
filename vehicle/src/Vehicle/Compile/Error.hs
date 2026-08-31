@@ -30,12 +30,10 @@ import Data.Aeson (ToJSON, genericToJSON)
 import Data.Aeson.Types (ToJSON (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
-import Data.These (These)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
-import Vehicle.Backend.Prelude
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkIOType, NetworkName)
@@ -47,8 +45,7 @@ import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.ForcedValue (ForcedValue, Thunk, ThunkWithMetas, UnforcedBinder, UnforcedType, UnforcedTypeWithMetas)
 import Vehicle.Data.Code.ForcedValue qualified as Forced
-import Vehicle.Data.DifferentiableLogic
-import Vehicle.Data.Tensor (TensorIndices, TensorShape)
+import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Verify.QueryFormat.Core
 
@@ -225,20 +222,19 @@ data CompileError
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (UnforcedBinder Builtin) (UnforcedType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
   | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, NetworkIOType, Thunk Builtin, [Lv], UnboundedIndices))
+  | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
   | -- Loss backend errors
     UnknownDifferentiableLogic Name [Name]
   | UnreducableDifferentiableLogic DeclProvenance
-  | UnsupportedLossOperation DeclProvenance (Doc Void)
-  | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Thunk Builtin) NamedBoundCtx (Thunk Builtin)
-  | NoQuantifierDomainFound DeclProvenance (UnforcedBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
+  | UnsupportedLossOperation DeclProvenance (Maybe Provenance) (Doc Void)
+  | UnsupportedIfLossOperation Provenance
   | UnorderableDifferentiableLogic DeclProvenance (Thunk Builtin) (Either BlockingReason (ForcedValue Builtin))
   | BackwardsDifferentiableLogic DeclProvenance (Thunk Builtin)
+  | QuantifierWithNoGradients Provenance (Binder Builtin)
   | -- ITP backend errors
     UnimplementedFeature Provenance (Doc Void)
-  | UnusedMonomorphisableDeclaration Provenance Identifier
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance
-  | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
 
 deriving instance Show CompileError
 
