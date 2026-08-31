@@ -6,7 +6,7 @@ module Vehicle.Compile.LowerNot
 where
 
 import Vehicle.Compile.Normalise.Force (forceThunk)
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
@@ -29,6 +29,7 @@ type MonadDropNot m =
   )
 
 -- | Pushes a `Not` into a boolean expression.
+-- TODO: can uses of this be removed now that is part of `RewriteRules`?
 lowerNot ::
   forall m.
   (MonadDropNot m) =>
@@ -119,7 +120,7 @@ lowerNot actions (TensorOp1Args dims value) = do
         VLam binder closure -> return (binder, closure)
         _ -> developerError "Malformed foreachTensor"
       lv <- getBinderDepth
-      let ds' = quote mempty lv ds
+      let ds' = unnormalise lv ds
       let newBody = mkExpr accessNotTensor $ TensorOp1Args ds' body
       let newFn = Forced $ VLam binder (Closure env newBody)
       return $ ForeachTensorArgs t d ds newFn

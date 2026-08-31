@@ -136,7 +136,7 @@ data Strategy
   | DescopeWithNames Strategy
   | Functor Strategy
   | PrintAs VehicleLang
-  | QuoteValue Strategy
+  | UnnormaliseValue Strategy
   | Clean Strategy
   | ShortenVectors Strategy
   | Branch Strategy Strategy
@@ -164,7 +164,7 @@ type family ShowStrategy (s :: Strategy) :: Symbol where
   ShowStrategy ('DescopeWithNames s) = AppendSymbol "DescopeWithNames → " (ShowStrategy s)
   ShowStrategy ('Functor s) = AppendSymbol "Functor → " (ShowStrategy s)
   ShowStrategy ('PrintAs lang) = "PrintAs"
-  ShowStrategy ('QuoteValue s) = AppendSymbol "QuoteValue → " (ShowStrategy s)
+  ShowStrategy ('UnnormaliseValue s) = AppendSymbol "UnnormaliseValue → " (ShowStrategy s)
   ShowStrategy ('Clean s) = AppendSymbol "Clean → " (ShowStrategy s)
   ShowStrategy ('ShortenVectors s) = AppendSymbol "ShortenVectors → " (ShowStrategy s)
   ShowStrategy ('Branch s1 s2) =
@@ -221,10 +221,10 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   ------------
   -- Values --
   ------------
-  -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
-  StrategyFor ('Named tags) (GenericForcedValue meta builtin `In` NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
+  -- To print a `Value` we need to unnormalise it first. Note that we convert it to a `Builtin` representation immediately
+  StrategyFor ('Named tags) (GenericForcedValue meta builtin `In` NamedBoundCtx) = 'UnnormaliseValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
   StrategyFor ('Unnamed tags) (GenericForcedValue meta builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Expr Builtin))
-  StrategyFor ('Named tags) (GenericThunk meta builtin `In` NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
+  StrategyFor ('Named tags) (GenericThunk meta builtin `In` NamedBoundCtx) = 'UnnormaliseValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
   StrategyFor ('Unnamed tags) (GenericThunk meta builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Expr Builtin))
   StrategyFor tags (GenericBoundEnv meta builtin `In` ctx) = StrategyFor tags (ForcedValue builtin `In` ctx)
   StrategyFor tags (Forced.DimensionedTensorValue builtin `In` ctx) = StrategyFor tags (ForcedValue builtin `In` ctx)
@@ -758,45 +758,45 @@ instance (Pretty a) => PrettyUsing 'Pretty (a `In` ctx) where
 
 instance
   (PrettyUsing rest (Arg Builtin), ConvertableBuiltin builtin Builtin, MetaLike meta) =>
-  PrettyUsing ('QuoteValue rest) (GenericUnforcedArg meta builtin)
+  PrettyUsing ('UnnormaliseValue rest) (GenericUnforcedArg meta builtin)
   where
   prettyUsing e =
     prettyUsing @rest $
-      fmap (unnormalise @(Forced.GenericThunk meta builtin) @(Expr Builtin) 0) e
+      fmap (convertExprBuiltins @builtin @Builtin . unnormalise 0) e
 
 instance
   (PrettyUsing rest (Binder Builtin), ConvertableBuiltin builtin Builtin, MetaLike meta) =>
-  PrettyUsing ('QuoteValue rest) (GenericUnforcedBinder meta builtin)
+  PrettyUsing ('UnnormaliseValue rest) (GenericUnforcedBinder meta builtin)
   where
   prettyUsing e =
     prettyUsing @rest $
-      fmap (unnormalise @(GenericThunk meta builtin) @(Expr Builtin) 0) e
+      fmap (convertExprBuiltins @builtin @Builtin . unnormalise 0) e
 
 instance
   (PrettyUsing rest (Expr Builtin `In` NamedBoundCtx), ConvertableBuiltin builtin Builtin, MetaLike meta) =>
-  PrettyUsing ('QuoteValue rest) (GenericForcedValue meta builtin `In` NamedBoundCtx)
+  PrettyUsing ('UnnormaliseValue rest) (GenericForcedValue meta builtin `In` NamedBoundCtx)
   where
   prettyUsing (e, ctx) = do
-    let e' = unnormalise @(GenericForcedValue meta builtin) @(Expr Builtin) (Lv $ length ctx) e
+    let e' = convertExprBuiltins @builtin @Builtin $ unnormalise (Lv $ length ctx) e
     prettyUsing @rest (e', ctx)
 
 instance
   (PrettyUsing rest (Expr Builtin `In` NamedBoundCtx), ConvertableBuiltin builtin Builtin, MetaLike meta) =>
-  PrettyUsing ('QuoteValue rest) (GenericThunk meta builtin `In` NamedBoundCtx)
+  PrettyUsing ('UnnormaliseValue rest) (GenericThunk meta builtin `In` NamedBoundCtx)
   where
   prettyUsing (e, ctx) = do
-    let e' = unnormalise @(GenericThunk meta builtin) @(Expr Builtin) (Lv $ length ctx) e
+    let e' = convertExprBuiltins @builtin @Builtin $ unnormalise (Lv $ length ctx) e
     prettyUsing @rest (e', ctx)
 
 instance
   (PrettyUsing rest (Arg builtin `In` NamedBoundCtx), ConvertableBuiltin builtin Builtin) =>
-  PrettyUsing ('QuoteValue rest) (Arg builtin `In` NamedBoundCtx)
+  PrettyUsing ('UnnormaliseValue rest) (Arg builtin `In` NamedBoundCtx)
   where
   prettyUsing (e, ctx) = prettyUsing @rest (e, ctx)
 
 instance
   (PrettyUsing rest (Expr builtin `In` NamedBoundCtx), ConvertableBuiltin builtin Builtin) =>
-  PrettyUsing ('QuoteValue rest) (Expr builtin `In` NamedBoundCtx)
+  PrettyUsing ('UnnormaliseValue rest) (Expr builtin `In` NamedBoundCtx)
   where
   prettyUsing (e, ctx) = prettyUsing @rest (e, ctx)
 
@@ -1147,8 +1147,10 @@ instance Printable (D.Module Builtin) where
 
 -- BNFC printer treats the braces for implicit arguments as layout braces and
 -- therefore adds a ton of tree structured new-lines everywhere. This hack attempts to undo this.
+--
+-- TODO: can probably do this better in terms of rewriting `render` in BNFC.Print file
 bnfcPrintHack :: String -> Text
-bnfcPrintHack = go removeTrailingSpace . removeNewLines . go leftAlignBrackets . Text.pack
+bnfcPrintHack = removeDots . go removeTrailingSpace . removeNewLines . go leftAlignBrackets . Text.pack
   where
     go :: (Text -> Text) -> Text -> Text
     go f t = do
@@ -1173,3 +1175,6 @@ bnfcPrintHack = go removeTrailingSpace . removeNewLines . go leftAlignBrackets .
     removeTrailingSpace =
       Text.replace "{  " "{"
         . Text.replace "}  " "}"
+
+    removeDots :: Text -> Text
+    removeDots = Text.replace " ." "."

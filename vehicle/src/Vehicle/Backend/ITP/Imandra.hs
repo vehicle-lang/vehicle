@@ -701,6 +701,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
     SearchRatTensor {} -> unsupportedError
+    WhereTensor {} -> unsupportedError
     Iterate -> unsupportedError
     Pow {} -> unsupportedError
     Log {} -> unsupportedError

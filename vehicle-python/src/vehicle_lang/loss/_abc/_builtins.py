@@ -107,6 +107,11 @@ class ABCBuiltins(
     def ReduceMaxRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
+    def WhereTensor(
+        self, input: vcl.Tensor, condition: vcl.Tensor, false_value: vcl.Tensor
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
     def DimensionCons(
         self, head: vcl.Index, tail: Sequence[vcl.Index]
     ) -> Sequence[vcl.Index]:

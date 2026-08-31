@@ -31,6 +31,7 @@ import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity.Type ()
+import Vehicle.Data.Builtin.Loss (LossMode (..))
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Instances (standardBuiltinInstances)
@@ -38,7 +39,7 @@ import Vehicle.Data.Builtin.Standard.Type ()
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeCtxs, typedModule)
 import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
 import Vehicle.Libraries.Core (ResolvedLibrary (..))
-import Vehicle.Libraries.StandardLibrary (standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
+import Vehicle.Libraries.StandardLibrary (standardLibIdent, standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.Verify.Specification.IO (readSpecification)
 
@@ -59,6 +60,7 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
         LinearityTypes -> printPropertyTypes =<< linearityTypeCheck prog mempty
         PolarityTypes -> printPropertyTypes =<< polarityTypeCheck prog mempty
         DecidabilityTypes -> printPropertyTypes . Right =<< decidabilityTypeCheck prog
+        GradientCarryingTypes -> printPropertyTypes . Right =<< gradientTypeCheck @_ @'Train Train (standardLibIdent (nameOf $ BuiltinLogic VehicleLoss)) prog
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
@@ -185,7 +187,7 @@ flattenProgram ::
   AdjacencyGraph ModulePath ->
   m (Prog Builtin)
 flattenProgram userProg importedModules moduleGraph = do
-  let sortedModulePaths = reverse $ topologicalSort userModulePath moduleGraph
+  let sortedModulePaths = topologicalSort userModulePath moduleGraph
   let moduleDecls = fmap (lookupModuleCertain userProg importedModules) sortedModulePaths
   return $ Main $ concat moduleDecls
 

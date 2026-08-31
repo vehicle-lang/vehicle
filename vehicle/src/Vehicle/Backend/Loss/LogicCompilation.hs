@@ -1,29 +1,28 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Backend.Loss.LogicCompilation
-  ( findAndCompileLogic,
+  ( findAndLiftLogic,
+    isLogicDecl,
   )
 where
 
-import Control.Monad (foldM)
 import Control.Monad.Except (MonadError (..), runExceptT)
-import Control.Monad.State (MonadState, StateT, execStateT, modify)
-import Data.Map (Map)
-import Data.Map qualified as Map
-import Data.Map.Ordered (OMap)
-import Data.Map.Ordered qualified as OMap
+import Control.Monad.State (MonadState, StateT (..), modify)
+import Data.List (find)
+import Data.Map.Ordered.Strict (OMap, (|>))
+import Data.Map.Ordered.Strict qualified as OMap
+import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
-import Vehicle.Backend.Loss.Core hiding (lookupLogicField)
-import Vehicle.Backend.Loss.LossCompilation (convertQuantifierlessExprToLoss)
-import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Data.Set qualified as Set
+import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
+import Vehicle.Compile.Dependency (createAdjacencyGraph, topologicalSort)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Force
-import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Unblock (noUnblocking, unblockBoolExpr)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LossBuiltin)
+import Vehicle.Data.Builtin.Loss (ComparisonOp (..))
 import Vehicle.Data.Builtin.Standard (Builtin)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
@@ -34,26 +33,31 @@ import Vehicle.Data.Variable.Free.Context
 --------------------------------------------------------------------------------
 -- Interface
 
-findAndCompileLogic ::
+-- | Locates the requested differentiable logic and lifts it, and all its
+-- dependencies, to the top of the program. The lifting is required because the
+-- user may write  the logic at the bottom of the file with boolean operations
+-- that need to be translated above it.
+findAndLiftLogic ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
   Prog Builtin ->
-  m DifferentiableLogicImplementation
-findAndCompileLogic logicID prog =
-  logCompilerSection2 MidDetail ("search for logic" <+> quotePretty logicID) $ do
-    MonadLossState {..} <-
-      runMonadLossT $ traverseDeclsInCtx_ (convertLogicDecl logicID) prog
-    case maybeImplementation of
-      Just definition -> return definition
-      Nothing -> do
-        let names = fmap nameOf foundLogics
-        missingLogicError names logicID
+  m (Maybe (Identifier, Prog Builtin))
+findAndLiftLogic logicID prog@(Main decls) = logCompilerPass LossLogic $ do
+  (declMap, MonadLossState {..}) <- runMonadLossT $ searchDecls logicID prog
+
+  case maybeImplementation of
+    Nothing -> return Nothing
+    Just definition -> do
+      let logicIdent = identifierOf definition
+      let logicDependencies = topologicalSort logicIdent (createAdjacencyGraph decls)
+      newProg <- liftLogicAndDependencies declMap logicDependencies
+      return $ Just (logicIdent, newProg)
 
 --------------------------------------------------------------------------------
 -- Monad
 
 data MonadLossState = MonadLossState
-  { maybeImplementation :: Maybe DifferentiableLogicImplementation,
+  { maybeImplementation :: Maybe (Decl Builtin),
     foundLogics :: [Identifier]
   }
 
@@ -66,10 +70,10 @@ type MonadLoss m =
 runMonadLossT ::
   (MonadCompile m) =>
   FreeContextT Builtin (StateT MonadLossState m) a ->
-  m MonadLossState
+  m (a, MonadLossState)
 runMonadLossT action = do
   let freshState = MonadLossState Nothing mempty
-  flip execStateT freshState $
+  flip runStateT freshState $
     runFreshFreeContextT
       (Proxy @Builtin)
       action
@@ -87,7 +91,7 @@ registerUnmatchedLogic ident = modify $
 
 registerMatchedLogic ::
   (MonadLoss m) =>
-  DifferentiableLogicImplementation ->
+  Decl Builtin ->
   m ()
 registerMatchedLogic implementation = modify $
   \MonadLossState {..} -> do
@@ -99,25 +103,45 @@ registerMatchedLogic implementation = modify $
 --------------------------------------------------------------------------------
 -- Monad
 
-convertLogicDecl ::
+searchDecls ::
+  forall m.
+  (MonadLoss m) =>
+  DifferentiableLogicID ->
+  Prog Builtin ->
+  m (OMap Identifier (Decl Builtin))
+searchDecls logicID (Main ds) =
+  logCompilerSection2 MidDetail ("search for logic" <+> quotePretty logicID) $ do
+    runFreshFreeContextT (Proxy @Builtin) (go OMap.empty ds)
+  where
+    go :: OMap Identifier (Decl Builtin) -> [Decl Builtin] -> FreeContextT Builtin m (OMap Identifier (Decl Builtin))
+    go seenDecls = \case
+      [] -> return seenDecls
+      decl : decls -> do
+        searchLogicDecl logicID decl
+        let newSeenDecls = seenDecls |> (identifierOf decl, decl)
+        addDeclEntryToContext decl $ go newSeenDecls decls
+
+searchLogicDecl ::
   (MonadLoss m) =>
   DifferentiableLogicID ->
   Decl Builtin ->
   m ()
-convertLogicDecl logicID decl =
+searchLogicDecl logicID decl =
   case decl of
     DefFunction p ident _ann typ body -> do
-      whenM (isLogicDecl typ) $ do
-        if nameOf logicID /= nameOf ident
-          then registerUnmatchedLogic ident
-          else do
-            normBody <- runFreshNameBoundContextT $ forceThunk $ Unforced emptyBoundEnv body
-            case normBody of
-              VRecord _ fields -> do
+      isLogic <- isLogicDecl typ
+      if not isLogic
+        then return ()
+        else do
+          if nameOf logicID /= nameOf ident
+            then registerUnmatchedLogic ident
+            else case body of
+              Record _ _ fields -> do
                 let declProv = (identifierOf decl, provenanceOf decl)
-                logic <- compileLogic logicID declProv fields
-                registerMatchedLogic logic
+                checkLogicDirection declProv fields
+                registerMatchedLogic decl
               _ -> throwError $ UnreducableDifferentiableLogic (ident, p)
+          return ()
     _ -> return ()
 
 isLogicDecl :: (MonadFreeContext Builtin m) => Type Builtin -> m Bool
@@ -127,365 +151,63 @@ isLogicDecl typ = do
     VFreeVar ident [] -> nameOf ident `elem` ([elementLogicName, tensorLogicName] :: [Name])
     _ -> False
 
--- | Compiles a differentiable logic from the DSL over booleans to normalised
--- values over tensors that are suitable for substitution.
--- Eventually the DSL should be replaced by the something in the language.
-compileLogic ::
-  forall m.
-  (MonadLoss m) =>
-  DifferentiableLogicID ->
-  DeclProvenance ->
-  OMap FieldName (Thunk Builtin) ->
-  m DifferentiableLogicImplementation
-compileLogic logicID declProv fields = do
-  logCompilerSection2 MinDetail ("compiling logic" <+> quotePretty logicID) $ do
-    -- Lift fields to the tensor level
-    let tensorLogicFields = [minBound .. maxBound] :: [TensorDifferentiableLogicField]
-    lossTensorImplementation <- foldM (compileLogicField logicID declProv fields) mempty tensorLogicFields
-    checkLogicDirection declProv fields
-    -- Convert fields to loss tensors
-    return lossTensorImplementation
-
+-- | Checks that the logic goes in the right direction by evaluating at `true < false`
 checkLogicDirection ::
   (MonadLoss m) =>
   DeclProvenance ->
-  OMap FieldName (Thunk Builtin) ->
+  RecordFields Builtin ->
   m ()
 checkLogicDirection declProv fields = do
-  let expr = do
+  let comparisonExpr = do
         let trueValue = lookupLogicField TruthityElement fields
         let falseValue = lookupLogicField FalsityElement fields
-        let args = TensorComparisonArgs (Forced IDimNil) (Forced IDimNil) trueValue falseValue
+        let args =
+              TensorComparisonArgs
+                { tensorPointwiseDims = Forced IDimNil,
+                  tensorReduceDims = Forced IDimNil,
+                  tensorOp2Arg1 = Unforced emptyBoundEnv trueValue,
+                  tensorOp2Arg2 = Unforced emptyBoundEnv falseValue
+                }
         Forced $ mkExpr accessCompareRatTensor (Lt, args)
 
-  errorOrResult <- runExceptT $ runFreshNameBoundContextT $ forceThunk =<< unblockBoolExpr noUnblocking expr
-  case errorOrResult of
-    Right (IBoolLiteral result) ->
-      if result
-        then return ()
-        else throwError $ BackwardsDifferentiableLogic declProv expr
-    Left blockingErr -> throwError $ UnorderableDifferentiableLogic declProv expr (Left blockingErr)
-    Right result -> throwError $ UnorderableDifferentiableLogic declProv expr (Right result)
+  logCompilerSection2 MinDetail "testing logic direction" $ do
+    errorOrResult <- runExceptT $ runFreshNameBoundContextT $ forceThunk =<< unblockBoolExpr noUnblocking comparisonExpr
+    case errorOrResult of
+      Right (IBoolLiteral result) ->
+        if result
+          then return ()
+          else throwError $ BackwardsDifferentiableLogic declProv comparisonExpr
+      Left blockingErr -> throwError $ UnorderableDifferentiableLogic declProv comparisonExpr (Left blockingErr)
+      Right result -> throwError $ UnorderableDifferentiableLogic declProv comparisonExpr (Right result)
 
-compileLogicField ::
-  (MonadLoss m) =>
-  DifferentiableLogicID ->
-  DeclProvenance ->
-  OMap FieldName (Thunk Builtin) ->
-  Map TensorDifferentiableLogicField (Expr LossBuiltin) ->
-  TensorDifferentiableLogicField ->
-  m (Map TensorDifferentiableLogicField (Expr LossBuiltin))
-compileLogicField logicID declProv fields impl field =
-  logCompilerSection2 MidDetail ("compiling tensor-field" <+> quotePretty field) $ do
-    let tensorValue = lookupLogicField field fields
-    logDebug MaxDetail $ "input:" <+> prettyFriendlyEmptyCtx tensorValue
-    lossTensorExpr <-
-      runFreshFreeContextT (Proxy @LossBuiltin) $ do
-        runMonadLogicT logicID mempty declProv $ do
-          convertQuantifierlessExprToLoss tensorValue
-    logDebug MaxDetail $ "output:" <+> prettyFriendlyEmptyCtx lossTensorExpr
-    return $ Map.insert field (unnormalise 0 lossTensorExpr) impl
-
-lookupLogicField :: TensorDifferentiableLogicField -> OMap FieldName value -> value
+lookupLogicField :: TensorDifferentiableLogicField -> RecordFields Builtin -> Expr Builtin
 lookupLogicField field logicFields = do
-  case OMap.lookup (FieldName mempty (nameOf field)) logicFields of
-    Nothing -> developerError $ "Non-compiled logic field" <+> quotePretty field <+> "found"
-    Just value -> value
-
-{-
-fieldIdentifier :: DifferentiableLogicID -> TensorDifferentiableLogicField -> Identifier
-fieldIdentifier logicID field = do
-  let fieldName = layoutAsText $ pretty field
-  let recordModule = RecordModule $ layoutAsText $ pretty logicID
-  Identifier (ModulePath [StdLib, recordModule]) fieldName
-
-    let tensorExprFn = case field of
-          TruthityElement -> compileBoolLiteral Truthity
-          FalsityElement -> compileBoolLiteral Falsity
-          PointwiseNegation -> liftOp1 Negation
-          PointwiseConjunction -> liftOp2 Conjunction
-          PointwiseDisjunction -> liftOp2 Disjunction
-          PointwiseLe -> liftOp2 LessEqual
-          PointwiseLt -> liftOp2 LessThan
-          PointwiseGe -> liftOp2 GreaterEqual
-          PointwiseGt -> liftOp2 GreaterThan
-          PointwiseEq -> liftOp2 Equal
-          PointwiseNe -> liftOp2 NotEqual
-          ReduceConjunction -> reduceOp2 Conjunction
-          ReduceDisjunction -> reduceOp2 Disjunction
-
-    tensorExpr <- flip runReaderT (logicID, field) $ tensorExprFn dsl
+  let maybeResult = find (\(f, _) -> nameOf f == nameOf field) logicFields
+  let missingError = developerError $ "logic missing field" <+> squotes (pretty (nameOf field))
+  snd $ fromMaybe missingError maybeResult
 
 --------------------------------------------------------------------------------
--- Compilation of logic fields
---------------------------------------------------------------------------------
+-- Lifting
 
-type MonadCompileField m =
-  ( MonadCompile m,
-    MonadReader (DifferentiableLogicID, TensorDifferentiableLogicField) m
-  )
+liftLogicAndDependencies ::
+  (MonadLogger m) =>
+  OMap Identifier (Decl Builtin) ->
+  [Identifier] ->
+  m (Prog Builtin)
+liftLogicAndDependencies orderedProg logicAndDependencies =
+  logCompilerSection2 MinDetail "lifting logic and dependencies" $ do
+    -- Extract the dependencies
+    let initialDecls = do
+          let handleMissingDecl = fromMaybe (developerError "Missing decl in orderedProg")
+          fmap (\ident -> handleMissingDecl $ OMap.lookup ident orderedProg) logicAndDependencies
 
-compileBoolLiteral ::
-  (MonadCompileField m) =>
-  BooleanDifferentiableLogicField ->
-  DifferentialLogicDSL ->
-  m (Expr Builtin)
-compileBoolLiteral field dsl = do
-  let expr = lookupLogicField field dsl
-  value <- eval mempty mempty emptyBoundEnv expr
-  case value :: Value Builtin of
-    IRatLiteral l -> return $ Builtin mempty (BuiltinConstructor (RatTensorLiteral (ZeroDimTensor l)))
-    _ -> developerError "Boolean literals must currently be converted to Rat literals"
+    -- Filter the dependencies out of the remaining program
+    let remainingDecls = do
+          let logicAndDependenciesSet = Set.fromList logicAndDependencies
+          let orderedRemainingDecls = OMap.filter (\i _ -> i `Set.notMember` logicAndDependenciesSet) orderedProg
+          snd <$> OMap.assocs orderedRemainingDecls
 
-liftOp1 ::
-  (MonadCompileField m) =>
-  BooleanDifferentiableLogicField ->
-  DifferentialLogicDSL ->
-  m (Expr Builtin)
-liftOp1 field dsl = do
-  liftedOp1 <- extractOp1Body dsl field liftOp1Body
-  return $
-    fromDSL mempty $
-      implLam "dims" tDims $ \dims ->
-        explLam "xs" (tRatTensor dims) $ \xs ->
-          liftedOp1 dims xs
-
-liftOp2 ::
-  (MonadCompileField m) =>
-  BooleanDifferentiableLogicField ->
-  DifferentialLogicDSL ->
-  m (Expr Builtin)
-liftOp2 field dsl = do
-  liftedOp2 <- extractOp2Body dsl field liftOp2Body
-  return $
-    fromDSL mempty $
-      implLam "dims" tDims $ \dims ->
-        explLam "xs" (tRatTensor dims) $ \xs ->
-          explLam "ys" (tRatTensor dims) $ \ys -> do
-            liftedOp2 dims xs ys
-
-reduceOp2 ::
-  (MonadCompileField m) =>
-  BooleanDifferentiableLogicField ->
-  DifferentialLogicDSL ->
-  m (Expr Builtin)
-reduceOp2 field dsl = do
-  reducedOp <- extractOp2Body dsl field reduceOp2Body
-  return $
-    fromDSL mempty $
-      implLam "dims" tDims $ \dims ->
-        explLam "e" (tRatTensor dimNil) $ \e ->
-          explLam "xs" (tRatTensor dims) $ \xs ->
-            reducedOp dims e xs
-
-extractOp1Body ::
-  (MonadCompileField m) =>
-  DifferentialLogicDSL ->
-  BooleanDifferentiableLogicField ->
-  (Value Builtin -> NameBoundContextT (ExceptT (Value Builtin) m) a) ->
-  m a
-extractOp1Body dsl field process = do
-  op1 <- eval mempty mempty emptyBoundEnv (lookupLogicField field dsl)
-  case op1 of
-    VLam binder (Closure _env body) -> runBodyExtraction (field, op1) process [void binder] body
-    fn -> developerError $ "Expecting arity 1 function for" <+> pretty field <> "but found" <+> prettyFriendlyEmptyCtx fn
-
-extractOp2Body ::
-  (MonadCompileField m) =>
-  DifferentialLogicDSL ->
-  BooleanDifferentiableLogicField ->
-  (Value Builtin -> NameBoundContextT (ExceptT (Value Builtin) m) a) ->
-  m a
-extractOp2Body dsl field process = do
-  op2 <- eval mempty mempty emptyBoundEnv (lookupLogicField field dsl)
-  case op2 of
-    VLam2 binder1 _env binder2 body -> runBodyExtraction (field, op2) process [void binder2, void binder1] body
-    fn -> developerError $ "Expecting arity 2 function for" <+> pretty field <> "but found" <+> prettyFriendlyEmptyCtx fn
-
-pattern VLam2 :: VBinder builtin -> BoundEnv builtin -> Binder builtin -> Expr builtin -> Value builtin
-pattern VLam2 binder1 env binder2 body <- VLam binder1 (Closure env (Lam _ binder2 body))
-
-runBodyExtraction ::
-  (MonadCompileField m) =>
-  (BooleanDifferentiableLogicField, Value Builtin) ->
-  (Value Builtin -> NameBoundContextT (ExceptT (Value Builtin) m) a) ->
-  BoundCtx () ->
-  Expr Builtin ->
-  m a
-runBodyExtraction originalFn process ctx body = do
-  bodyValue <- eval mempty (toNamedBoundCtx ctx) (boundContextToEnv ctx) body
-  let nameCtx = toNamedBoundCtx ctx
-  resultOrError <- runExceptT $ runNameBoundContextT nameCtx $ process bodyValue
-  case resultOrError of
-    Right result -> return result
-    Left blockedExpr -> do
-      (logicID, tensorField) <- ask
-      throwError $ UnableToLiftLogicFieldToTensors logicID tensorField originalFn nameCtx blockedExpr
-
---------------------------------------------------------------------------------
--- Compilation of logic field bodies
---------------------------------------------------------------------------------
-
-isLiftableOp :: BuiltinFunction -> Bool
-isLiftableOp = \case
-  Not -> True
-  And -> True
-  Or -> True
-  Neg NegRatTensor -> True
-  Add AddRatTensor -> True
-  Sub SubRatTensor -> True
-  Mul MulRatTensor -> True
-  Div DivRatTensor -> True
-  Min MinRatTensor -> True
-  Max MaxRatTensor -> True
-  CompareRatTensor _ -> True
-  Implies -> False
-  QuantifyRecord {} -> False
-  QuantifyRatTensor {} -> False
-  If -> False
-  Add {} -> False
-  Mul {} -> False
-  Pow {} -> False
-  Log {} -> False
-  Exp {} -> False
-  CompareNat {} -> False
-  CompareIndex {} -> False
-  AtTensor -> False
-  AtVector -> False
-  FoldList -> False
-  MapList -> False
-  ReverseList -> False
-  AppendList -> False
-  ReduceAndTensor -> False
-  ReduceOrTensor -> False
-  ReduceAddRatTensor -> False
-  ReduceMulRatTensor -> False
-  ReduceMinRatTensor -> False
-  ReduceMaxRatTensor -> False
-  StackTensor {} -> False
-  ConstTensor -> False
-  ForeachTensor -> False
-  ForeachVector -> False
-  Iterate -> False
-  Transpose -> False
-  SearchRatTensor {} -> False
-
-reduceOp :: BuiltinFunction -> Maybe BuiltinFunction
-reduceOp = \case
-  And -> Just ReduceAndTensor
-  Or -> Just ReduceOrTensor
-  Add AddRatTensor -> Just ReduceAddRatTensor
-  Mul MulRatTensor -> Just ReduceMulRatTensor
-  Min MinRatTensor -> Just ReduceMinRatTensor
-  Max MaxRatTensor -> Just ReduceMaxRatTensor
-  Not -> Nothing
-  CompareRatTensor {} -> Nothing
-  CompareNat {} -> Nothing
-  CompareIndex {} -> Nothing
-  Neg NegRatTensor -> Nothing
-  Sub SubRatTensor -> Nothing
-  Div DivRatTensor -> Nothing
-  Implies -> Nothing
-  QuantifyRatTensor {} -> Nothing
-  QuantifyRecord {} -> Nothing
-  If -> Nothing
-  Add _ -> Nothing
-  Mul _ -> Nothing
-  Pow {} -> Nothing
-  Log {} -> Nothing
-  Exp {} -> Nothing
-  AtVector -> Nothing
-  AtTensor -> Nothing
-  FoldList -> Nothing
-  MapList -> Nothing
-  ReverseList -> Nothing
-  AppendList -> Nothing
-  ReduceAndTensor -> Nothing
-  ReduceOrTensor -> Nothing
-  ReduceAddRatTensor -> Nothing
-  ReduceMulRatTensor -> Nothing
-  ReduceMinRatTensor -> Nothing
-  ReduceMaxRatTensor -> Nothing
-  StackTensor {} -> Nothing
-  ConstTensor -> Nothing
-  ForeachTensor -> Nothing
-  ForeachVector -> Nothing
-  Iterate -> Nothing
-  Transpose -> Nothing
-  SearchRatTensor {} -> Nothing
-
-type MonadCompileBody m =
-  ( MonadLogger m,
-    MonadError (Value Builtin) m,
-    MonadNameContext m
-  )
-
-liftOp1Body ::
-  (MonadCompileBody m) =>
-  Value Builtin ->
-  m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
-liftOp1Body = convertHigherOrderFunction "liftOp1" $ \case
-  VBuiltin (BuiltinFunction op) (getExpr accessSpine -> Just (TensorOp1Args _ds e)) | isLiftableOp op -> do
-    e' <- liftOp1Body e
-    return $ \dims xs -> builtinFunction op .@@@ [dims] @@ [e' dims xs]
-  VBuiltin (BuiltinFunction op) (getExpr accessSpine -> Just (TensorOp2Args _ds e1 e2)) | isLiftableOp op -> do
-    e1' <- liftOp1Body e1
-    e2' <- liftOp1Body e2
-    return $ \dims xs -> builtinFunction op .@@@ [dims] @@ [e1' dims xs, e2' dims xs]
-  VBoundVar v [] | v == 0 ->
-    return $ \_dim xs -> xs
-  IRatLiteral r ->
-    return $ \dims _xs -> constTensor tRat (ratLit r) dims
-  blockedExpr ->
-    throwError blockedExpr
-
-liftOp2Body ::
-  (MonadCompileBody m) =>
-  Value Builtin ->
-  m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
-liftOp2Body = convertHigherOrderFunction "liftOp2" $ \case
-  VBuiltin (BuiltinFunction op) (getExpr accessSpine -> Just (TensorOp1Args _ds e)) | isLiftableOp op -> do
-    e' <- liftOp2Body e
-    return $ \dims xs ys -> builtinFunction op .@@@ [dims] @@ [e' dims xs ys]
-  VBuiltin (BuiltinFunction op) (getExpr accessSpine -> Just (TensorOp2Args _ds e1 e2)) | isLiftableOp op -> do
-    e1' <- liftOp2Body e1
-    e2' <- liftOp2Body e2
-    return $ \dims xs ys -> builtinFunction op .@@@ [dims] @@ [e1' dims xs ys, e2' dims xs ys]
-  VBoundVar lv []
-    | lv == 0 -> return $ \_dims xs _ys -> xs
-    | lv == 1 -> return $ \_dims _xs ys -> ys
-  IRatLiteral r ->
-    return $ \dims _xs _ys -> constTensor tRat (ratLit r) dims
-  blockedExpr ->
-    throwError blockedExpr
-
-reduceOp2Body ::
-  (MonadCompileBody m) =>
-  Value Builtin ->
-  m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
-reduceOp2Body = convertHigherOrderFunction "reduction" $ \case
-  VBuiltin (BuiltinFunction (reduceOp -> Just reducedOp)) (getExpr accessSpine -> Just (TensorOp2Args _ (VBoundVar 0 []) (VBoundVar 1 []))) ->
-    return $ \dims e xs -> builtinFunction reducedOp .@@@ [dims] @@ [e, xs]
-  blockedExpr -> do
-    logDebug MaxDetail $ prettyVerbose blockedExpr
-    throwError blockedExpr
-
-convertHigherOrderFunction ::
-  (MonadLogger m, MonadNameContext m) =>
-  Doc a ->
-  (Value Builtin -> m a) ->
-  Value Builtin ->
-  m a
-convertHigherOrderFunction field convert lamBody = do
-  ctx <- getNameContext
-  -- logDebug MaxDetail $ doc <+> ":" <+> prettyVerbose e
-  logDebug MaxDetail $ "enter-" <> field <> ":" <+> prettyFriendly (WithContext lamBody ctx)
-  incrCallDepth
-  result <- convert lamBody
-  decrCallDepth
-  return result
-
---------------------------------------------------------------------------------
--- Helper functions
---------------------------------------------------------------------------------
--}
+    -- Reconstruct the new program
+    let liftedProg = Main $ initialDecls <> remainingDecls
+    logDebug MidDetail $ prettyFriendly liftedProg
+    return liftedProg

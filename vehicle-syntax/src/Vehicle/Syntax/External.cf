@@ -174,8 +174,8 @@ BasicTypeBinder.    TypeBinder ::= BasicBinder;
 
 -- * Arguments6
 
-ExplicitArg.     Arg ::= Expr16;
-ExplicitArgMods. Arg ::= "(" Modality [Modality] Expr16 ")";
+ExplicitArg.     Arg ::= Expr17;
+ExplicitArgMods. Arg ::= "(" Modality [Modality] Expr17 ")";
 ImplicitArg.     Arg ::= "{" [Modality] Expr1 "}";
 InstanceArg.     Arg ::= "{{" [Modality] Expr1 "}}";
 
@@ -214,7 +214,7 @@ InfLiteral.   Lit ::= Infinity;
 --   aren't used for `let` and `in`.
 
 -- Kinds.
-Type.    Expr16 ::= TokType;
+Type.    Expr17 ::= TokType;
 
 -- Core structure.
 Ann.       Expr   ::= Expr2 TokElemOf Expr1;
@@ -225,10 +225,10 @@ Fun.       Expr12 ::= TypeBinder TokArrow Expr12;
 App.       Expr14 ::= Expr14 Arg;
 -- This record declaration causes a shift-reduce conflict.
 Record.    Expr11 ::= "{" [RecordFieldAssign] "}";
-RecordAcc. Expr14 ::= Expr14 FieldAccess;
-Var.       Expr16 ::= Name;
-Literal.   Expr16 ::= Lit;
-Hole.      Expr16 ::= HoleToken;
+RecordAcc. Expr16 ::= Expr16 FieldAccess;
+Var.       Expr17 ::= Name;
+Literal.   Expr17 ::= Lit;
+Hole.      Expr17 ::= HoleToken;
 
 -- Quantification
 Foreach.   Expr2 ::= TokForeach [NameBinder] "." Expr2;
@@ -265,79 +265,79 @@ GePoint. Expr8  ::= Expr8 TokGePoint Expr9;
 GtPoint. Expr8  ::= Expr8 TokGtPoint Expr9;
 
 -- Container syntax.
-VecLiteral. Expr16 ::= TokSeqOpen [Expr] TokSeqClose;
+VecLiteral. Expr17 ::= TokSeqOpen [Expr] TokSeqClose;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
 At.         Expr13 ::= Expr13 TokAt Expr14;
 
 -- Hard-coded builtins remove
-Min.                          Expr16 ::= TokMin;
-Max.                          Expr16 ::= TokMax;
-Log.                          Expr16 ::= TokLog;
-Exp.                          Expr16 ::= TokExp;
-AddNat.                       Expr16 ::= TokAddNat;
-MulNat.                       Expr16 ::= TokMulNat;
-AddRealTensor.                Expr16 ::= TokAddRealTensor;
-SubRealTensor.                Expr16 ::= TokSubRealTensor;
-MulRealTensor.                Expr16 ::= TokMulRealTensor;
-DivRealTensor.                Expr16 ::= TokDivRealTensor;
-QuantifyForAllIndex.          Expr16 ::= TokQuantifyForAllIndex;
-QuantifyExistsIndex.          Expr16 ::= TokQuantifyExistsIndex;
-QuantifyForallRealTensor.     Expr16 ::= TokQuantifyForallRealTensor;
-QuantifyExistsRealTensor.     Expr16 ::= TokQuantifyExistsRealTensor;
-QuantifyForallTensorLike.     Expr16 ::= TokQuantifyForallTensorLike;
-QuantifyExistsTensorLike.     Expr16 ::= TokQuantifyExistsTensorLike;
-CompareIndexEq.               Expr16 ::= TokCompareIndexEq;
-CompareIndexNe.               Expr16 ::= TokCompareIndexNe;
-CompareIndexLe.               Expr16 ::= TokCompareIndexLe;
-CompareIndexLt.               Expr16 ::= TokCompareIndexLt;
-CompareIndexGe.               Expr16 ::= TokCompareIndexGe;
-CompareIndexGt.               Expr16 ::= TokCompareIndexGt;
-CompareNatEq.                 Expr16 ::= TokCompareNatEq;
-CompareNatNe.                 Expr16 ::= TokCompareNatNe;
-CompareNatLe.                 Expr16 ::= TokCompareNatLe;
-CompareNatLt.                 Expr16 ::= TokCompareNatLt;
-CompareNatGe.                 Expr16 ::= TokCompareNatGe;
-CompareNatGt.                 Expr16 ::= TokCompareNatGt;
-CompareRatTensorPointwiseEq.  Expr16 ::= TokCompareRatTensorPointwiseEq;
-CompareRatTensorPointwiseNe.  Expr16 ::= TokCompareRatTensorPointwiseNe;
-CompareRatTensorPointwiseLe.  Expr16 ::= TokCompareRatTensorPointwiseLe;
-CompareRatTensorPointwiseLt.  Expr16 ::= TokCompareRatTensorPointwiseLt;
-CompareRatTensorPointwiseGe.  Expr16 ::= TokCompareRatTensorPointwiseGe;
-CompareRatTensorPointwiseGt.  Expr16 ::= TokCompareRatTensorPointwiseGt;
-CompareRatTensorReducedEq.    Expr16 ::= TokCompareRatTensorReducedEq;
-CompareRatTensorReducedNe.    Expr16 ::= TokCompareRatTensorReducedNe;
-CompareRatTensorReducedLe.    Expr16 ::= TokCompareRatTensorReducedLe;
-CompareRatTensorReducedLt.    Expr16 ::= TokCompareRatTensorReducedLt;
-CompareRatTensorReducedGe.    Expr16 ::= TokCompareRatTensorReducedGe;
-CompareRatTensorReducedGt.    Expr16 ::= TokCompareRatTensorReducedGt;
+Min.                          Expr17 ::= TokMin;
+Max.                          Expr17 ::= TokMax;
+Log.                          Expr17 ::= TokLog;
+Exp.                          Expr17 ::= TokExp;
+AddNat.                       Expr17 ::= TokAddNat;
+MulNat.                       Expr17 ::= TokMulNat;
+AddRealTensor.                Expr17 ::= TokAddRealTensor;
+SubRealTensor.                Expr17 ::= TokSubRealTensor;
+MulRealTensor.                Expr17 ::= TokMulRealTensor;
+DivRealTensor.                Expr17 ::= TokDivRealTensor;
+QuantifyForAllIndex.          Expr17 ::= TokQuantifyForAllIndex;
+QuantifyExistsIndex.          Expr17 ::= TokQuantifyExistsIndex;
+QuantifyForallRealTensor.     Expr17 ::= TokQuantifyForallRealTensor;
+QuantifyExistsRealTensor.     Expr17 ::= TokQuantifyExistsRealTensor;
+QuantifyForallTensorLike.     Expr17 ::= TokQuantifyForallTensorLike;
+QuantifyExistsTensorLike.     Expr17 ::= TokQuantifyExistsTensorLike;
+CompareIndexEq.               Expr17 ::= TokCompareIndexEq;
+CompareIndexNe.               Expr17 ::= TokCompareIndexNe;
+CompareIndexLe.               Expr17 ::= TokCompareIndexLe;
+CompareIndexLt.               Expr17 ::= TokCompareIndexLt;
+CompareIndexGe.               Expr17 ::= TokCompareIndexGe;
+CompareIndexGt.               Expr17 ::= TokCompareIndexGt;
+CompareNatEq.                 Expr17 ::= TokCompareNatEq;
+CompareNatNe.                 Expr17 ::= TokCompareNatNe;
+CompareNatLe.                 Expr17 ::= TokCompareNatLe;
+CompareNatLt.                 Expr17 ::= TokCompareNatLt;
+CompareNatGe.                 Expr17 ::= TokCompareNatGe;
+CompareNatGt.                 Expr17 ::= TokCompareNatGt;
+CompareRatTensorPointwiseEq.  Expr17 ::= TokCompareRatTensorPointwiseEq;
+CompareRatTensorPointwiseNe.  Expr17 ::= TokCompareRatTensorPointwiseNe;
+CompareRatTensorPointwiseLe.  Expr17 ::= TokCompareRatTensorPointwiseLe;
+CompareRatTensorPointwiseLt.  Expr17 ::= TokCompareRatTensorPointwiseLt;
+CompareRatTensorPointwiseGe.  Expr17 ::= TokCompareRatTensorPointwiseGe;
+CompareRatTensorPointwiseGt.  Expr17 ::= TokCompareRatTensorPointwiseGt;
+CompareRatTensorReducedEq.    Expr17 ::= TokCompareRatTensorReducedEq;
+CompareRatTensorReducedNe.    Expr17 ::= TokCompareRatTensorReducedNe;
+CompareRatTensorReducedLe.    Expr17 ::= TokCompareRatTensorReducedLe;
+CompareRatTensorReducedLt.    Expr17 ::= TokCompareRatTensorReducedLt;
+CompareRatTensorReducedGe.    Expr17 ::= TokCompareRatTensorReducedGe;
+CompareRatTensorReducedGt.    Expr17 ::= TokCompareRatTensorReducedGt;
 
-Nil.           Expr16 ::= TokNil;
-Append.        Expr16 ::= TokAppend;
-Const.         Expr16 ::= TokConst;
-Transpose.     Expr16 ::= TokTranspose;
-Map.           Expr16 ::= TokMap;
-Fold.          Expr16 ::= TokFold;
-ReduceOr.      Expr16 ::= TokReduceOr;
-ReduceAnd.     Expr16 ::= TokReduceAnd;
-ReduceAdd.     Expr16 ::= TokReduceAdd;
-ReduceMul.     Expr16 ::= TokReduceMul;
-ReduceMin.     Expr16 ::= TokReduceMin;
-ReduceMax.     Expr16 ::= TokReduceMax;
-Unit.          Expr16 ::= TokUnit;
-Bool.          Expr16 ::= TokBool;
-Index.         Expr16 ::= TokIndex;
-Nat.           Expr16 ::= TokNat;
-Real.          Expr16 ::= TokReal;
-List.          Expr16 ::= TokList;
-Vector.        Expr16 ::= TokVector;
-Tensor.        Expr16 ::= TokTensor;
-HasMap.        Expr16 ::= TokHasMap;
-HasFold.       Expr16 ::= TokHasFold;
-IsTensorType.  Expr16 ::= TokIsTensorType;
-NonCastingTensor. Expr16 ::= TokNonCastingTensor;
-NonCastingReal. Expr16 ::= TokNonCastingReal;
+Nil.           Expr17 ::= TokNil;
+Append.        Expr17 ::= TokAppend;
+Const.         Expr17 ::= TokConst;
+Transpose.     Expr17 ::= TokTranspose;
+Map.           Expr17 ::= TokMap;
+Fold.          Expr17 ::= TokFold;
+ReduceOr.      Expr17 ::= TokReduceOr;
+ReduceAnd.     Expr17 ::= TokReduceAnd;
+ReduceAdd.     Expr17 ::= TokReduceAdd;
+ReduceMul.     Expr17 ::= TokReduceMul;
+ReduceMin.     Expr17 ::= TokReduceMin;
+ReduceMax.     Expr17 ::= TokReduceMax;
+Unit.          Expr17 ::= TokUnit;
+Bool.          Expr17 ::= TokBool;
+Index.         Expr17 ::= TokIndex;
+Nat.           Expr17 ::= TokNat;
+Real.          Expr17 ::= TokReal;
+List.          Expr17 ::= TokList;
+Vector.        Expr17 ::= TokVector;
+Tensor.        Expr17 ::= TokTensor;
+HasMap.        Expr17 ::= TokHasMap;
+HasFold.       Expr17 ::= TokHasFold;
+IsTensorType.  Expr17 ::= TokIsTensorType;
+NonCastingTensor. Expr17 ::= TokNonCastingTensor;
+NonCastingReal. Expr17 ::= TokNonCastingReal;
 
-coercions Expr 16;
+coercions Expr 17;
 separator Expr ",";
 
 -- * Annotation options

@@ -11,6 +11,7 @@ import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Identity (Identity)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.These (mergeTheseWith)
 import Prettyprinter (surround)
@@ -852,14 +853,20 @@ formatCompileError = \case
         problem = "No properties found in file.",
         fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty BoolType) <+> "."
       }
-  UnsupportedLossOperation (_, p) op ->
+  UnsupportedLossOperation (_, p) maybeLocalProvenance op ->
     VehicleUserError
-      { provenance = Just p,
+      { provenance = Just (fromMaybe p maybeLocalProvenance),
         problem =
           "Loss functions do not yet support compilation of"
             <+> squotes op
             <+> ".",
         fix = Nothing
+      }
+  UnsupportedIfLossOperation p ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "Cannot compile `if` statements whose condition contains useful gradient information",
+        fix = Just "rewrite the specification to avoid using an `if` or move it to a location where it can be be lifted automatically to the Boolean level and eliminated."
       }
   DuplicateQuantifierNames (identifier, p) name ->
     VehicleUserError
@@ -871,46 +878,6 @@ formatCompileError = \case
             <+> quotePretty name
             <> ".",
         fix = Just "change the specification so that all quantified variables have unique names"
-      }
-  NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables -> do
-    let (name, p) = getNamedBinderInfo binder
-    VehicleUserError
-      { provenance = Just p,
-        problem =
-          "The property"
-            <+> quotePretty ident
-            <+> "cannot be compiled to tensor code as the variable"
-            <+> quotePretty name
-            <+> "is not properly bounded. In particular,"
-            <+> missingBounds maybeUnboundedVariables,
-        fix = Just "Add inequalities that restrict the value of the variable both below and above."
-      }
-  UnableToLiftLogicFieldToTensors logicID _tensorField (boolField, value) ctx problematicValue ->
-    VehicleUserError
-      { provenance = Nothing,
-        problem =
-          "While compiling the logic"
-            <+> quotePretty logicID
-            <+> "unable to lift differentiable logic field"
-            <> line
-            <> indent 2 (quotePretty boolField <> ":" <+> prettyFriendlyEmptyCtx value)
-            <> line
-            <> "to a corresponding tensor operation."
-              <+> "In particular, unable to lift"
-            <> line
-            <> indent 2 (prettyFriendly (WithContext problematicValue ctx)),
-        fix = Nothing
-      }
-  UnusedMonomorphisableDeclaration p ident ->
-    VehicleUserError
-      { provenance = Just p,
-        problem =
-          "Unable to compile declaration"
-            <+> quotePretty ident
-            <+> "as it is both not used in any properties and the type is not precisely defined"
-            <+> "and therefore unable to decide"
-            <+> "whether or not it should be lifted to the type-level.",
-        fix = Just "either remove the declaration, or add a type signature or use it in a property."
       }
   UnsupportedMultipleNetworkApplications queryFormat (_, p) ctx apps ->
     VehicleUserError
@@ -1033,6 +1000,15 @@ formatCompileError = \case
       }
     where
       comp = pretty TruthityElement <+> "<" <+> pretty FalsityElement
+  QuantifierWithNoGradients p binder ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "The body of the quantification over variable"
+            <+> quotePretty (nameOf binder)
+            <+> "has no constraints that will generate useful gradients.",
+        fix = Nothing
+      }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =

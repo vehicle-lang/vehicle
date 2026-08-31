@@ -1,6 +1,0 @@
-{
-  "name": "Loss",
-  "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o loss.vcl --declaration unitVal",
-  "needs": ["spec.vcl"],
-  "produces": []
-}

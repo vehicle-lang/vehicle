@@ -169,16 +169,11 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_Var(self, expression: vcl.Var) -> py.expr:
-        if expression.arguments:
-            # Var with arguments: translate to function call
-            return py_app(
-                py_name(expression.name, provenance=vcl.MISSING),
-                *map(self.translate_expression, expression.arguments),
-                provenance=vcl.MISSING,
-            )
-        else:
-            # Var without arguments: translate to simple variable reference
-            return py_name(expression.name, provenance=vcl.MISSING)
+        return py_app_sequential(
+            function=py_name(expression.name, provenance=vcl.MISSING),
+            arguments=[self.translate_expression(arg) for arg in expression.arguments],
+            provenance=vcl.MISSING,
+        )
 
     def translate_Lam(self, expression: vcl.Lam) -> py.expr:
         return py.Lambda(
@@ -189,6 +184,43 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
 
     def translate_Pi(self, expression: vcl.Pi) -> py.expr:
         raise EraseType()
+
+    def translate_Let(self, expression: vcl.Let) -> py.expr:
+        return py_app(
+            py.Lambda(
+                args=py_binder(self.translate_binder(expression.binder)),
+                body=self.translate_expression(expression.body),
+                **asdict(vcl.MISSING),
+            ),
+            self.translate_expression(expression.bound),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_Record(self, expression: vcl.Record) -> py.expr:
+        """Translate Record to a dictionary literal."""
+        fields = expression.fields
+
+        keys: list[py.expr | None] = []
+        values: list[py.expr] = []
+        for field_name, field_value in fields:
+            keys.append(py.Constant(value=field_name, **asdict(vcl.MISSING)))
+            values.append(self.translate_expression(field_value))
+
+        result = py.Dict(keys=keys, values=values, **asdict(vcl.MISSING))
+        return result
+
+    def translate_RecordAcc(self, expression: vcl.RecordAcc) -> py.expr:
+        """Translate record accessor to '<expr>[field](<args>)."""
+        return py_app_sequential(
+            function=py.Subscript(
+                value=self.translate_expression(expression.record),
+                slice=py.Constant(value=expression.field, **asdict(vcl.MISSING)),
+                ctx=py.Load(),
+                **asdict(vcl.MISSING),
+            ),
+            arguments=[self.translate_expression(arg) for arg in expression.arguments],
+            provenance=vcl.MISSING,
+        )
 
     def translate_BoolTensor(self, expression: vcl.BoolTensor) -> py.expr:
         return py_tensor(expression.contents, provenance=vcl.MISSING)
@@ -431,6 +463,16 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_WhereTensor(self, expression: vcl.WhereTensor) -> py.expr:
+        """Translate WhereTensor to builtin call."""
+        return py_app(
+            py_builtin("WhereTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.input_tensor),
+            self.translate_expression(expression.condition),
+            self.translate_expression(expression.false_value),
+            provenance=vcl.MISSING,
+        )
+
     def translate_Dimension(self, expression: vcl.Dimension) -> py.expr:
         """Translate Dimension to constant."""
         return py.Constant(value=expression.value, **asdict(vcl.MISSING))
@@ -577,12 +619,31 @@ def py_subscript(
 def py_app(
     function: py.expr, *arguments: py.expr, provenance: vcl.Provenance
 ) -> py.expr:
-    """Make a function call."""
+    """Make a function call: function(arguments[0],...,arguments[n])"""
     return py.Call(
         func=function,
         args=list(arguments),
         keywords=[],
         **asdict(provenance),
+    )
+
+
+def py_app_sequential(
+    function: py.expr, arguments: Sequence[py.expr], provenance: vcl.Provenance
+) -> py.expr:
+    """Make a series of function calls: function(arguments[0])...(arguments[n])."""
+    if not arguments:
+        return function
+
+    return py_app_sequential(
+        function=py.Call(
+            func=function,
+            args=[arguments[0]],
+            keywords=[],
+            **asdict(provenance),
+        ),
+        arguments=arguments[1:],
+        provenance=provenance,
     )
 
 

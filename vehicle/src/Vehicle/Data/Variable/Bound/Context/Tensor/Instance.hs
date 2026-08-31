@@ -28,8 +28,8 @@ newtype TensorBoundContextT m a = TensorBoundContextT
   }
   deriving (Functor, Applicative, Monad)
 
--- | Runs a computation in the context monad allowing you to keep track of the
--- context.
+-- | Runs a computation in the tensor context monad allowing you to keep track
+-- of all variables including tensor variables and their children.
 runFreshTensorBoundContextT :: (Monad m) => TensorBoundContextT m a -> m a
 runFreshTensorBoundContextT f = evalStateT (unTensorBoundContextT f) emptyNestedCtx
 

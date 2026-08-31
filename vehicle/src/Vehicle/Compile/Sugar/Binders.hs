@@ -83,22 +83,9 @@ foldBinders ::
 foldBinders getBinder leadBinder = go
   where
     go :: expr -> ([GenericBinder expr], expr)
-    go expr = do
-      let result = case getBinder expr of
-            Just (binder, body) -> processBinder binder body
-            _ -> Nothing
-
-      case result of
-        Nothing -> ([], expr)
-        Just (binder, body) -> first (binder :) (go body)
-
-    processBinder ::
-      GenericBinder expr ->
-      expr ->
-      Maybe (GenericBinder expr, expr)
-    processBinder binder body
-      | canFold binder && wantsToFold binder = Just (binder, body)
-      | otherwise = Nothing
+    go expr = case getBinder expr of
+      Just (binder, body) | canFold binder && wantsToFold binder -> first (binder :) (go body)
+      _ -> ([], expr)
 
     canFold :: GenericBinder expr -> Bool
     canFold binder =

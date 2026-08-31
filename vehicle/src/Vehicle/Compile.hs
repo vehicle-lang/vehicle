@@ -9,7 +9,6 @@ where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
-import Data.Set qualified as Set
 import System.Directory (makeAbsolute)
 import Vehicle.Backend.ITP.Agda
 import Vehicle.Backend.ITP.Imandra
@@ -160,8 +159,7 @@ compileToLossFunction ::
   OutputAsJSON ->
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON = do
-  let requestedDecls = Set.fromList declarationsToCompile
-  lossTensorProg <- convertToLossTensors differentiableLogicID requestedDecls typedProg
+  lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
   hoistedProg <- hoistInferableParameters lossTensorProg
   functionalisedProg <- functionaliseResources hoistedProg
   builtinProg <- traverse (traverseBuiltinsM toStandardBuiltins) functionalisedProg
@@ -181,7 +179,7 @@ hoistInferableParameters ::
 hoistInferableParameters (Main ds) =
   logCompilerSection2 MinDetail "hoisting inferable parameters" $ do
     (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
-    logDebug MaxDetail $ "Hoisted parameters:" <> lineIndent (vsep $ fmap prettyFriendly inferableParameters)
+    logDebug MidDetail $ "Hoisted parameters:" <+> if null inferableParameters then "none" else lineIndent (vsep $ fmap prettyFriendly inferableParameters)
     return $ Main (inferableParameters <> otherDecls)
   where
     goDecls :: (MonadWriter [Decl builtin] m) => [Decl builtin] -> m [Decl builtin]

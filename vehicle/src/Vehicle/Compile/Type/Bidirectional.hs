@@ -14,7 +14,7 @@ import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Constraint.UnificationSolver (solveUnificationConstraint)
@@ -199,9 +199,10 @@ inferExpr e = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted
       -- as different meta-variables.
+      relevance <- ask
       boundCtx <- getBoundCtx (Proxy @(Type builtin))
-      metaType <- freshMetaExpr p (TypeUniverse p 0) boundCtx
-      metaExpr <- freshMetaExpr p metaType boundCtx
+      metaType <- freshMetaExpr p (TypeUniverse p 0) relevance boundCtx
+      metaExpr <- freshMetaExpr p metaType relevance boundCtx
       return (metaExpr, metaType)
     Pi p binder body -> do
       checkedBinder <- checkBinder binder
@@ -459,7 +460,7 @@ forceApplicationHeadType ::
 forceApplicationHeadType ctx typ = do
   let normType = Unforced (boundContextToEnv ctx) typ
   (forcedType, blockingMetas) <- forceThunkWithMetas (toNamedBoundCtx ctx) normType
-  return (quote (provenanceOf typ) (boundCtxLv ctx) forcedType, blockingMetas)
+  return (unnormalise (boundCtxLv ctx) forcedType, blockingMetas)
 
 checkArgsAgainstPiType ::
   (TCM builtin m) =>
@@ -514,9 +515,9 @@ checkArgsAgainstPiType ctx problem@ArgInsertionProblem {..} binder resultType
 
       logDebug MaxDetail $ "new-expected-type:" <+> prettyExternal (WithContext newExpectedType nameCtx)
       decrCallDepth
-      let newCheckedExprDoc = prettyExternal (WithContext (solutionSoFar newProblem) nameCtx)
-      let newUncheckedArgsDoc = prettyExternal (WithContext remainingUncheckedArgs nameCtx)
-      logDebug MaxDetail $ "checking-args-exit" <+> newCheckedExprDoc <+> "@" <+> newUncheckedArgsDoc
+      -- let newCheckedExprDoc = prettyExternal (WithContext (solutionSoFar newProblem) nameCtx)
+      -- let newUncheckedArgsDoc = prettyExternal (WithContext remainingUncheckedArgs nameCtx)
+      logDebug MaxDetail "checking-args-exit" -- <+> newCheckedExprDoc <+> "@" <+> newUncheckedArgsDoc
 
       -- Recurse to check the remaining unchecked args
       solveArgInsertionProblem ctx newProblem
@@ -539,7 +540,7 @@ instantiateArgForNonExplicitBinder boundCtx p (fun, funArgs, funType) binder = d
   let binderType = typeOf binder
   checkedExpr <- case visibilityOf binder of
     Explicit {} -> compilerDeveloperError "Should not be instantiating Arg for explicit Binder"
-    Implicit {} -> freshMetaExpr p binderType boundCtx
+    Implicit {} -> freshMetaExpr p binderType (relevanceOf binder) boundCtx
     Instance {} -> do
       let origin =
             InstanceArgOrigin $

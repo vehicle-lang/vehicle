@@ -263,7 +263,7 @@ forceBuiltin b spine = do
     Eval evalFn -> forceBuiltinEval evalFn b spine
     None -> return $ VBuiltin b spine
     Derived ident -> forceFreeVar ident spine
-    TypeClassOp -> do
+    TypeClassOperation -> do
       logDebug MaxDetail $ pretty $ length spine
       (inst, remainingArgs) <- findInstanceArg b spine
       forceApplication inst remainingArgs
