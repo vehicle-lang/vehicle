@@ -263,7 +263,7 @@ prependBinderAndSolve decl (meta, binder) =
     let alterType t = return $ Pi p typeBinder t
     let alterBody e = return $ Lam p bodyBinder e
     finalDecl <- case substDecl of
-      DefFunction _ i s t e -> DefFunction p i (incrLHSBinderCount s) <$> alterType t <*> alterBody e
+      DefFunction _ i s t e -> DefFunction p i (incrLHSBinderCount 1 s) <$> alterType t <*> alterBody e
       DefAbstract _ i s t -> DefAbstract p i s <$> alterType t
       _ ->
         developerError $

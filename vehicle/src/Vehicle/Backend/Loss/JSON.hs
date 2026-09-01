@@ -15,7 +15,7 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude (DeclProvenance, Ix (..), getBinderName)
+import Vehicle.Compile.Prelude (DeclProvenance, Ix (..), LHSBinderCount, getBinderName)
 import Vehicle.Compile.Prelude qualified as S (Arg, Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
@@ -23,6 +23,7 @@ import Vehicle.Data.AST.Decl
   ( DefFunctionSort (..),
     FunctionDeclAnnotation (..),
     isAnnotatedAsProperty,
+    lhsBinderCount,
   )
 import Vehicle.Data.AST.Expr.Scoped (Type, normAppList)
 import Vehicle.Data.AST.Record (FieldName (..))
@@ -59,7 +60,7 @@ newtype JProg
   deriving (Generic)
 
 data JDecl
-  = DefFunction Provenance Name Bool JType JExpr
+  = DefFunction Provenance Name LHSBinderCount Bool JType JExpr
   deriving (Generic)
 
 data JBinder
@@ -188,7 +189,7 @@ convertDecl = \case
     flip runReaderT (ident, p) $ do
       typ' <- convertTypeValue typ
       expr' <- convertExpr body
-      return $ Just $ DefFunction p (nameOf ident) (isAnnotatedAsProperty sort) typ' expr'
+      return $ Just $ DefFunction p (nameOf ident) (lhsBinderCount sort) (isAnnotatedAsProperty sort) typ' expr'
 
 --------------------------------------------------------------------------------
 -- General
@@ -581,12 +582,12 @@ fromJProg = \case
 
 fromJDecl :: JDecl -> S.Decl Builtin
 fromJDecl = \case
-  DefFunction p name isProperty typ body ->
+  DefFunction p name binderCount isProperty typ body ->
     runFreshNameBoundContext $ do
       typ' <- fromJType typ
       body' <- fromJExpr body
       let ident = Identifier userModulePath name
-      let sort = FunctionDecl 0 (if isProperty then Just AnnProperty else Nothing)
+      let sort = FunctionDecl binderCount (if isProperty then Just AnnProperty else Nothing)
       return $ S.DefFunction p ident sort typ' body'
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr Builtin)
