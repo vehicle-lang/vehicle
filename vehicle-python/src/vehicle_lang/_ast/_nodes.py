@@ -391,7 +391,6 @@ class SearchRatTensor(Expression):
     lower_bound: Expression
     upper_bound: Expression
     search_lambda: Lam
-    minimise: bool
 
 
 @dataclass(frozen=True)
@@ -512,6 +511,40 @@ class DefAbstract(Declaration):
 
 
 ################################################################################
+# Boolean Tree
+################################################################################
+
+
+@dataclass(frozen=True)
+class BooleanExpression(AST):
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class BooleanExpression")
+
+
+@dataclass(frozen=True)
+class Conjunct(BooleanExpression):
+    conjunct_all: Sequence[BooleanExpression]
+
+
+@dataclass(frozen=True)
+class Disjunct(BooleanExpression):
+    disjunct_all: Sequence[BooleanExpression]
+
+
+@dataclass(frozen=True)
+class Query(BooleanExpression):
+    negated: bool
+    disjunct_all: Sequence[Name]
+
+
+@dataclass(frozen=True)
+class BooleanTree(AST):
+    provenance: Provenance = field(repr=False)
+    name: Name
+    boolean_expression: BooleanExpression
+
+
+################################################################################
 # Modules
 ################################################################################
 
@@ -533,8 +566,8 @@ class Main(Program):
 
 
 @dataclass(frozen=True)
-class SearchProgram(Program):
-    """Wrapper to store declarations and a map for property metadata"""
+class SearchMain(Program):
+    """Stores boolean trees and declarations"""
 
-    map: dict[str, bool]
+    trees: Sequence[BooleanTree]
     program: Main

@@ -34,9 +34,9 @@ liftable = (exists (x1 : Real) . (0 < x1 < 1 and (exists (x2 : Real) . 0 < x2 < 
 -- notLiftable1 = (forall (x1 : Real) . 0 < x1 < 1 or x1 >= 2) and (exists (x2 : Real) . 1 < x2 < 2 and x2 <= 3)
 
 -- Should throw error (quantifiers are alternating)
--- @property
--- notLiftable2: Bool
--- notLiftable2 = forall (x1 : Real) . (0 < x1 < 1 and (exists (x2 : Real) . x2 < x1))
+@property
+notLiftable2: Bool
+notLiftable2 = forall (x1 : Real) . (0 < x1 < 1 and (exists (x2 : Real) . x2 < x1))
 
 -- exists should be lifted to top of RHS argument
 -- @property

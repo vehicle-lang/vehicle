@@ -202,8 +202,8 @@ compileToSearchLoss ::
 compileToSearchLoss differentiableLogicID outputFile declsToCompile typedProg outputAsJSON = do
   let requestedDecls = Set.fromList declsToCompile
   (searchTrees, lossTensorProg) <- convertToSearchLoss differentiableLogicID requestedDecls typedProg
-  builtinProg <- traverse (traverseBuiltinsM toStandardBuiltins) lossTensorProg
-  jsonSearchProg <- convertToJSONSearchProg (searchTrees, builtinProg)
+  builtinLossProg <- traverse (traverseBuiltinsM toStandardBuiltins) lossTensorProg
+  jsonSearchProg <- convertToJSONSearchProg (searchTrees, builtinLossProg)
   let outputText
         | outputAsJSON = prettyAsJSON jsonSearchProg
         | otherwise =

@@ -11,10 +11,11 @@ where
 import Control.Monad.Except (MonadError (..))
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
+import Data.List.NonEmpty (fromList, toList)
 import Data.Proxy (Proxy (..))
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Backend.LossSearch qualified as L (SearchTree (..))
+import Vehicle.Backend.LossSearch qualified as L (BooleanTree (..))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Force
@@ -57,17 +58,17 @@ convertToJSONProg prog =
       runFreshNameBoundContextT $
         convertProg prog
 
-convertToJSONSearchProg :: (MonadCompile m) => ([L.SearchTree], S.Prog Builtin) -> m JSearchProg
-convertToJSONSearchProg (searchTrees, prog) =
+convertToJSONSearchProg :: (MonadCompile m) => ([L.BooleanTree], S.Prog Builtin) -> m JSearchProg
+convertToJSONSearchProg (booleanTrees, prog) =
   logCompilerSection2 MinDetail currentPass $ do
     runFreshFreeContextT (Proxy @Builtin) $
       runFreshNameBoundContextT $
-        convertSearchProg searchTrees prog
+        convertSearchProg booleanTrees prog
 
 convertFromJSONProg :: JProg -> S.Prog Builtin
 convertFromJSONProg = fromJProg
 
-convertFromJSONSearchProg :: JSearchProg -> ([L.SearchTree], S.Prog Builtin)
+convertFromJSONSearchProg :: JSearchProg -> ([L.BooleanTree], S.Prog Builtin)
 convertFromJSONSearchProg = fromJSearchProg
 
 --------------------------------------------------------------------------------
@@ -79,19 +80,19 @@ newtype JProg
   deriving (Generic)
 
 data JSearchProg = SearchMain
-  { searchTrees :: [JSearchTree],
-    prog :: JProg
+  { trees :: [JBooleanTree],
+    program :: JProg
   }
   deriving (Generic)
 
-data JSearchTree
-  = SearchTree Provenance Name JBooleanExpr
+data JBooleanTree
+  = BooleanTree Provenance Name JBooleanExpr
   deriving (Generic)
 
 data JBooleanExpr
-  = Conjunct (P.ConjunctAll JBooleanExpr)
-  | Disjunct (P.DisjunctAll JBooleanExpr)
-  | Query (QuerySet Name)
+  = Conjunct [JBooleanExpr]
+  | Disjunct [JBooleanExpr]
+  | Query Bool [Name]
   deriving (Generic)
 
 data JDecl
@@ -179,7 +180,7 @@ instance ToJSON JSearchProg where
 instance ToJSON JDecl where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JSearchTree where
+instance ToJSON JBooleanTree where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JBooleanExpr where
@@ -248,18 +249,18 @@ convertDecl = \case
     expr' <- convertExpr emptyBoundEnv body
     return $ DefFunction p (nameOf ident) typ' expr'
 
-convertSearchProg :: (MonadJSON m) => [L.SearchTree] -> S.Prog Builtin -> m JSearchProg
-convertSearchProg searchTrees prog = do
-  searchTrees' <- traverse convertSearchTree searchTrees
+convertSearchProg :: (MonadJSON m) => [L.BooleanTree] -> S.Prog Builtin -> m JSearchProg
+convertSearchProg booleanTrees prog = do
+  booleanTrees' <- traverse convertBooleanTree booleanTrees
   prog' <- convertProg prog
-  return $ SearchMain searchTrees' prog'
+  return $ SearchMain booleanTrees' prog'
 
-convertSearchTree :: (MonadJSON m) => L.SearchTree -> m JSearchTree
-convertSearchTree = \case
-  L.SearchTree p ident (NonTrivial expr) -> do
+convertBooleanTree :: (MonadJSON m) => L.BooleanTree -> m JBooleanTree
+convertBooleanTree = \case
+  L.BooleanTree p ident (NonTrivial expr) -> do
     expr' <- convertBooleanExpr expr
-    return $ SearchTree p (nameOf ident) expr'
-  L.SearchTree _ _ (Trivial _) -> developerError "Empty search tree"
+    return $ BooleanTree p (nameOf ident) expr'
+  L.BooleanTree _ _ (Trivial _) -> developerError "Empty search tree"
 
 --------------------------------------------------------------------------------
 -- Types
@@ -333,12 +334,13 @@ convertBooleanExpr :: (MonadJSON m) => P.BooleanExpr (QuerySet Name) -> m JBoole
 convertBooleanExpr = \case
   P.Conjunct es -> do
     es' <- traverse convertBooleanExpr es
-    return $ Conjunct es'
+    return $ Conjunct $ toList $ P.unConjunctAll es'
   P.Disjunct es -> do
     es' <- traverse convertBooleanExpr es
-    return $ Disjunct es'
+    return $ Disjunct $ toList $ P.unDisjunctAll es'
   P.Query (QuerySet negated disjuncts) -> do
-    return $ Query (QuerySet negated disjuncts)
+    let names = toList $ P.unDisjunctAll disjuncts
+    return $ Query negated names
 
 convertExpr :: (MonadJSON m) => BoundEnv Builtin -> S.Expr Builtin -> m JExpr
 convertExpr env body = do
@@ -622,25 +624,25 @@ fromJProg :: JProg -> S.Prog Builtin
 fromJProg = \case
   Main decls -> S.Main (fmap fromJDecl decls)
 
-fromJSearchProg :: JSearchProg -> ([L.SearchTree], S.Prog Builtin)
+fromJSearchProg :: JSearchProg -> ([L.BooleanTree], S.Prog Builtin)
 fromJSearchProg = \case
-  SearchMain searchTrees prog ->
-    let searchTrees' = fmap fromJSearchTree searchTrees
+  SearchMain booleanTrees prog ->
+    let booleanTrees' = fmap fromJBooleanTree booleanTrees
         prog' = fromJProg prog
-     in (searchTrees', prog')
+     in (booleanTrees', prog')
 
-fromJSearchTree :: JSearchTree -> L.SearchTree
-fromJSearchTree = \case
-  SearchTree p name expr ->
+fromJBooleanTree :: JBooleanTree -> L.BooleanTree
+fromJBooleanTree = \case
+  BooleanTree p name expr ->
     let ident = Identifier userModulePath name
         expr' = fromJBooleanExpr expr
-     in L.SearchTree p ident (NonTrivial expr')
+     in L.BooleanTree p ident (NonTrivial expr')
 
 fromJBooleanExpr :: JBooleanExpr -> P.BooleanExpr (QuerySet Name)
 fromJBooleanExpr = \case
-  Conjunct es -> P.Conjunct (fmap fromJBooleanExpr es)
-  Disjunct es -> P.Disjunct (fmap fromJBooleanExpr es)
-  Query (QuerySet negated es) -> P.Query (QuerySet negated es)
+  Conjunct es -> P.Conjunct $ P.ConjunctAll $ fromList (fmap fromJBooleanExpr es)
+  Disjunct es -> P.Disjunct $ P.DisjunctAll $ fromList (fmap fromJBooleanExpr es)
+  Query negated names -> P.Query (QuerySet negated (P.DisjunctAll $ fromList names))
 
 fromJDecl :: JDecl -> S.Decl Builtin
 fromJDecl = \case

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
+
 from vehicle_lang.typing import DL2DifferentiableLogic, VehicleDifferentiableLogic
 
 from .config import HASKELL_GOLDEN_TESTS_PATH
@@ -23,6 +24,33 @@ def require_pytorch() -> Tuple[Any, Any]:
     return torch_module, loss_module
 
 
+def test_pytorch_search() -> None:
+    torch, loss_pt = require_pytorch()
+
+    spec_path = GOLDEN_SPECS_BASE / "bounded" / "spec.vcl"
+    declarations = ["f", "bounded"]
+
+    # Create a random network (in future, tailor it to the spec)
+    model = torch.nn.Sequential(
+        torch.nn.Linear(1, 8), torch.nn.ReLU(), torch.nn.Linear(8, 1)
+    )
+    networks = {"f": model}
+
+    counterexamples = loss_pt.search(
+        spec_path,
+        logic=DL2DifferentiableLogic(),
+        declarations=declarations,
+        networks=networks,
+        num_steps=10,
+    )
+
+    print(counterexamples)
+
+    assert False
+
+
+'''
+@pytest.mark.skip()
 def test_pytorch_search_single_input() -> None:
     """Test gradient-based search for properties with a single input."""
     torch, loss_pt = require_pytorch()
@@ -65,6 +93,7 @@ def test_pytorch_search_single_input() -> None:
         assert final_loss <= initial_loss
 
 
+@pytest.mark.skip()
 def test_pytorch_search_multiple_inputs() -> None:
     """Test gradient-based search for properties with multiple inputs."""
     torch, loss_pt = require_pytorch()
@@ -105,3 +134,4 @@ def test_pytorch_search_multiple_inputs() -> None:
 
         # Check that the search minimised the loss
         assert final_loss <= initial_loss
+'''

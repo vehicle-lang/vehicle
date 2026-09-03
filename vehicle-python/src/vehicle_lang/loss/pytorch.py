@@ -8,23 +8,18 @@ from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 
 import torch
 
+from vehicle_lang.loss._search import search_property
+
 from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
 from ._common import load_search_loss, load_training_loss
 from ._pytorch._translation import PyTorchTranslation
-from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler, Sample
+from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler
 
 __all__ = [
     "load_specification",
     "PyTorchSampler",
     "DefaultPyTorchSampler",
 ]
-
-
-@dataclass
-class SearchResult:
-    property: str
-    witnesses: Sequence[Sample]
-    adversarial_examples: Sequence[Sample]
 
 
 def load_specification(
@@ -60,18 +55,12 @@ def search(
     num_samples: int = 10,
     num_steps: int = 5,
     seed: int | None = None,
-) -> Sequence[SearchResult]:
+) -> dict[str, Any]:
     """
-    Generates samples for each property in a specification.
-
-    If the property contains only universal quantifiers, the samples generated
-    are adversarial examples to the property.
-
-    If the property contains only existential quantifiers, the samples generated
-    are witnesses to the property.
+    Finds counter-examples for properties in a specification using PGD.
     """
 
-    search_spec = load_search_loss(
+    search_data = load_search_loss(
         path,
         logic=logic,
         declarations=declarations,
@@ -82,29 +71,22 @@ def search(
         translation_factory=PyTorchTranslation,
     )
 
-    declarations = search_spec.declarations
-    property_data = search_spec.property_data
-    search_bounds = search_spec.search_bounds
+    declarations = search_data.declarations
+    boolean_trees = search_data.boolean_trees
+    search_bounds = search_data.search_bounds
 
     sampler = DefaultPyTorchSampler(
         num_samples=num_samples, num_steps=num_steps, seed=seed
     )
 
-    search_results = []
-    for property, contains_forall in property_data.items():
-        samples = sampler.get_samples(
-            bound_vars=search_bounds[property], loss_fn=declarations[property]
+    counterexamples = {}
+    for property in boolean_trees:
+        counterexample = search_property(
+            boolean_tree=property,
+            declarations=declarations,
+            bound_vars=search_bounds,
+            sampler=sampler,
         )
+        counterexamples[property.name] = counterexample
 
-        if contains_forall:
-            result = SearchResult(
-                property=property, witnesses=[], adversarial_examples=samples
-            )
-        else:
-            result = SearchResult(
-                property=property, witnesses=samples, adversarial_examples=[]
-            )
-
-        search_results.append(result)
-
-    return search_results
+    return counterexamples

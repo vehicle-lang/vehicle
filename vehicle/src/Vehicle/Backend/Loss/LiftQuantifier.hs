@@ -1,6 +1,5 @@
 module Vehicle.Backend.Loss.LiftQuantifier
   ( compileHardBooleanTree,
-    QuantifierData,
     LiftedData,
   )
 where

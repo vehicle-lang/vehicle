@@ -6,7 +6,7 @@ from jaxtyping import Float
 
 from ..._deps import require_optional_dependency
 from .._abc import ABCSampler
-from .._common import BoundVar
+from .._common import BoundVarData
 
 if TYPE_CHECKING:
     import torch
@@ -35,12 +35,21 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
     ) -> Float[torch.Tensor, "1 losses"]: ...
 
+    """
     @abstractmethod
     def get_samples(
         self,
-        bound_vars: Sequence[BoundVar],
+        bound_vars: Sequence[BoundVarData],
         loss_fn: Callable[..., torch.Tensor],
     ) -> Sequence[Sample]: ...
+    """
+
+    @abstractmethod
+    def pgd(
+        self,
+        bound_vars: Sequence[BoundVarData],
+        loss_fn: Callable[..., torch.Tensor],
+    ) -> Sample: ...
 
 
 class DefaultPyTorchSampler(PyTorchSampler):
@@ -158,9 +167,10 @@ class DefaultPyTorchSampler(PyTorchSampler):
 
         return torch.stack(results)
 
+    '''
     def get_samples(
         self,
-        bound_vars: Sequence[BoundVar],
+        bound_vars: Sequence[BoundVarData],
         loss_fn: Callable[..., torch.Tensor],
     ) -> Sequence[Sample]:
         """
@@ -185,10 +195,11 @@ class DefaultPyTorchSampler(PyTorchSampler):
             samples.append(sample)
 
         return samples
+    '''
 
     def pgd(
         self,
-        bound_vars: Sequence[BoundVar],
+        bound_vars: Sequence[BoundVarData],
         loss_fn: Callable[..., torch.Tensor],
     ) -> Sample:
         """
