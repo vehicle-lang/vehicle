@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 
 import torch
-
 from vehicle_lang.loss._search_tree import search_tree
 
 from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
