@@ -9,18 +9,19 @@ module Vehicle.Backend.Loss.JSON
 where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader, ReaderT (..))
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
 import Data.List.NonEmpty (fromList, toList)
-import Data.Proxy (Proxy (..))
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Proxy
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Backend.LossSearch qualified as L (BooleanTree (..))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Force
-import Vehicle.Compile.Prelude (Ix (..), getBinderName)
-import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
+import Vehicle.Compile.Prelude (DeclProvenance, HasProvenance (..), Ix (..), getBinderName)
+import Vehicle.Compile.Prelude qualified as S (Arg, Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
 import Vehicle.Data.AST.Decl
@@ -28,20 +29,21 @@ import Vehicle.Data.AST.Decl
     DefFunctionSort (..),
     FunctionDeclAnnotation (..),
     ParameterSort (..),
+    isAnnotatedAsProperty,
   )
-import Vehicle.Data.AST.Expr.Scoped (normAppList)
+import Vehicle.Data.AST.Expr.Scoped (Type, normAppList)
+import Vehicle.Data.AST.Record (FieldName (..))
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard.Core (Builtin (..), BuiltinConstructor, BuiltinFunction, BuiltinType)
 import Vehicle.Data.Builtin.Standard.Core qualified as B
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.BooleanExpr qualified as P
-import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (ExtendedRatTensor, Tensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext (addDeclEntryToContext), runFreshFreeContextT)
-import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, stdlibIdentifier, userModulePath)
+import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
+import Vehicle.Prelude (Doc, GenericArg (..), HasIdentifier (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, stdlibIdentifier, userModulePath)
 import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Logging.Class
 import Vehicle.Verify.Specification (QuerySet (..))
@@ -53,10 +55,8 @@ import Vehicle.Verify.Specification (QuerySet (..))
 convertToJSONProg :: (MonadCompile m) => S.Prog Builtin -> m JProg
 convertToJSONProg prog =
   logCompilerSection2 MinDetail currentPass $ do
-    -- relevantProg <- removeIrrelevantCodeFromProg prog
-    runFreshFreeContextT (Proxy @Builtin) $
-      runFreshNameBoundContextT $
-        convertProg prog
+    runFreshNameBoundContextT $
+      convertProg prog
 
 convertToJSONSearchProg :: (MonadCompile m) => ([L.BooleanTree], S.Prog Builtin) -> m JSearchProg
 convertToJSONSearchProg (booleanTrees, prog) =
@@ -96,7 +96,7 @@ data JBooleanExpr
   deriving (Generic)
 
 data JDecl
-  = DefFunction Provenance Name JType JExpr
+  = DefFunction Provenance Name Bool JType JExpr
   | DefAbstract Provenance Name JSort JType
   deriving (Generic)
 
@@ -127,6 +127,9 @@ data JExpr
   = -- Types
     Lam JBinder JExpr
   | Var Name [JExpr]
+  | Let JExpr JBinder JExpr
+  | Record [(Name, JExpr)]
+  | RecordAcc JExpr Name [JExpr]
   | BoolTensor (Tensor Bool)
   | BoolNot JExpr
   | BoolAnd JExpr JExpr
@@ -159,6 +162,7 @@ data JExpr
   | ForeachTensor JExpr JExpr
   | AtTensor JExpr JExpr
   | SearchRatTensor Name JExpr JExpr JExpr JExpr -- (Dims, LowerBound, UpperBound, SearchLambda)
+  | WhereTensor JExpr JExpr JExpr
   | -- Vector
     VectorLiteral [JExpr]
   | AtVector JExpr JExpr
@@ -210,12 +214,11 @@ currentPass = "conversion to JSON"
 
 type MonadJSON m =
   ( MonadCompile m,
-    MonadNameContext m,
-    MonadFreeContext Builtin m
+    MonadNameContext m
   )
 
 unsupportedError :: (MonadJSON m, Pretty a) => a -> m b
-unsupportedError a = throwError $ UnsupportedLossOperation (stdlibIdentifier "unknown", mempty) (pretty a)
+unsupportedError a = throwError $ UnsupportedLossOperation (stdlibIdentifier "unknown", mempty) Nothing (pretty a)
 
 dependentTypesError :: (Pretty a) => a -> b
 dependentTypesError b = developerError $ "Conversion of" <+> pretty b <+> "is not yet implemented"
@@ -231,23 +234,68 @@ convertDecls = \case
   [] -> return []
   decl : decls -> do
     decl' <- convertDecl decl
-    decls' <- addDeclEntryToContext decl $ convertDecls decls
-    return (decl' : decls')
+    decls' <- convertDecls decls
+    return $ maybe decls' (: decls') decl'
 
-convertDecl :: (MonadJSON m) => S.Decl Builtin -> m JDecl
-convertDecl = \case
+convertDecl :: (MonadJSON m) => S.Decl Builtin -> m (Maybe JDecl)
+convertDecl decl = flip runReaderT (identifierOf decl, provenanceOf decl) $ case decl of
   S.DefAbstract p ident sort typ -> do
-    typ' <- convertType emptyBoundEnv typ
-    case sort of
-      NetworkDef -> return $ DefAbstract p (nameOf ident) Network typ'
-      DatasetDef -> return $ DefAbstract p (nameOf ident) Dataset typ'
-      ParameterDef _ -> return $ DefAbstract p (nameOf ident) Parameter typ'
+    typ' <- convertTypeValue typ
+    return $ Just $ case sort of
+      NetworkDef -> DefAbstract p (nameOf ident) Network typ'
+      DatasetDef -> DefAbstract p (nameOf ident) Dataset typ'
+      ParameterDef _ -> DefAbstract p (nameOf ident) Parameter typ'
       BuiltinDef -> developerError "DefAbstractSort BuiltinDef is not yet implemented"
-  S.DefRecord {} -> developerError "Found record when converting to JSON"
-  S.DefFunction p ident _ typ body -> do
-    typ' <- convertType emptyBoundEnv typ
-    expr' <- convertExpr emptyBoundEnv body
-    return $ DefFunction p (nameOf ident) typ' expr'
+  S.DefRecord {} -> return Nothing
+  S.DefFunction p ident sort typ body -> do
+    typ' <- convertTypeValue typ
+    expr' <- convertExpr body
+    return $ Just $ DefFunction p (nameOf ident) (isAnnotatedAsProperty sort) typ' expr'
+
+--------------------------------------------------------------------------------
+-- General
+
+type MonadJSONExpr m =
+  ( MonadCompile m,
+    MonadNameContext m,
+    MonadReader DeclProvenance m
+  )
+
+convertBoundVar ::
+  (MonadJSONExpr m) =>
+  (S.Expr Builtin -> m jvalue1) ->
+  (Name -> [jvalue1] -> jvalue2) ->
+  Ix ->
+  [S.Arg Builtin] ->
+  m jvalue2
+convertBoundVar convert toVar v args = do
+  name <- ixToProperName mempty v
+  spine' <- traverse (convert . argExpr) args
+  return $ toVar name spine'
+
+convertFreeVar ::
+  (MonadJSONExpr m) =>
+  (S.Expr Builtin -> m jvalue1) ->
+  (Name -> [jvalue1] -> jvalue2) ->
+  Identifier ->
+  [S.Arg Builtin] ->
+  m jvalue2
+convertFreeVar convert toVar v args = do
+  let name = nameOf v
+  spine' <- traverse (convert . argExpr) args
+  return $ toVar name spine'
+
+convertRecordAcc ::
+  (MonadJSONExpr m) =>
+  Type Builtin ->
+  S.Expr Builtin ->
+  FieldName ->
+  [S.Arg Builtin] ->
+  m JExpr
+convertRecordAcc _typ record field args = do
+  record' <- convertExpr record
+  spine' <- traverse (convertExpr . argExpr) args
+  return $ RecordAcc record' (nameOf field) spine'
 
 convertSearchProg :: (MonadJSON m) => [L.BooleanTree] -> S.Prog Builtin -> m JSearchProg
 convertSearchProg booleanTrees prog = do
@@ -265,36 +313,35 @@ convertBooleanTree = \case
 --------------------------------------------------------------------------------
 -- Types
 
-convertType ::
-  (MonadJSON m) =>
-  BoundEnv Builtin ->
-  S.Expr Builtin ->
-  m JType
-convertType env body = convertTypeValue $ Unforced env body
-
-convertTypeValue :: (MonadJSON m) => UnforcedType Builtin -> m JType
+convertTypeValue :: (MonadJSONExpr m) => Type Builtin -> m JType
 convertTypeValue expr = do
   showEntry expr
-  forcedExpr <- forceThunk expr
-  result <- case forcedExpr of
-    VFreeVar {} -> resolutionError currentPass "VFreeVar"
-    VUniverse {} -> resolutionError currentPass "Universe"
-    VRecord {} -> resolutionError currentPass "VRecord"
-    VRecordAcc {} -> resolutionError currentPass "VRecordAcc"
-    VLam {} -> dependentTypesError ("VLam" :: String)
-    VPi binder closure -> do
+  result <- case expr of
+    S.Universe {} -> resolutionError currentPass "Universe"
+    S.Record {} -> resolutionError currentPass "Record"
+    S.RecordProj {} -> resolutionError currentPass "RecordProj"
+    S.Hole {} -> resolutionError currentPass "Hole"
+    S.Meta {} -> resolutionError currentPass "Meta"
+    S.Let {} -> dependentTypesError ("Let" :: String)
+    S.Lam {} -> dependentTypesError ("Lam" :: String)
+    S.Pi _ binder body -> do
       typ' <- convertTypeValue (typeOf binder)
-      closure' <- convertClosure convertType binder closure
+      closure' <- addNameToContext binder $ convertTypeValue body
       return $ Pi typ' closure'
-    VBuiltin b spine -> convertBuiltinType b spine
-    VBoundVar v spine -> do
-      name <- lvToProperName mempty v
-      spine' <- traverse (convertValue . argExpr) spine
-      return $ TypeVar name spine'
+    S.App fun args -> do
+      let args' = NonEmpty.toList args
+      case fun of
+        S.Builtin _ b -> convertBuiltinType b args'
+        S.BoundVar _ v -> convertBoundVar convertExpr TypeVar v args'
+        S.FreeVar _ v -> convertFreeVar convertExpr TypeVar v args'
+        _ -> developerError "Unexpected type application"
+    S.Builtin _ b -> convertBuiltinType b []
+    S.BoundVar _ v -> convertBoundVar convertExpr TypeVar v []
+    S.FreeVar _ v -> convertFreeVar convertExpr TypeVar v []
   showExit result
   return result
 
-convertBuiltinType :: (MonadJSON m) => Builtin -> UnforcedSpine Builtin -> m JType
+convertBuiltinType :: (MonadJSONExpr m) => Builtin -> [S.Arg Builtin] -> m JType
 convertBuiltinType b spine = case b of
   BuiltinType op -> case op of
     B.UnitType -> unsupportedError b
@@ -307,22 +354,22 @@ convertBuiltinType b spine = case b of
     B.VectorType -> convertVectorType spine
   _ -> dependentTypesError b
 
-convertIndexType :: (MonadJSON m) => UnforcedSpine Builtin -> m JType
+convertIndexType :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JType
 convertIndexType spine = case spine of
   (fmap argExpr -> [_t]) -> return DimensionIndexType
   _ -> arityError B.IndexType 1 spine
 
-convertTensorType :: (MonadJSON m) => UnforcedSpine Builtin -> m JType
+convertTensorType :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JType
 convertTensorType spine = case spine of
   (fmap argExpr -> [t, _ds]) -> TensorType <$> convertTypeValue t
   _ -> arityError B.TensorType 2 spine
 
-convertVectorType :: (MonadJSON m) => UnforcedSpine Builtin -> m JType
+convertVectorType :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JType
 convertVectorType spine = case spine of
   (fmap argExpr -> [t, _d]) -> VectorType <$> convertTypeValue t
   _ -> arityError B.VectorType 2 spine
 
-convertListType :: (MonadJSON m) => UnforcedSpine Builtin -> m JType
+convertListType :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JType
 convertListType spine = case spine of
   (fmap argExpr -> [_t]) -> return DimensionsType
   _ -> arityError B.ListType 1 spine
@@ -342,56 +389,46 @@ convertBooleanExpr = \case
     let names = toList $ P.unDisjunctAll disjuncts
     return $ Query negated names
 
-convertExpr :: (MonadJSON m) => BoundEnv Builtin -> S.Expr Builtin -> m JExpr
-convertExpr env body = do
-  let normBody = Unforced env body
-  convertValue normBody
-
-convertValue :: (MonadJSON m) => Thunk Builtin -> m JExpr
-convertValue expr = do
+convertExpr :: (MonadJSONExpr m) => S.Expr Builtin -> m JExpr
+convertExpr expr = do
   showEntry expr
-  forcedValue <- forceThunk expr
-  result <- case forcedValue of
-    VUniverse {} -> resolutionError currentPass "Universe"
-    VRecord {} -> resolutionError currentPass "VRecord"
-    VRecordAcc {} -> resolutionError currentPass "VRecordAcc"
-    VPi {} -> resolutionError currentPass "VPi"
-    VLam binder closure -> do
+  result <- case expr of
+    S.Universe {} -> resolutionError currentPass "Universe"
+    S.Pi {} -> resolutionError currentPass "Pi"
+    S.Hole {} -> resolutionError currentPass "Pi"
+    S.Meta {} -> resolutionError currentPass "Pi"
+    S.Let _ bound binder body -> Let <$> convertExpr bound <*> convertBinder binder <*> convertExpr body
+    S.Record _ _typ fields -> do
+      fields' <- traverse (\(k, v) -> (nameOf k,) <$> convertExpr v) fields
+      return $ Record fields'
+    S.RecordProj _ typ recordVal field -> convertRecordAcc typ recordVal field []
+    S.Lam _ binder body -> do
       binder' <- convertBinder binder
-      closure' <- convertClosure convertExpr binder closure
+      closure' <- addNameToContext binder $ convertExpr body
       return $ Lam binder' closure'
-    VBuiltin b spine -> convertBuiltin b spine
-    VFreeVar v spine -> do
-      let name = nameOf v
-      spine' <- traverse (convertValue . argExpr) spine
-      return $ Var name spine'
-    VBoundVar v spine -> do
-      name <- lvToProperName mempty v
-      spine' <- traverse (convertValue . argExpr) spine
-      return $ Var name spine'
+    S.App fun args -> do
+      let args' = NonEmpty.toList args
+      case fun of
+        S.Builtin _ b -> convertBuiltin b args'
+        S.BoundVar _ v -> convertBoundVar convertExpr Var v args'
+        S.FreeVar _ v -> convertFreeVar convertExpr Var v args'
+        S.RecordProj _ typ recordVal field -> convertRecordAcc typ recordVal field args'
+        _ -> do
+          funDoc <- prettyFriendlyInCtx fun
+          developerError $ "Unexpected expr application:" <+> funDoc
+    S.Builtin _ b -> convertBuiltin b []
+    S.BoundVar _ v -> convertBoundVar convertExpr Var v []
+    S.FreeVar _ v -> convertFreeVar convertExpr Var v []
   showExit result
   return result
 
-convertBinder :: (MonadJSON m) => UnforcedBinder Builtin -> m JBinder
+convertBinder :: (MonadJSONExpr m) => S.Binder Builtin -> m JBinder
 convertBinder binder = do
   let (name, p) = getNamedBinderInfo binder
   typ' <- convertTypeValue (typeOf binder)
   return $ Binder p name typ'
 
-convertClosure ::
-  (MonadJSON m) =>
-  (BoundEnv Builtin -> S.Expr Builtin -> m a) ->
-  UnforcedBinder Builtin ->
-  Closure Builtin ->
-  m a
-convertClosure f binder (Closure env body) = do
-  lv <- getBinderDepth
-  let newEnv = extendEnvWithBound lv binder env
-  addNameToContext binder $ do
-    debugFriendly body
-    f newEnv body
-
-convertBuiltin :: (MonadJSON m) => Builtin -> UnforcedSpine Builtin -> m JExpr
+convertBuiltin :: (MonadJSONExpr m) => Builtin -> [S.Arg Builtin] -> m JExpr
 convertBuiltin b spine = case b of
   BuiltinType op -> resolutionError currentPass (pretty op)
   BuiltinConstructor op -> case op of
@@ -435,10 +472,11 @@ convertBuiltin b spine = case b of
     B.ForeachTensor -> convertForeachTensor spine
     B.StackTensor -> convertStackTensor spine
     B.ConstTensor -> convertConstTensor spine
-    B.Transpose -> convertTranspose convertValue spine
+    B.Transpose -> convertTranspose convertExpr spine
     B.ForeachVector -> convertForeachVector spine
     B.AtVector -> convertAtVector spine
     B.SearchRatTensor -> convertSearch spine
+    B.WhereTensor -> convertWhere spine
     -- Dimension operations, not yet converted
     B.Add B.AddNat -> unsupportedError b
     B.Mul B.MulNat -> unsupportedError b
@@ -449,144 +487,148 @@ convertBuiltin b spine = case b of
     B.Iterate -> unsupportedError b
   _ -> dependentTypesError b
 
-convertNullaryOp :: (MonadJSON m) => Builtin -> a -> UnforcedSpine Builtin -> m a
+convertNullaryOp :: (MonadJSONExpr m) => Builtin -> a -> [S.Arg Builtin] -> m a
 convertNullaryOp b fn = \case
   [] -> return fn
   spine -> arityError b 0 spine
 
 convertNonNullaryOp ::
-  (MonadJSON m, IsArgs args, Pretty fn) =>
+  (MonadJSONExpr m, IsArgs args, Pretty fn) =>
   fn ->
   Arity ->
-  (args (Thunk Builtin) -> m a) ->
-  UnforcedSpine Builtin ->
+  (args (S.Expr Builtin) -> m a) ->
+  [S.Arg Builtin] ->
   m a
 convertNonNullaryOp op arity f spine =
   case getExpr accessSpine spine of
     Just args -> f args
     Nothing -> arityError op arity spine
 
-convertNil :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertNil :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
 convertNil = convertNonNullaryOp B.Nil 1 $
-  \NilArgs {} ->
+  \(NilArgs _t) ->
     return DimensionNil
 
-convertCons :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
-convertCons = convertNonNullaryOp B.Cons 4 $
+convertCons :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
+convertCons = convertNonNullaryOp B.Cons 3 $
   \(ConsArgs _t v ds) ->
-    DimensionCons <$> convertValue v <*> convertValue ds
+    DimensionCons <$> convertExpr v <*> convertExpr ds
 
 convertTensorOp1 ::
-  (MonadJSON m) =>
+  (MonadJSONExpr m) =>
   Builtin ->
   (JExpr -> JExpr) ->
-  UnforcedSpine Builtin ->
+  [S.Arg Builtin] ->
   m JExpr
-convertTensorOp1 b fn = convertNonNullaryOp b 1 $
+convertTensorOp1 b fn = convertNonNullaryOp b 2 $
   \(TensorOp1Args _ x) ->
-    fn <$> convertValue x
+    fn <$> convertExpr x
 
 convertTensorOp2 ::
-  (MonadJSON m) =>
+  (MonadJSONExpr m) =>
   Builtin ->
   (JExpr -> JExpr -> JExpr) ->
-  UnforcedSpine Builtin ->
+  [S.Arg Builtin] ->
   m JExpr
-convertTensorOp2 b fn = convertNonNullaryOp b 2 $
+convertTensorOp2 b fn = convertNonNullaryOp b 3 $
   \(TensorOp2Args _ x y) ->
-    fn <$> convertValue x <*> convertValue y
+    fn <$> convertExpr x <*> convertExpr y
 
 convertTensorReduction ::
-  (MonadJSON m) =>
+  (MonadJSONExpr m) =>
   Builtin ->
   (JExpr -> JExpr) ->
-  UnforcedSpine Builtin ->
+  [S.Arg Builtin] ->
   m JExpr
-convertTensorReduction b fn = convertNonNullaryOp b 1 $
+convertTensorReduction b fn = convertNonNullaryOp b 2 $
   \(TensorReductionArgs _ xs) ->
-    fn <$> convertValue xs
+    fn <$> convertExpr xs
 
 convertAtTensor ::
-  (MonadJSON m) =>
-  UnforcedSpine Builtin ->
+  (MonadJSONExpr m) =>
+  [S.Arg Builtin] ->
   m JExpr
 convertAtTensor = convertNonNullaryOp B.AtTensor 5 $
   \(AtTensorArgs _t _d _ds xs i) ->
-    AtTensor <$> convertValue xs <*> convertValue i
+    AtTensor <$> convertExpr xs <*> convertExpr i
 
-convertStackTensor :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertStackTensor :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
 convertStackTensor = convertNonNullaryOp B.StackTensor 4 $
   \(StackTensorArgs _t _d _ds xs) ->
-    StackTensor <$> traverse convertValue xs
+    StackTensor <$> traverse convertExpr xs
 
-convertConstTensor :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
-convertConstTensor = convertNonNullaryOp B.ConstTensor 4 $
+convertConstTensor :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
+convertConstTensor = convertNonNullaryOp B.ConstTensor 3 $
   \(ConstTensorArgs _t v ds) ->
-    ConstTensor <$> convertValue v <*> convertValue ds
+    ConstTensor <$> convertExpr v <*> convertExpr ds
 
-convertForeachTensor :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertForeachTensor :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
 convertForeachTensor = convertNonNullaryOp B.ForeachTensor 4 $
   \(ForeachTensorArgs _t d _ds fn) ->
-    ForeachTensor <$> convertValue d <*> convertValue fn
+    ForeachTensor <$> convertExpr d <*> convertExpr fn
 
-convertVectorLiteral :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
-convertVectorLiteral = convertNonNullaryOp B.VectorLiteral 4 $
+convertVectorLiteral :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
+convertVectorLiteral = convertNonNullaryOp B.VectorLiteral 3 $
   \(VectorLitArgs _t _ xs) ->
-    VectorLiteral <$> traverse convertValue xs
+    VectorLiteral <$> traverse convertExpr xs
 
 convertAtVector ::
-  (MonadJSON m) =>
-  UnforcedSpine Builtin ->
+  (MonadJSONExpr m) =>
+  [S.Arg Builtin] ->
   m JExpr
 convertAtVector = convertNonNullaryOp B.AtVector 4 $
   \(AtVectorArgs _t _d xs i) ->
-    AtVector <$> convertValue xs <*> convertValue i
+    AtVector <$> convertExpr xs <*> convertExpr i
 
-convertForeachVector :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
-convertForeachVector = convertNonNullaryOp B.ForeachVector 4 $
+convertForeachVector :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
+convertForeachVector = convertNonNullaryOp B.ForeachVector 3 $
   \(ForeachVectorArgs _t d fn) ->
-    ForeachVector <$> convertValue d <*> convertValue fn
+    ForeachVector <$> convertExpr d <*> convertExpr fn
 
-convertIf :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertIf :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
 convertIf = convertNonNullaryOp B.If 4 $
   \(IfArgs _t c x y) ->
-    BoolIf <$> convertValue c <*> convertValue x <*> convertValue y
+    BoolIf <$> convertExpr c <*> convertExpr x <*> convertExpr y
 
-convertCompareIndex :: (MonadJSON m) => B.ComparisonOp -> UnforcedSpine Builtin -> m JExpr
+convertCompareIndex :: (MonadJSONExpr m) => B.ComparisonOp -> [S.Arg Builtin] -> m JExpr
 convertCompareIndex op = convertNonNullaryOp (B.CompareIndex op) 4 $
   \(IndexComparisonArgs _n1 _n2 x y) ->
-    BoolCompareIndex op <$> convertValue x <*> convertValue y
+    BoolCompareIndex op <$> convertExpr x <*> convertExpr y
 
-convertCompareNat :: (MonadJSON m) => B.ComparisonOp -> UnforcedSpine Builtin -> m JExpr
+convertCompareNat :: (MonadJSONExpr m) => B.ComparisonOp -> [S.Arg Builtin] -> m JExpr
 convertCompareNat op = convertNonNullaryOp (B.CompareNat op) 2 $
   \(Op2Args x y) ->
-    BoolCompareNat op <$> convertValue x <*> convertValue y
+    BoolCompareNat op <$> convertExpr x <*> convertExpr y
 
-convertCompareRatTensor :: (MonadJSON m) => B.ComparisonOp -> UnforcedSpine Builtin -> m JExpr
+convertCompareRatTensor :: (MonadJSONExpr m) => B.ComparisonOp -> [S.Arg Builtin] -> m JExpr
 convertCompareRatTensor op = convertNonNullaryOp (B.CompareRatTensor op) 4 $
   \(TensorComparisonArgs pDims rDims x y) ->
-    BoolCompareRatTensor op <$> convertValue pDims <*> convertValue rDims <*> convertValue x <*> convertValue y
+    BoolCompareRatTensor op <$> convertExpr pDims <*> convertExpr rDims <*> convertExpr x <*> convertExpr y
 
 convertTranspose ::
-  (MonadJSON m) =>
-  (Thunk Builtin -> m JExpr) ->
-  UnforcedSpine Builtin ->
+  (MonadJSONExpr m) =>
+  (S.Expr Builtin -> m JExpr) ->
+  [S.Arg Builtin] ->
   m JExpr
 convertTranspose convert spine = case getExpr accessSpine spine of
   Just (TransposeTensorArgs _t _ds xs) -> Transpose <$> convert xs
   Nothing -> arityError B.Transpose 3 spine
 
-convertSearch :: (MonadJSON m) => UnforcedSpine Builtin -> m JExpr
+convertSearch :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
 convertSearch = convertNonNullaryOp B.SearchRatTensor 4 $
   \(SearchRatTensorArgs dims lowerBound upperBound fn) -> do
     let name = case fn of
-          Forced (VLam binder _) -> getBinderName binder
-          Unforced _ (S.Lam _ binder _) -> getBinderName binder
+          S.Lam _ binder _ -> getBinderName binder
           _ -> developerError "Malformed search operation"
 
-    SearchRatTensor name <$> convertValue dims <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn
+    SearchRatTensor name <$> convertExpr dims <*> convertExpr lowerBound <*> convertExpr upperBound <*> convertExpr fn
 
-arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> UnforcedSpine Builtin -> m a
+convertWhere :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
+convertWhere = convertNonNullaryOp B.SearchRatTensor 3 $
+  \(WhereTensorArgs _dims input cond value) -> do
+    WhereTensor <$> convertExpr input <*> convertExpr cond <*> convertExpr value
+
+arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> [S.Arg Builtin] -> m a
 arityError fun arity explicitArgs =
   compilerDeveloperError $
     "Number of args is different from expected arity:"
@@ -606,12 +648,12 @@ arityError fun arity explicitArgs =
             <+> prettyVerbose explicitArgs
         )
 
-showEntry :: (MonadJSON m) => Thunk Builtin -> m ()
+showEntry :: (MonadJSONExpr m) => S.Expr Builtin -> m ()
 showEntry e = do
   logDebug MaxDetail $ "json-enter:" <+> prettyVerbose e
   incrCallDepth
 
-showExit :: (MonadJSON m) => a -> m ()
+showExit :: (MonadJSONExpr m) => a -> m ()
 showExit _e = do
   logDebug MaxDetail "json-exit"
   decrCallDepth
@@ -646,12 +688,12 @@ fromJBooleanExpr = \case
 
 fromJDecl :: JDecl -> S.Decl Builtin
 fromJDecl = \case
-  DefFunction p name typ body ->
+  DefFunction p name isProperty typ body ->
     runFreshNameBoundContext $ do
       typ' <- fromJType typ
       body' <- fromJExpr body
       let ident = Identifier userModulePath name
-      let sort = FunctionDecl 0 (Just AnnProperty)
+      let sort = FunctionDecl 0 (if isProperty then Just AnnProperty else Nothing)
       return $ S.DefFunction p ident sort typ' body'
   DefAbstract p name sort typ ->
     runFreshNameBoundContext $ do
@@ -678,9 +720,9 @@ fromJType = \case
   DimensionIndexType -> toType B.IndexType []
   TypeVar name spine -> do
     nameCtx <- getNameContext
-    let ix = maybe (developerError ("ill-scoped JExpr, no variable" <+> squotes (pretty name))) Ix (elemIndex (Just name) nameCtx)
+    let var = maybe (S.FreeVar mempty (Identifier userModulePath name)) (S.BoundVar mempty . Ix) (elemIndex (Just name) nameCtx)
     spine' <- traverse fromJExpr spine
-    return $ normAppList (S.BoundVar mempty ix) (fmap explicit spine')
+    return $ normAppList var (fmap explicit spine')
 
 toType :: (MonadNameContext m) => BuiltinType -> [JType] -> m (S.Expr Builtin)
 toType op = toExpr fromJType (BuiltinType op)
@@ -693,10 +735,22 @@ fromJExpr = \case
     return $ S.Lam mempty binder' body'
   Var name spine -> do
     nameCtx <- getNameContext
-    let maybeIx = elemIndex (Just name) nameCtx
-    let fun = maybe (S.FreeVar mempty (Identifier userModulePath name)) (S.BoundVar mempty . Ix) maybeIx
+    let var = case elemIndex (Just name) nameCtx of
+          Nothing -> S.FreeVar mempty (Identifier userModulePath name)
+          Just ix -> S.BoundVar mempty $ Ix ix
     spine' <- traverse fromJExpr spine
-    return $ normAppList fun (fmap explicit spine')
+    return $ normAppList var (fmap explicit spine')
+  Record fields -> do
+    let fakeRecordType = S.FreeVar mempty $ Identifier userModulePath "?"
+    fieldExprs <- traverse (\(n, v) -> (FieldName mempty n,) <$> fromJExpr v) fields
+    return $ S.Record mempty fakeRecordType fieldExprs
+  RecordAcc record fieldName spine -> do
+    let fakeRecordType = S.FreeVar mempty $ Identifier userModulePath "?"
+    record' <- fromJExpr record
+    let fieldIdent = FieldName mempty fieldName
+    spine' <- traverse fromJExpr spine
+    return $ normAppList (S.RecordProj mempty fakeRecordType record' fieldIdent) $ fmap explicit spine'
+  Let bound binder body -> S.Let mempty <$> fromJExpr bound <*> fromJBinder binder <*> fromJExpr body
   BoolTensor t -> toConstructor (B.BoolTensorLiteral t) []
   BoolNot e -> toFunction B.Not [e]
   BoolAnd e1 e2 -> toFunction B.And [e1, e2]
@@ -724,6 +778,7 @@ fromJExpr = \case
   ReduceMinRatTensor xs -> toFunction B.ReduceMinRatTensor [xs]
   ReduceMaxRatTensor xs -> toFunction B.ReduceMaxRatTensor [xs]
   SearchRatTensor _name dims lower upper lambda -> toFunction B.SearchRatTensor [dims, lower, upper, lambda]
+  WhereTensor input cond value -> toFunction B.WhereTensor [input, cond, value]
   Dimension d -> toConstructor (B.NatLiteral d) []
   DimensionNil -> toConstructor B.Nil []
   DimensionCons e1 e2 -> toConstructor B.Cons [e1, e2]

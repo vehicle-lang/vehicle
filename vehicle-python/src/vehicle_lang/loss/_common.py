@@ -21,7 +21,7 @@ from .._ast._nodes import BooleanTree, Program, SearchMain
 from ..loss import load_ast
 from ..loss._python._translation import PythonTranslation
 from ..typing import DeclarationName, DifferentiableLogic, LossMode
-from ._search import Quantifiers, restructure_search_loss
+from ._search_loss import Quantifiers, restructure_search_loss
 
 
 class _SamplerProtocol(Protocol):

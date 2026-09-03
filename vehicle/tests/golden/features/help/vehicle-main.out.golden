@@ -16,8 +16,9 @@ Available options:
                              * Typing
                              * Solver
                              * ITP
-                             * Loss
+                             * LossBounds
                              * LossLogic
+                             * LossQuantifierLifting
                              * TypingSubsystem
                              * Verification
   --no-warnings            Suppress the printing of warnings.

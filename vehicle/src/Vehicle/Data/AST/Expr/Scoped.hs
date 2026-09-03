@@ -29,6 +29,7 @@ module Vehicle.Data.AST.Expr.Scoped
     substituteDB,
     getBuiltinApp,
     boundVariablesIn,
+    replaceProvenance,
     traverseBoundVariables_,
     calculateRarameterisedRecordFieldType,
   )
@@ -49,7 +50,8 @@ import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Vehicle.Compile.Sugar.Binders (HasBasicBinders (..), HasBuiltinBinders (..))
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Code.Interface (HasBuiltinConstructor (..))
+import Vehicle.Data.Code.Interface (HasBuiltinConstructor (..), HasLambdaConstructor)
+import Vehicle.Data.Code.Interface.Args (HasLambdaConstructor (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
 import Vehicle.Data.Variable.Bound.Level.Core (Lv, dbIndexToLevel, unLv)
@@ -354,6 +356,24 @@ traverseBoundVariables_ f ctxSize = go ctxSize
       Record _ i fs -> do go depth i; traverseRecordFields_ (go depth) fs
       RecordProj _ t r _field -> do go depth t; go depth r
 
+replaceProvenance :: Provenance -> Expr builtin -> Expr builtin
+replaceProvenance p = go
+  where
+    go :: Expr builtin -> Expr builtin
+    go = \case
+      Meta _p m -> Meta p m
+      App fun args -> App (go fun) (fmap (fmap go) args)
+      Universe _ u -> Universe p u
+      Hole _ h -> Hole p h
+      Builtin _ b -> Builtin p b
+      FreeVar _ v -> FreeVar p v
+      BoundVar _ v -> BoundVar p v
+      Pi _ binder res -> Pi p (fmap go binder) (go res)
+      Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
+      Lam _ binder e -> Lam p (fmap go binder) (go e)
+      Record _ ident fields -> Record p ident (mapRecordFields go fields)
+      RecordProj _ recordType record field -> RecordProj p (go recordType) (go record) field
+
 -----------------------------------------------------------------------------
 -- Instances
 
@@ -403,6 +423,15 @@ instance HasBuiltinConstructor Expr Expr where
         mkExpr = \(b, args) -> normAppList (Builtin mempty b) args
       }
   exprToThunk = id
+
+instance HasLambdaConstructor Expr Expr Expr where
+  accessForcedLamC =
+    Access
+      { getExpr = \case
+          Lam _ binder body -> Just (binder, body)
+          _ -> Nothing,
+        mkExpr = uncurry (Lam mempty)
+      }
 
 --------------------------------------------------------------------------------
 -- DeBruijin substitution

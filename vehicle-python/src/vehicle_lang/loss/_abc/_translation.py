@@ -48,6 +48,12 @@ class ABCTranslation(
                 return self.translate_Lam(expression)
             case vcl_ast.Pi():
                 return self.translate_Pi(expression)
+            case vcl_ast.Let():
+                return self.translate_Let(expression)
+            case vcl_ast.Record():
+                return self.translate_Record(expression)
+            case vcl_ast.RecordAcc():
+                return self.translate_RecordAcc(expression)
             case vcl_ast.BoolTensor():
                 return self.translate_BoolTensor(expression)
             case vcl_ast.BoolNot():
@@ -102,6 +108,8 @@ class ABCTranslation(
                 return self.translate_ReduceMaxRatTensor(expression)
             case vcl_ast.SearchRatTensor():
                 return self.translate_SearchRatTensor(expression)
+            case vcl_ast.WhereTensor():
+                return self.translate_WhereTensor(expression)
             case vcl_ast.Dimension():
                 return self.translate_Dimension(expression)
             case vcl_ast.DimensionCons():
@@ -140,6 +148,17 @@ class ABCTranslation(
 
     @abstractmethod
     def translate_Pi(self, expression: vcl_ast.Pi) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Let(self, expression: vcl_ast.Let) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Record(self, expression: vcl_ast.Record) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_RecordAcc(
+        self, expression: vcl_ast.RecordAcc
+    ) -> vcl_var.Expression: ...
 
     @abstractmethod
     def translate_BoolTensor(
@@ -266,6 +285,11 @@ class ABCTranslation(
     @abstractmethod
     def translate_SearchRatTensor(
         self, expression: vcl_ast.SearchRatTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_WhereTensor(
+        self, expression: vcl_ast.WhereTensor
     ) -> vcl_var.Expression: ...
 
     @abstractmethod

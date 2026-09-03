@@ -1,0 +1,11 @@
+[
+  {
+    "name": "VNNLib",
+    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries/ --network classifier:fake.onnx --parameter epsilon:0.1 --parameter delta:0.1 --dataset trainingImages:images.idx",
+    "needs": ["spec.vcl", "fake.onnx", "images.idx"],
+    "produces": ["VNNLib.queries/*.txt", "VNNLib.queries/*.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    }
+  }
+]

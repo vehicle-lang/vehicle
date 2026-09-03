@@ -67,7 +67,7 @@ descopeExprNaively e = do
   runFreshNameBoundContext (genericDescopeExpr (ixToName Naive) se)
 
 -- | Note that you cannot descope `Value` non-naively as you can't descope
--- closures properly. You have to quote the `Value` first.
+-- closures properly. You have to unnormalise the `Value` first.
 descopeForcedValueNaively ::
   (PrintableBuiltin builtin, Pretty meta) =>
   GenericForcedValue meta builtin ->

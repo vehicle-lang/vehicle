@@ -33,7 +33,7 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-    ) -> Float[torch.Tensor, "1 losses"]: ...
+    ) -> Sequence[Sample]: ...
 
     """
     @abstractmethod
@@ -228,7 +228,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
             range_size = upper_bound - lower_bound
 
             initial_point = (
-                lower_bound + torch.rand((), dtype=lower_bound.dtype) * range_size
+                lower_bound + torch.rand((1,), dtype=lower_bound.dtype) * range_size
             )
             current_inputs[bound_var.name] = initial_point
 

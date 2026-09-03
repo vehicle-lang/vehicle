@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.26.1
+version:            0.27.1
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -135,9 +135,6 @@ library
     Vehicle.Backend.ITP.Isabelle
     Vehicle.Backend.ITP.Rocq
     Vehicle.Backend.Loss.JSON
-    Vehicle.Backend.Loss.LiftQuantifier
-    Vehicle.Backend.Loss.LogicCompilation
-    Vehicle.Backend.Loss.LossCompilation
     Vehicle.Backend.Prelude
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
@@ -177,7 +174,6 @@ library
     Vehicle.Data.Meta
     Vehicle.Data.Real
     Vehicle.Data.Tensor
-    Vehicle.Data.Tensor.Traversal
     Vehicle.Data.Variable.Bound.Index
     Vehicle.Data.Variable.Bound.Level
     Vehicle.Data.Variable.Free.Context
@@ -201,7 +197,9 @@ library
     Vehicle.Backend.ITP.Core
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
-    Vehicle.Backend.Loss.Domain.PurifyAssertion
+    Vehicle.Backend.Loss.LiftQuantifier
+    Vehicle.Backend.Loss.LogicCompilation
+    Vehicle.Backend.Loss.PurifyAssertion
     Vehicle.Backend.LossSearch
     Vehicle.Backend.LossTraining
     Vehicle.Backend.Solver
@@ -291,6 +289,8 @@ library
     Vehicle.Data.Builtin.Linearity
     Vehicle.Data.Builtin.Linearity.Solver
     Vehicle.Data.Builtin.Linearity.Type
+    Vehicle.Data.Builtin.Loss.Instances
+    Vehicle.Data.Builtin.Loss.Type
     Vehicle.Data.Builtin.Polarity
     Vehicle.Data.Builtin.Polarity.Solver
     Vehicle.Data.Builtin.Polarity.Type
@@ -365,6 +365,7 @@ library
     , edit-distance          >=0.2.2    && <1
     , file-embed             >=0.0.15.0 && <0.1
     , filepath               >=1.4      && <2
+    , generic-data           >=1.0      && <2
     , gitrev                 >=1.3      && <2
     , hashable               >=1.3      && <2
     , mnist-idx              >=0.1.3.1  && <0.2

@@ -28,6 +28,8 @@ data MetaInfo builtin = MetaInfo
     metaProvenance :: Provenance,
     -- | The type of the meta-variable
     metaType :: Type builtin,
+    -- | The relevance of the meta-variable
+    metaRelevance :: Relevance,
     -- | The number of bound variables in scope when the meta-variable was created.
     metaCtx :: BoundCtx (Expr builtin),
     -- | The solution to the meta variable

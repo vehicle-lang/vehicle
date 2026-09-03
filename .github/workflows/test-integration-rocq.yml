@@ -1,17 +1,7 @@
 name: Test Rocq
 
 on:
-  push:
-    branches:
-      - dev
-    tags:
-      - "v*"
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-  merge_group:
+  workflow_call:
 
 defaults:
   run:
@@ -81,7 +71,7 @@ jobs:
           key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
 
       - name: 🛠️ Install OCaml
-        uses: ocaml/setup-ocaml@v3.7.0
+        uses: ocaml/setup-ocaml@v3.7.2
         with:
           ocaml-compiler: ${{ matrix.ocaml.version }}
 

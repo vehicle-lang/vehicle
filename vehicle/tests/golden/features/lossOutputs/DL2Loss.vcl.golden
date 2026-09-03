@@ -1,0 +1,6 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \ dims -> \ x -> const 1.0 dims / x, pointwiseConjunction = \ dims -> \ x -> \ y -> x + y, pointwiseDisjunction = \ dims -> \ x -> \ y -> x * y, pointwiseLessThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (y - x), pointwiseEqual = \ dims -> \ x -> \ y -> - (max (const 0.0 dims) (x - y) + max (const 0.0 dims) (y - x)), pointwiseNotEqual = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y) + max (const 0.0 dims) (y - x), reduceConjunction = \ dims -> \ xs -> reduceAdd xs, reduceDisjunction = \ dims -> \ xs -> reduceMul xs} 
+
+@property;
+belowOne : (Tensor Real -> Tensor Real) -> Tensor Real;
+belowOne = \ f -> DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\ x -> DL2Loss.pointwiseGreaterThan nil (f [x, x, x, x] ! 0) 1.0))

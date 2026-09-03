@@ -31,9 +31,10 @@ def test_pytorch_search() -> None:
     declarations = ["f", "bounded"]
 
     # Create a random network (in future, tailor it to the spec)
-    model = torch.nn.Sequential(
-        torch.nn.Linear(1, 8), torch.nn.ReLU(), torch.nn.Linear(8, 1)
-    )
+    model = torch.nn.Linear(1, 1)
+    with torch.no_grad():
+        model.weight.fill_(2.0)
+
     networks = {"f": model}
 
     counterexamples = loss_pt.search(

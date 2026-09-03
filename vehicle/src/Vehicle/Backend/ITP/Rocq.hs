@@ -20,7 +20,7 @@ import Data.Text.Internal.Read qualified as Text.Read
 import Data.Version (makeVersion)
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
-import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -578,6 +578,7 @@ compileBuiltin b args = case b of
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyRecord q -> compileQuantifierFunction q args
     SearchRatTensor {} -> unsupportedError
+    WhereTensor {} -> unsupportedError
     Iterate -> unsupportedError
     Pow {} -> unsupportedError
     Log {} -> unsupportedError
@@ -623,14 +624,14 @@ compileFunctionType :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Co
 compileFunctionType = compileNotationAndArgs [MathcompImport Boot] RightAssociative (Just 99) "$0 -> $1" (Just "implies")
 
 compileApp :: (MonadRocqCompile m) => Expr DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> m Code
-compileApp fun args = do
-  let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
-  case fun of
-    Builtin _p b ->
-      compileBuiltin b userArgs
-    _ -> do
-      cFun <- compileExpr fun
-      compileApplication [] cFun userArgs
+compileApp fun args = case fun of
+  Builtin _p b -> do
+    let userArgs = builtinAppArgs b args
+    compileBuiltin b userArgs
+  _ -> do
+    let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
+    cFun <- compileExpr fun
+    compileApplication [] cFun userArgs
 
 compileDerivedFunction :: (MonadRocqCompile m) => DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction fn args = case fn of

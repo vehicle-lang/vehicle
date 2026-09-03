@@ -1,126 +1,167 @@
 module Vehicle.Backend.LossTraining
   ( convertToLossTensors,
-    convertResourceDecl,
-    convertDeclType,
-    convertMultiProperty,
   )
 where
 
-import Control.Monad.Reader (ReaderT)
-import Data.Maybe (maybeToList)
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.State (MonadState (..), StateT (..), modify)
+import Control.Monad.Writer.Strict
 import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Vehicle.Backend.Loss.Core
-import Vehicle.Backend.Loss.Domain (compileQuantifier)
-import Vehicle.Backend.Loss.LogicCompilation (findAndCompileLogic)
-import Vehicle.Backend.Loss.LossCompilation
-import Vehicle.Backend.Loss.LossCompilation qualified as Loss ()
-import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Backend.Loss.Domain (findAndAttachQuantifierBounds)
+import Vehicle.Backend.Loss.LogicCompilation (findAndLiftLogic, isLogicDecl)
+import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
+import Vehicle.Compile.Dependency (pruneUnusedDeclarations)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Subsystem (gradientTypeCheck)
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
-import Vehicle.Data.Code.BooleanExpr (unDisjunctAll)
-import Vehicle.Data.Code.ForcedValue
-import Vehicle.Data.DifferentiableLogic
-import Vehicle.Data.Variable.Bound.Context.Tensor (TensorBoundContextT)
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), addDeclEntryToContext, addDeclToContext, runFreshFreeContextT)
+import Vehicle.Data.Code.ForcedValue (isVTypeUniverse)
+import Vehicle.Data.Code.Interface (IsArgs (..), SearchRatTensorArgs (..), accessLambda)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, getDeclEntry, isFunctionWhoseReturnType, runFreshFreeContextT, traverseProgDecls)
 
 convertToLossTensors ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
-  Set Name ->
   Prog Builtin ->
-  m (Prog LossBuiltin)
-convertToLossTensors logicID requestedDecls prog@(Main ds) = do
-  -- First find and compile the logic
-  logic <- logCompilerPass LossLogic $ findAndCompileLogic logicID prog
+  m (Prog Builtin)
+convertToLossTensors logicID prog = do
+  -- We first prune the program to remove any unnecessary code in the standard library.
+  let keepDecl d = isPropertyDecl d || nameOf d == nameOf logicID
+  prunedProg <- pruneUnusedDeclarations keepDecl prog
 
-  -- Then compile the program using that logic
-  runFreshFreeContextT (Proxy @Builtin) $ do
-    runFreshFreeContextT (Proxy @LossBuiltin) $
-      logCompilerPass Loss $ do
-        Main <$> convertDecls logicID logic requestedDecls ds
+  -- Next find and compile the logic
+  logicResult <- findAndLiftLogic logicID prunedProg
+  (logicDecl, rearrangedProg) <- case logicResult of
+    Nothing -> missingLogicError prog logicID
+    Just result -> return result
 
-convertDecls ::
-  (MonadCompile m, MonadFreeContext Builtin m, MonadFreeContext LossBuiltin m) =>
-  DifferentiableLogicID ->
-  DifferentiableLogicImplementation ->
-  Set Name ->
-  [Decl Builtin] ->
-  m [Decl LossBuiltin]
-convertDecls logicID logic requestedDecls = \case
-  [] -> return []
-  decl : decls -> do
-    maybeLossDecl <- convertDecl logicID logic requestedDecls decl
-    decls' <-
-      maybe id addDeclToContext maybeLossDecl $
-        addDeclEntryToContext decl $
-          convertDecls logicID logic requestedDecls decls
-    return $ maybeToList maybeLossDecl ++ decls'
+  -- Next we go through the program adding the bounds to all the quantifiers
+  progWithQuantBounds <- findAndAttachQuantifierBounds rearrangedProg
 
-convertDecl ::
-  forall m.
-  (MonadCompile m, MonadFreeContext Builtin m, MonadFreeContext LossBuiltin m) =>
-  DifferentiableLogicID ->
-  DifferentiableLogicImplementation ->
-  Set Name ->
-  Decl Builtin ->
-  m (Maybe (Decl LossBuiltin))
-convertDecl logicID logic requestedDecls decl = case decl of
-  DefAbstract p ident sort typ
-    | isAnnotatedAsExternalResource sort -> do
-        let normType = Unforced emptyBoundEnv typ
-        runConversion $ convertResourceDecl p ident sort normType
-    | otherwise -> return Nothing
-  DefFunction p ident ann typ expr
-    | isAnnotatedAsProperty ann || nameOf decl `Set.member` requestedDecls -> do
-        let normType = Unforced emptyBoundEnv typ
-        let normExpr = Unforced emptyBoundEnv expr
-        runConversion $ convertPropertyDecl p ident ann normType normExpr
-    | otherwise -> return Nothing
-  DefRecord {} -> return Nothing
+  -- We then need to prune the program again as some declarations that were used to
+  -- declare bounds for the program may be no longer needed. These are removed both
+  -- for efficiency and because they may not be monomorphisable after type-checking.
+  reprunedProg <- pruneUnusedDeclarations keepDecl progWithQuantBounds
+
+  -- Next we use the gradient type-system to decide which parts of the program should
+  -- be translated to loss functions.
+  lossProg <- gradientTypeCheck @_ @'Train Train (identifierOf logicDecl) reprunedProg
+
+  -- We then convert back to the original builtins for further processing.
+  convertedProg <- convertBackFromLossBuiltins lossProg
+
+  -- Finally we substitute through any derived builtins:
+  expandTypeSynonymsAndDerivedBuiltins convertedProg
+
+convertBackFromLossBuiltins ::
+  (MonadCompile m) =>
+  Prog (LossBuiltin mode) ->
+  m (Prog Builtin)
+convertBackFromLossBuiltins = traverse $ traverseBuiltinsM $ \p b args -> do
+  let gradientOpErr = developerError $ quotePretty b <+> "should not still exist"
+  case b of
+    -- Should all have been removed by monomorphisation
+    LossBuiltinTypeClass {} -> gradientOpErr
+    LossBuiltinTypeClassOp {} -> gradientOpErr
+    LossBuiltinType {} -> gradientOpErr
+    LossBuiltinConstructor {} -> gradientOpErr
+    LossBuiltinCast {} -> gradientOpErr
+    LossBuiltinFunction f -> case f of
+      IfRatTensorWithGradients -> throwError $ UnsupportedIfLossOperation p
+    -- Remaining candidates
+    StandardBuiltinConstructor c -> return $ normAppList (Builtin p $ BuiltinConstructor c) args
+    StandardBuiltinType t -> return $ normAppList (Builtin p $ BuiltinType t) args
+    StandardBuiltinFunction f -> case f of
+      QuantifyRatTensor Exists -> handleExistsWithoutGradients p args
+      _ -> return $ normAppList (Builtin p $ BuiltinFunction f) args
+    StandardDerivedFunction f -> return $ normAppList (Builtin p $ DerivedFunction f) args
+
+handleExistsWithoutGradients ::
+  (MonadCompile m) =>
+  Provenance ->
+  [Arg Builtin] ->
+  m (Expr Builtin)
+handleExistsWithoutGradients p args =
+  case getExpr accessSpine args of
+    Just SearchRatTensorArgs {..} -> do
+      let (binder, _) = accessLambda searchPredicate
+      throwError $ QuantifierWithNoGradients p binder
+    Nothing -> developerError "Malformed quantifier produced by loss backend"
+
+missingLogicError :: (MonadCompile m) => Prog Builtin -> DifferentiableLogicID -> m a
+missingLogicError prog = \case
+  BuiltinLogic name -> developerError $ "No logic record found for builtin logic" <+> quotePretty name
+  CustomLogic name -> do
+    availableLogics <- execWriterT $ traverseProgDecls prog $ \d -> case d of
+      DefFunction _ i _ t _ -> do
+        whenM (isLogicDecl t) $ do
+          lift $ tell [nameOf i]
+        return $ Just d
+      _ -> return $ Just d
+    throwError $ UnknownDifferentiableLogic name availableLogics
+
+-- | Substitutes through the definition so all derived builtins + type synonyms and
+-- removes the corresponding declarations from the program.
+expandTypeSynonymsAndDerivedBuiltins ::
+  (MonadCompile m) =>
+  Prog Builtin ->
+  m (Prog Builtin)
+expandTypeSynonymsAndDerivedBuiltins (Main decls) = do
+  let allDerivedIdentifiers = Set.fromList $ fmap identifierOf $ enumerate @DerivedFunction
+  (decls', identsRemoved) <-
+    runFreshFreeContextT (Proxy @Builtin) $
+      runStateT (goDecls allDerivedIdentifiers decls) mempty
+  logDebug MidDetail $ "Removed type synonyms and derived functions:" <> lineIndent (pretty $ Set.toList identsRemoved)
+  return $ Main decls'
   where
-    runConversion :: TensorBoundContextT (ReaderT LossCtx m) (Decl LossBuiltin) -> m (Maybe (Decl LossBuiltin))
-    runConversion action = do
-      logCompilerSection2 MidDetail ("translation of" <+> quotePretty (identifierOf decl)) $ do
-        Just <$> runMonadLogicT logicID logic (identifierOf decl, provenanceOf decl) action
+    goDecls ::
+      (MonadState (Set Identifier) m, MonadFreeContext Builtin m) =>
+      Set Identifier ->
+      [Decl Builtin] ->
+      m [Decl Builtin]
+    goDecls allDerivedIdentifiers = \case
+      [] -> return []
+      d : ds -> do
+        d' <- goDecl allDerivedIdentifiers d
+        ds' <- addDeclToContext d $ goDecls allDerivedIdentifiers ds
+        return $ maybe ds' (: ds') d'
 
-convertResourceDecl ::
-  (MonadLogic m) =>
-  Provenance ->
-  Identifier ->
-  DefAbstractSort ->
-  UnforcedType Builtin ->
-  m (Decl LossBuiltin)
-convertResourceDecl p ident sort typ = do
-  -- Keep resource declarations, converting their type appropriately.
-  -- TODO what about boolean parameters?
-  typ' <- convertDeclType typ
-  return $ DefAbstract p ident sort typ'
+    goDecl ::
+      (MonadState (Set Identifier) m, MonadFreeContext Builtin m) =>
+      Set Identifier ->
+      Decl Builtin ->
+      m (Maybe (Decl Builtin))
+    goDecl allDerivedIdentifiers decl
+      | identifierOf decl `Set.member` allDerivedIdentifiers = do
+          modify (Set.insert (identifierOf decl))
+          return Nothing
+      | otherwise = do
+          isTypeDecl <- isFunctionWhoseReturnType isVTypeUniverse decl
+          if isTypeDecl
+            then do
+              modify (Set.insert (identifierOf decl))
+              return Nothing
+            else do
+              Just <$> traverse (traverseFreeVarsM (const id) go) decl
 
-convertPropertyDecl ::
-  (MonadLogic m) =>
-  Provenance ->
-  Identifier ->
-  DefFunctionSort ->
-  UnforcedType Builtin ->
-  Thunk Builtin ->
-  m (Decl LossBuiltin)
-convertPropertyDecl p ident ann typ body = do
-  lossType <- convertDeclType typ
-  lossBody <- convertMultiProperty body
-  return $ DefFunction p ident ann lossType lossBody
-
-convertDeclType :: (MonadLogic m) => UnforcedType Builtin -> m (Type LossBuiltin)
-convertDeclType typ = unnormalise 0 <$> convertThunk Nothing typ
-
-convertMultiProperty :: (MonadLogic m) => Thunk Builtin -> m (Expr LossBuiltin)
-convertMultiProperty body = do
-  let compQuantifier args = do
-        disjuncts <- compileQuantifier args
-        foldrM1 orLossValue $ unDisjunctAll disjuncts
-  unnormalise 0 <$> convertThunk (Just compQuantifier) body
+    -- We have to traverse the free variables as the derived builtins have already
+    -- been converted to free variables by monomorphisation. Unsure whether the latter is
+    -- the correct strategy or not but rolling with it for the moment.
+    go ::
+      (MonadState (Set Identifier) m, MonadFreeContext Builtin m) =>
+      FreeVarUpdate m Builtin
+    go f p ident args = do
+      args' <- traverseArgs f args
+      identifiersToRemove <- get
+      if ident `Set.member` identifiersToRemove
+        then do
+          result <- getDeclEntry (Proxy @_) ident
+          case result of
+            DefFunction _ _ _ _ e -> return $ substArgs e args'
+            _ -> developerError $ "Unexpected form of derived builtin" <+> pretty ident
+        else return $ normAppList (FreeVar p ident) args'

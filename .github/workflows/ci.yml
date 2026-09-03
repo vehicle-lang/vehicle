@@ -13,6 +13,12 @@ on:
       - reopened
   merge_group:
 
+# Ensures that the previous workflow gets cancelled if a new
+# commit is pushed to the PR or branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: sh
@@ -23,6 +29,12 @@ jobs:
 
   build-vehicle-python:
     uses: ./.github/workflows/build-vehicle-python.yml
+
+  test-integration-isabelle:
+    uses: ./.github/workflows/test-integration-isabelle.yml
+
+  test-integration-rocq:
+    uses: ./.github/workflows/test-integration-rocq.yml
 
   test-integration-bumpver:
     runs-on: ubuntu-latest
@@ -92,8 +104,10 @@ jobs:
     needs:
       - build-vehicle
       - build-vehicle-python
+      - test-integration-isabelle
+      - test-integration-rocq
       - test-integration-bumpver
-      # - test-integration-marabou
+      - test-integration-citation-cff
       - test-integration-ormolu
 
     environment:

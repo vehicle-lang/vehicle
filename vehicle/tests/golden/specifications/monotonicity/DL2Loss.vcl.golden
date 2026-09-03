@@ -1,3 +1,6 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \ dims -> \ x -> const 1.0 dims / x, pointwiseConjunction = \ dims -> \ x -> \ y -> x + y, pointwiseDisjunction = \ dims -> \ x -> \ y -> x * y, pointwiseLessThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (y - x), pointwiseEqual = \ dims -> \ x -> \ y -> - (max (const 0.0 dims) (x - y) + max (const 0.0 dims) (y - x)), pointwiseNotEqual = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y) + max (const 0.0 dims) (y - x), reduceConjunction = \ dims -> \ xs -> reduceAdd xs, reduceDisjunction = \ dims -> \ xs -> reduceMul xs} 
+
 @property;
 monotonic : (Tensor Real -> Tensor Real) -> Tensor Real;
-monotonic = \ f -> const 1.0 nil / search nil 0.0 1.0 (\ x1 -> search nil (max 0.0 x1) 1.0 (\ x2 -> max (const 0.0 nil) (f x2 - f x1)))
+monotonic = \ f -> DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\ x1 -> search nil (max 0.0 x1) 1.0 (\ x2 -> DL2Loss.pointwiseGreaterThan nil (f x1) (f x2))))

@@ -106,6 +106,7 @@ functionaliseDecl d =
       typeResourceUsage <- findResourceUses initialType
       bodyResourceUsage <- findResourceUses initialBody
       let resourceUsage = typeResourceUsage <> bodyResourceUsage
+      logDebug MidDetail $ pretty i <+> prettySet pretty resourceUsage
 
       (mkTypeBinder, typeBinders, _) <- createBinders True p resourceUsage
       (mkBodyBinder, bodyBinders, binderNames) <- createBinders False p resourceUsage
@@ -117,8 +118,8 @@ functionaliseDecl d =
       logDebug MaxDetail $ "Prepending resources" <+> pretty binderNames
       logDebug MaxDetail $ prettyFriendly fun
       return (addResourceUsage i binderNames, Just fun)
-    DefRecord {} ->
-      return (id, Just d)
+    DefRecord _ i _ _ _ _ ->
+      return (addResourceUsage i mempty, Just d)
 
 findResourceUses ::
   (MonadResource m builtin) =>
@@ -155,25 +156,38 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
     updateFn recGo p ident args = do
       args' <- traverse (traverse recGo) args
       (currentOldLv, (FuncState {..}, resourceLevels)) <- ask
-      let currentNewLv = Lv (length resourceLevels) + currentOldLv
       let name = nameOf ident
 
-      let mkResourceVar resourceName = do
-            let maybeResourceLevel = Map.lookup resourceName resourceLevels
-            case maybeResourceLevel of
-              Nothing -> internalScopingError (pretty ident)
-              Just resourceLv -> do
-                let resourceIx = dbLevelToIndex currentNewLv resourceLv
-                -- logDebug MaxDetail $ pretty name <+> pretty resourceName <+> pretty currentOldLv <+> pretty currentNewLv <+> pretty resourceLv <+> pretty resourceIx
-                return $ BoundVar p resourceIx
+      let maybeExtraParameters = Map.lookup ident resourceUsageFreeCtx
 
-      newFun <-
-        if name `OMap.member` resourceDeclarations
-          then mkResourceVar name
-          else return $ FreeVar p ident
+      if name `OMap.member` resourceDeclarations
+        then return $ replaceResourceWithBoundVar p name args' currentOldLv resourceLevels
+        else case maybeExtraParameters of
+          Just newParams -> return $ addNewResourceDependencies p ident args newParams currentOldLv resourceLevels
+          Nothing -> return $ normAppList (FreeVar p ident) args'
 
-      return $ normAppList newFun args'
+    replaceResourceWithBoundVar :: Provenance -> Name -> [Arg builtin] -> Lv -> Map Name Lv -> Expr builtin
+    replaceResourceWithBoundVar p resourceName args currentOldLv resourceLevels = do
+      let maybeResourceLevel = Map.lookup resourceName resourceLevels
+      case maybeResourceLevel of
+        Nothing -> internalScopingError (pretty resourceName)
+        Just resourceLv -> do
+          let currentNewLv = Lv (length resourceLevels) + currentOldLv
+          let resourceIx = dbLevelToIndex currentNewLv resourceLv
+          -- logDebug MaxDetail $ pretty name <+> pretty resourceName <+> pretty currentOldLv <+> pretty currentNewLv <+> pretty resourceLv <+> pretty resourceIx
+          normAppList (BoundVar p resourceIx) args
 
+    addNewResourceDependencies :: Provenance -> Identifier -> [Arg builtin] -> [Name] -> Lv -> Map Name Lv -> Expr builtin
+    addNewResourceDependencies p ident args newParams currentOldLv resourceLevels = do
+      let mkVar name = case Map.lookup name resourceLevels of
+            Nothing -> internalScopingError (pretty name)
+            Just lv -> do
+              let currentNewLv = Lv (length resourceLevels) + currentOldLv
+              let resourceIx = dbLevelToIndex currentNewLv lv
+              explicit $ BoundVar p resourceIx
+      normAppList (FreeVar p ident) (fmap mkVar newParams <> args)
+
+-- | Adds additional binders for the resources to the start of a function definition.
 createBinders ::
   (MonadResource m builtin) =>
   Bool ->

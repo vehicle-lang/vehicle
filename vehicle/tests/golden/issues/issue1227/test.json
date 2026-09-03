@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Loss",
+    "run": "vehicle compile loss -s spec.vcl -l VehicleLoss",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+
+    ]
+  }
+]

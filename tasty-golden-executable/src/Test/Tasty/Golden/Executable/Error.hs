@@ -26,7 +26,7 @@ instance Exception NeededFilesError
 handleNeededFilesError :: NeededFilesError -> IO Result
 handleNeededFilesError NeededFilesError {..} = do
   let message =
-        printf "Could not find needed files: %s" $
+        printf "Could not find the following files which are registered as needed by the test specification: %s" $
           List.intercalate ", " (show <$> neededFilesNotFound)
   return $ testFailed message
 

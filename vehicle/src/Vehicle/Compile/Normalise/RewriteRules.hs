@@ -11,7 +11,7 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Force
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Core (Negatable (..))
@@ -130,14 +130,14 @@ rewriteReduceTensor opName accessBop accessReductionOp evalReductionOp rewriteCo
     go tensor = logRewrite getNameContext mkReduceTensor opName tensor $ do
       forcedTensor <- force tensor
       maybeResult <- case forcedTensor of
-        (getExpr accessBop -> Just (TensorOp2Args ds xs ys)) -> do
+        (getExpr accessBop -> Just (TensorOp2Args _ds xs ys)) -> do
           xs' <- Forced <$> go xs
           ys' <- Forced <$> go ys
           return $
             Just $
               mkExpr accessBop $
                 TensorOp2Args
-                  { tensorOp2Dims = ds,
+                  { tensorOp2Dims = Forced IDimNil,
                     tensorOp2Arg1 = xs',
                     tensorOp2Arg2 = ys'
                   }
@@ -446,7 +446,7 @@ negateForeachArgs (ForeachTensorArgs t d ds fn) = do
     VLam binder closure -> return (binder, closure)
     _ -> developerError "Malformed foreachTensor"
   lv <- getBinderDepth
-  let ds' = quote mempty lv ds
+  let ds' = unnormalise lv ds
   let newBody = mkExpr accessNotTensor $ TensorOp1Args ds' body
   let newFn = Forced $ VLam binder (Closure env newBody)
   return $ ForeachTensorArgs t d ds newFn
@@ -471,7 +471,7 @@ rewriteForeachTensor (ForeachTensorArgs t d ds fn) =
         let body = extendClosureWithBound closure binder lv
 
         let createForeachArgs tElem newBody = do
-              let newBody' = quote mempty (lv + 1) newBody
+              let newBody' = unnormalise (lv + 1) newBody
               let newLam = mkExpr accessForcedLamC (binder, Closure (namedBoundContextToEnv ctx) newBody')
               ForeachTensorArgs tElem d ds newLam
 
@@ -560,8 +560,8 @@ liftForeach outputCtx createForeachArgs lv dim = go
     goAt value = case getExpr accessAtTensor value of
       Just (AtTensorArgs _ _ _ xs i) -> do
         i' <- force i
-        case getExpr (accessBoundVarC @ForcedValue @Thunk @Closure) i' of
-          Just (lv1, [])
+        case i' of
+          VBoundVar lv1 []
             | lv1 == lv && doesNotReferenceBoundVar xs ->
                 Just <$> force xs
           _ -> return Nothing
@@ -580,16 +580,17 @@ liftForeach outputCtx createForeachArgs lv dim = go
     -- e.g. `foreach i . x(i) op y(i)` -> `(foreach i . x(i)) op (forall i . y(i))`
     goComparisons ::
       ForcedValue builtin ->
-      [TensorOpEvalData ForcedValue Thunk TensorComparisonArgs builtin] ->
+      [TensorComparisonOpEvalData ForcedValue Thunk builtin] ->
       m (Maybe (ForcedValue builtin))
     goComparisons body = \case
-      (accessOp, typ) : remainingOps -> case getExpr accessOp body of
-        Just (TensorComparisonArgs pDims rDims e1 e2) -> do
-          e1' <- go (exprToThunk typ) e1
-          e2' <- go (exprToThunk typ) e2
-          let newSpine = TensorComparisonArgs (exprToThunk $ IDimCons dim pDims) rDims (exprToThunk e1') (exprToThunk e2')
-          return $ Just $ mkExpr accessOp newSpine
-        _ -> goComparisons body remainingOps
+      (accessOp, typ) : remainingOps -> do
+        case getExpr accessOp body of
+          Just (op, TensorComparisonArgs pDims rDims e1 e2) | op /= Ne -> do
+            e1' <- go (exprToThunk typ) e1
+            e2' <- go (exprToThunk typ) e2
+            let newSpine = TensorComparisonArgs (exprToThunk $ IDimCons dim pDims) rDims (exprToThunk e1') (exprToThunk e2')
+            return $ Just $ mkExpr accessOp (op, newSpine)
+          _ -> goComparisons body remainingOps
       [] -> return Nothing
 
     goConst :: ForcedValue builtin -> m (Maybe (ForcedValue builtin))

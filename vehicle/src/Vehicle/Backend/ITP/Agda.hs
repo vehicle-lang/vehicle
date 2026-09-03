@@ -21,7 +21,7 @@ import GHC.Real (denominator, numerator)
 import GHC.Stack (HasCallStack)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
-import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Error
@@ -501,14 +501,14 @@ compileRecordField (field, fieldValue) = do
   return $ pretty field <+> "=" <+> fieldValue'
 
 compileApp :: (MonadAgdaCompile m) => Expr DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> m Code
-compileApp fun args = do
-  let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
-  case fun of
-    Builtin p b ->
-      compileBuiltin p b userArgs
-    _ -> do
-      cFun <- compileExpr fun
-      annotateApp [] Nothing cFun userArgs
+compileApp fun args = case fun of
+  Builtin p b -> do
+    let userArgs = builtinAppArgs b args
+    compileBuiltin p b userArgs
+  _ -> do
+    cFun <- compileExpr fun
+    let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
+    annotateApp [] Nothing cFun userArgs
 
 compileDerivedFunction ::
   (MonadAgdaCompile m) =>
@@ -616,6 +616,7 @@ compileBuiltinFunction p f args = case f of
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
   Transpose -> annotateApp [DataTensor] Nothing "transpose" args
   SearchRatTensor {} -> unsupportedError "search"
+  WhereTensor {} -> unsupportedError "where"
   Iterate -> unsupportedError "Iterate"
   Pow {} -> unsupportedError "^"
   Log {} -> unsupportedError "log"

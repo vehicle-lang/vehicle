@@ -94,7 +94,8 @@ typeOfBuiltinFunction p = \case
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
   Transpose -> typeOfOp1
-  SearchRatTensor {} -> developerError "SearchRatTensor not supported in linearity typing"
+  SearchRatTensor {} -> developerError "SearchRatTensor should not appear in linearity typing"
+  WhereTensor {} -> developerError "WhereTensor should not appear in linearity typing"
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case
@@ -186,7 +187,7 @@ typeOfStack = typeOfVectorLiteral
 --------------------------------------------------------------------------------
 
 instance HasTypeSystem LinearityBuiltin where
-  convertFromStandardBuiltins = traverseBuiltinsM convertToLinearityTypes
+  convertFromStandardBuiltins = traverse $ traverseBuiltinsM convertToLinearityTypes
   restrictDeclType = restrictLinearityDeclType
   restrictRecordAnnotatedAsTensor = restrictLinearityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = True
@@ -198,7 +199,7 @@ pattern LinearityExpr :: Provenance -> Linearity -> Expr LinearityBuiltin
 pattern LinearityExpr p lin = Builtin p (Linearity lin)
 
 freshLinearityMeta :: (MonadTypeChecker LinearityBuiltin m) => Provenance -> m (Expr LinearityBuiltin)
-freshLinearityMeta p = freshMetaExpr p (TypeUniverse p 0) mempty
+freshLinearityMeta p = freshMetaExpr p (TypeUniverse p 0) Relevant mempty
 
 convertToLinearityTypes ::
   forall m.

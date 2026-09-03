@@ -2,6 +2,60 @@
 
 ## Next release
 
+### Solver backend
+
+* Fixed bug where VNNLIB 2.0 queries were incorrectly being generated with `equalTo` instead of `equal-to`.
+
+### Loss backend
+
+* Quantified variables are no longer required to have a well-defined domain.
+  e.g. instead of
+  ```
+  forall x . 0 < x < 1 => p x
+  ```
+  one can now write:
+  ```
+  forall x . 0 < x => p x
+  ```
+  or even:
+  ```
+  forall x . p x
+  ```
+
+* Non-differentiable comparisons are now handled correctly,
+  e.g. if `i` and `j` are indices and `e` is some expression with gradients then
+  ```
+  i != j and e
+  ```
+  is now translated to
+  ```
+  where [[e]] (i != j) [[False]]
+  ```
+  where `[[e]]` represents the denotation computed using the provided differentiable logic.
+
+* The compiler will now error if a quantified variable has no useful gradients associated with it, e.g.
+  in the following where `f` is never actually used:
+  ```
+  @network
+  f : Real -> Real
+
+  @property
+  p : Bool
+  p = forall x . 0 <= x <= 1 => x ** 2 > 2
+  ```
+
+## v0.27.1
+
+### Loss backend
+
+* Fixed an occasional internal compiler error when using `@dataset`.
+
+### ITP backend
+
+* Fixed an internal compiler error when compiling non-Prop comparisons.
+
+## v0.27.0
+
 ### General
 
 * 50% speedup in compilation times across all backends.

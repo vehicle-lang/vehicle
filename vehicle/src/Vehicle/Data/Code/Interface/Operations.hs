@@ -90,11 +90,11 @@ accessArgsForOp accessor op =
 -- Types of accessors
 --------------------------------------------------------------------------------
 
-type NatComparisonAccessor expr thunk builtin op = Accessor (expr builtin) (op, Op2Args (thunk builtin))
+type NatComparisonAccessor expr thunk builtin = Accessor (expr builtin) (ComparisonOp, Op2Args (thunk builtin))
 
-type IndexComparisonAccessor expr thunk builtin op = Accessor (expr builtin) (op, IndexComparisonArgs (thunk builtin))
+type IndexComparisonAccessor expr thunk builtin = Accessor (expr builtin) (ComparisonOp, IndexComparisonArgs (thunk builtin))
 
-type RatTensorComparisonAccessor expr thunk builtin op = Accessor (expr builtin) (op, TensorComparisonArgs (thunk builtin))
+type RatTensorComparisonAccessor expr thunk builtin = Accessor (expr builtin) (ComparisonOp, TensorComparisonArgs (thunk builtin))
 
 type Op1Accessor expr thunk builtin = Accessor (expr builtin) (Op1Args (thunk builtin))
 
@@ -148,13 +148,13 @@ accessReduceOr = accessArgs accessReduceOrBuiltin
 accessIf :: (HasBoolExpr expr thunk builtin) => Accessor (expr builtin) (IfArgs (thunk builtin))
 accessIf = accessArgs accessIfBuiltin
 
-accessCompareIndex :: (HasBoolExpr expr thunk builtin) => IndexComparisonAccessor expr thunk builtin ComparisonOp
+accessCompareIndex :: (HasBoolExpr expr thunk builtin) => IndexComparisonAccessor expr thunk builtin
 accessCompareIndex = accessOpAndArgs accessCompareIndexBuiltin
 
-accessCompareNat :: (HasBoolExpr expr thunk builtin) => NatComparisonAccessor expr thunk builtin ComparisonOp
+accessCompareNat :: (HasBoolExpr expr thunk builtin) => NatComparisonAccessor expr thunk builtin
 accessCompareNat = accessOpAndArgs accessCompareNatBuiltin
 
-accessCompareRatTensor :: (HasBoolExpr expr thunk builtin) => RatTensorComparisonAccessor expr thunk builtin ComparisonOp
+accessCompareRatTensor :: (HasBoolExpr expr thunk builtin) => RatTensorComparisonAccessor expr thunk builtin
 accessCompareRatTensor = accessOpAndArgs accessCompareRatTensorBuiltin
 
 accessQuantifyRatTensor ::

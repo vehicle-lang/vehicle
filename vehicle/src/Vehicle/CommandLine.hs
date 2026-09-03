@@ -397,6 +397,7 @@ allTypeSystems = flip map (zip [1 :: Int ..] (enumerate @SecondaryTypeSystem)) $
       PolarityTypes -> "check whether alternating quantifiers are used in the specification."
       LinearityTypes -> "check whether quantified variables are used linearly in the specification."
       DecidabilityTypes -> "check which booleans are decidable and which are undecidable in the context of Vehicle"
+      GradientCarryingTypes -> "check which parts of the program have gradient information suitable for conversions to loss functions."
 
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)

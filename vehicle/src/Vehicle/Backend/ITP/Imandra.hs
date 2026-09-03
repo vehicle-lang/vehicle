@@ -22,7 +22,7 @@ import Data.Text qualified as Text
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
-import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -701,6 +701,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
     SearchRatTensor {} -> unsupportedError
+    WhereTensor {} -> unsupportedError
     Iterate -> unsupportedError
     Pow {} -> unsupportedError
     Log {} -> unsupportedError
@@ -752,14 +753,14 @@ compileBuiltin _isOutType moduleDefs b args = case b of
           <+> quotePretty (show b)
 
 compileApp :: (MonadImandraCompile m) => Bool -> [ModuleDef] -> Expr DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> m Code
-compileApp _isOutType moduleDefs fun args = do
-  let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
-  case fun of
-    Builtin _p b ->
-      compileBuiltin False moduleDefs b userArgs
-    _ -> do
-      cFun <- compileExpr False moduleDefs fun
-      annotateApp moduleDefs [] cFun userArgs
+compileApp _isOutType moduleDefs fun args = case fun of
+  Builtin _p b -> do
+    let userArgs = builtinAppArgs b args
+    compileBuiltin False moduleDefs b userArgs
+  _ -> do
+    cFun <- compileExpr False moduleDefs fun
+    let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
+    annotateApp moduleDefs [] cFun userArgs
 
 compileDerivedFunction :: (MonadImandraCompile m) => [ModuleDef] -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction moduleDefs fn args = case fn of

@@ -1,5 +1,5 @@
 module Vehicle.Backend.LossSearch
-  ( convertToSearchLoss,
+  ( convertToSearchTree,
     BooleanTree (..),
   )
 where
@@ -10,17 +10,10 @@ import Control.Monad.Reader
 import Data.List.NonEmpty (fromList, toList)
 import Data.Maybe (fromMaybe, maybeToList)
 import Data.Proxy (Proxy (..))
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Vehicle.Backend.Loss.Core
 import Vehicle.Backend.Loss.Domain (compileQuantifier)
 import Vehicle.Backend.Loss.LiftQuantifier (LiftedData, compileHardBooleanTree)
-import Vehicle.Backend.Loss.LogicCompilation (findAndCompileLogic)
-import Vehicle.Backend.Loss.LossCompilation qualified as Loss ()
-import Vehicle.Backend.LossTraining (convertDeclType, convertMultiProperty, convertResourceDecl)
-import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (unnormalise)
@@ -28,17 +21,15 @@ import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.BooleanExpr (DisjunctAll (..))
 import Vehicle.Data.Code.ForcedValue (GenericClosure (..), GenericThunk (..), Thunk, emptyBoundEnv, namedBoundContextToEnv)
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Context.Name (runFreshNameBoundContextT)
 import Vehicle.Data.Variable.Bound.Context.Name.Class
-import Vehicle.Data.Variable.Bound.Context.Tensor (TensorBoundContextT)
+import Vehicle.Data.Variable.Bound.Context.Tensor.Instance (runFreshTensorBoundContextT)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), runFreshFreeContextT)
 import Vehicle.Verify.Specification (Property, QuerySet (..))
 
@@ -46,64 +37,46 @@ data BooleanTree
   = BooleanTree Provenance Identifier (Property Name)
   deriving (Show, Generic)
 
-convertToSearchLoss ::
-  (MonadCompile m) =>
-  DifferentiableLogicID ->
-  Set Name ->
-  Prog Builtin ->
-  m ([BooleanTree], Prog LossBuiltin)
-convertToSearchLoss logicID requestedDecls prog@(Main ds) = do
-  logic <- logCompilerPass LossLogic $ findAndCompileLogic logicID prog
+type MonadSearch m =
+  ( MonadCompile m,
+    MonadFreeContext Builtin m
+  )
 
+convertToSearchTree ::
+  (MonadCompile m) =>
+  Prog Builtin ->
+  m ([BooleanTree], Prog Builtin)
+convertToSearchTree (Main ds) = do
   runFreshFreeContextT (Proxy @Builtin) $ do
-    runFreshFreeContextT (Proxy @LossBuiltin) $
-      logCompilerPass Loss $ do
-        (searchTrees, ds') <- convertDecls logicID logic requestedDecls ds
-        -- logDebug MaxDetail $ prettyFriendly (Main ds')
-        return (searchTrees, Main ds')
+    logCompilerPass LossQuantifierLifting $ do
+      (searchTrees, ds') <- convertDecls ds
+      -- logDebug MaxDetail $ prettyFriendly (Main ds')
+      return (searchTrees, Main ds')
 
 convertDecls ::
-  ( MonadCompile m,
-    MonadFreeContext Builtin m,
-    MonadFreeContext LossBuiltin m
-  ) =>
-  DifferentiableLogicID ->
-  DifferentiableLogicImplementation ->
-  Set Name ->
+  (MonadSearch m) =>
   [Decl Builtin] ->
-  m ([BooleanTree], [Decl LossBuiltin])
-convertDecls logicID logic requestedDecls = \case
+  m ([BooleanTree], [Decl Builtin])
+convertDecls = \case
   [] -> return ([], [])
   decl : decls -> do
     {-logDebug MaxDetail $ pretty $ identifierOf decl
     logDebugM MaxDetail $ do
       pretty . Map.keys <$> getFreeCtx (Proxy @Builtin)-}
-    (maybeBooleanTree, maybeLossDecls) <- convertDecl logicID logic requestedDecls decl
-    (searchTrees, lossDecls) <- addDeclEntryToContext decl $ convertDecls logicID logic requestedDecls decls
+    (maybeBooleanTree, maybeLossDecls) <- convertDecl decl
+    (searchTrees, lossDecls) <- addDeclEntryToContext decl $ convertDecls decls
     return (maybeToList maybeBooleanTree ++ searchTrees, fromMaybe [] maybeLossDecls ++ lossDecls)
 
 convertDecl ::
   forall m.
-  ( MonadCompile m,
-    MonadFreeContext Builtin m,
-    MonadFreeContext LossBuiltin m
-  ) =>
-  DifferentiableLogicID ->
-  DifferentiableLogicImplementation ->
-  Set Name ->
+  (MonadSearch m) =>
   Decl Builtin ->
-  m (Maybe BooleanTree, Maybe [Decl LossBuiltin])
-convertDecl logicID logic requestedDecls decl = case decl of
-  DefAbstract p ident sort typ
-    | isAnnotatedAsExternalResource sort -> do
-        let normType = Unforced emptyBoundEnv typ
-        decl' <- runConversionNonProperty $ convertResourceDecl p ident sort normType
-        return (Nothing, Just [decl'])
-    | otherwise -> return (Nothing, Nothing)
+  m (Maybe BooleanTree, Maybe [Decl Builtin])
+convertDecl decl = case decl of
+  DefAbstract {} -> return (Nothing, Just [decl])
   DefFunction p ident sort typ expr
-    | isAnnotatedAsProperty sort && nameOf decl `Set.member` requestedDecls ->
+    | isAnnotatedAsProperty sort ->
         logCompilerPass LossQuantifierLifting $ do
-          let normType = Unforced emptyBoundEnv typ
           let normExpr = Unforced emptyBoundEnv expr
           let declProv = (ident, p)
           booleanTreeLifted <-
@@ -111,32 +84,20 @@ convertDecl logicID logic requestedDecls decl = case decl of
               flip runReaderT declProv $
                 compileHardBooleanTree normExpr
           (booleanTreeNames@(BooleanTree _ _ tree), lossDecls) <-
-            runConversionProperty $ do
-              lossType <- convertDeclType normType
-              convertProperty p ident sort lossType booleanTreeLifted
+            convertProperty p ident sort typ booleanTreeLifted
           logDebug MaxDetail $ prettyFriendlyEmptyCtx tree
           return (Just booleanTreeNames, Just lossDecls)
-    | otherwise -> return (Nothing, Nothing)
-  DefRecord {} -> return (Nothing, Nothing)
-  where
-    runConversionNonProperty :: TensorBoundContextT (ReaderT LossCtx m) (Decl LossBuiltin) -> m (Decl LossBuiltin)
-    runConversionNonProperty action = do
-      logCompilerSection2 MidDetail ("translation of" <+> quotePretty (identifierOf decl)) $ do
-        runMonadLogicT logicID logic (identifierOf decl, provenanceOf decl) action
-
-    runConversionProperty :: TensorBoundContextT (ReaderT LossCtx m) (BooleanTree, [Decl LossBuiltin]) -> m (BooleanTree, [Decl LossBuiltin])
-    runConversionProperty action = do
-      logCompilerSection2 MidDetail ("translation of" <+> quotePretty (identifierOf decl)) $ do
-        runMonadLogicT logicID logic (identifierOf decl, provenanceOf decl) action
+    | otherwise -> return (Nothing, Just [decl])
+  DefRecord {} -> return (Nothing, Just [decl])
 
 convertProperty ::
-  (MonadLogic m) =>
+  (MonadSearch m) =>
   Provenance ->
   Identifier ->
   DefFunctionSort ->
-  Type LossBuiltin ->
+  Type Builtin ->
   Property LiftedData ->
-  m (BooleanTree, [Decl LossBuiltin])
+  m (BooleanTree, [Decl Builtin])
 convertProperty p ident sort lossType = \case
   NonTrivial expr -> do
     converted <- runSupplyT [0 :: Int ..] (traverse (convertQuerySet p ident sort lossType) expr)
@@ -148,19 +109,19 @@ convertProperty p ident sort lossType = \case
     return (booleanTree, [])
 
 convertQuerySet ::
-  ( MonadLogic m,
+  ( MonadSearch m,
     MonadSupply Int m
   ) =>
   Provenance ->
   Identifier ->
   DefFunctionSort ->
-  Type LossBuiltin ->
+  Type Builtin ->
   QuerySet LiftedData ->
-  m (QuerySet Name, [Decl LossBuiltin])
+  m (QuerySet Name, [Decl Builtin])
 convertQuerySet p ident sort lossType (QuerySet negated (DisjunctAll liftedData)) = do
   exprs <- runFreshNameBoundContextT $ traverse reconstructExpr liftedData
   logDebug MaxDetail $ prettyFriendlyEmptyCtx exprs
-  lossExprs <- traverse convertExpr exprs
+  lossExprs <- runReaderT (traverse convertExpr exprs) (ident, p)
   let flattenedLossExprs = concat $ toList lossExprs
   -- logDebug MaxDetail $ prettyFriendlyEmptyCtx lossExprs
   (names, lossDecls) <- reconstructLossDecls p ident sort lossType flattenedLossExprs
@@ -186,20 +147,19 @@ reconstructExpr (quantifiers, value, ctxSize) = case quantifiers of
       Right typ -> return (Forced $ mkExpr accessQuantifyRecord (quantifier, QuantifyRecordArgs typ binder (Closure newEnv newBody)))
 
 convertExpr ::
-  (MonadLogic m) =>
+  ( MonadSearch m,
+    MonadReader DeclProvenance m
+  ) =>
   Thunk Builtin ->
-  m [Expr LossBuiltin]
-convertExpr expr = do
+  m [Expr Builtin]
+convertExpr expr = runFreshTensorBoundContextT $ do
   forcedValue <- forceThunk expr
   -- Separate VQuantifyRecord case not handled yet
   case toBoolValue forcedValue of
     VQuantifyRatTensor args -> do
-      lossThunks <- compileQuantifier args
-      let lossExprs = fmap (unnormalise 0) lossThunks -- convert each Thunk to Expr
+      lossExprs <- compileQuantifier mempty args
       return $ toList $ unDisjunctAll lossExprs
-    _ -> do
-      lossExpr <- convertMultiProperty expr
-      return [lossExpr]
+    _ -> return [unnormalise 0 expr]
 
 reconstructLossDecls ::
   ( MonadCompile m,
@@ -208,9 +168,9 @@ reconstructLossDecls ::
   Provenance ->
   Identifier ->
   DefFunctionSort ->
-  Type LossBuiltin ->
-  [Expr LossBuiltin] ->
-  m ([Name], [Decl LossBuiltin])
+  Type Builtin ->
+  [Expr Builtin] ->
+  m ([Name], [Decl Builtin])
 reconstructLossDecls p ident sort lossType exprs = case exprs of
   [] -> return ([], [])
   e : es -> do
@@ -232,7 +192,7 @@ convertToSearchLoss logicID requestedDecls liftedProg = _
 convertDecls ::
   ( MonadCompile m,
     MonadFreeContext Builtin m,
-    MonadFreeContext LossBuiltin m
+    MonadFreeContext Builtin m
   ) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
@@ -254,14 +214,14 @@ convertDecls logicID logic requestedDecls = \case
 convertProperty ::
   ( MonadCompile m,
     MonadFreeContext Builtin m,
-    MonadFreeContext LossBuiltin m,
+    MonadFreeContext Builtin m,
     MonadLogic m
   ) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   Set Name ->
   (DeclProvenance, Property LiftedExpr) ->
-  m (Maybe (DeclProvenance, Property (Expr LossBuiltin)))
+  m (Maybe (DeclProvenance, Property (Expr Builtin)))
 convertProperty logicID logic requestedDecls (declProv, property)= case property of
   NonTrivial expr -> do
     if nameOf declProv `Set.member` requestedDecls
@@ -271,7 +231,7 @@ convertProperty logicID logic requestedDecls (declProv, property)= case property
       else return Nothing
   Trivial _ -> developerError ("property" <+> quotePretty (nameOf declProv) <+> "is trivial")
   where
-  runConversion :: TensorBoundContextT (ReaderT LossCtx m) (QuerySet (Expr LossBuiltin)) -> m (QuerySet (Expr LossBuiltin))
+  runConversion :: TensorBoundContextT (ReaderT LossCtx m) (QuerySet (Expr Builtin)) -> m (QuerySet (Expr Builtin))
   runConversion action = do
     logCompilerSection2 MidDetail ("translation of" <+> quotePretty (nameOf declProv)) $ do
       runMonadLogicT logicID logic declProv action
@@ -281,9 +241,9 @@ extractLoss ::
   Provenance ->
   Identifier ->
   DefFunctionSort ->
-  Type LossBuiltin ->
-  Property (Expr LossBuiltin) ->
-  m (Property Name, [Decl LossBuiltin])
+  Type Builtin ->
+  Property (Expr Builtin) ->
+  m (Property Name, [Decl Builtin])
 extractLoss p ident sort lossType property = case property of
   NonTrivial expr -> do
     (extracted, _) <- runStateT (traverse (extractLossDisjuncts p ident sort lossType) expr) 0
@@ -297,9 +257,9 @@ extractLossDisjuncts ::
   Provenance ->
   Identifier ->
   DefFunctionSort ->
-  Type LossBuiltin ->
-  QuerySet (Expr LossBuiltin) ->
-  m (QuerySet Name, [Decl LossBuiltin])
+  Type Builtin ->
+  QuerySet (Expr Builtin) ->
+  m (QuerySet Name, [Decl Builtin])
 extractLossDisjuncts p ident sort lossType (QuerySet negated disjuncts) = do
   queryCount <- get
   let lossExprs = toList $ unDisjunctAll disjuncts
