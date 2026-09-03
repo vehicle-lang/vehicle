@@ -40,8 +40,8 @@ Each of the following examples comes with an explanatory README file:
 
 - [MNIST robustness](https://github.com/vehicle-lang/vehicle/blob/dev/examples/mnist-robustness/) - A classifier for the MNIST dataset that is proven to be robust around the images in the dataset.
 
-In addition to the above, further examples of specifications can be found in the [test suite](https://github.com/vehicle-lang/vehicle/tree/dev/test/specs)
-and the corresponding output of the Vehicle compiler can be found [here](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden).
+In addition to the above, further examples of specifications can be found in the [test suite](https://github.com/vehicle-lang/vehicle/tree/dev/vehicle/tests/golden/specifications)
+and the corresponding output of the Vehicle compiler can be found [here](https://github.com/vehicle-lang/vehicle/tree/dev/vehicle/tests/golden).
 
 ## Support
 
@@ -70,7 +70,7 @@ to discuss it with us.
 
 ## Related papers
 
-- [Vehicle ITP backend (in ICFP'26)]([https://arxiv.org/abs/2605.02790])
+- [Vehicle ITP backend (in ICFP'26)](https://arxiv.org/abs/2605.02790)
 - [Vehicle tool paper (in FCSD'25)](https://drops.dagstuhl.de/entities/volume/LIPIcs-volume-337)
 - [Vehicle's type checker (in CPP'23)](https://laiv.uk/wp-content/uploads/2022/12/vehicle.pdf)
 - [Vehicle's compilation to VNN-LIB queries](https://arxiv.org/abs/2402.01353)
