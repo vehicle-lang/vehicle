@@ -44,6 +44,8 @@
   p = forall x . 0 <= x <= 1 => x ** 2 > 2
   ```
 
+* Fixed bug where the translation of `==` and `!=` were incorrectly specified in the DL2Loss logic.
+
 ## v0.27.1
 
 ### Loss backend
