@@ -57,7 +57,7 @@ traverseMultiProperty compileProp propertyName declType declBody =
       forcedValue <- runFreshNameBoundContextT $ forceThunk value
       logDebug MaxDetail $ prettyFriendlyEmptyCtx forcedValue
       case toVectorValue forcedValue of
-        VVectorLiteral args -> MultiProperty <$> zipWithM (\i e -> go typ (i : indices) e) [0 ..] (vecLitElements args)
+        VVectorLiteral args -> StackMultiProperty <$> zipWithM (\i e -> go typ (i : indices) e) [0 ..] (vecLitElements args)
         VVectorBoundVar {} -> unexpectedExprError currentPass "boundVar"
         VVectorRecordAcc {} -> unexpectedExprError currentPass "recordAcc"
         VVectorDataset {} -> throwError $ UnsupportedVectorValue forcedValue
@@ -78,10 +78,10 @@ traverseMultiProperty compileProp propertyName declType declBody =
         case toBoolTensorValue forcedValue of
           VBoolTensorLiteral bs -> do
             let es' = zip [0 :: Int ..] (Forced . IBoolTensorLiteral <$> unstack bs)
-            MultiProperty <$> traverse (\(i, e) -> goTensor ds (i : indices) e) es'
+            StackMultiProperty <$> traverse (\(i, e) -> goTensor ds (i : indices) e) es'
           VBoolStackTensor args -> do
             let es' = zip [0 :: Int ..] $ stackElements args
-            MultiProperty <$> traverse (\(i, e) -> goTensor ds (i : indices) e) es'
+            StackMultiProperty <$> traverse (\(i, e) -> goTensor ds (i : indices) e) es'
           _ -> throwError $ UnreducableTensorValue forcedValue
 
 currentPass :: Doc a

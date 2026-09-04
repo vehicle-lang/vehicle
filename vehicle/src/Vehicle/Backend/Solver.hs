@@ -28,7 +28,6 @@ import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
-import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard
@@ -169,10 +168,10 @@ compilePropertyDecl CompilationSettings {..} prov typ body = do
           -- compileQueries normBody
           compileQueries normBody shape
 
-    -- Warn if trivial.
-    case queries of
-      Trivial status -> logWarning (TrivialProperty propertyAdd status)
-      _ -> return ()
+    -- -- Warn if trivial. -- no longer need to warn if trivial..?
+    -- case queries of
+    --   Trivial status -> logWarning (TrivialProperty propertyAdd status)
+    --   _ -> return ()
 
     case outputLocation of
       Nothing -> return ()
@@ -196,7 +195,6 @@ compileQueries ::
   (MonadCompileQuery m) =>
   Thunk Builtin ->
   TensorShape ->
-  -- m (Property QueryMetaData)
   m (MultiProperty (Property QueryMetaData))
 compileQueries expr shape = do
   showTopLevelEntry expr
@@ -207,9 +205,11 @@ compileQueries expr shape = do
     -- Base cases --
     ----------------
     VBoolTensorLiteral b -> return $ foldMapTensor makeProperty foldProperties b
-      -- need to traverse thru the boolean tensor
-      -- look at tensor for helper functions -- foldMapTensor with Trivial and MultiProperty constructor
-    VBoolConstTensor args -> _
+    VBoolConstTensor (ConstTensorArgs _typ value _dims) -> do
+      queries <- compileQueries value []
+      return $ StackMultiProperty $ replicate (sum shape) queries
+    VBoolStackTensor (StackTensorArgs _typ _d _ds elements) -> do
+      StackMultiProperty <$> traverse (\e -> compileQueries e (tail shape)) elements
     VBoolTensorQuantifyRat (Exists, args) ->
       compileQuantifiedQuerySet False (Left args) shape
     VBoolTensorQuantifyRecord (Exists, args) ->
@@ -222,15 +222,15 @@ compileQueries expr shape = do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       let negatedArgs = negateRecordQuantifierBody args
       compileQuantifiedQuerySet True (Right negatedArgs) shape
-    VBoolTensorForeach args -> _
+    VBoolTensorForeach {} -> unblock forcedValue
     ---------------------
     -- Recursive cases --
     ---------------------
     VBoolTensorNot args -> compileNot args shape
     VBoolTensorAnd args -> compileAnd args shape
     VBoolTensorOr args -> compileOr args shape
-    VBoolTensorIf args -> compileQueries =<< runFreshNameBoundContextT (unfoldIf args)
-    VBoolTensorImplies args -> compileQueries $ elimImplies args
+    VBoolTensorIf args -> (compileQueries =<< runFreshNameBoundContextT (unfoldIf args)) shape
+    VBoolTensorImplies args -> (compileQueries $ elimImplies args) shape
     -------------------------
     -- Blocked expressions --
     -------------------------
@@ -241,7 +241,6 @@ compileQueries expr shape = do
     VBoolTensorFoldList {} -> unblock forcedValue
     VBoolTensorCompareIndex {} -> unblock forcedValue
     VBoolTensorCompareNat {} -> unblock forcedValue
-    VBoolStackTensor {} -> unblock forcedValue
     -----------------
     -- Mixed cases --
     -----------------
@@ -252,62 +251,39 @@ compileQueries expr shape = do
     --
     -- When we have the ability to evaluate networks then this case can be turned to a
     -- call to purify.
-    VBoolTensorCompareRatTensor {} -> compileUnquantifiedQuerySet expr
-    -- _ -> _
+    VBoolTensorCompareRatTensor {} -> compileUnquantifiedQuerySet expr shape
   where
-    unblock value = compileQueries =<< runFreshNameBoundContextT (unblockBoolExpr topLevelUnblockingActions (Forced value))
+    unblock value = (compileQueries =<< runFreshNameBoundContextT (unblockBoolExpr topLevelUnblockingActions (Forced value))) shape
     makeProperty :: Bool -> MultiProperty (Property QueryMetaData)
-    makeProperty b = SingleProperty (Trivial b)
-    -- makeProperty b = SingleProperty . Trivial b
+    makeProperty b = SingleProperty $ Trivial b
     foldProperties :: TensorShape -> [MultiProperty (Property QueryMetaData)] -> MultiProperty (Property QueryMetaData)
-    foldProperties _shape elems = MultiProperty elems
-    
-          -- foldP :: TensorShape -> [Property a] -> Property a
-    -- foldTrivials :: TensorShape -> [Property a] -> Property a
-    -- foldTrivials _shape elems = _
-
-
-   --     Trivial b -> return $ Trivial b
-      -- NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
-
-    -- foldTrivials shape elems = case elems of
-      -- [Trivial _] -> NonTrivial elems
-      -- [NonTrivial _] -> _
-      -- _ -> _
-      -- ?? MultiProperty elems
-    -- have elems :: [MaybeTrivial a], need to turn into single MaybeTrivial?
-
-
-    -- or uh
-    -- need to turn into [Property QueryMetadata) and then call with MultiProperty?
---  MultiProperty (MaybeTrivial (BooleanExpr (QuerySet QueryMetaData)))
-
-    -- foldTrivials :: TensorShape -> [MaybeTrivial a] -> MaybeTrivial a
-
+    foldProperties _shape elems = StackMultiProperty elems
 
 compileAnd :: (MonadCompileQuery m) => TensorOp2Args (Thunk Builtin) -> TensorShape -> m (MultiProperty (Property QueryMetaData))
-compileAnd args@(TensorOp2Args _dims e1 e2) _shape = do
+compileAnd args@(TensorOp2Args _dims e1 e2) shape = do
   -- We need to evaluate here otherwise, we may end up compiling queries that are unnecessary
   maybeResult <- runFreshNameBoundContextT $ evalAnd args
   case maybeResult of
-    Unevaluable {} -> andTrivial andBoolExpr <$> compileQueries e1 <*> compileQueries e2
-    Evaluated result -> compileQueries result
+    Unevaluable {} -> AndMultiProperty <$> compileQueries e1 shape <*> compileQueries e2 shape
+    -- Unevaluable {} -> andTrivial andBoolExpr <$> compileQueries e1 shape <*> compileQueries e2 shape
+    Evaluated result -> compileQueries result shape
 
 compileOr :: (MonadCompileQuery m) => TensorOp2Args (Thunk Builtin) -> TensorShape -> m (MultiProperty (Property QueryMetaData))
-compileOr args@(TensorOp2Args _dims e1 e2) _shape = do
+compileOr args@(TensorOp2Args _dims e1 e2) shape = do
   -- We need to evaluate here otherwise, we may end up compiling queries that are unnecessary
   maybeResult <- runFreshNameBoundContextT $ evalOr args
   case maybeResult of
-    Unevaluable {} -> orTrivial orBoolExpr <$> compileQueries e1 <*> compileQueries e2
-    Evaluated result -> compileQueries result
+    Unevaluable {} -> OrMultiProperty <$> compileQueries e1 shape <*> compileQueries e2 shape
+    -- Unevaluable {} -> orTrivial orBoolExpr <$> compileQueries e1 <*> compileQueries e2
+    Evaluated result -> compileQueries result shape
 
 compileNot ::
   (MonadCompileQuery m) =>
   TensorOp1Args (Thunk Builtin) ->
   TensorShape ->
   m (MultiProperty (Property QueryMetaData))
-compileNot args _shape = do
-  compileQueries =<< runFreshNameBoundContextT (lowerNot topLevelUnblockingActions args)
+compileNot args shape = do
+  (compileQueries =<< runFreshNameBoundContextT (lowerNot topLevelUnblockingActions args)) shape
 
 compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
@@ -315,14 +291,14 @@ compileQuantifiedQuerySet ::
   Either (QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin)) (QuantifyRecordArgs (Thunk Builtin) (Closure Builtin)) ->
   TensorShape ->
   m (MultiProperty (Property QueryMetaData))
-compileQuantifiedQuerySet isPropertyNegated args _shape =
+compileQuantifiedQuerySet isPropertyNegated args shape =
   runFreshTensorBoundContextT $
     logCompilerSection2 MaxDetail "compilation of query set" $ do
       let action = case args of
             Left tensorArgs -> eliminateExists tensorArgs
             Right recordArgs -> eliminateExistsRecord recordArgs
       (maybePartitions, globalCtx) <- runStateT action emptyGlobalCtx
-      compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
+      compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions shape
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
@@ -330,12 +306,12 @@ compileUnquantifiedQuerySet ::
   Thunk Builtin ->
   TensorShape ->
   m (MultiProperty (Property QueryMetaData))
-compileUnquantifiedQuerySet value _shape =
+compileUnquantifiedQuerySet value shape =
   runFreshTensorBoundContextT $ do
     let subsectionDoc = "compilation of set of unquantified queries:" <+> prettyFriendlyEmptyCtx value
     logCompilerSection2 MaxDetail subsectionDoc $ do
       (maybePartitions, globalCtx) <- runStateT (eliminateExistless value) emptyGlobalCtx
-      compileQuerySetPartitions globalCtx False maybePartitions
+      compileQuerySetPartitions globalCtx False maybePartitions shape
 
 compileQuerySetPartitions ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadTensorBoundContext m, MonadStdIO m, MonadError CompileError m) =>
@@ -345,13 +321,13 @@ compileQuerySetPartitions ::
   TensorShape ->
   m (MultiProperty (Property QueryMetaData))
 compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions _shape = case maybePartitions of
-  Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
+  Trivial b -> return $ SingleProperty $ Trivial (b `xor` isPropertyNegated)
   NonTrivial partitions -> do
     propertyMetaData <- ask
     maybeQueries <- runReaderT (compilePartitionsToQueries partitions) (propertyMetaData, globalCtx)
     case maybeQueries of
-      Trivial b -> return $ Trivial b
-      NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
+      Trivial b -> return $ SingleProperty $ Trivial b
+      NonTrivial queries -> return $ SingleProperty $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
 
 topLevelUnblockingActions :: (Monad m) => UnblockingActions m
 topLevelUnblockingActions =
@@ -402,7 +378,7 @@ getExprShape typ = do
         Just dim -> dim : getExprShape elemType
         -- Nothing -> throwError $ UnsupportedVectorDimension dimValue
         -- Just dim -> goVector elemType dim indices body
-    VTensorType elemType dimsValue -> do
+    VTensorType _elemType dimsValue -> do
       maybeDims <- runFreshNameBoundContextT $ getDims dimsValue
       case maybeDims of
         Nothing -> []

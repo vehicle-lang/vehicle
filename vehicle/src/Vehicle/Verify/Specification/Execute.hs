@@ -77,8 +77,10 @@ verifyMultiproperty ::
   MultiProperty PropertyAddress ->
   m ()
 verifyMultiproperty = \case
-  MultiProperty properties -> forM_ properties verifyMultiproperty
+  StackMultiProperty properties -> forM_ properties verifyMultiproperty
   SingleProperty address -> verifyProperty address
+  AndMultiProperty {} -> developerError "function verifyMultiproperty is currently unsupported for AndMuiltiProperty"
+  OrMultiProperty {} -> developerError "function verifyMultiproperty is currently unsupported for OrMuiltiProperty"
 
 verifyProperty ::
   (MonadVerify m) =>
