@@ -230,6 +230,7 @@ data CompileError
   | UnsupportedIfLossOperation Provenance
   | UnorderableDifferentiableLogic DeclProvenance (Thunk Builtin) (Either BlockingReason (ForcedValue Builtin))
   | BackwardsDifferentiableLogic DeclProvenance (Thunk Builtin)
+  | UnableToLiftQuantifiersInProperty DeclProvenance
   | QuantifierWithNoGradients Provenance (Binder Builtin)
   | -- ITP backend errors
     UnimplementedFeature Provenance (Doc Void)
@@ -241,6 +242,7 @@ deriving instance Show CompileError
 data BlockingReason
   = BlockingNetwork Identifier
   | BlockingDatasetOrParameter Identifier
+  | BlockingVar Lv
 
 deriving instance Show BlockingReason
 

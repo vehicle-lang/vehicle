@@ -459,7 +459,7 @@ etaReduceTensor typ dim dims tensor = do
   fmap mkAt [0 .. (dim - 1)]
 
 getTensorRecordShape ::
-  (MonadFreeContext Builtin m, MonadNameContext m, NormalisableBuiltin Builtin) =>
+  (MonadFreeContext Builtin m, MonadReadableNameContext m, NormalisableBuiltin Builtin) =>
   GenericRecordFields (Expr Builtin) ->
   m TensorShape
 getTensorRecordShape [] = developerError "@tensor record should not have empty fields"

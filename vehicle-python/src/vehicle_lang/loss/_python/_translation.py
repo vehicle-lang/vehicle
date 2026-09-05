@@ -3,10 +3,11 @@ from dataclasses import asdict, dataclass, field
 from fractions import Fraction
 from functools import reduce
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Sequence
+from types import CodeType
+from typing import Any, Iterator, Sequence
 
 from ..._ast import _nodes as vcl
-from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
+from .._abc import ABCTranslation, AnyBuiltins, Index, Tensor
 
 
 # Helper to convert Vehicle provenance to Python AST kwargs
@@ -16,6 +17,16 @@ def py_provenance(provenance: vcl.Provenance) -> dict[str, Any]:
         "lineno": provenance.lineno or 0,
         "col_offset": provenance.col_offset or 0,
     }
+
+
+# Helper to raise a TypeError while compiling
+def invalid_type(py_ast: py.Module | py.Expression, error: TypeError) -> TypeError:
+    py_ast_str: str
+    try:
+        py_ast_str = py.unparse(py_ast)
+    except Exception:
+        py_ast_str = py.dump(py_ast)
+    raise TypeError(f"{error}\n{py_ast_str}")
 
 
 ################################################################################
@@ -43,32 +54,58 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     ignored_types: list[str] = field(init=False, default_factory=list)
 
     def compile(
+        self, py_ast: py.Module | py.Expression, path: str | Path, mode: str
+    ) -> CodeType:
+        try:
+            py_bytecode = compile(py_ast, filename=str(path), mode=mode)
+        except TypeError as e:
+            invalid_type(py_ast, e)
+        return py_bytecode
+
+    def compile_program(
         self,
         program: vcl.Program,
         path: str | Path,
         declaration_context: dict[str, Any],
-        samplers: Mapping[str, ABCSampler[Index, Tensor]],
+        samplers: dict[str, Any],
     ) -> dict[str, Any]:
         py_ast = self.translate_program(program)
+
+        declaration_context["__vehicle__"] = self.builtins
+        declaration_context["__vehicle_user_samplers__"] = samplers
+        before_exec = dict(declaration_context)
+
+        py_bytecode = self.compile(py_ast, path, mode="exec")
+
         try:
-            declaration_context["__vehicle__"] = self.builtins
-            declaration_context["__vehicle_user_samplers__"] = samplers
-            before_exec = dict(declaration_context)
-            py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
-            return {
-                key: value
-                for key, value in declaration_context.items()
-                if key not in _IGNORED_RETURN_KEYS
-                and (key not in before_exec or before_exec[key] is not value)
-            }
         except TypeError as e:
-            py_ast_str: str
-            try:
-                py_ast_str = py.unparse(py_ast)
-            except Exception:
-                py_ast_str = py.dump(py_ast)
-            raise TypeError(f"{e}\n{py_ast_str}")
+            invalid_type(py_ast, e)
+        return {
+            key: value
+            for key, value in declaration_context.items()
+            if key not in _IGNORED_RETURN_KEYS
+            and (key not in before_exec or before_exec[key] is not value)
+        }
+
+    def compile_expression(
+        self,
+        expression: vcl.Expression,
+        path: str | Path,
+        declaration_context: dict[str, Any],
+    ) -> Any:
+        expr = self.translate_expression(expression)
+        py_ast = py.Expression(body=expr)
+
+        declaration_context["__vehicle__"] = self.builtins
+
+        py_bytecode = self.compile(py_ast, path, mode="eval")
+
+        try:
+            result = eval(py_bytecode, declaration_context)
+            return result
+        except TypeError as e:
+            invalid_type(py_ast, e)
 
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(

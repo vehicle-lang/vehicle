@@ -10,6 +10,17 @@ import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Prelude.Logging
 
 --------------------------------------------------------------------------------
+-- Loss Function Mode
+
+data LossFunctionMode
+  = Training
+  | Search
+  deriving (Eq, Show, Read, Bounded, Enum)
+
+instance Pretty LossFunctionMode where
+  pretty = pretty . show
+
+--------------------------------------------------------------------------------
 -- Builtin Differentiable Logics
 
 data BuiltinDifferentiableLogicID

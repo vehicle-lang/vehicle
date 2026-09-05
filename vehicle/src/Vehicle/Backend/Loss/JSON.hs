@@ -2,7 +2,9 @@
 
 module Vehicle.Backend.Loss.JSON
   ( convertToJSONProg,
+    convertToJSONSearchProg,
     convertFromJSONProg,
+    convertFromJSONSearchProg,
   )
 where
 
@@ -10,18 +12,23 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader, ReaderT (..))
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
+import Data.List.NonEmpty (fromList, toList)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Proxy
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
+import Vehicle.Backend.LossSearch qualified as L (BooleanTree (..))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude (DeclProvenance, Ix (..), getBinderName)
+import Vehicle.Compile.Prelude (DeclProvenance, HasProvenance (..), Ix (..), getBinderName)
 import Vehicle.Compile.Prelude qualified as S (Arg, Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
 import Vehicle.Data.AST.Decl
-  ( DefFunctionSort (..),
+  ( DefAbstractSort (..),
+    DefFunctionSort (..),
     FunctionDeclAnnotation (..),
+    ParameterSort (..),
     isAnnotatedAsProperty,
   )
 import Vehicle.Data.AST.Expr.Scoped (Type, normAppList)
@@ -30,12 +37,16 @@ import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard.Core (Builtin (..), BuiltinConstructor, BuiltinFunction, BuiltinType)
 import Vehicle.Data.Builtin.Standard.Core qualified as B
 import Vehicle.Data.Builtin.Standard.Normalise ()
+import Vehicle.Data.Code.BooleanExpr qualified as P
 import Vehicle.Data.Code.Interface.Args
+import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (ExtendedRatTensor, Tensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, stdlibIdentifier, userModulePath)
+import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
+import Vehicle.Prelude (Doc, GenericArg (..), HasIdentifier (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, stdlibIdentifier, userModulePath)
 import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Logging.Class
+import Vehicle.Verify.Specification (Property, QuerySet (..))
 
 --------------------------------------------------------------------------------
 -- Public method
@@ -47,8 +58,18 @@ convertToJSONProg prog =
     runFreshNameBoundContextT $
       convertProg prog
 
+convertToJSONSearchProg :: (MonadCompile m) => ([L.BooleanTree], S.Prog Builtin) -> m JSearchProg
+convertToJSONSearchProg (booleanTrees, prog) =
+  logCompilerSection2 MinDetail currentPass $ do
+    runFreshFreeContextT (Proxy @Builtin) $
+      runFreshNameBoundContextT $
+        convertSearchProg booleanTrees prog
+
 convertFromJSONProg :: JProg -> S.Prog Builtin
 convertFromJSONProg = fromJProg
+
+convertFromJSONSearchProg :: JSearchProg -> ([L.BooleanTree], S.Prog Builtin)
+convertFromJSONSearchProg = fromJSearchProg
 
 --------------------------------------------------------------------------------
 -- The AST exported to JSON
@@ -58,8 +79,26 @@ newtype JProg
   = Main [JDecl]
   deriving (Generic)
 
+data JSearchProg = SearchMain
+  { trees :: [JBooleanTree],
+    program :: JProg
+  }
+  deriving (Generic)
+
+data JBooleanTree
+  = BooleanTree Provenance Name JBooleanExpr
+  deriving (Generic)
+
+data JBooleanExpr
+  = Conjunct [JBooleanExpr]
+  | Disjunct [JBooleanExpr]
+  | NonTrivialQuery Bool [Name]
+  | TrivialQuery Bool
+  deriving (Generic)
+
 data JDecl
   = DefFunction Provenance Name Bool JType JExpr
+  | DefAbstract Provenance Name JSort JType
   deriving (Generic)
 
 data JBinder
@@ -76,6 +115,13 @@ data JType
   | DimensionsType
   | DimensionIndexType
   | TypeVar Name [JExpr]
+  deriving (Show, Generic)
+
+data JSort
+  = Network
+  | Dataset
+  | Parameter
+  | Builtin
   deriving (Show, Generic)
 
 data JExpr
@@ -133,13 +179,25 @@ data JExpr
 instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
 
+instance ToJSON JSearchProg where
+  toJSON = genericToJSON jsonOptions
+
 instance ToJSON JDecl where
+  toJSON = genericToJSON jsonOptions
+
+instance ToJSON JBooleanTree where
+  toJSON = genericToJSON jsonOptions
+
+instance ToJSON JBooleanExpr where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JExpr where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JType where
+  toJSON = genericToJSON jsonOptions
+
+instance ToJSON JSort where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JBinder where
@@ -172,23 +230,40 @@ dependentTypesError b = developerError $ "Conversion of" <+> pretty b <+> "is no
 convertProg :: (MonadJSON m) => S.Prog Builtin -> m JProg
 convertProg (S.Main decls) = Main <$> convertDecls decls
 
+convertSearchProg :: (MonadJSON m) => [L.BooleanTree] -> S.Prog Builtin -> m JSearchProg
+convertSearchProg booleanTrees prog = do
+  booleanTrees' <- traverse convertBooleanTree booleanTrees
+  prog' <- convertProg prog
+  return $ SearchMain booleanTrees' prog'
+
 convertDecls :: (MonadJSON m) => [S.Decl Builtin] -> m [JDecl]
 convertDecls = \case
   [] -> return []
-  d : ds -> do
-    d' <- convertDecl d
-    ds' <- convertDecls ds
-    return $ maybe ds' (: ds') d'
+  decl : decls -> do
+    decl' <- convertDecl decl
+    decls' <- convertDecls decls
+    return $ maybe decls' (: decls') decl'
 
 convertDecl :: (MonadJSON m) => S.Decl Builtin -> m (Maybe JDecl)
-convertDecl = \case
-  S.DefAbstract {} -> developerError "Found abstract definition when converting to JSON"
+convertDecl decl = flip runReaderT (identifierOf decl, provenanceOf decl) $ case decl of
+  S.DefAbstract p ident sort typ -> do
+    typ' <- convertTypeValue typ
+    return $ Just $ case sort of
+      NetworkDef -> DefAbstract p (nameOf ident) Network typ'
+      DatasetDef -> DefAbstract p (nameOf ident) Dataset typ'
+      ParameterDef _ -> DefAbstract p (nameOf ident) Parameter typ'
+      BuiltinDef -> developerError "DefAbstractSort BuiltinDef is not yet implemented"
   S.DefRecord {} -> return Nothing
-  S.DefFunction p ident sort typ body ->
-    flip runReaderT (ident, p) $ do
-      typ' <- convertTypeValue typ
-      expr' <- convertExpr body
-      return $ Just $ DefFunction p (nameOf ident) (isAnnotatedAsProperty sort) typ' expr'
+  S.DefFunction p ident sort typ body -> do
+    typ' <- convertTypeValue typ
+    expr' <- convertExpr body
+    return $ Just $ DefFunction p (nameOf ident) (isAnnotatedAsProperty sort) typ' expr'
+
+convertBooleanTree :: (MonadJSON m) => L.BooleanTree -> m JBooleanTree
+convertBooleanTree = \case
+  L.BooleanTree p ident expr -> do
+    expr' <- convertProperty expr
+    return $ BooleanTree p (nameOf ident) expr'
 
 --------------------------------------------------------------------------------
 -- General
@@ -301,6 +376,25 @@ convertListType spine = case spine of
 
 --------------------------------------------------------------------------------
 -- Expressions
+
+convertProperty :: (MonadJSON m) => Property Name -> m JBooleanExpr
+convertProperty = \case
+  NonTrivial expr -> do
+    expr' <- convertBooleanExpr expr
+    return expr'
+  Trivial bool -> return $ TrivialQuery bool
+
+convertBooleanExpr :: (MonadJSON m) => P.BooleanExpr (QuerySet Name) -> m JBooleanExpr
+convertBooleanExpr = \case
+  P.Conjunct es -> do
+    es' <- traverse convertBooleanExpr es
+    return $ Conjunct $ toList $ P.unConjunctAll es'
+  P.Disjunct es -> do
+    es' <- traverse convertBooleanExpr es
+    return $ Disjunct $ toList $ P.unDisjunctAll es'
+  P.Query (QuerySet negated disjuncts) -> do
+    let names = toList $ P.unDisjunctAll disjuncts
+    return $ NonTrivialQuery negated names
 
 convertExpr :: (MonadJSONExpr m) => S.Expr Builtin -> m JExpr
 convertExpr expr = do
@@ -579,6 +673,29 @@ fromJProg :: JProg -> S.Prog Builtin
 fromJProg = \case
   Main decls -> S.Main (fmap fromJDecl decls)
 
+fromJSearchProg :: JSearchProg -> ([L.BooleanTree], S.Prog Builtin)
+fromJSearchProg = \case
+  SearchMain booleanTrees prog ->
+    let booleanTrees' = fmap fromJBooleanTree booleanTrees
+        prog' = fromJProg prog
+     in (booleanTrees', prog')
+
+fromJBooleanTree :: JBooleanTree -> L.BooleanTree
+fromJBooleanTree = \case
+  BooleanTree p name expr ->
+    let ident = Identifier userModulePath name
+        expr' = case expr of
+          TrivialQuery bool -> Trivial bool
+          _ -> NonTrivial $ fromJBooleanExpr expr
+     in L.BooleanTree p ident expr'
+
+fromJBooleanExpr :: JBooleanExpr -> P.BooleanExpr (QuerySet Name)
+fromJBooleanExpr = \case
+  Conjunct es -> P.Conjunct $ P.ConjunctAll $ fromList (fmap fromJBooleanExpr es)
+  Disjunct es -> P.Disjunct $ P.DisjunctAll $ fromList (fmap fromJBooleanExpr es)
+  NonTrivialQuery negated names -> P.Query (QuerySet negated (P.DisjunctAll $ fromList names))
+  TrivialQuery _ -> developerError "Should not encounter a TrivialQuery here as these are handled separately"
+
 fromJDecl :: JDecl -> S.Decl Builtin
 fromJDecl = \case
   DefFunction p name isProperty typ body ->
@@ -588,6 +705,15 @@ fromJDecl = \case
       let ident = Identifier userModulePath name
       let sort = FunctionDecl 0 (if isProperty then Just AnnProperty else Nothing)
       return $ S.DefFunction p ident sort typ' body'
+  DefAbstract p name sort typ ->
+    runFreshNameBoundContext $ do
+      typ' <- fromJType typ
+      let ident = Identifier userModulePath name
+      case sort of
+        Network -> return $ S.DefAbstract p ident NetworkDef typ'
+        Dataset -> return $ S.DefAbstract p ident DatasetDef typ'
+        Parameter -> return $ S.DefAbstract p ident (ParameterDef Inferable) typ'
+        Builtin -> developerError "DefAbstractSort BuiltinDef is not yet implemented"
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr Builtin)
 fromJType = \case

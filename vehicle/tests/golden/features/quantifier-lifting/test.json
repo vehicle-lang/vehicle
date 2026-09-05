@@ -1,0 +1,9 @@
+[
+  {
+    "name": "DL2LossSearch",
+    "run": "vehicle compile loss --lossMode Search --logic DL2Loss --s spec.vcl -o DL2LossSearch.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["DL2LossSearch.vcl"],
+    "enabled": false
+  }
+]

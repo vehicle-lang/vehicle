@@ -17,7 +17,7 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 -- If lifting
 
 unfoldIf ::
-  (MonadLogger m, MonadNameContext m, MonadFreeContext Builtin m) =>
+  (MonadLogger m, MonadReadableNameContext m, MonadFreeContext Builtin m) =>
   IfArgs (Thunk Builtin) ->
   m (Thunk Builtin)
 unfoldIf (IfArgs _ c x y) = do

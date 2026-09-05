@@ -25,7 +25,7 @@ import Vehicle.Data.Variable.Free.Context.Core as X
 import Vehicle.Data.Variable.Free.Context.Instance as X
 
 addDeclToContext ::
-  (MonadLogger m, MonadFreeContext builtin m) =>
+  (MonadFreeContext builtin m) =>
   Decl builtin ->
   m a ->
   m a

@@ -1,0 +1,21 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \ dims -> \ x -> const 1.0 dims / x, pointwiseConjunction = \ dims -> \ x -> \ y -> x + y, pointwiseDisjunction = \ dims -> \ x -> \ y -> x * y, pointwiseLessThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (y - x), pointwiseEqual = \ dims -> \ x -> \ y -> - (max (const 0.0 dims) (x - y) + max (const 0.0 dims) (y - x)), pointwiseNotEqual = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y) + max (const 0.0 dims) (y - x), reduceConjunction = \ dims -> \ xs -> reduceAdd xs, reduceDisjunction = \ dims -> \ xs -> reduceMul xs} 
+
+@network;
+f : Tensor Real -> Tensor Real
+
+@property;
+bounded0 : Tensor Real;
+bounded0 = search nil 0.0 1.0 (\ x -> DL2Loss.pointwiseGreaterEqualThan nil 0.0 (f x))
+
+@property;
+bounded1 : Tensor Real;
+bounded1 = search nil 0.0 1.0 (\ x -> DL2Loss.pointwiseGreaterEqualThan nil (f x) 1.0)
+
+@property;
+bounded0-bool : Tensor Bool;
+bounded0-bool = \ x -> (0.0 < x and x < 1.0) and reduceOr (0.0 >= f x)
+
+@property;
+bounded1-bool : Tensor Bool;
+bounded1-bool = \ x -> (0.0 < x and x < 1.0) and reduceOr (f x >= 1.0)
