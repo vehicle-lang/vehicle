@@ -1,0 +1,37 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \ dims -> \ x -> const 1.0 dims / x, pointwiseConjunction = \ dims -> \ x -> \ y -> x + y, pointwiseDisjunction = \ dims -> \ x -> \ y -> x * y, pointwiseLessThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \ dims -> \ x -> \ y -> max (const 0.0 dims) (y - x), pointwiseEqual = \ dims -> \ x -> \ y -> - (max (const 0.0 dims) (x - y) + max (const 0.0 dims) (y - x)), pointwiseNotEqual = \ dims -> \ x -> \ y -> max (const 0.0 dims) (x - y) + max (const 0.0 dims) (y - x), reduceConjunction = \ dims -> \ xs -> reduceAdd xs, reduceDisjunction = \ dims -> \ xs -> reduceMul xs} 
+
+@network;
+andGate : Tensor Real -> Tensor Real
+
+@property;
+andGateCorrect0 : Tensor Real;
+andGateCorrect0 = search nil 0.5 1.0 (\ x1 -> search nil 0.5 1.0 (\ x2 -> DL2Loss.pointwiseLessThan nil (andGate [x1, x2] ! 0) 0.5))
+
+@property;
+andGateCorrect1 : Tensor Real;
+andGateCorrect1 = search nil 0.5 1.0 (\ x1 -> search nil 0.0 0.5 (\ x2 -> DL2Loss.pointwiseGreaterThan nil (andGate [x1, x2] ! 0) 0.5))
+
+@property;
+andGateCorrect2 : Tensor Real;
+andGateCorrect2 = search nil 0.0 0.5 (\ x1 -> search nil 0.5 1.0 (\ x2 -> DL2Loss.pointwiseGreaterThan nil (andGate [x1, x2] ! 0) 0.5))
+
+@property;
+andGateCorrect3 : Tensor Real;
+andGateCorrect3 = search nil 0.0 0.5 (\ x1 -> search nil 0.0 0.5 (\ x2 -> DL2Loss.pointwiseGreaterThan nil (andGate [x1, x2] ! 0) 0.5))
+
+@property;
+andGateCorrect0-bool : Tensor Bool;
+andGateCorrect0-bool = \ x1 -> \ x2 -> ((0.0 <= x1 and x1 <= 1.0) and 0.0 <= x2 and x2 <= 1.0) and (x1 >= 0.5 and x2 >= 0.5) and reduceOr (andGate [x1, x2] ! 0 < 0.5)
+
+@property;
+andGateCorrect1-bool : Tensor Bool;
+andGateCorrect1-bool = \ x1 -> \ x2 -> ((0.0 <= x1 and x1 <= 1.0) and 0.0 <= x2 and x2 <= 1.0) and (x1 >= 0.5 and x2 <= 0.5) and reduceOr (andGate [x1, x2] ! 0 > 0.5)
+
+@property;
+andGateCorrect2-bool : Tensor Bool;
+andGateCorrect2-bool = \ x1 -> \ x2 -> ((0.0 <= x1 and x1 <= 1.0) and 0.0 <= x2 and x2 <= 1.0) and (x1 <= 0.5 and x2 >= 0.5) and reduceOr (andGate [x1, x2] ! 0 > 0.5)
+
+@property;
+andGateCorrect3-bool : Tensor Bool;
+andGateCorrect3-bool = \ x1 -> \ x2 -> ((0.0 <= x1 and x1 <= 1.0) and 0.0 <= x2 and x2 <= 1.0) and (x1 <= 0.5 and x2 <= 0.5) and reduceOr (andGate [x1, x2] ! 0 > 0.5)
