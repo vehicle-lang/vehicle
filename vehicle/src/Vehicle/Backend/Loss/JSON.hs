@@ -46,7 +46,7 @@ import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
 import Vehicle.Prelude (Doc, GenericArg (..), HasIdentifier (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, stdlibIdentifier, userModulePath)
 import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Logging.Class
-import Vehicle.Verify.Specification (QuerySet (..))
+import Vehicle.Verify.Specification (Property, QuerySet (..))
 
 --------------------------------------------------------------------------------
 -- Public method
@@ -92,7 +92,8 @@ data JBooleanTree
 data JBooleanExpr
   = Conjunct [JBooleanExpr]
   | Disjunct [JBooleanExpr]
-  | Query Bool [Name]
+  | NonTrivialQuery Bool [Name]
+  | TrivialQuery Bool
   deriving (Generic)
 
 data JDecl
@@ -229,6 +230,12 @@ dependentTypesError b = developerError $ "Conversion of" <+> pretty b <+> "is no
 convertProg :: (MonadJSON m) => S.Prog Builtin -> m JProg
 convertProg (S.Main decls) = Main <$> convertDecls decls
 
+convertSearchProg :: (MonadJSON m) => [L.BooleanTree] -> S.Prog Builtin -> m JSearchProg
+convertSearchProg booleanTrees prog = do
+  booleanTrees' <- traverse convertBooleanTree booleanTrees
+  prog' <- convertProg prog
+  return $ SearchMain booleanTrees' prog'
+
 convertDecls :: (MonadJSON m) => [S.Decl Builtin] -> m [JDecl]
 convertDecls = \case
   [] -> return []
@@ -251,6 +258,12 @@ convertDecl decl = flip runReaderT (identifierOf decl, provenanceOf decl) $ case
     typ' <- convertTypeValue typ
     expr' <- convertExpr body
     return $ Just $ DefFunction p (nameOf ident) (isAnnotatedAsProperty sort) typ' expr'
+
+convertBooleanTree :: (MonadJSON m) => L.BooleanTree -> m JBooleanTree
+convertBooleanTree = \case
+  L.BooleanTree p ident expr -> do
+    expr' <- convertProperty expr
+    return $ BooleanTree p (nameOf ident) expr'
 
 --------------------------------------------------------------------------------
 -- General
@@ -296,19 +309,6 @@ convertRecordAcc _typ record field args = do
   record' <- convertExpr record
   spine' <- traverse (convertExpr . argExpr) args
   return $ RecordAcc record' (nameOf field) spine'
-
-convertSearchProg :: (MonadJSON m) => [L.BooleanTree] -> S.Prog Builtin -> m JSearchProg
-convertSearchProg booleanTrees prog = do
-  booleanTrees' <- traverse convertBooleanTree booleanTrees
-  prog' <- convertProg prog
-  return $ SearchMain booleanTrees' prog'
-
-convertBooleanTree :: (MonadJSON m) => L.BooleanTree -> m JBooleanTree
-convertBooleanTree = \case
-  L.BooleanTree p ident (NonTrivial expr) -> do
-    expr' <- convertBooleanExpr expr
-    return $ BooleanTree p (nameOf ident) expr'
-  L.BooleanTree _ _ (Trivial _) -> developerError "Empty search tree"
 
 --------------------------------------------------------------------------------
 -- Types
@@ -377,6 +377,13 @@ convertListType spine = case spine of
 --------------------------------------------------------------------------------
 -- Expressions
 
+convertProperty :: (MonadJSON m) => Property Name -> m JBooleanExpr
+convertProperty = \case
+  NonTrivial expr -> do
+    expr' <- convertBooleanExpr expr
+    return expr'
+  Trivial bool -> return $ TrivialQuery bool
+
 convertBooleanExpr :: (MonadJSON m) => P.BooleanExpr (QuerySet Name) -> m JBooleanExpr
 convertBooleanExpr = \case
   P.Conjunct es -> do
@@ -387,7 +394,7 @@ convertBooleanExpr = \case
     return $ Disjunct $ toList $ P.unDisjunctAll es'
   P.Query (QuerySet negated disjuncts) -> do
     let names = toList $ P.unDisjunctAll disjuncts
-    return $ Query negated names
+    return $ NonTrivialQuery negated names
 
 convertExpr :: (MonadJSONExpr m) => S.Expr Builtin -> m JExpr
 convertExpr expr = do
@@ -677,14 +684,17 @@ fromJBooleanTree :: JBooleanTree -> L.BooleanTree
 fromJBooleanTree = \case
   BooleanTree p name expr ->
     let ident = Identifier userModulePath name
-        expr' = fromJBooleanExpr expr
-     in L.BooleanTree p ident (NonTrivial expr')
+        expr' = case expr of
+          TrivialQuery bool -> Trivial bool
+          _ -> NonTrivial $ fromJBooleanExpr expr
+     in L.BooleanTree p ident expr'
 
 fromJBooleanExpr :: JBooleanExpr -> P.BooleanExpr (QuerySet Name)
 fromJBooleanExpr = \case
   Conjunct es -> P.Conjunct $ P.ConjunctAll $ fromList (fmap fromJBooleanExpr es)
   Disjunct es -> P.Disjunct $ P.DisjunctAll $ fromList (fmap fromJBooleanExpr es)
-  Query negated names -> P.Query (QuerySet negated (P.DisjunctAll $ fromList names))
+  NonTrivialQuery negated names -> P.Query (QuerySet negated (P.DisjunctAll $ fromList names))
+  TrivialQuery _ -> developerError "Should not encounter a TrivialQuery here as these are handled separately"
 
 fromJDecl :: JDecl -> S.Decl Builtin
 fromJDecl = \case

@@ -22,7 +22,7 @@ import Vehicle.Backend.Solver
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
-import Vehicle.Compile.Prelude as CompilePrelude hiding (programDeclarations)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
@@ -192,9 +192,11 @@ compileToSearchLoss ::
   OutputAsJSON ->
   m ()
 compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON = do
-  (searchTrees, searchProg) <- convertToSearchTree typedProg
-  lossTensorProg <- convertToLossTensors differentiableLogicID searchProg
-  jsonSearchProg <- convertToJSONSearchProg (searchTrees, lossTensorProg)
+  (booleanTrees, boolDecls, domainExtractedProg) <- convertToSearchTree typedProg
+  -- boolDecls are not converted into loss
+  lossTensorProg <- convertToLossTensors differentiableLogicID domainExtractedProg
+  let searchProg = Main (programDeclarations lossTensorProg ++ boolDecls)
+  jsonSearchProg <- convertToJSONSearchProg (booleanTrees, searchProg)
   let outputText
         | outputAsJSON = prettyAsJSON jsonSearchProg
         | otherwise =
