@@ -517,6 +517,7 @@ class Declaration(AST, metaclass=ABCMeta):
 class DefFunction(Declaration):
     provenance: Provenance = field(repr=False)
     name: Name
+    lhsBinderCount: int
     isProperty: bool
     type: BuiltinType
     body: Expression

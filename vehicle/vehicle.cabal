@@ -139,7 +139,6 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
-    Vehicle.Compile.Constants.ForcedValue
     Vehicle.Compile.Constants.Rational
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
@@ -214,6 +213,8 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames
+    Vehicle.Compile.Constants.TensorValue
+    Vehicle.Compile.Constants.TensorValue.Core
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources

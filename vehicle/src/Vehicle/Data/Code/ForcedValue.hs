@@ -233,18 +233,6 @@ instance HasProvenance (GenericGluedExpr meta builtin) where
   provenanceOf = provenanceOf . unnormalised
 
 -----------------------------------------------------------------------------
--- Dimensioned values
-
--- | Because there are no dependent types in Haskell, we cannot create
--- type-classes over tensor values with a given dimension. Hence we need
--- to wrap them in this ugly type-class that stores the dimensions internally.
-data DimensionedTensorValue builtin = TensorValue
-  { tensorValueDims :: UnforcedDims builtin,
-    tensorValue :: Thunk builtin
-  }
-  deriving (Show, Eq, Ord)
-
------------------------------------------------------------------------------
 -- Instances
 
 instance HasBuiltinConstructor (GenericForcedValue meta) (GenericThunk meta) where
