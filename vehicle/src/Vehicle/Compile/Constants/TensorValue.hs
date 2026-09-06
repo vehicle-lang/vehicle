@@ -44,7 +44,7 @@ mkTensorConstantValue dims coeff thunk = do
         VRatConstTensor (ConstTensorArgs _ constVal _) -> do
           c <- forceAndRewriteTensor constVal
           case c of
-            IRatLiteral v -> return $ TensorConstantValue dims v Nothing
+            IRatLiteral v -> return $ TensorConstantValue dims (coeff * v) Nothing
             _ -> return $ TensorConstantValue dims coeff (Just thunk)
         VNegRatTensor args -> mkTensorConstantValue dims (-coeff) (tensorOp1Arg args)
         _ -> return $ TensorConstantValue dims coeff (Just thunk)
@@ -80,13 +80,6 @@ mulDimensionedValue (TensorConstantValue dims c1 v1) (TensorConstantValue _dims2
   value1 <- maybeValueToValue dims v1
   value2 <- maybeValueToValue dims v2
   mkTensorConstantValue dims (c1 * c2) =<< mulThunks dims value1 value2
-
-{-
-\| c1 == 0 = return y
-\| c2 == 0 = return x
-\| c1 == PosInfinity = _
-\| c2 == PosInfinity = _
-  -}
 
 divDimensionedValue ::
   (MonadNorm Builtin m) =>
