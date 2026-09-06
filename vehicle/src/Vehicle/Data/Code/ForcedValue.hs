@@ -200,10 +200,10 @@ boundVariablesIn ctxSize = execWriter . goThunk ctxSize
         goSpine depth spine
       VPi binder (Closure env bound) -> do
         traverse_ (goThunk depth) binder
-        goEnvAndExpr (depth + 1) env bound
+        goEnvAndExpr (depth + 1) (extendEnvWithBound depth binder env) bound
       VLam binder (Closure env bound) -> do
         traverse_ (goThunk depth) binder
-        goEnvAndExpr (depth + 1) env bound
+        goEnvAndExpr (depth + 1) (extendEnvWithBound depth binder env) bound
       VRecord i fs -> do
         goThunk depth i
         traverse_ (goThunk depth) fs
