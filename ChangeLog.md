@@ -48,6 +48,9 @@
   p = forall x . 0 <= x <= 1 => x ** 2 > 2
   ```
 
+* Generated Python code is now written out to a temporary directory which allows you to step through
+  it as normal when you attach a debugger.
+
 ## v0.27.1
 
 ### Loss backend

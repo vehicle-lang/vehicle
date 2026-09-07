@@ -5,6 +5,9 @@ from functools import reduce
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
+import black
+from vehicle_lang._temporary_files import VEHICLE_PATH
+
 from ..._ast import _nodes as vcl
 from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
 
@@ -54,7 +57,19 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             declaration_context["__vehicle__"] = self.builtins
             declaration_context["__vehicle_user_samplers__"] = samplers
             before_exec = dict(declaration_context)
-            py_bytecode = compile(py_ast, filename=str(path), mode="exec")
+
+            # Write out the source code for debugging purposes (might make this optional in future if it harms performance)
+            source_str = py.unparse(py_ast)
+            formatted_source_str = black.format_str(source_str, mode=black.Mode())
+            python_code_path = (
+                VEHICLE_PATH / "generated_python" / (Path(path).stem + ".py")
+            )
+            python_code_path.parent.mkdir(exist_ok=True)
+            python_code_path.write_text(formatted_source_str)
+
+            py_bytecode = compile(
+                formatted_source_str, filename=str(python_code_path), mode="exec"
+            )
             exec(py_bytecode, declaration_context)
             return {
                 key: value
