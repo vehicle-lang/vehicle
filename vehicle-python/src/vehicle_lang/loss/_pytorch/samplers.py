@@ -87,7 +87,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
         for _ in range(self.num_samples):
             # Start from a random initial point in the valid range
             current_point = (
-                lower_bound + torch.rand((), dtype=lower_bound.dtype) * range_size
+                lower_bound + torch.rand(dims, dtype=lower_bound.dtype) * range_size
             )
 
             # Perform PGD iterations from this starting point
