@@ -125,7 +125,8 @@ data LossBuiltinTypeClass
   | HasReduceAnd
   | HasReduceOr
   | HasIfRatTensor
-  | HasRatTensorCompare ComparisonOp
+  | HasPointwiseRatTensorCompare ComparisonOp
+  | HasReducedRatTensorCompare ComparisonOp
   | HasExists
   | MaxGradients
   | ValidNetworkType
@@ -143,7 +144,8 @@ instance Pretty LossBuiltinTypeClass where
     HasImplies -> "HasImplies"
     HasReduceAnd -> "HasReduceAnd"
     HasReduceOr -> "HasReduceOr"
-    HasRatTensorCompare op -> "HasRatTensorCompare" <> brackets (pretty op)
+    HasPointwiseRatTensorCompare op -> "HasPointwiseRatTensorCompare" <> brackets (pretty op)
+    HasReducedRatTensorCompare op -> "HasReducedRatTensorCompare" <> brackets (pretty op)
     HasIfRatTensor -> "HasIfRatTensor"
     HasExists -> "HasExists"
     MaxGradients -> "MaxGradients"
@@ -165,7 +167,8 @@ data LossBuiltinTypeClassOp
   | ReduceAndTCOp
   | ReduceOrTCOp
   | ImpliesTCOp
-  | CompareRatTensorTCOp ComparisonOp
+  | CompareRatTensorPointwiseTCOp ComparisonOp
+  | CompareRatTensorReducedTCOp ComparisonOp
   | ExistsTCOp
   | IfRatTensorTCOp
   deriving (Eq, Ord, Show, Generic)
@@ -179,7 +182,8 @@ instance Pretty LossBuiltinTypeClassOp where
     ImpliesTCOp -> "impliesTC"
     ReduceAndTCOp -> "reduceAndTC"
     ReduceOrTCOp -> "reduceOrTC"
-    CompareRatTensorTCOp op -> comparisonOpName op <> "RatTensorTC"
+    CompareRatTensorPointwiseTCOp op -> comparisonOpName op <> "RatTensorPointwiseTC"
+    CompareRatTensorReducedTCOp op -> comparisonOpName op <> "RatTensorReducedTC"
     ExistsTCOp -> "existsTC"
     IfRatTensorTCOp -> "ifRatTensorTCOp"
 
@@ -639,8 +643,11 @@ hasReduceAnd t = lossTypeClass HasReduceAnd @@ [t]
 hasReduceOr :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 hasReduceOr t = lossTypeClass HasReduceOr @@ [t]
 
-hasRatTensorComparison :: ComparisonOp -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
-hasRatTensorComparison op t1 t2 t3 = lossTypeClass (HasRatTensorCompare op) @@ [t1, t2, t3]
+hasPointwiseRatTensorComparison :: ComparisonOp -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+hasPointwiseRatTensorComparison op t1 t2 t3 = lossTypeClass (HasPointwiseRatTensorCompare op) @@ [t1, t2, t3]
+
+hasReducedRatTensorComparison :: ComparisonOp -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+hasReducedRatTensorComparison op t1 t2 t3 = lossTypeClass (HasReducedRatTensorCompare op) @@ [t1, t2, t3]
 
 validParameterType :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 validParameterType t = lossTypeClass ValidParamType @@ [t]
