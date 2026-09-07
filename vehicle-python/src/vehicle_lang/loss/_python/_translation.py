@@ -184,9 +184,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_Var(self, expression: vcl.Var) -> py.expr:
-        return py_app_sequential(
-            function=py_name(expression.name, provenance=vcl.MISSING),
-            arguments=[self.translate_expression(arg) for arg in expression.arguments],
+        return py_app(
+            py_name(expression.name, provenance=vcl.MISSING),
+            *map(self.translate_expression, expression.arguments),
             provenance=vcl.MISSING,
         )
 
@@ -634,6 +634,9 @@ def py_subscript(
 def py_app(
     function: py.expr, *arguments: py.expr, provenance: vcl.Provenance
 ) -> py.expr:
+    if not arguments:
+        return function
+
     """Make a function call: function(arguments[0],...,arguments[n])"""
     return py.Call(
         func=function,

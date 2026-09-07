@@ -12,6 +12,10 @@
 
 * Fixed a few `Internal scoping` errors.
 
+* Fixed bug in default `Sampler` implementations which weren't generating initial starting points with maximal randomness.
+
+* Fixed bug where constraints with multiple quantified variables in them were being incorrectly added to the sampler domains.
+
 * Quantified variables are no longer required to have a well-defined domain.
   e.g. instead of
   ```

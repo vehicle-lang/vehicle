@@ -91,7 +91,9 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
             # Start from a random initial point in the valid range
             current_point = tf.add(
                 lb,
-                tf.multiply(tf.random.uniform(shape=(), dtype=tf.float32), range_size),
+                tf.multiply(
+                    tf.random.uniform(shape=dims, dtype=tf.float32), range_size
+                ),
             )
 
             # Perform PGD iterations from this starting point
