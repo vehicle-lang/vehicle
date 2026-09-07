@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
 import black
+
 from vehicle_lang._temporary_files import VEHICLE_PATH
 
 from ..._ast import _nodes as vcl
@@ -88,20 +89,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
-                # NOTE: 'vehicle_lang._ast._nodes' is imported for 'Tensor'
-                #       which is used to translate vcl.Tensor
-                py.Import(
-                    names=[
-                        py.alias(
-                            name="vehicle_lang._ast._nodes",
-                            asname=None,
-                            lineno=0,
-                            col_offset=0,
-                        )
-                    ],
-                    lineno=0,
-                    col_offset=0,
-                ),
                 # NOTE: 'fractions' is imported for 'Fraction'
                 #       which is used to translate vcl.Rat
                 py.Import(
@@ -110,14 +97,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                     ],
                     lineno=0,
                     col_offset=0,
-                ),
-                # NOTE: 'functools' is imported for 'partial'
-                #       which is used to translate vcl.PartialApp
-                py.Import(
-                    names=[
-                        py.alias(name="functools", asname=None, lineno=0, col_offset=0)
-                    ],
-                    **py_provenance(vcl.MISSING),
                 ),
                 *self.module_header,
                 *self.translate_declarations(iter(program.declarations)),
