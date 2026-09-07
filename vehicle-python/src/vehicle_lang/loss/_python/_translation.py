@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
 import black
-
 from vehicle_lang._temporary_files import VEHICLE_PATH
 
 from ..._ast import _nodes as vcl
