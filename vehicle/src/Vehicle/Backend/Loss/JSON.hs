@@ -60,7 +60,7 @@ newtype JProg
   deriving (Generic)
 
 data JDecl
-  = DefFunction Provenance Name LHSBinderCount Bool JType JExpr
+  = DefFunction Name LHSBinderCount Bool JType JExpr
   deriving (Generic)
 
 data JBinder
@@ -189,7 +189,7 @@ convertDecl = \case
     flip runReaderT (ident, p) $ do
       typ' <- convertTypeValue typ
       expr' <- convertExpr body
-      return $ Just $ DefFunction p (nameOf ident) (lhsBinderCount sort) (isAnnotatedAsProperty sort) typ' expr'
+      return $ Just $ DefFunction (nameOf ident) (lhsBinderCount sort) (isAnnotatedAsProperty sort) typ' expr'
 
 --------------------------------------------------------------------------------
 -- General
@@ -582,13 +582,13 @@ fromJProg = \case
 
 fromJDecl :: JDecl -> S.Decl Builtin
 fromJDecl = \case
-  DefFunction p name binderCount isProperty typ body ->
+  DefFunction name binderCount isProperty typ body ->
     runFreshNameBoundContext $ do
       typ' <- fromJType typ
       body' <- fromJExpr body
       let ident = Identifier userModulePath name
       let sort = FunctionDecl binderCount (if isProperty then Just AnnProperty else Nothing)
-      return $ S.DefFunction p ident sort typ' body'
+      return $ S.DefFunction mempty ident sort typ' body'
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr Builtin)
 fromJType = \case
