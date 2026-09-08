@@ -3,4 +3,4 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 test1 : (Tensor Real -> Tensor Real) -> Tensor Real;
-test1 f = search nil 0.0 1.0 (\a -> DL2Loss.pointwiseEqual [1] (f [a + 2.0]) (const 0.0 [1]))
+test1 f = search nil 0.0 1.0 (\a -> DL2Loss.reduceConjunction [1] (DL2Loss.pointwiseEqual [1] (f [a + 2.0]) (const 0.0 [1])))

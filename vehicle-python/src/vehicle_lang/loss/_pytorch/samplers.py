@@ -98,12 +98,12 @@ class DefaultPyTorchSampler(PyTorchSampler):
                 # Enable gradient computation for the current point
                 current_point_var = current_point.detach().clone().requires_grad_(True)
 
-                # Compute gradient of search_lambda with respect to input
-                loss = search_lambda(current_point_var)
+                # Enable gradient tracking so that we can compute the gradients
+                # for the search even if the loss function is called inside torch.no_grad().
+                with torch.enable_grad():
+                    # Compute gradient of search_lambda with respect to input
+                    loss = search_lambda(current_point_var)
 
-                # Only compute gradients if the loss requires grad
-                # (may not be the case if called inside torch.no_grad())
-                if loss.requires_grad:
                     # Compute gradient ONLY w.r.t. the input, not network weights
                     # Using autograd.grad instead of backward() to avoid accumulating
                     # gradients in network parameters during adversarial search
@@ -122,9 +122,6 @@ class DefaultPyTorchSampler(PyTorchSampler):
                         )
                     else:
                         gradient = torch.zeros_like(current_point_var)
-                else:
-                    # No gradients available, can't perform FGSM perturbation
-                    gradient = torch.zeros_like(current_point_var)
 
                 # FGSM: perturb in the direction of the gradient sign
                 # To find worst-case inputs that make the loss high, we need to

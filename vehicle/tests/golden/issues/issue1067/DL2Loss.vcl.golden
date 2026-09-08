@@ -3,4 +3,4 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 boundedRobust : (Tensor Real -> Tensor Real) -> Tensor Real;
-boundedRobust f = DL2Loss.pointwiseNegation nil (search [1] (const -infinity [1]) (const infinity [1]) (\x_hat -> DL2Loss.pointwiseDisjunction nil (DL2Loss.reduceDisjunction [1] (DL2Loss.pointwiseGreaterThan nil (- const 1.0 [1]) (f x_hat))) (DL2Loss.reduceDisjunction [1] (DL2Loss.pointwiseGreaterThan nil (f x_hat) (const 1.0 [1])))))
+boundedRobust f = DL2Loss.pointwiseNegation nil (search [1] (const -infinity [1]) (const infinity [1]) (\x_hat -> DL2Loss.pointwiseDisjunction nil (DL2Loss.reduceDisjunction [1] (DL2Loss.pointwiseGreaterThan [1] (- const 1.0 [1]) (f x_hat))) (DL2Loss.reduceDisjunction [1] (DL2Loss.pointwiseGreaterThan [1] (f x_hat) (const 1.0 [1])))))

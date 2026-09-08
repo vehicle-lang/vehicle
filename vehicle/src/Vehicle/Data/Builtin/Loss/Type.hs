@@ -6,6 +6,7 @@ module Vehicle.Data.Builtin.Loss.Type
 where
 
 import Data.Proxy (Proxy (..))
+import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -121,7 +122,8 @@ typeLossTypeClass = \case
   HasImplies -> type0 ~> type0 ~> type0 ~> type0
   HasReduceAnd -> type0 ~> type0
   HasReduceOr -> type0 ~> type0
-  HasRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
+  HasPointwiseRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
+  HasReducedRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
   HasExists -> type0 ~> type0
   HasIfRatTensor -> tGradient ~> tGradient ~> type0
   MaxGradients {} -> tGradient ~> tGradient ~> tGradient ~> tGradient
@@ -146,10 +148,14 @@ typeLossTypeClassOp = \case
   ImpliesTCOp -> binaryOp hasImplies
   ReduceAndTCOp -> reductionOp HasReduceAnd
   ReduceOrTCOp -> reductionOp HasReduceOr
-  CompareRatTensorTCOp op ->
+  CompareRatTensorPointwiseTCOp op ->
     forAllTypeTriples $ \t1 t2 t3 ->
-      hasRatTensorComparison op t1 t2 t3
-        ~~~> typeOfCompareRatTensor t1 t2 t3
+      hasPointwiseRatTensorComparison op t1 t2 t3
+        ~~~> typeOfPointwiseCompareRatTensor t1 t2 t3
+  CompareRatTensorReducedTCOp op ->
+    forAllTypeTriples $ \t1 t2 t3 ->
+      hasReducedRatTensorComparison op t1 t2 t3
+        ~~~> typeOfReducedCompareRatTensor t1 t2 t3
   IfRatTensorTCOp ->
     forAllTypes $ \t ->
       hasIfRatTensor t
@@ -269,6 +275,20 @@ typeOfPowRatTensor =
     forAllDims $ \dims ->
       tTensor (tRat .@@ [g]) dims ~> tRat ~> tTensor (tRat .@@ [g]) dims
 
+typeOfPointwiseCompareRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+typeOfPointwiseCompareRatTensor t1 t2 t3 =
+  forAllDims $ \dims ->
+    tTensor t1 dims
+      ~> tTensor t2 dims
+      ~> tTensor t3 dims
+
+typeOfReducedCompareRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+typeOfReducedCompareRatTensor t1 t2 t3 =
+  forAllDims $ \dims ->
+    tTensor t1 dims
+      ~> tTensor t2 dims
+      ~> tTensor t3 dimNil
+
 typeOfCompareRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOfCompareRatTensor t1 t2 t3 =
   forAllDims $ \pointwiseDims ->
@@ -356,7 +376,12 @@ convertToLossBuiltins decl = do
             And -> convertTo 3 (LossBuiltinTypeClassOp AndTCOp)
             Or -> convertTo 3 (LossBuiltinTypeClassOp OrTCOp)
             Implies -> convertTo 3 (LossBuiltinTypeClassOp ImpliesTCOp)
-            CompareRatTensor op -> convertTo 3 (LossBuiltinTypeClassOp $ CompareRatTensorTCOp op)
+            CompareRatTensor op -> case decideIfPointwiseOrReductionComparison args of
+              -- This is a hack as in order to implement this properly we need
+              -- to equip the `reduce` operations with the dimensions to reduce so that
+              -- we can define the correct general instance.
+              Reduced rArgs -> return $ normAppList (Builtin p (LossBuiltinTypeClassOp $ CompareRatTensorReducedTCOp op)) (prependHoles 3 rArgs)
+              Pointwise pArgs -> return $ normAppList (Builtin p (LossBuiltinTypeClassOp $ CompareRatTensorPointwiseTCOp op)) (prependHoles 3 pArgs)
             ReduceAndTensor -> convertTo 1 (LossBuiltinTypeClassOp ReduceAndTCOp)
             ReduceOrTensor -> convertTo 1 (LossBuiltinTypeClassOp ReduceOrTCOp)
             If -> convertTo 1 (LossBuiltinTypeClassOp IfRatTensorTCOp)
