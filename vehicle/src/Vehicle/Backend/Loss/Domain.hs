@@ -418,7 +418,7 @@ andPartitions dims p1 p2 = do
 compileBool :: (MonadDomain m) => Thunk Builtin -> m (MaybeTrivial Partitions)
 compileBool value = logEntryAndExit value $ do
   forcedValue <- forceAndRewriteTensor value
-  case toBoolValue forcedValue of
+  result <- case toBoolValue forcedValue of
     -----------------------
     -- Useful base cases --
     -----------------------
@@ -447,6 +447,12 @@ compileBool value = logEntryAndExit value $ do
     VBoolFoldList {} -> unblock forcedValue
     VBoolIf args -> compileBool =<< unfoldIf args
     VNot (TensorOp1Args dims xs) -> unblockWith (lowerNot unblockingActions $ TensorOp1Args dims xs) (Forced forcedValue)
+
+  -- In the case where we only return one partition with no constraints then
+  -- we can just return the unnormalised result.
+  case result of
+    NonTrivial (Map.toList -> [(Nothing, _)]) -> NonTrivial <$> singletonUnconstrainedPartition value
+    _ -> return result
   where
     unblock forced = unblockWith (unblockBoolExpr unblockingActions (Forced forced)) (Forced forced)
 

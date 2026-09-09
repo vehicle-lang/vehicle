@@ -305,18 +305,19 @@ typeIf inputType =
 typeOfQuantifierOrSearch :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOfQuantifierOrSearch outputType = do
   forAllDims $ \dims ->
-    -- Lower bounds for search space
-    tRatTensorWithoutGradients dims
-      ~>
-      -- Upper bounds for search space
-      tRatTensorWithoutGradients dims
-      ~>
-      -- Function to optimise for. The input variable always has gradients
-      -- as we will be using PGD to optimise over it.
-      (tRatTensorWithGradients dims ~> tTensor outputType dimNil)
-      ~>
-      -- Return type
-      tTensor outputType dimNil
+    forAllGradientPairs $ \g1 g2 ->
+      -- Lower bounds for search space
+      tTensor (tRat .@@ [g1]) dims
+        ~>
+        -- Upper bounds for search space
+        tTensor (tRat .@@ [g2]) dims
+        ~>
+        -- Function to optimise for. The input variable always has gradients
+        -- as we will be using PGD to optimise over it.
+        (tRatTensorWithGradients dims ~> tTensor outputType dimNil)
+        ~>
+        -- Return type
+        tTensor outputType dimNil
 
 --------------------------------------------------------------------------------
 -- TypeSystem

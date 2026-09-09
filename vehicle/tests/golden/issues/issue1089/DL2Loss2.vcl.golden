@@ -3,4 +3,4 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 boundedByEpsilonFactor : (Tensor Real -> Tensor Real) -> Tensor Real -> Tensor Real -> Tensor Real;
-boundedByEpsilonFactor net epsilon factor = DL2Loss.pointwiseNegation nil (search [1] [- (epsilon * factor)] [epsilon * factor] (\x -> DL2Loss.pointwiseDisjunction nil (DL2Loss.pointwiseGreaterEqualThan nil (- (epsilon / factor)) (net x ! 0)) (DL2Loss.pointwiseGreaterEqualThan nil (net x ! 0) (epsilon / factor))))
+boundedByEpsilonFactor net epsilon factor = DL2Loss.pointwiseNegation nil (search [1] [- (epsilon * factor)] [epsilon * factor] (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseLessThan nil (- (epsilon / factor)) (net x ! 0)) (DL2Loss.pointwiseLessThan nil (net x ! 0) (epsilon / factor)))))

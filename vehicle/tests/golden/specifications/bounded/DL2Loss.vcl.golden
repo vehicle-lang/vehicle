@@ -3,4 +3,4 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 bounded : (Tensor Real -> Tensor Real) -> Tensor Real;
-bounded f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseDisjunction nil (DL2Loss.pointwiseGreaterEqualThan nil 0.0 (f x)) (DL2Loss.pointwiseGreaterEqualThan nil (f x) 1.0)))
+bounded f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseLessThan nil 0.0 (f x)) (DL2Loss.pointwiseLessThan nil (f x) 1.0))))

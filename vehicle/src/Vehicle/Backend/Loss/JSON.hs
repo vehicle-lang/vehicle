@@ -25,7 +25,7 @@ import Vehicle.Data.AST.Decl
     isAnnotatedAsProperty,
     lhsBinderCount,
   )
-import Vehicle.Data.AST.Expr.Scoped (Type, normAppList)
+import Vehicle.Data.AST.Expr.Scoped (Type, normAppList, substArgs)
 import Vehicle.Data.AST.Record (FieldName (..))
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard.Core (Builtin (..), BuiltinConstructor, BuiltinFunction, BuiltinType)
@@ -327,6 +327,7 @@ convertExpr expr = do
         S.BoundVar _ v -> convertBoundVar convertExpr Var v args'
         S.FreeVar _ v -> convertFreeVar convertExpr Var v args'
         S.RecordProj _ typ recordVal field -> convertRecordAcc typ recordVal field args'
+        S.Lam {} -> convertExpr $ substArgs fun $ NonEmpty.toList args
         _ -> do
           funDoc <- prettyFriendlyInCtx fun
           developerError $ "Unexpected expr application:" <+> funDoc

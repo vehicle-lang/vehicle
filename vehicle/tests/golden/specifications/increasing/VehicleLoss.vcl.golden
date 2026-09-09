@@ -3,4 +3,4 @@ VehicleLoss = {trueElement = - infinity, falseElement = infinity, pointwiseNegat
 
 @property;
 increasing : (Tensor Real -> Tensor Real) -> Tensor Real;
-increasing f = VehicleLoss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> VehicleLoss.pointwiseGreaterThan nil x (f x)))
+increasing f = VehicleLoss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseLessEqualThan nil x (f x))))
