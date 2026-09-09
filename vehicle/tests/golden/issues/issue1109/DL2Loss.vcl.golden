@@ -3,4 +3,4 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 someProperty : (Tensor Real -> Tensor Real) -> Tensor Real;
-someProperty classifier = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.reduceDisjunction [1] (DL2Loss.pointwiseNegation [1] (where (DL2Loss.pointwiseLessEqualThan [1] (classifier x) (const 0.0 [1])) (not [0 != 1]) (DL2Loss.trueElement)))))
+someProperty classifier = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.reduceConjunction [1] (foreach k. where (DL2Loss.pointwiseLessEqualThan nil (classifier x ! k) 0.0) (not (k != 1)) (DL2Loss.trueElement)))))

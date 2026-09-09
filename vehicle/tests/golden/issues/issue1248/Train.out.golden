@@ -3,4 +3,4 @@ VehicleLoss = {trueElement = - infinity, falseElement = infinity, pointwiseNegat
 
 @property;
 robustAround : (Tensor Real -> Tensor Real) -> Tensor Real;
-robustAround classifier = VehicleLoss.pointwiseNegation nil (search [1] (const -infinity [1]) (const infinity [1]) (\delta -> VehicleLoss.reduceDisjunction [1] (VehicleLoss.pointwiseLessThan [1] (const 0.0 [1]) (classifier (foreach k. delta ! k)))))
+robustAround classifier = VehicleLoss.pointwiseNegation nil (search [1] (const -infinity [1]) (const infinity [1]) (\delta -> VehicleLoss.pointwiseNegation nil (VehicleLoss.reduceConjunction [1] (foreach k. VehicleLoss.pointwiseGreaterEqualThan nil 0.0 (classifier (foreach k. delta ! k) ! k)))))
