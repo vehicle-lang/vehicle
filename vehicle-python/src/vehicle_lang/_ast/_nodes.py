@@ -560,9 +560,14 @@ class Disjunct(BooleanExpression):
 
 
 @dataclass(frozen=True)
-class Query(BooleanExpression):
+class NonTrivialQuery(BooleanExpression):
     negated: bool
     disjunct_all: Sequence[Name]
+
+
+@dataclass(frozen=True)
+class TrivialQuery(BooleanExpression):
+    boolean_value: bool
 
 
 @dataclass(frozen=True)

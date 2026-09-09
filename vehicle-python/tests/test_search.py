@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
+
 from vehicle_lang.typing import DL2DifferentiableLogic, VehicleDifferentiableLogic
 
 from .config import HASKELL_GOLDEN_TESTS_PATH
@@ -23,20 +24,20 @@ def require_pytorch() -> Tuple[Any, Any]:
     return torch_module, loss_module
 
 
-def test_pytorch_search() -> None:
+def test_pytorch_search_bounded() -> None:
     torch, loss_pt = require_pytorch()
 
-    spec_path = GOLDEN_SPECS_BASE / "bounded" / "spec.vcl"
-    declarations = ["f", "bounded"]
+    spec_path = Path(__file__).parent / "data" / "test_bounded.vcl"
+    declarations = ["network", "bounded"]
 
-    # Create a random network (in future, tailor it to the spec)
+    # A network that calculates y = 2x + bias
     model = torch.nn.Linear(1, 1)
     with torch.no_grad():
         model.weight.fill_(2.0)
 
-    networks = {"f": model}
+    networks = {"network": model}
 
-    counterexamples = loss_pt.search(
+    search_results = loss_pt.search(
         spec_path,
         logic=DL2DifferentiableLogic(),
         declarations=declarations,
@@ -44,94 +45,133 @@ def test_pytorch_search() -> None:
         num_steps=10,
     )
 
-    print(counterexamples)
+    for property, results in search_results.items():
+        print(f"Property: {property}")
 
-    assert False
+        for boolean_result, samples in results:
+            print(f"Boolean result: {boolean_result}")
+
+            if boolean_result is False:
+                # If this property evaluates to False, this means we have found
+                # exactly one counter-example
+                assert len(samples) == 1
+                x = samples[0].inputs["x"].unsqueeze(0)
+
+                output = model(x)
+
+                print(f"Sample: {samples[0]}")
+                print(f"Output: {output.item()}")
+
+                # Check that the counter-example actually violates the property
+                assert 0 < x < 1
+                assert not (0 < output < 1)
+            else:
+                # If this property evaluates to True, this means we did not
+                # manage to find any counter-examples
+                assert len(samples) == 0
 
 
-'''
-@pytest.mark.skip()
-def test_pytorch_search_single_input() -> None:
-    """Test gradient-based search for properties with a single input."""
+def test_pytorch_search_andGate() -> None:
     torch, loss_pt = require_pytorch()
-    spec_path = GOLDEN_SPECS_BASE / "bounded" / "spec.vcl"
 
-    # Create a random network (in future, tailor it to the spec)
-    model = torch.nn.Sequential(
-        torch.nn.Linear(1, 8), torch.nn.ReLU(), torch.nn.Linear(8, 1)
+    spec_path = GOLDEN_SPECS_BASE / "andGate" / "spec.vcl"
+    declarations = ["andGate", "andGateCorrect"]
+
+    # A network which takes a tensor [x, y] and calculates x - y + bias
+    model = torch.nn.Linear(2, 1)
+    with torch.no_grad():
+        model.weight[:] = torch.tensor([[1.0, -1.0]])
+
+    networks = {"andGate": model}
+
+    search_results = loss_pt.search(
+        spec_path,
+        logic=DL2DifferentiableLogic(),
+        declarations=declarations,
+        networks=networks,
+        num_steps=10,
     )
+
+    for property, results in search_results.items():
+        print(f"Property: {property}")
+
+        for boolean_result, samples in results:
+            print(f"Boolean result: {boolean_result}")
+
+            if boolean_result is False:
+                # If this property evaluates to False, this means we have found
+                # exactly one counter-example
+                assert len(samples) == 1
+                x1 = samples[0].inputs["x1"]
+                x2 = samples[0].inputs["x2"]
+
+                inputs = torch.stack([x1, x2])
+                output = model(inputs)
+
+                print(f"Sample: {samples[0]}")
+                print(f"Output: {output.item()}")
+
+                # Check that the counter-example actually violates the property
+                assert (0 <= x1 <= 1) and (0 <= x2 <= 2)
+                assert (
+                    (x1 >= 0.5 and x2 >= 0.5 and not output >= 0.5)
+                    or (x1 >= 0.5 and x2 <= 0.5 and not output <= 0.5)
+                    or (x1 <= 0.5 and x2 >= 0.5 and not output <= 0.5)
+                    or (x1 <= 0.5 and x2 <= 0.5 and not output <= 0.5)
+                )
+            else:
+                # If this property evaluates to True, this means we did not
+                # manage to find any counter-examples
+                assert len(samples) == 0
+
+
+def test_pytorch_search_increasing() -> None:
+    torch, loss_pt = require_pytorch()
+
+    spec_path = Path(__file__).parent / "data" / "test_increasing.vcl"
+    declarations = ["f", "increasing"]
+
+    # A network that calculates y = |x - 0.5|
+    model = torch.nn.Sequential(
+        torch.nn.Linear(1, 2), torch.nn.ReLU(), torch.nn.Linear(2, 1, bias=False)
+    )
+
+    with torch.no_grad():
+        model[0].weight[:] = torch.tensor([[1.0], [-1.0]])
+        model[0].bias[:] = torch.tensor([-0.5, 0.5])
+        model[2].weight[:] = torch.tensor([1.0, 1.0])
+
     networks = {"f": model}
 
     search_results = loss_pt.search(
-        spec_path, logic=DL2DifferentiableLogic(), networks=networks, num_samples=10
+        spec_path,
+        logic=DL2DifferentiableLogic(),
+        declarations=declarations,
+        networks=networks,
+        num_steps=10,
     )
 
-    # Check that the single property in the specification is searched
-    assert len(search_results) == 1
+    for property, results in search_results.items():
+        print(f"Property: {property}")
 
-    result = search_results[0]
+        for boolean_result, samples in results:
+            print(f"Boolean result: {boolean_result}")
 
-    assert result.property == "bounded"
-    # Check that the search produced adversarial examples, not witnesses
-    # to the property as it contains only universal quantifiers
-    assert len(result.witnesses) == 0
-    assert len(result.adversarial_examples) == 10
+            if boolean_result is False:
+                # If this property evaluates to False, this means we have found
+                # exactly one counter-example
+                assert len(samples) == 1
+                x = samples[0].inputs["x"].unsqueeze(0)
 
-    print(f"{result.property} ADVERSARIAL EXAMPLES \n")
+                output = model(x)
 
-    for adv_example in result.adversarial_examples:
-        print(adv_example)
-        print("\n")
+                print(f"Sample: {samples[0]}")
+                print(f"Output: {output.item()}")
 
-        # Check that each adversarial example has 1 input
-        assert len(adv_example.inputs) == 1
-
-        final_loss = adv_example.loss
-        initial_loss = adv_example.loss_history[0]
-
-        # Check that the search minimised the loss
-        assert final_loss <= initial_loss
-
-
-@pytest.mark.skip()
-def test_pytorch_search_multiple_inputs() -> None:
-    """Test gradient-based search for properties with multiple inputs."""
-    torch, loss_pt = require_pytorch()
-    spec_path = Path(__file__).parent / "data" / "test_quantifier_nested.vcl"
-
-    # Create a random network (in future, tailor it to the spec)
-    model = torch.nn.Sequential(
-        torch.nn.Linear(1, 8), torch.nn.ReLU(), torch.nn.Linear(8, 1)
-    )
-    networks = {"f": model}
-
-    search_results = loss_pt.search(
-        spec_path, logic=DL2DifferentiableLogic(), networks=networks, num_samples=10
-    )
-
-    # Check that the single property in the specification is searched
-    assert len(search_results) == 1
-
-    result = search_results[0]
-
-    assert result.property == "equalNested"
-    # Check that the search produced witnesses, not adversarial examples
-    # to the property as it contains only existential quantifiers
-    assert len(result.witnesses) == 10
-    assert len(result.adversarial_examples) == 0
-
-    print(f"{result.property} WITNESSES \n")
-
-    for witness in result.witnesses:
-        print(witness)
-        print("\n")
-
-        # Check that witness has 2 inputs
-        assert len(witness.inputs) == 2
-
-        final_loss = witness.loss
-        initial_loss = witness.loss_history[0]
-
-        # Check that the search minimised the loss
-        assert final_loss <= initial_loss
-'''
+                # Check that the counter-example actually violates the property
+                assert 0 < x < 1
+                assert not (x <= output)
+            else:
+                # If this property evaluates to True, this means we did not
+                # manage to find any counter-examples
+                assert len(samples) == 0

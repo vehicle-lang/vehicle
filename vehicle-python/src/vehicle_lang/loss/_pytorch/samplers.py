@@ -21,7 +21,6 @@ else:  # pragma: no cover - exercised implicitly
 @dataclass
 class Sample:
     inputs: dict[str, torch.Tensor]
-    loss: float
     loss_history: List[float]
 
 
@@ -228,7 +227,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
             range_size = upper_bound - lower_bound
 
             initial_point = (
-                lower_bound + torch.rand((1,), dtype=lower_bound.dtype) * range_size
+                lower_bound + torch.rand((), dtype=lower_bound.dtype) * range_size
             )
             current_inputs[bound_var.name] = initial_point
 
@@ -277,6 +276,5 @@ class DefaultPyTorchSampler(PyTorchSampler):
                 current_inputs[bound_var.name] = perturbed_point
 
         final_loss = loss_fn(**current_inputs)
-        return Sample(
-            inputs=current_inputs, loss=final_loss.item(), loss_history=loss_history
-        )
+        loss_history.append(final_loss.item())
+        return Sample(inputs=current_inputs, loss_history=loss_history)

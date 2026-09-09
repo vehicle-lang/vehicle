@@ -7,18 +7,21 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 
 import torch
+
 from vehicle_lang.loss._search_tree import search_tree
 
 from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
 from ._common import load_search_loss, load_training_loss
 from ._pytorch._translation import PyTorchTranslation
-from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler
+from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler, Sample
 
 __all__ = [
     "load_specification",
     "PyTorchSampler",
     "DefaultPyTorchSampler",
 ]
+
+SearchResults = Sequence[tuple[bool, Sequence[Sample]]]
 
 
 def load_specification(
@@ -51,12 +54,12 @@ def search(
     networks: dict[DeclarationName, Any] = {},
     datasets: dict[DeclarationName, Any] = {},
     parameters: dict[DeclarationName, Any] = {},
-    num_samples: int = 10,
+    num_searches: int = 1,
     num_steps: int = 5,
     seed: int | None = None,
-) -> dict[str, Any]:
+) -> dict[str, SearchResults]:
     """
-    Finds counter-examples for properties in a specification using PGD.
+    Gradient-based search for properties in a specification.
     """
 
     search_data = load_search_loss(
@@ -74,18 +77,21 @@ def search(
     boolean_trees = search_data.boolean_trees
     search_bounds = search_data.search_bounds
 
-    sampler = DefaultPyTorchSampler(
-        num_samples=num_samples, num_steps=num_steps, seed=seed
-    )
+    sampler = DefaultPyTorchSampler(num_steps=num_steps, seed=seed)
 
-    counterexamples = {}
+    all_search_results: dict[str, SearchResults] = {}
     for property in boolean_trees:
-        counterexample = search_tree(
-            boolean_tree=property,
-            declarations=declarations,
-            bound_vars=search_bounds,
-            sampler=sampler,
-        )
-        counterexamples[property.name] = counterexample
+        search_results = []
+        for _ in range(num_searches):
+            result = search_tree(
+                boolean_tree=property,
+                declarations=declarations,
+                bound_vars=search_bounds,
+                sampler=sampler,
+            )
 
-    return counterexamples
+            search_results.append(result)
+
+        all_search_results[property.name] = search_results
+
+    return all_search_results
