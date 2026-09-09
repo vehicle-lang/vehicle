@@ -99,7 +99,7 @@ data JBooleanExpr
 
 data JDecl
   = DefFunction Name LHSBinderCount Bool JType JExpr
-  | DefAbstract Provenance Name JSort JType
+  | DefAbstract Name JSort JType
   deriving (Generic)
 
 data JBinder
@@ -247,12 +247,12 @@ convertDecls = \case
 
 convertDecl :: (MonadJSON m) => S.Decl Builtin -> m (Maybe JDecl)
 convertDecl decl = flip runReaderT (identifierOf decl, provenanceOf decl) $ case decl of
-  S.DefAbstract p ident sort typ -> do
+  S.DefAbstract _ ident sort typ -> do
     typ' <- convertTypeValue typ
     return $ Just $ case sort of
-      NetworkDef -> DefAbstract p (nameOf ident) Network typ'
-      DatasetDef -> DefAbstract p (nameOf ident) Dataset typ'
-      ParameterDef _ -> DefAbstract p (nameOf ident) Parameter typ'
+      NetworkDef -> DefAbstract (nameOf ident) Network typ'
+      DatasetDef -> DefAbstract (nameOf ident) Dataset typ'
+      ParameterDef _ -> DefAbstract (nameOf ident) Parameter typ'
       BuiltinDef -> developerError "DefAbstractSort BuiltinDef is not yet implemented"
   S.DefRecord {} -> return Nothing
   S.DefFunction _ ident sort typ body -> do
@@ -706,14 +706,14 @@ fromJDecl = \case
       let ident = Identifier userModulePath name
       let sort = FunctionDecl binderCount (if isProperty then Just AnnProperty else Nothing)
       return $ S.DefFunction mempty ident sort typ' body'
-  DefAbstract p name sort typ ->
+  DefAbstract name sort typ ->
     runFreshNameBoundContext $ do
       typ' <- fromJType typ
       let ident = Identifier userModulePath name
       case sort of
-        Network -> return $ S.DefAbstract p ident NetworkDef typ'
-        Dataset -> return $ S.DefAbstract p ident DatasetDef typ'
-        Parameter -> return $ S.DefAbstract p ident (ParameterDef Inferable) typ'
+        Network -> return $ S.DefAbstract mempty ident NetworkDef typ'
+        Dataset -> return $ S.DefAbstract mempty ident DatasetDef typ'
+        Parameter -> return $ S.DefAbstract mempty ident (ParameterDef Inferable) typ'
         Builtin -> developerError "DefAbstractSort BuiltinDef is not yet implemented"
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr Builtin)

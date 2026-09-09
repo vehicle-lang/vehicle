@@ -38,6 +38,7 @@ class SearchData:
 @dataclass
 class BoundVarData:
     name: str
+    dims: Any
     lower_bound: Any
     upper_bound: Any
 
@@ -93,6 +94,11 @@ def translate_search_bounds(
     for property_name, qs in quantifiers.items():
         bound_vars = []
         for q in qs:
+            dims = translator.compile_expression(
+                expression=q.dims,
+                path=path,
+                declaration_context=declaration_context,
+            )
             lower_bound = translator.compile_expression(
                 expression=q.lower_bound,
                 path=path,
@@ -104,7 +110,7 @@ def translate_search_bounds(
                 declaration_context=declaration_context,
             )
             bound_var = BoundVarData(
-                name=q.name, lower_bound=lower_bound, upper_bound=upper_bound
+                name=q.name, dims=dims, lower_bound=lower_bound, upper_bound=upper_bound
             )
             bound_vars.append(bound_var)
         properties_bound_vars[property_name] = bound_vars

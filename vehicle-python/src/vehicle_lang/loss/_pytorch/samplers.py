@@ -34,15 +34,6 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
     ) -> Sequence[Sample]: ...
 
-    """
-    @abstractmethod
-    def get_samples(
-        self,
-        bound_vars: Sequence[BoundVarData],
-        loss_fn: Callable[..., torch.Tensor],
-    ) -> Sequence[Sample]: ...
-    """
-
     @abstractmethod
     def pgd(
         self,
@@ -163,36 +154,6 @@ class DefaultPyTorchSampler(PyTorchSampler):
 
         return torch.stack(results)
 
-    '''
-    def get_samples(
-        self,
-        bound_vars: Sequence[BoundVarData],
-        loss_fn: Callable[..., torch.Tensor],
-    ) -> Sequence[Sample]:
-        """
-        Generates a sequence of samples. Each sample is a witness obtained using PGD.
-
-        Args:
-            bound_vars: Contains the name, lower bound and upper bound of each bound
-                variable to search
-            loss_fn: A callable representing the loss function to minimise
-            num_samples: The number of witnesses to generate
-            num_steps: The number of steps to take when searching each bound variable
-
-        Returns:
-        A sequence of Sample objects representing witnesses.
-        """
-        if self.seed is not None:
-            torch.manual_seed(self.seed)
-
-        samples = []
-        for _ in range(self.num_samples):
-            sample = self.pgd(bound_vars, loss_fn)
-            samples.append(sample)
-
-        return samples
-    '''
-
     def pgd(
         self,
         bound_vars: Sequence[BoundVarData],
@@ -219,12 +180,13 @@ class DefaultPyTorchSampler(PyTorchSampler):
         # Set starting points for all bound variables
         current_inputs = {}
         for bound_var in bound_vars:
+            dims = bound_var.dims
             upper_bound = bound_var.upper_bound
             lower_bound = bound_var.lower_bound
             range_size = upper_bound - lower_bound
 
             initial_point = (
-                lower_bound + torch.rand((), dtype=lower_bound.dtype) * range_size
+                lower_bound + torch.rand(dims, dtype=lower_bound.dtype) * range_size
             )
             current_inputs[bound_var.name] = initial_point
 

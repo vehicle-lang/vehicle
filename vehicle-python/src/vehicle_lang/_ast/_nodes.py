@@ -521,7 +521,6 @@ class DefFunction(Declaration):
 
 @dataclass(frozen=True)
 class DefAbstract(Declaration):
-    provenance: Provenance = field(repr=False)
     name: Name
     sort: str
     type: BuiltinType

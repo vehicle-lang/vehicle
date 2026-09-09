@@ -45,7 +45,7 @@ def test_pytorch_search_bounded() -> None:
     )
 
     for property, results in search_results.items():
-        print(f"Property: {property}")
+        print(f"Property: {property} \n")
 
         for boolean_result, samples in results:
             print(f"Boolean result: {boolean_result}")
@@ -59,7 +59,7 @@ def test_pytorch_search_bounded() -> None:
                 output = model(x)
 
                 print(f"Sample: {samples[0]}")
-                print(f"Output: {output.item()}")
+                print(f"Output: {output.item()} \n")
 
                 # Check that the counter-example actually violates the property
                 assert 0 < x < 1
@@ -88,11 +88,12 @@ def test_pytorch_search_andGate() -> None:
         logic=DL2DifferentiableLogic(),
         declarations=declarations,
         networks=networks,
+        num_searches=5,
         num_steps=10,
     )
 
     for property, results in search_results.items():
-        print(f"Property: {property}")
+        print(f"Property: {property} \n")
 
         for boolean_result, samples in results:
             print(f"Boolean result: {boolean_result}")
@@ -108,7 +109,7 @@ def test_pytorch_search_andGate() -> None:
                 output = model(inputs)
 
                 print(f"Sample: {samples[0]}")
-                print(f"Output: {output.item()}")
+                print(f"Output: {output.item()} \n")
 
                 # Check that the counter-example actually violates the property
                 assert (0 <= x1 <= 1) and (0 <= x2 <= 2)
@@ -151,7 +152,7 @@ def test_pytorch_search_increasing() -> None:
     )
 
     for property, results in search_results.items():
-        print(f"Property: {property}")
+        print(f"Property: {property} \n")
 
         for boolean_result, samples in results:
             print(f"Boolean result: {boolean_result}")
@@ -165,7 +166,7 @@ def test_pytorch_search_increasing() -> None:
                 output = model(x)
 
                 print(f"Sample: {samples[0]}")
-                print(f"Output: {output.item()}")
+                print(f"Output: {output.item()} \n")
 
                 # Check that the counter-example actually violates the property
                 assert 0 < x < 1
