@@ -87,5 +87,5 @@ type MonadNorm builtin m =
   ( MonadLogger m,
     NormalisableBuiltin builtin,
     MonadFreeContext builtin m,
-    MonadReadableNameContext m
+    MonadNameContext m
   )

@@ -67,7 +67,7 @@ Install both extras or combine them with any others to only install what is need
 
 ### Getting the source
 
-The main repository is [vehicle-lang/vehicle]. This contains the Vehicle compiler, the the standard library, bindings for Python, Agda and Rocq, and a bunch of examples and tools.
+The main repository is [vehicle-lang/vehicle]. This contains the Vehicle compiler, the standard library, bindings for Python, Agda and Rocq, and a bunch of examples and tools.
 
 The very first step to work on Vehicle is to clone the repository:
 
@@ -95,7 +95,7 @@ We recommend you install GHC and Cabal using [GHCup].
 
 1. Install GHCup following the instruction on the website: <https://www.haskell.org/ghcup/>
 
-2. Instal GHC 9.4.8 and the latest version of Cabal.
+2. Install GHC 9.4.8 and the latest version of Cabal.
 
    Run the following commands:
 

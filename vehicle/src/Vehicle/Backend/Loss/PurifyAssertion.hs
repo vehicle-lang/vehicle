@@ -7,6 +7,7 @@ module Vehicle.Backend.Loss.PurifyAssertion
     purifyNotEqualRatTensorComparison,
     unblockingActions,
     BlockingReason (..),
+    TensorValueLinearExpr,
   )
 where
 
@@ -16,15 +17,16 @@ import Control.Applicative (liftA2)
 
 import Control.Monad (liftM2)
 import Control.Monad.Except (MonadError (..), runExceptT)
-import Vehicle.Compile.Constants.ForcedValue (TensorValueLinearExpr)
+import Vehicle.Compile.Constants.TensorValue
+import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin (evalCompareIndex, evalCompareNat, evalCompareRatTensor, evalConstTensor, forceEvaluation)
+import Vehicle.Compile.Normalise.Builtin (evalCompareIndex, evalCompareNat, evalCompareRatTensor, forceEvaluation)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue)
-import Vehicle.Data.Assertion (Assertion, comparisonToAssertion)
+import Vehicle.Data.Assertion (Assertion, comparisonToAssertion, expression)
 import Vehicle.Data.Builtin.Interface (Accessor (..), applyAccessor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), forIfTreeM, mapIfTreeLeaves)
@@ -32,11 +34,12 @@ import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
-import Vehicle.Data.Real (ExtendedRational (..))
-import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
+import Vehicle.Data.Variable.Bound.Level (SliceVariable)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
+
+type TensorValueLinearExpr = LinearExpr SliceVariable TensorConstantValue
 
 -- | Monad purify
 type MonadPurifyAssertion m =
@@ -95,7 +98,7 @@ tryPurifyRatTensorComparison ::
   (MonadPurifyAssertion m) =>
   ComparisonOp ->
   TensorComparisonArgs (Thunk Builtin) ->
-  m (IfTree (Thunk Builtin) (MaybeTrivial (Thunk Builtin, Maybe (Assertion (TensorValueLinearExpr Builtin)))))
+  m (IfTree (Thunk Builtin) (MaybeTrivial (Thunk Builtin, Maybe (Assertion TensorValueLinearExpr))))
 tryPurifyRatTensorComparison op (TensorComparisonArgs _pDims rDims e1 e2) = do
   e1' <- compileLinearExpr rDims e1
   e2' <- compileLinearExpr rDims e2
@@ -108,14 +111,16 @@ tryPurifyRatTensorComparison op (TensorComparisonArgs _pDims rDims e1 e2) = do
         return $ case maybeSolvedVal of
           Nothing -> NonTrivial (val, Nothing)
           Just (Trivial b) -> Trivial b
-          Just (NonTrivial le) -> NonTrivial (val, Just le)
+          Just (NonTrivial le)
+            | assertionIsBound le -> NonTrivial (val, Just le)
+            | otherwise -> NonTrivial (val, Nothing)
 
 --------------------------------------------------------------------------------
 -- Compiling linear expressions
 
 data Result = Result
   { value :: Thunk Builtin,
-    valueAsLinearExpr :: Maybe (TensorValueLinearExpr Builtin)
+    valueAsLinearExpr :: Maybe TensorValueLinearExpr
   }
 
 type BranchingResult = IfTree (Thunk Builtin) Result
@@ -190,11 +195,12 @@ compileAsConstantExpr ::
   Thunk Builtin ->
   m BranchingResult
 compileAsConstantExpr dims value = do
+  constValue <- mkTensorConstantValue dims 1 value
   return $
     IfLeaf $
       Result
         { value = value,
-          valueAsLinearExpr = Just $ constantExpr $ TensorValue dims value
+          valueAsLinearExpr = Just $ constantExpr constValue
         }
 
 compileRatTensorVar ::
@@ -208,11 +214,7 @@ compileRatTensorVar dims lv spine = do
     _ : _ -> return Nothing
     [] -> do
       maybeSliceVar <- lookupSliceVariableInNestedCtx lv
-      case maybeSliceVar of
-        Nothing -> return Nothing
-        Just sliceVar -> do
-          zeroTensor <- forceEvaluation accessConstTensor evalConstTensor $ ConstTensorArgs (Forced IRatType) (Forced $ IRatLiteral 0) dims
-          return $ Just $ singletonVarExpr (TensorValue dims zeroTensor) sliceVar
+      return $ fmap (singletonVarExpr (TensorConstantValue dims 0 Nothing)) maybeSliceVar
 
   return $
     IfLeaf $
@@ -265,7 +267,7 @@ compileTensorOp1 ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
   (TensorOp1Args (Thunk Builtin) -> ForcedValue Builtin) ->
-  (TensorValueLinearExpr Builtin -> m (TensorValueLinearExpr Builtin)) ->
+  (TensorValueLinearExpr -> m TensorValueLinearExpr) ->
   TensorOp1Args (Thunk Builtin) ->
   m BranchingResult
 compileTensorOp1 compile evalFn evalLinearExpr (TensorOp1Args ds xs) = do
@@ -284,7 +286,7 @@ compileTensorOp2 ::
   (MonadPurifyAssertion m) =>
   TypeUnblockingFunction Result m ->
   (TensorOp2Args (Thunk Builtin) -> ForcedValue Builtin) ->
-  (TensorValueLinearExpr Builtin -> TensorValueLinearExpr Builtin -> Maybe (m (TensorValueLinearExpr Builtin))) ->
+  (TensorValueLinearExpr -> TensorValueLinearExpr -> Maybe (m TensorValueLinearExpr)) ->
   TensorOp2Args (Thunk Builtin) ->
   m BranchingResult
 compileTensorOp2 compile evalFn evalLinearExpr (TensorOp2Args ds xs ys) = do
@@ -296,11 +298,22 @@ compileTensorOp2 compile evalFn evalLinearExpr (TensorOp2Args ds xs ys) = do
         let newValue = Forced $ evalFn $ TensorOp2Args ds (value rxs'') (value rys'')
         let maybeLinearExprFn = liftM2 evalLinearExpr (valueAsLinearExpr rxs'') (valueAsLinearExpr rys'')
         newLinearExpr <- maybe (return Nothing) sequence maybeLinearExprFn
+
         return $
           Result
             { value = newValue,
               valueAsLinearExpr = newLinearExpr
             }
+
+-- | Currently we can't deal with composite bounds, e.g. the `x < y`
+-- as PGD samples from the domain of each variable sequentially so a bad
+-- choice of `x` might make the domain of `y` empty.
+--
+--    exists x y . x < y and ....
+assertionIsBound :: Assertion TensorValueLinearExpr -> Bool
+assertionIsBound lexpr
+  | linearExprNumberOfVariables (expression lexpr) == 1 = True
+  | otherwise = False
 
 compileIf ::
   (MonadPurifyAssertion m) =>
@@ -362,43 +375,37 @@ purifyBoundVar unblock lv spine = case spine of
 --------------------------------------------------------------------------------
 -- Utility functions
 
-isFiniteConstant :: DimensionedTensorValue Builtin -> Maybe Rational
-isFiniteConstant = \case
-  TensorValue _ (Forced (IRatTensor (ConstantTensor _ (Finite c1)))) -> Just c1
-  _ -> Nothing
-
 addLinearExprs ::
   (MonadNorm Builtin m) =>
   Coefficient ->
   Coefficient ->
-  TensorValueLinearExpr Builtin ->
-  TensorValueLinearExpr Builtin ->
-  Maybe (m (TensorValueLinearExpr Builtin))
-addLinearExprs c1 c2 le1 le2 = Just $ addExprsUnsafe c1 c2 le1 le2
+  TensorValueLinearExpr ->
+  TensorValueLinearExpr ->
+  Maybe (m TensorValueLinearExpr)
+addLinearExprs c1 c2 le1 le2 =
+  -- It's fine to use `addExprsUnsafe` here as we don't care about the constant
+  -- case.
+  Just $ addExprsUnsafe c1 c2 le1 le2
 
 multiplyLinearExprs ::
   (MonadNorm Builtin m) =>
-  TensorValueLinearExpr Builtin ->
-  TensorValueLinearExpr Builtin ->
-  Maybe (m (TensorValueLinearExpr Builtin))
+  TensorValueLinearExpr ->
+  TensorValueLinearExpr ->
+  Maybe (m TensorValueLinearExpr)
 multiplyLinearExprs le1 le2 = case (isConstant le1, isConstant le2) of
   (Just (isFiniteConstant -> Just c1), _) -> Just $ scaleExpr c1 le2
   (_, Just (isFiniteConstant -> Just c2)) -> Just $ scaleExpr c2 le1
-  (Just (TensorValue dims c1), Just (TensorValue _ c2)) -> Just $ do
-    let value = Forced $ mkExpr accessMulRatTensor $ TensorOp2Args dims c1 c2
-    return $ constantExpr $ TensorValue dims value
+  (Just v1, Just v2) -> Just (constantExpr <$> mulDimensionedValue v1 v2)
   _ -> Nothing
 
 divideLinearExprs ::
   (MonadNorm Builtin m) =>
-  TensorValueLinearExpr Builtin ->
-  TensorValueLinearExpr Builtin ->
-  Maybe (m (TensorValueLinearExpr Builtin))
+  TensorValueLinearExpr ->
+  TensorValueLinearExpr ->
+  Maybe (m TensorValueLinearExpr)
 divideLinearExprs le1 le2 = case (isConstant le1, isConstant le2) of
   (_, Just (isFiniteConstant -> Just c2)) -> Just $ scaleExpr (1 / c2) le1
-  (Just (TensorValue dims c1), Just (TensorValue _ c2)) -> Just $ do
-    let value = Forced $ mkExpr accessDivRatTensor $ TensorOp2Args dims c1 c2
-    return $ constantExpr $ TensorValue dims value
+  (Just v1, Just v2) -> Just (constantExpr <$> divDimensionedValue v1 v2)
   _ -> Nothing
 
 logEntryAndExit ::

@@ -200,10 +200,10 @@ boundVariablesIn ctxSize = execWriter . goThunk ctxSize
         goSpine depth spine
       VPi binder (Closure env bound) -> do
         traverse_ (goThunk depth) binder
-        goEnvAndExpr (depth + 1) env bound
+        goEnvAndExpr (depth + 1) (extendEnvWithBound depth binder env) bound
       VLam binder (Closure env bound) -> do
         traverse_ (goThunk depth) binder
-        goEnvAndExpr (depth + 1) env bound
+        goEnvAndExpr (depth + 1) (extendEnvWithBound depth binder env) bound
       VRecord i fs -> do
         goThunk depth i
         traverse_ (goThunk depth) fs
@@ -231,18 +231,6 @@ data GenericGluedExpr meta builtin = Glued
 
 instance HasProvenance (GenericGluedExpr meta builtin) where
   provenanceOf = provenanceOf . unnormalised
-
------------------------------------------------------------------------------
--- Dimensioned values
-
--- | Because there are no dependent types in Haskell, we cannot create
--- type-classes over tensor values with a given dimension. Hence we need
--- to wrap them in this ugly type-class that stores the dimensions internally.
-data DimensionedTensorValue builtin = TensorValue
-  { tensorValueDims :: UnforcedDims builtin,
-    tensorValue :: Thunk builtin
-  }
-  deriving (Show, Eq, Ord)
 
 -----------------------------------------------------------------------------
 -- Instances

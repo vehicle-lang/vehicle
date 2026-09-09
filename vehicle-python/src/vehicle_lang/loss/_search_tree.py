@@ -27,7 +27,7 @@ def search_tree(
             for query_disjunct in node.disjunct_all:
                 print(f"Searching {query_disjunct}")
                 loss_fn = declarations[query_disjunct]
-                bool_fn = declarations[f"{query_disjunct}-bool"]
+                bool_fn = declarations[f"{query_disjunct}_bool"]
                 bound_var_data = bound_vars[query_disjunct]
 
                 sample = sampler.pgd(bound_var_data, loss_fn)

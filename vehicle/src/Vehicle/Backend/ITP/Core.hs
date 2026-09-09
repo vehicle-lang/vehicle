@@ -7,6 +7,8 @@ import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Builtin.Core (BuiltinFunction (..))
 import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..))
+import Vehicle.Data.Builtin.Interface (BuiltinHasNatType)
+import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Prelude
@@ -19,9 +21,13 @@ data ComparisonType expr
   | Reduced [GenericArg expr]
 
 decideIfPointwiseOrReductionComparison ::
-  (HasListExpr Expr Expr DecidabilityBuiltin, HasCallStack) =>
-  [GenericArg (Expr DecidabilityBuiltin)] ->
-  ComparisonType (Expr DecidabilityBuiltin)
+  ( HasListExpr Expr Expr builtin,
+    BuiltinHasNatType builtin,
+    PrintableBuiltin builtin,
+    HasCallStack
+  ) =>
+  [GenericArg (Expr builtin)] ->
+  ComparisonType (Expr builtin)
 decideIfPointwiseOrReductionComparison = \case
   _ds : (argExpr -> IDimNil) : as -> Pointwise as
   (argExpr -> IDimNil) : _ds : as -> Reduced as

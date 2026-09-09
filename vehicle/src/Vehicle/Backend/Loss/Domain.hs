@@ -15,7 +15,8 @@ import Data.Map qualified as Map
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.PurifyAssertion
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
-import Vehicle.Compile.Constants.ForcedValue
+import Vehicle.Compile.Constants.TensorValue
+import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
@@ -25,7 +26,7 @@ import Vehicle.Compile.Normalise.Quote (unnormaliseInTensorCtx)
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Unblock (unblockBoolExpr)
 import Vehicle.Data.Assertion (Assertion, NormalisedRelation (..), Relation (..))
 import Vehicle.Data.Bound
@@ -38,6 +39,7 @@ import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Variable.Bound.Context.Generic (toNamedBoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
@@ -45,7 +47,9 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), addDeclToContext, runFreshFreeContextT)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
-type UserVariableConstraintTree = BooleanExpr (UserVariableConstraint Builtin)
+type UserVariableConstraint = Assertion TensorValueLinearExpr
+
+type UserVariableConstraintTree = BooleanExpr UserVariableConstraint
 
 findAndAttachQuantifierBounds :: (MonadCompile m) => Prog Builtin -> m (Prog Builtin)
 findAndAttachQuantifierBounds (Main decls) =
@@ -222,24 +226,23 @@ compileConstraints p dims knownShape binder var (maybeConstraints, maybeRemainde
     logDebug MaxDetail $ "number-of-constraint-partitions:" <+> pretty (length disjunctedTensorBounds)
 
     -- For each set of disjuncted bounds create a search expression.
-    newPartitions <- forM disjunctedTensorBounds $ \(tensorBounds, remainingTree) -> do
-      logCompilerSection2 MaxDetail "flattening of constraint partition" $ do
-        logDebugM MaxDetail $ do
-          boundsDoc <- prettyFriendlyInCtx (BoundedValue var tensorBounds)
-          return $ "all-variable-bounds:" <> lineIndent boundsDoc
+    newPartitions <- forM disjunctedTensorBounds $ \(tensorBounds, remainingTree) -> logCompilerSection2 MaxDetail "flattening of constraint partition" $ do
+      logDebugM MaxDetail $ do
+        boundsDoc <- prettyFriendlyInCtx (BoundedValue var tensorBounds)
+        return $ "all-variable-bounds:" <> lineIndent boundsDoc
 
-        domain <- fourierMotzkinTensorBoundsElimination knownShape tensorBounds
+      domain <- fourierMotzkinTensorBoundsElimination knownShape tensorBounds
 
-        logDebugM MaxDetail $ do
-          boundsDoc <- prettyFriendlyInCtx (BoundedValue var domain)
-          return $ "final-domain:" <> lineIndent boundsDoc
+      logDebugM MaxDetail $ do
+        boundsDoc <- prettyFriendlyInCtx (BoundedValue var domain)
+        return $ "final-domain:" <> lineIndent boundsDoc
 
-        logDebugM MaxDetail $ do
-          remDoc <- maybe (return "") (fmap lineIndent . prettyFriendlyInCtx) remainingTree
-          return $ "remaining-constraints:" <> remDoc
+      logDebugM MaxDetail $ do
+        remDoc <- maybe (return "") (fmap lineIndent . prettyFriendlyInCtx) remainingTree
+        return $ "remaining-constraints:" <> remDoc
 
-        searchExpr <- compileSearch p dims binder remainingBody domain
-        return $ singletonPartition (remainingTree, Just searchExpr)
+      searchExpr <- compileSearch p dims binder remainingBody domain
+      return $ singletonPartition (remainingTree, Just searchExpr)
     NonTrivial <$> disjunctPartitions IDimNil newPartitions
 
 compileSearch ::
@@ -248,13 +251,13 @@ compileSearch ::
   Expr Builtin ->
   Binder Builtin ->
   Expr Builtin ->
-  Domain (DimensionedTensorValue Builtin) ->
+  Domain TensorConstantValue ->
   m (Expr Builtin)
 compileSearch p dims binder closure (Domain lowerBound upperBound) = do
   -- Create the final expression
   -- NOTE that this is unsound as we discard the strictness information.
-  lowerBound' <- unnormaliseInTensorCtx $ tensorValue $ lowerBoundValue lowerBound
-  upperBound' <- unnormaliseInTensorCtx $ tensorValue $ upperBoundValue upperBound
+  lowerBound' <- unnormaliseInTensorCtx =<< foldConstant (lowerBoundValue lowerBound)
+  upperBound' <- unnormaliseInTensorCtx =<< foldConstant (upperBoundValue upperBound)
 
   let spine =
         mkExpr accessSpine $
@@ -272,14 +275,14 @@ findTensorBounds ::
   NestedSliceVariable ->
   (KnownPrefixOfTensorShape, Thunk Builtin) ->
   Maybe UserVariableConstraintTree ->
-  m (DisjunctAll (TensorBounds (DimensionedTensorValue Builtin), Maybe UserVariableConstraintTree))
+  m (DisjunctAll (TensorBounds TensorConstantValue, Maybe UserVariableConstraintTree))
 findTensorBounds parentVar (parentVarShapePrefix, _parentVarRemainingShape) constraints =
   go (DisjunctAll [(emptyBounds, constraints)]) parentVar
   where
     go ::
-      DisjunctAll (TensorBounds (DimensionedTensorValue Builtin), Maybe UserVariableConstraintTree) ->
+      DisjunctAll (TensorBounds TensorConstantValue, Maybe UserVariableConstraintTree) ->
       NestedSliceVariable ->
-      m (DisjunctAll (TensorBounds (DimensionedTensorValue Builtin), Maybe UserVariableConstraintTree))
+      m (DisjunctAll (TensorBounds TensorConstantValue, Maybe UserVariableConstraintTree))
     go allBounds var = do
       result <- forM allBounds $ \(bounds, maybeTree) ->
         case maybeTree of
@@ -300,8 +303,8 @@ findVarBound ::
   (MonadDomain m) =>
   NestedSliceVariable ->
   VariableInfo ->
-  UserVariableConstraint Builtin ->
-  m (Maybe (TensorBounds (DimensionedTensorValue Builtin)))
+  UserVariableConstraint ->
+  m (Maybe (TensorBounds TensorConstantValue))
 findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
   | not (expr `containsVariable` toSliceVar var) = return Nothing
   | otherwise = do
@@ -309,6 +312,15 @@ findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
       boundExpr <- tensorValueLinearExprToValue expr'
       bounds <- convertToTensorBounds parentShape indices rel coef boundExpr
       return $ Just bounds
+
+tensorValueLinearExprToValue ::
+  (MonadNorm Builtin m) =>
+  LinearExpr SliceVariable TensorConstantValue ->
+  m TensorConstantValue
+tensorValueLinearExprToValue linearExpr = do
+  let dims = tensorValueDims $ constantValue linearExpr
+  let mkTerm (v, coeff) = mkTensorConstantValue dims (Finite coeff) (Forced $ VBoundVar (toLv v) [])
+  linearExprToExpr id mkTerm (addConstants 1 1) linearExpr
 
 --------------------------------------------------------------------------------
 -- Constraint search
@@ -371,7 +383,7 @@ notPartitions dims partitions = do
       notValue <- traverse (forceEvaluation accessNotTensor evalNot . TensorOp1Args dims) value
       return (fmap flattenBoolExpr notConstraintTree, notValue)
 
-    notConstraint :: UserVariableConstraint Builtin -> m (BooleanExpr (UserVariableConstraint Builtin))
+    notConstraint :: UserVariableConstraint -> m (BooleanExpr UserVariableConstraint)
     notConstraint (NormalisedRelation rel expr) = do
       negExpr <- scaleExpr (-1) expr
       return $ case rel of
@@ -394,8 +406,7 @@ disjunctMaybeTrivialPartitions :: (MonadDomain m) => Expr Builtin -> DisjunctAll
 disjunctMaybeTrivialPartitions dims = traverse (disjunctPartitions dims) . eliminateTrivialDisjunctions
 
 orPartitions :: (MonadDomain m) => Expr Builtin -> Partitions -> Partitions -> m Partitions
-orPartitions dims p1 p2 = do
-  unionWithM (unionMaybeWithM (\x y -> forceEvaluation accessOrTensor evalOr $ TensorOp2Args dims x y)) p1 p2
+orPartitions dims = unionWithM (unionMaybeWithM (\x y -> forceEvaluation accessOrTensor evalOr $ TensorOp2Args dims x y))
 
 andPartitions :: (MonadDomain m) => Expr Builtin -> Partitions -> Partitions -> m Partitions
 andPartitions dims p1 p2 = do
@@ -468,8 +479,8 @@ compileComparison ::
   (MonadDomain m) =>
   (ComparisonOp, TensorComparisonArgs (Thunk Builtin)) ->
   m (MaybeTrivial Partitions)
-compileComparison (op, args) = do
-  logCompilerSection2 MaxDetail "assertion compilation" $ do
+compileComparison (op, args) =
+  logCompilerSection2 MaxDetail "assertion compilation" $
     if op == Ne
       then traverse singletonUnconstrainedPartition =<< purifyNotEqualRatTensorComparison args
       else do
@@ -491,7 +502,7 @@ compileComparison (op, args) = do
       orTrivialM (orPartitions dims') cAndx notCAndy
 
     compileLeaf ::
-      MaybeTrivial (Thunk Builtin, Maybe (Assertion (TensorValueLinearExpr Builtin))) ->
+      MaybeTrivial (Thunk Builtin, Maybe (Assertion TensorValueLinearExpr)) ->
       m (MaybeTrivial Partitions)
     compileLeaf = \case
       Trivial b -> return $ Trivial b
@@ -555,10 +566,6 @@ logEntryAndExit ::
   m (MaybeTrivial Partitions) ->
   m (MaybeTrivial Partitions)
 logEntryAndExit start action = do
-  logDebug MaxDetail "Hi"
-  logDebug MaxDetail $ prettyVerbose start
-  ctx <- getNameContext
-  logDebug MaxDetail $ pretty ctx
   logDebugM MaxDetail $ do
     doc <- prettyFriendlyInCtx start
     return $ "search-enter:" <+> doc

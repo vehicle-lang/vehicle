@@ -47,8 +47,8 @@ def restructure_search_loss(
             quantifiers_dict[decl.name] = quantifiers
             reformed_body = reform_lambdas(binders, body)
             new_decl = DefFunction(
-                provenance=decl.provenance,
                 name=decl.name,
+                lhsBinderCount=len(binders),
                 isProperty=True,
                 type=decl.type,
                 body=reformed_body,

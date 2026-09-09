@@ -8,6 +8,16 @@
 
 ### Loss backend
 
+* Fixed bug where the translation of `==` and `!=` were incorrectly specified in the DL2Loss logic.
+
+* Fixed a few `Internal scoping` errors.
+
+* Fixed bug in default `Sampler` implementations which weren't generating initial starting points with maximal randomness.
+
+* Fixed bug in default pytorch `Sampler` implementation where PGD search wasn't being run correctly if the loss function was being called in a `torch.no_grad()` environment.
+
+* Fixed bug where constraints with multiple quantified variables in them were being incorrectly added to the sampler domains.
+
 * Quantified variables are no longer required to have a well-defined domain.
   e.g. instead of
   ```
@@ -43,6 +53,9 @@
   p : Bool
   p = forall x . 0 <= x <= 1 => x ** 2 > 2
   ```
+
+* Generated Python code is now written out to a temporary directory which allows you to step through
+  it as normal when you attach a debugger.
 
 ## v0.27.1
 

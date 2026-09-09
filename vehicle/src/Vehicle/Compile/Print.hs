@@ -31,6 +31,7 @@ import Data.Text qualified as Text
 import GHC.TypeLits
 import Prettyprinter (fill)
 import Vehicle.Compile.Constants.Rational
+import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Core (MetaLike)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
@@ -47,8 +48,7 @@ import Vehicle.Data.Bound
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.ForcedValue (ForcedValue, GenericBoundEnv, GenericForcedValue (..), GenericThunk, GenericUnforcedArg, GenericUnforcedBinder, ThunkWithMetas)
-import Vehicle.Data.Code.ForcedValue qualified as Forced
+import Vehicle.Data.Code.ForcedValue (ForcedValue, ForcedValueWithMetas, GenericBoundEnv (..), GenericForcedValue (..), GenericThunk, GenericUnforcedArg, GenericUnforcedBinder, Thunk, ThunkWithMetas, unnormalised)
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Real (ExtendedRational (..))
@@ -227,7 +227,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Named tags) (GenericThunk meta builtin `In` NamedBoundCtx) = 'UnnormaliseValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
   StrategyFor ('Unnamed tags) (GenericThunk meta builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Expr Builtin))
   StrategyFor tags (GenericBoundEnv meta builtin `In` ctx) = StrategyFor tags (ForcedValue builtin `In` ctx)
-  StrategyFor tags (Forced.DimensionedTensorValue builtin `In` ctx) = StrategyFor tags (ForcedValue builtin `In` ctx)
+  StrategyFor tags (TensorConstantValue `In` ctx) = StrategyFor tags (Thunk Builtin `In` ctx)
   -------------------
   -- Context setup --
   -------------------
@@ -517,7 +517,7 @@ instance
   ) =>
   PrettyUsing rest (GenericBoundEnv meta builtin `In` ctx)
   where
-  prettyUsing (Forced.BoundEnv env, ctx) = prettyFlatList $ go env
+  prettyUsing (BoundEnv env, ctx) = prettyFlatList $ go env
     where
       go :: GenericBoundCtx (GenericBinder (), GenericThunk meta builtin) -> [Doc a]
       go = \case
@@ -526,16 +526,18 @@ instance
           let valueDoc = goEntry value
           (pretty (nameOf binder) <+> "=" <+> valueDoc) : go rs
 
-      goEntry :: Forced.GenericThunk meta builtin -> Doc a
+      goEntry :: GenericThunk meta builtin -> Doc a
       goEntry v = prettyUsing @rest (v, ctx)
 
 instance
-  ( PrettyUsing rest (Forced.Thunk builtin `In` ctx),
-    PrintableBuiltin builtin
+  ( PrettyUsing rest (Thunk Builtin `In` ctx)
   ) =>
-  PrettyUsing rest (Forced.DimensionedTensorValue builtin `In` ctx)
+  PrettyUsing rest (TensorConstantValue `In` ctx)
   where
-  prettyUsing (Forced.TensorValue _dims value, ctx) = prettyUsing @rest (value, ctx)
+  prettyUsing (TensorConstantValue _dims coefficient maybeValue, ctx) =
+    pretty coefficient <> case maybeValue of
+      Nothing -> ""
+      Just value -> "*" <> prettyUsing @rest (value, ctx)
 
 --------------------------------------------------------------------------------
 -- Linear expression
@@ -831,7 +833,7 @@ prettyConstraint ctx constraint =
       ]
 
 instance
-  (PrettyUsing rest (Forced.ThunkWithMetas builtin `In` NamedBoundCtx)) =>
+  (PrettyUsing rest (ThunkWithMetas builtin `In` NamedBoundCtx)) =>
   PrettyUsing rest (UnificationConstraint builtin `In` ConstraintContext builtin)
   where
   prettyUsing (Unify _ e1 e2, ctx) = do
@@ -840,7 +842,7 @@ instance
     prettyConstraint ctx (e1' <+> "~" <+> e2')
 
 instance
-  ( PrettyUsing rest (Forced.ForcedValueWithMetas builtin `In` NamedBoundCtx),
+  ( PrettyUsing rest (ForcedValueWithMetas builtin `In` NamedBoundCtx),
     PrettyUsing rest (Expr builtin `In` NamedBoundCtx)
   ) =>
   PrettyUsing rest (InstanceConstraint builtin `In` ConstraintContext builtin)
@@ -891,7 +893,7 @@ instance
     let typeDoc = prettyUsing @rest (metaType, nameCtx)
     let solutionDoc = case metaSolution of
           Nothing -> "?"
-          Just solution -> prettyUsing @rest (Forced.unnormalised solution, nameCtx)
+          Just solution -> prettyUsing @rest (unnormalised solution, nameCtx)
     align $
       prettyMapEntries
         [ ("solution", solutionDoc),
@@ -1159,7 +1161,7 @@ instance Printable (D.Module Builtin) where
 --
 -- TODO: can probably do this better in terms of rewriting `render` in BNFC.Print file
 bnfcPrintHack :: String -> Text
-bnfcPrintHack = removeDots . go removeTrailingSpace . removeNewLines . go leftAlignBrackets . Text.pack
+bnfcPrintHack = removeLambdaSpaces . removeDotSpaces . go removeTrailingSpace . removeNewLines . go leftAlignBrackets . Text.pack
   where
     go :: (Text -> Text) -> Text -> Text
     go f t = do
@@ -1185,5 +1187,8 @@ bnfcPrintHack = removeDots . go removeTrailingSpace . removeNewLines . go leftAl
       Text.replace "{  " "{"
         . Text.replace "}  " "}"
 
-    removeDots :: Text -> Text
-    removeDots = Text.replace " ." "."
+    removeDotSpaces :: Text -> Text
+    removeDotSpaces = Text.replace " ." "."
+
+    removeLambdaSpaces :: Text -> Text
+    removeLambdaSpaces = Text.replace "\\ " "\\"

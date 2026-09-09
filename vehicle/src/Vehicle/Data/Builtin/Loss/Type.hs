@@ -6,6 +6,7 @@ module Vehicle.Data.Builtin.Loss.Type
 where
 
 import Data.Proxy (Proxy (..))
+import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -32,13 +33,7 @@ import Prelude hiding (iterate, pi)
 --------------------------------------------------------------------------------
 
 instance TypableBuiltin (LossBuiltin 'Train) where
-  typeBuiltin = typeLossBuiltin Train
-  useDependentMetas _ = True
-  isConstructor = isLossConstructor
-  isCastConstraint = isLossCastConstraint
-
-instance TypableBuiltin (LossBuiltin 'Search) where
-  typeBuiltin = typeLossBuiltin Search
+  typeBuiltin = typeLossBuiltin
   useDependentMetas _ = True
   isConstructor = isLossConstructor
   isCastConstraint = isLossCastConstraint
@@ -61,17 +56,17 @@ isLossConstructor = \case
   LossBuiltinTypeClassOp {} -> False
   LossBuiltinCast {} -> False
 
-typeLossBuiltin :: (MonadTypeChecker (LossBuiltin mode) m) => LossMode -> Provenance -> LossBuiltin mode -> m (Expr (LossBuiltin mode))
-typeLossBuiltin mode p = \case
+typeLossBuiltin :: (MonadTypeChecker (LossBuiltin mode) m) => Provenance -> LossBuiltin mode -> m (Expr (LossBuiltin mode))
+typeLossBuiltin p = \case
   StandardDerivedFunction f -> getDeclType (Proxy @(LossBuiltin _)) (identifierOf f)
   b -> return $ fromDSL p $ case b of
     StandardBuiltinType t -> typeStandardBuiltinType t
-    StandardBuiltinFunction f -> typeStandardFunction mode f
+    StandardBuiltinFunction f -> typeStandardFunction f
     StandardBuiltinConstructor c -> typeStandardConstructor c
     LossBuiltinType t -> typeLossBuiltinType t
     LossBuiltinConstructor c -> typeLossBuiltinConstructor c
     LossBuiltinTypeClass t -> typeLossTypeClass t
-    LossBuiltinTypeClassOp t -> typeLossTypeClassOp mode t
+    LossBuiltinTypeClassOp t -> typeLossTypeClassOp t
     LossBuiltinCast t -> typeLossCast t
     LossBuiltinFunction t -> typeLossFunction t
 
@@ -127,7 +122,8 @@ typeLossTypeClass = \case
   HasImplies -> type0 ~> type0 ~> type0 ~> type0
   HasReduceAnd -> type0 ~> type0
   HasReduceOr -> type0 ~> type0
-  HasRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
+  HasPointwiseRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
+  HasReducedRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
   HasExists -> type0 ~> type0
   HasIfRatTensor -> tGradient ~> tGradient ~> type0
   MaxGradients {} -> tGradient ~> tGradient ~> tGradient ~> tGradient
@@ -136,8 +132,8 @@ typeLossTypeClass = \case
   ValidDatasetType -> type0 ~> type0
   ValidParamType -> type0 ~> type0
 
-typeLossTypeClassOp :: LossMode -> LossBuiltinTypeClassOp -> DSLExpr (LossBuiltin mode)
-typeLossTypeClassOp mode = \case
+typeLossTypeClassOp :: LossBuiltinTypeClassOp -> DSLExpr (LossBuiltin mode)
+typeLossTypeClassOp = \case
   FromBoolTensorTC ->
     forAllTypes $ \t ->
       hasBoolLiterals t
@@ -152,10 +148,14 @@ typeLossTypeClassOp mode = \case
   ImpliesTCOp -> binaryOp hasImplies
   ReduceAndTCOp -> reductionOp HasReduceAnd
   ReduceOrTCOp -> reductionOp HasReduceOr
-  CompareRatTensorTCOp op ->
+  CompareRatTensorPointwiseTCOp op ->
     forAllTypeTriples $ \t1 t2 t3 ->
-      hasRatTensorComparison op t1 t2 t3
-        ~~~> typeOfCompareRatTensor t1 t2 t3
+      hasPointwiseRatTensorComparison op t1 t2 t3
+        ~~~> typeOfPointwiseCompareRatTensor t1 t2 t3
+  CompareRatTensorReducedTCOp op ->
+    forAllTypeTriples $ \t1 t2 t3 ->
+      hasReducedRatTensorComparison op t1 t2 t3
+        ~~~> typeOfReducedCompareRatTensor t1 t2 t3
   IfRatTensorTCOp ->
     forAllTypes $ \t ->
       hasIfRatTensor t
@@ -163,7 +163,7 @@ typeLossTypeClassOp mode = \case
   ExistsTCOp ->
     forAllTypes $ \t ->
       hasExists t
-        ~~~> typeOfQuantifierOrSearch mode t
+        ~~~> typeOfQuantifierOrSearch t
   where
     unaryOp tc =
       forAllTypes $ \t ->
@@ -182,9 +182,9 @@ typeLossTypeClassOp mode = \case
           @@ [t]
           ~~~> forAllDims (\dims -> tTensor t dims ~> tTensor t dimNil)
 
-typeStandardFunction :: LossMode -> BuiltinFunction -> DSLExpr (LossBuiltin mode)
-typeStandardFunction mode f = case f of
-  QuantifyRatTensor Exists -> typeOfQuantifierOrSearch mode tBool
+typeStandardFunction :: BuiltinFunction -> DSLExpr (LossBuiltin mode)
+typeStandardFunction f = case f of
+  QuantifyRatTensor Exists -> typeOfQuantifierOrSearch tBool
   QuantifyRecord {} -> removed
   QuantifyRatTensor Forall -> removed
   CompareRatTensor {} -> typeOfCompareRatTensor tRatWithoutGradients tRatWithoutGradients tBool
@@ -202,7 +202,7 @@ typeStandardFunction mode f = case f of
   ReduceMulRatTensor -> typeOfReductionGradOp1
   ReduceMinRatTensor -> typeOfReductionGradOp1
   ReduceMaxRatTensor -> typeOfReductionGradOp1
-  SearchRatTensor {} -> forAllGradients $ \g -> typeOfQuantifierOrSearch mode (tRat .@@ [g])
+  SearchRatTensor {} -> forAllGradients $ \g -> typeOfQuantifierOrSearch (tRat .@@ [g])
   WhereTensor ->
     forAllGradients $ \g ->
       forAllDims $ \dims ->
@@ -275,6 +275,20 @@ typeOfPowRatTensor =
     forAllDims $ \dims ->
       tTensor (tRat .@@ [g]) dims ~> tRat ~> tTensor (tRat .@@ [g]) dims
 
+typeOfPointwiseCompareRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+typeOfPointwiseCompareRatTensor t1 t2 t3 =
+  forAllDims $ \dims ->
+    tTensor t1 dims
+      ~> tTensor t2 dims
+      ~> tTensor t3 dims
+
+typeOfReducedCompareRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+typeOfReducedCompareRatTensor t1 t2 t3 =
+  forAllDims $ \dims ->
+    tTensor t1 dims
+      ~> tTensor t2 dims
+      ~> tTensor t3 dimNil
+
 typeOfCompareRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOfCompareRatTensor t1 t2 t3 =
   forAllDims $ \pointwiseDims ->
@@ -288,12 +302,8 @@ typeIf inputType =
   forAllTypes $ \t ->
     tTensor inputType dimNil ~> t ~> t ~> t
 
-typeOfQuantifierOrSearch :: LossMode -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
-typeOfQuantifierOrSearch mode outputType = do
-  let inputGradient = case mode of
-        Train -> withoutGradients
-        Search -> withGradients
-
+typeOfQuantifierOrSearch :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+typeOfQuantifierOrSearch outputType = do
   forAllDims $ \dims ->
     -- Lower bounds for search space
     tRatTensorWithoutGradients dims
@@ -301,8 +311,9 @@ typeOfQuantifierOrSearch mode outputType = do
       -- Upper bounds for search space
       tRatTensorWithoutGradients dims
       ~>
-      -- Function to optimise for
-      (tTensor (tRat .@@ [inputGradient]) dims ~> tTensor outputType dimNil)
+      -- Function to optimise for. The input variable always has gradients
+      -- as we will be using PGD to optimise over it.
+      (tRatTensorWithGradients dims ~> tTensor outputType dimNil)
       ~>
       -- Return type
       tTensor outputType dimNil
@@ -365,7 +376,12 @@ convertToLossBuiltins decl = do
             And -> convertTo 3 (LossBuiltinTypeClassOp AndTCOp)
             Or -> convertTo 3 (LossBuiltinTypeClassOp OrTCOp)
             Implies -> convertTo 3 (LossBuiltinTypeClassOp ImpliesTCOp)
-            CompareRatTensor op -> convertTo 3 (LossBuiltinTypeClassOp $ CompareRatTensorTCOp op)
+            CompareRatTensor op -> case decideIfPointwiseOrReductionComparison args of
+              -- This is a hack as in order to implement this properly we need
+              -- to equip the `reduce` operations with the dimensions to reduce so that
+              -- we can define the correct general instance.
+              Reduced rArgs -> return $ normAppList (Builtin p (LossBuiltinTypeClassOp $ CompareRatTensorReducedTCOp op)) (prependHoles 3 rArgs)
+              Pointwise pArgs -> return $ normAppList (Builtin p (LossBuiltinTypeClassOp $ CompareRatTensorPointwiseTCOp op)) (prependHoles 3 pArgs)
             ReduceAndTensor -> convertTo 1 (LossBuiltinTypeClassOp ReduceAndTCOp)
             ReduceOrTensor -> convertTo 1 (LossBuiltinTypeClassOp ReduceOrTCOp)
             If -> convertTo 1 (LossBuiltinTypeClassOp IfRatTensorTCOp)

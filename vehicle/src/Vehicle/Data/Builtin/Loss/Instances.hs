@@ -51,12 +51,18 @@ allInstances mode dl =
       ----------------------
       -- CompareRatTensor --
       ----------------------
-      <> comparisonCandidates dl Le
-      <> comparisonCandidates dl Lt
-      <> comparisonCandidates dl Ge
-      <> comparisonCandidates dl Gt
-      <> comparisonCandidates dl Eq
-      <> comparisonCandidates dl Ne
+      <> pointwiseComparisonCandidates dl Le
+      <> pointwiseComparisonCandidates dl Lt
+      <> pointwiseComparisonCandidates dl Ge
+      <> pointwiseComparisonCandidates dl Gt
+      <> pointwiseComparisonCandidates dl Eq
+      <> pointwiseComparisonCandidates dl Ne
+      <> reducedComparisonCandidates dl Le ReduceConjunction
+      <> reducedComparisonCandidates dl Lt ReduceConjunction
+      <> reducedComparisonCandidates dl Ge ReduceConjunction
+      <> reducedComparisonCandidates dl Gt ReduceConjunction
+      <> reducedComparisonCandidates dl Eq ReduceConjunction
+      <> reducedComparisonCandidates dl Ne ReduceDisjunction
       ---------------
       -- Resources --
       ---------------
@@ -187,41 +193,84 @@ booleanReductionOpCandidates dl hasOp boolOp logicOp =
     )
   ]
 
-comparisonCandidates :: Identifier -> ComparisonOp -> [TempCandidate mode]
-comparisonCandidates dl op =
-  [ ( hasRatTensorComparison
+reducedComparisonCandidates :: Identifier -> ComparisonOp -> TensorDifferentiableLogicField -> [TempCandidate mode]
+reducedComparisonCandidates dl op reduceOp =
+  [ ( hasReducedRatTensorComparison
         op
         tRatWithoutGradients
         tRatWithoutGradients
         tBool,
-      builtinFunction (CompareRatTensor op),
+      builtinFunction (CompareRatTensor op) @@@ [dimNil],
       Nothing
     ),
-    ( hasRatTensorComparison
+    ( hasReducedRatTensorComparison
         op
         tRatWithoutGradients
         tRatWithGradients
         tRatWithGradients,
-      lamDims $ \_pDims ->
-        logicField dl (PointwiseComparison op),
+      lamDims $ \dims ->
+        explLam "x" (tRatTensorWithoutGradients dims) $ \x ->
+          explLam "y" (tRatTensorWithGradients dims) $ \y ->
+            logicField dl reduceOp .@@@ [dims] @@ [logicField dl (PointwiseComparison op) .@@@ [dims] @@ [x, y]],
       Nothing
     ),
-    ( hasRatTensorComparison
+    ( hasReducedRatTensorComparison
         op
         tRatWithGradients
         tRatWithoutGradients
         tRatWithGradients,
-      lamDims $ \_pDims ->
-        logicField dl (PointwiseComparison op),
+      lamDims $ \dims ->
+        explLam "x" (tRatTensorWithGradients dims) $ \x ->
+          explLam "y" (tRatTensorWithoutGradients dims) $ \y ->
+            logicField dl reduceOp .@@@ [dims] @@ [logicField dl (PointwiseComparison op) .@@@ [dims] @@ [x, y]],
       Nothing
     ),
-    ( hasRatTensorComparison
+    ( hasReducedRatTensorComparison
         op
         tRatWithGradients
         tRatWithGradients
         tRatWithGradients,
-      lamDims $ \_pDims ->
-        logicField dl (PointwiseComparison op),
+      lamDims $ \dims ->
+        explLam "x" (tRatTensorWithGradients dims) $ \x ->
+          explLam "y" (tRatTensorWithGradients dims) $ \y ->
+            logicField dl reduceOp .@@@ [dims] @@ [logicField dl (PointwiseComparison op) .@@@ [dims] @@ [x, y]],
+      Nothing
+    )
+  ]
+
+pointwiseComparisonCandidates :: Identifier -> ComparisonOp -> [TempCandidate mode]
+pointwiseComparisonCandidates dl op =
+  [ ( hasPointwiseRatTensorComparison
+        op
+        tRatWithoutGradients
+        tRatWithoutGradients
+        tBool,
+      lamDims $ \pDims ->
+        builtinFunction (CompareRatTensor op) @@@ [pDims] .@@@ [dimNil],
+      Nothing
+    ),
+    ( hasPointwiseRatTensorComparison
+        op
+        tRatWithoutGradients
+        tRatWithGradients
+        tRatWithGradients,
+      logicField dl (PointwiseComparison op),
+      Nothing
+    ),
+    ( hasPointwiseRatTensorComparison
+        op
+        tRatWithGradients
+        tRatWithoutGradients
+        tRatWithGradients,
+      logicField dl (PointwiseComparison op),
+      Nothing
+    ),
+    ( hasPointwiseRatTensorComparison
+        op
+        tRatWithGradients
+        tRatWithGradients
+        tRatWithGradients,
+      logicField dl (PointwiseComparison op),
       Nothing
     )
   ]

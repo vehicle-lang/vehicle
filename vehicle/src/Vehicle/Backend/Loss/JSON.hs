@@ -20,7 +20,7 @@ import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Backend.LossSearch qualified as L (BooleanTree (..))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude (DeclProvenance, HasProvenance (..), Ix (..), getBinderName)
+import Vehicle.Compile.Prelude (DeclProvenance, HasProvenance (..), Ix (..), LHSBinderCount, getBinderName)
 import Vehicle.Compile.Prelude qualified as S (Arg, Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
@@ -30,6 +30,7 @@ import Vehicle.Data.AST.Decl
     FunctionDeclAnnotation (..),
     ParameterSort (..),
     isAnnotatedAsProperty,
+    lhsBinderCount,
   )
 import Vehicle.Data.AST.Expr.Scoped (Type, normAppList)
 import Vehicle.Data.AST.Record (FieldName (..))
@@ -97,7 +98,7 @@ data JBooleanExpr
   deriving (Generic)
 
 data JDecl
-  = DefFunction Provenance Name Bool JType JExpr
+  = DefFunction Name LHSBinderCount Bool JType JExpr
   | DefAbstract Provenance Name JSort JType
   deriving (Generic)
 
@@ -254,10 +255,10 @@ convertDecl decl = flip runReaderT (identifierOf decl, provenanceOf decl) $ case
       ParameterDef _ -> DefAbstract p (nameOf ident) Parameter typ'
       BuiltinDef -> developerError "DefAbstractSort BuiltinDef is not yet implemented"
   S.DefRecord {} -> return Nothing
-  S.DefFunction p ident sort typ body -> do
+  S.DefFunction _ ident sort typ body -> do
     typ' <- convertTypeValue typ
     expr' <- convertExpr body
-    return $ Just $ DefFunction p (nameOf ident) (isAnnotatedAsProperty sort) typ' expr'
+    return $ Just $ DefFunction (nameOf ident) (lhsBinderCount sort) (isAnnotatedAsProperty sort) typ' expr'
 
 convertBooleanTree :: (MonadJSON m) => L.BooleanTree -> m JBooleanTree
 convertBooleanTree = \case
@@ -698,13 +699,13 @@ fromJBooleanExpr = \case
 
 fromJDecl :: JDecl -> S.Decl Builtin
 fromJDecl = \case
-  DefFunction p name isProperty typ body ->
+  DefFunction name binderCount isProperty typ body ->
     runFreshNameBoundContext $ do
       typ' <- fromJType typ
       body' <- fromJExpr body
       let ident = Identifier userModulePath name
-      let sort = FunctionDecl 0 (if isProperty then Just AnnProperty else Nothing)
-      return $ S.DefFunction p ident sort typ' body'
+      let sort = FunctionDecl binderCount (if isProperty then Just AnnProperty else Nothing)
+      return $ S.DefFunction mempty ident sort typ' body'
   DefAbstract p name sort typ ->
     runFreshNameBoundContext $ do
       typ' <- fromJType typ

@@ -189,7 +189,7 @@ class TypeVar(BuiltinType):
 @dataclass(frozen=True)
 class Binder(AST):
     provenance: Provenance = field(repr=False)
-    name: Optional[Name]
+    name: Name
     type: BuiltinType
 
 
@@ -203,13 +203,6 @@ class Expression(AST):
 class Lam(Expression):
     binder: Binder
     body: Expression
-
-
-@dataclass(frozen=True)
-class App(Expression):
-    provenance: Provenance = field(repr=False)
-    function: Expression
-    arguments: Sequence[Expression]
 
 
 @dataclass(frozen=True)
@@ -515,8 +508,8 @@ class Declaration(AST, metaclass=ABCMeta):
 
 @dataclass(frozen=True)
 class DefFunction(Declaration):
-    provenance: Provenance = field(repr=False)
     name: Name
+    lhsBinderCount: int
     isProperty: bool
     type: BuiltinType
     body: Expression
