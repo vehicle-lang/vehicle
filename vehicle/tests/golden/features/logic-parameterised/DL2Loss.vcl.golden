@@ -3,4 +3,4 @@ CustomLogic p = {trueElement = - infinity, falseElement = infinity, pointwiseNeg
 
 @property;
 property : Tensor Real -> (Tensor Real -> Tensor Real) -> Tensor Real;
-property p f = (CustomLogic p).pointwiseNegation nil (search nil 0.0 1.0 (\x -> (CustomLogic p).pointwiseDisjunction nil ((CustomLogic p).pointwiseGreaterEqualThan nil 0.0 (f x)) ((CustomLogic p).pointwiseGreaterEqualThan nil (f x) 1.0)))
+property p f = (CustomLogic p).pointwiseNegation nil (search nil 0.0 1.0 (\x -> (CustomLogic p).pointwiseNegation nil ((CustomLogic p).pointwiseConjunction nil ((CustomLogic p).pointwiseLessThan nil 0.0 (f x)) ((CustomLogic p).pointwiseLessThan nil (f x) 1.0))))

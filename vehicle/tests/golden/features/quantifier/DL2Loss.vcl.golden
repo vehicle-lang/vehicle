@@ -3,8 +3,8 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 expandedExpr : (Tensor Real -> Tensor Real) -> Tensor Real;
-expandedExpr f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseLessThan nil x (f x)))
+expandedExpr f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil x (f x))))
 
 @property;
 parallel : (Tensor Real -> Tensor Real) -> Tensor Real;
-parallel f = DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseLessThan nil (f x) 0.0))) (search nil 0.0 1.0 (\y -> DL2Loss.pointwiseGreaterEqualThan nil (f y) 5.0))
+parallel f = DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f x) 0.0)))) (search nil 0.0 1.0 (\y -> DL2Loss.pointwiseGreaterEqualThan nil (f y) 5.0))

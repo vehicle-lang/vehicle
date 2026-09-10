@@ -16,7 +16,7 @@ def search_tree(
     boolean_tree: BooleanTree,
     declarations: dict[str, Any],
     bound_vars: dict[str, Any],
-    sampler: DefaultPyTorchSampler,
+    sampler: DefaultPyTorchSampler,  # samplers dictionary containing ABCSamplers (see training backend)
 ) -> tuple[bool, Sequence[Sample]]:
 
     boolean_result = False

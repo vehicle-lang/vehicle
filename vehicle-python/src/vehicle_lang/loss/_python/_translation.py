@@ -8,6 +8,7 @@ from types import CodeType
 from typing import Any, Iterator, Mapping, Sequence
 
 import black
+
 from vehicle_lang._temporary_files import VEHICLE_PATH
 
 from ..._ast import _nodes as vcl
@@ -529,11 +530,14 @@ class PythonTranslation(metaclass=ABCMeta):
                 py_qualified_name("__vehicle_user_samplers__"),
                 py.Constant(value=expression.name, **asdict(vcl.MISSING)),
             ),
+            # Add minimise argument here for training (should always be False for training) - don't add this flag to SearchRatTensor
             self.translate_expression(expression.dims),
             self.translate_expression(expression.lower_bound),
             self.translate_expression(expression.upper_bound),
             self.translate_expression(expression.search_lambda),
         )
+
+        # Add code here
 
         return py_app(py_builtin("ReduceMaxRatTensor"), sampler_call)
 

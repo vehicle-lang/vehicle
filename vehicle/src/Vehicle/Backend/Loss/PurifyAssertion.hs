@@ -26,7 +26,7 @@ import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue)
-import Vehicle.Data.Assertion (Assertion, comparisonToAssertion, expression)
+import Vehicle.Data.Assertion (Assertion, comparisonToAssertion)
 import Vehicle.Data.Builtin.Interface (Accessor (..), applyAccessor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), forIfTreeM, mapIfTreeLeaves)
@@ -111,9 +111,7 @@ tryPurifyRatTensorComparison op (TensorComparisonArgs _pDims rDims e1 e2) = do
         return $ case maybeSolvedVal of
           Nothing -> NonTrivial (val, Nothing)
           Just (Trivial b) -> Trivial b
-          Just (NonTrivial le)
-            | assertionIsBound le -> NonTrivial (val, Just le)
-            | otherwise -> NonTrivial (val, Nothing)
+          Just (NonTrivial le) -> NonTrivial (val, Just le)
 
 --------------------------------------------------------------------------------
 -- Compiling linear expressions
@@ -210,18 +208,21 @@ compileRatTensorVar ::
   UnforcedSpine Builtin ->
   m BranchingResult
 compileRatTensorVar dims lv spine = do
-  valueAsLinearExpr <- case spine of
-    _ : _ -> return Nothing
-    [] -> do
-      maybeSliceVar <- lookupSliceVariableInNestedCtx lv
-      return $ fmap (singletonVarExpr (TensorConstantValue dims 0 Nothing)) maybeSliceVar
-
-  return $
-    IfLeaf $
-      Result
-        { value = Forced $ VBoundVar lv [],
-          valueAsLinearExpr = valueAsLinearExpr
-        }
+  maybeSliceVariable <- lookupSliceVariableInNestedCtx lv
+  case maybeSliceVariable of
+    Nothing ->
+      -- Note even if this is not a slice variable we can still compile it as a constant
+      -- and add it to the bounds of a slice variable on the quantifier as long as
+      -- we calculate the gradients correctly with respect to the bounds via the reparameterisation trick.
+      compileAsConstantExpr dims (Forced $ VBoundVar lv spine)
+    Just variable -> do
+      let linearExpr = singletonVarExpr (TensorConstantValue dims 0 Nothing) variable
+      return $
+        IfLeaf $
+          Result
+            { value = Forced $ VBoundVar lv spine,
+              valueAsLinearExpr = Just linearExpr
+            }
 
 compileNegRatTensor ::
   (MonadPurifyAssertion m) =>
@@ -304,16 +305,6 @@ compileTensorOp2 compile evalFn evalLinearExpr (TensorOp2Args ds xs ys) = do
             { value = newValue,
               valueAsLinearExpr = newLinearExpr
             }
-
--- | Currently we can't deal with composite bounds, e.g. the `x < y`
--- as PGD samples from the domain of each variable sequentially so a bad
--- choice of `x` might make the domain of `y` empty.
---
---    exists x y . x < y and ....
-assertionIsBound :: Assertion TensorValueLinearExpr -> Bool
-assertionIsBound lexpr
-  | linearExprNumberOfVariables (expression lexpr) == 1 = True
-  | otherwise = False
 
 compileIf ::
   (MonadPurifyAssertion m) =>

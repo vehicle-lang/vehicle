@@ -3,4 +3,4 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 monotonic : (Tensor Real -> Tensor Real) -> Tensor Real;
-monotonic f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x1 -> search nil 0.0 1.0 (\x2 -> DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseLessEqualThan nil x1 x2) (DL2Loss.pointwiseGreaterThan nil (f x1) (f x2)))))
+monotonic f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x1 -> search nil (max 0.0 x1) 1.0 (\x2 -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseLessEqualThan nil (f x1) (f x2)))))

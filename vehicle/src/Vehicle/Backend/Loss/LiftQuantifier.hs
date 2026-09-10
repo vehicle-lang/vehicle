@@ -4,6 +4,7 @@ module Vehicle.Backend.Loss.LiftQuantifier
   )
 where
 
+import Control.Monad (void)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.RWS (MonadReader, ask)
 import Vehicle.Compile.Error
@@ -70,12 +71,12 @@ compileHardBooleanTree value = do
         Forall -> do
           let negatedBody = negateQuantifierBody args
           let existsExpr = Forced $ mkExpr accessQuantifyRatTensor (Exists, negatedBody)
-          leafDisjunction <- liftQuantifiers (existsExpr, 0)
+          leafDisjunction <- liftQuantifiers (existsExpr, [])
           case leafDisjunction of
             NonTrivial disjuncts -> return $ NonTrivial $ Query $ QuerySet True disjuncts
             Trivial bool -> return $ Trivial $ not bool
         Exists -> do
-          leafDisjunction <- liftQuantifiers (Forced forcedValue, 0)
+          leafDisjunction <- liftQuantifiers (Forced forcedValue, [])
           case leafDisjunction of
             NonTrivial disjuncts -> return $ NonTrivial $ Query $ QuerySet False disjuncts
             Trivial bool -> return $ Trivial bool
@@ -84,12 +85,12 @@ compileHardBooleanTree value = do
         Forall -> do
           let negatedBody = negateRecordQuantifierBody args
           let existsExpr = Forced $ mkExpr accessQuantifyRecord (Exists, negatedBody)
-          leafDisjunction <- liftQuantifiers (existsExpr, 0)
+          leafDisjunction <- liftQuantifiers (existsExpr, [])
           case leafDisjunction of
             NonTrivial disjuncts -> return $ NonTrivial $ Query $ QuerySet True disjuncts
             Trivial bool -> return $ Trivial $ not bool
         Exists -> do
-          leafDisjunction <- liftQuantifiers (Forced forcedValue, 0)
+          leafDisjunction <- liftQuantifiers (Forced forcedValue, [])
           case leafDisjunction of
             NonTrivial disjuncts -> return $ NonTrivial $ Query $ QuerySet False disjuncts
             Trivial bool -> return $ Trivial bool
@@ -116,13 +117,15 @@ compileHardBooleanTree value = do
           throwError $ UnableToLiftQuantifiersInProperty declProv
         Right result -> compileHardBooleanTree result
 
+type ExtraBinders = [UnforcedBinder Builtin]
+
 andResult ::
   forall m.
   (MonadLiftQuantifiers m) =>
   UnforcedDims Builtin ->
   Thunk Builtin ->
   Thunk Builtin ->
-  Lv ->
+  ExtraBinders ->
   m LeafDisjunction
 andResult dims arg1 arg2 ctxDelta = do
   arg1' <- liftQuantifiers (arg1, ctxDelta)
@@ -139,7 +142,7 @@ andResult dims arg1 arg2 ctxDelta = do
   where
     compileRHS :: (MonadLiftQuantifiers m) => LiftedData -> Thunk Builtin -> m LeafDisjunction
     compileRHS leftLiftedData@(leftQuantifiers, _) arg = do
-      leafDisjunctionRHS <- liftQuantifiers (arg, ctxDelta + Lv (length leftQuantifiers))
+      leafDisjunctionRHS <- liftQuantifiers (arg, ctxDelta ++ fmap (\(_, _, binder) -> binder) leftQuantifiers)
       case leafDisjunctionRHS of
         NonTrivial disjuncts -> return $ NonTrivial $ fmap (constructAnd leftLiftedData) disjuncts
         Trivial True -> return $ NonTrivial $ DisjunctAll [leftLiftedData]
@@ -155,7 +158,7 @@ orResult ::
   (MonadLiftQuantifiers m) =>
   Thunk Builtin ->
   Thunk Builtin ->
-  Lv ->
+  ExtraBinders ->
   m LeafDisjunction
 orResult arg1 arg2 ctxDelta = do
   arg1' <- liftQuantifiers (arg1, ctxDelta)
@@ -164,7 +167,7 @@ orResult arg1 arg2 ctxDelta = do
 
 liftQuantifiers ::
   (MonadLiftQuantifiers m) =>
-  (Thunk Builtin, Lv) ->
+  (Thunk Builtin, ExtraBinders) ->
   m LeafDisjunction
 liftQuantifiers (value, ctxDelta) = logEntryAndExit value $ do
   forcedValue <- forceThunk value
@@ -244,7 +247,7 @@ lowerQuantifier quantifierData (quantifiers, expr) = (quantifierData : quantifie
 
 updateVarLevels ::
   (MonadLiftQuantifiers m) =>
-  Lv ->
+  ExtraBinders ->
   Thunk Builtin ->
   m (Thunk Builtin)
 updateVarLevels offset value = do
@@ -253,14 +256,29 @@ updateVarLevels offset value = do
     VFreeVar ident spine -> VFreeVar ident <$> traverseArgs (updateVarLevels offset) spine
     VBuiltin ident spine -> VBuiltin ident <$> traverseArgs (updateVarLevels offset) spine
     VUniverse args -> return $ VUniverse args
-    VBoundVar lv spine -> VBoundVar (lv + offset) <$> traverseArgs (updateVarLevels offset) spine
-    VPi {} -> developerError "Cannot have VPi when updating variable levels"
-    VLam {} -> developerError "Cannot have VLam when updating variable levels"
+    VBoundVar lv spine -> VBoundVar (lv + Lv (length offset)) <$> traverseArgs (updateVarLevels offset) spine
+    VPi binder closure -> do
+      binder' <- traverse (updateVarLevels offset) binder
+      closure' <- updateVarLevelsInClosure offset closure
+      return $ VLam binder' closure'
+    VLam binder closure -> do
+      binder' <- traverse (updateVarLevels offset) binder
+      closure' <- updateVarLevelsInClosure offset closure
+      return $ VLam binder' closure'
     VRecord i fs -> VRecord i <$> traverse (updateVarLevels offset) fs
     VRecordAcc typ record field spine -> do
       typ' <- updateVarLevels offset typ
       record' <- updateVarLevels offset record
       VRecordAcc typ' record' field <$> traverseArgs (updateVarLevels offset) spine
+
+updateVarLevelsInClosure ::
+  (MonadLiftQuantifiers m) =>
+  ExtraBinders ->
+  Closure Builtin ->
+  m (Closure Builtin)
+updateVarLevelsInClosure binders (Closure (BoundEnv env) body) = do
+  let newEnv = env ++ fmap (\(binder, lv) -> (void binder, Forced $ VBoundVar lv [])) (reverse $ zip binders [0 ..])
+  return $ Closure (BoundEnv newEnv) body
 
 logEntryAndExit ::
   (MonadLiftQuantifiers m) =>

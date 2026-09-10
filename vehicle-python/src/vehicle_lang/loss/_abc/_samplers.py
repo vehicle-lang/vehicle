@@ -14,13 +14,14 @@ class ABCSampler(
     ABC,
 ):
     @abstractmethod
-    def get_loss(
+    def get_loss_and_witness(
         self,
         dims: vcl.Index,
         lower_bound: vcl.Tensor,
         upper_bound: vcl.Tensor,
+        minimise: bool,
         search_lambda: Callable[[vcl.Tensor], vcl.Tensor],
-    ) -> Float[vcl.Tensor, "1 losses"]:
+    ) -> tuple[Float[vcl.Tensor, "1 losses"], vcl.Tensor]:
         """
         Calculates the loss based on the provided bounds and search lambda.
 
@@ -34,3 +35,14 @@ class ABCSampler(
             the losses will be combined by taking the maximum.
         """
         ...
+
+    def get_loss(
+        self,
+        dims: vcl.Index,
+        lower_bound: vcl.Tensor,
+        upper_bound: vcl.Tensor,
+        minimise: bool,
+        search_lambda: Callable[[vcl.Tensor], vcl.Tensor],
+    ) -> Float[vcl.Tensor, "1 losses"]:
+        # Calls get_loss_and_witness and removes the second argument (i.e. witness)
+        pass

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
+
 from vehicle_lang.typing import DL2DifferentiableLogic, VehicleDifferentiableLogic
 
 from .config import HASKELL_GOLDEN_TESTS_PATH
@@ -41,6 +42,7 @@ def test_pytorch_search_bounded() -> None:
         logic=DL2DifferentiableLogic(),
         declarations=declarations,
         networks=networks,
+        num_searches=5,
         num_steps=10,
     )
 

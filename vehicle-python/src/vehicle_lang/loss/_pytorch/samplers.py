@@ -140,8 +140,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
 
                 # FGSM: perturb in the direction of the gradient sign
                 # To find worst-case inputs that make the loss high, we need to
-                # move in the direction of the gradient (gradient ascent).
-                perturbation = epsilon * torch.sign(gradient)
+                # move in the opposite direction of the gradient (gradient ascent).
+                perturbation = -epsilon * torch.sign(gradient)
 
                 # Apply perturbation and clip to bounds
                 current_point = torch.clamp(

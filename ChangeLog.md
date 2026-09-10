@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## Next release
+## v0.28.0
 
 ### Solver backend
 
@@ -8,15 +8,17 @@
 
 ### Loss backend
 
-* Fixed bug where the translation of `==` and `!=` were incorrectly specified in the DL2Loss logic.
+* Fixed the following bugs:
+  - the translation of `==` and `!=` were incorrectly specified in the DL2Loss logic.
+  - a few `Internal scoping` errors that occasionally occured.
+  - in default `Sampler` implementations which weren't generating initial starting points with maximal randomness.
+  - in default PyTorch `Sampler` implementation where PGD search wasn't being run correctly if the loss function was being called in a `torch.no_grad()` environment.
+  - constraints with multiple quantified variables in them were being incorrectly added to the sampler domains.
 
-* Fixed a few `Internal scoping` errors.
+* Generated Python code is now written out to a temporary directory which allows you to step through it as normal when you attach a debugger.
 
-* Fixed bug in default `Sampler` implementations which weren't generating initial starting points with maximal randomness.
-
-* Fixed bug in default pytorch `Sampler` implementation where PGD search wasn't being run correctly if the loss function was being called in a `torch.no_grad()` environment.
-
-* Fixed bug where constraints with multiple quantified variables in them were being incorrectly added to the sampler domains.
+* Generated Python code preserves far more of the specification's original structure instead
+of normalising it out.
 
 * Quantified variables are no longer required to have a well-defined domain.
   e.g. instead of
@@ -43,8 +45,7 @@
   ```
   where `[[e]]` represents the denotation computed using the provided differentiable logic.
 
-* The compiler will now error if a quantified variable has no useful gradients associated with it, e.g.
-  in the following where `f` is never actually used:
+* The compiler will now error if a quantified variable has no useful gradients associated with it, e.g. in the following where `f` is never actually used:
   ```
   @network
   f : Real -> Real
@@ -53,9 +54,6 @@
   p : Bool
   p = forall x . 0 <= x <= 1 => x ** 2 > 2
   ```
-
-* Generated Python code is now written out to a temporary directory which allows you to step through
-  it as normal when you attach a debugger.
 
 ## v0.27.1
 
