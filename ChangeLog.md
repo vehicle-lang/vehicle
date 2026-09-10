@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## Next release
+## v0.28.0
 
 ### Solver backend
 
