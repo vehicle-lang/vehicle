@@ -18,28 +18,16 @@ else:  # pragma: no cover - exercised implicitly
     )
 
 
-@dataclass
-class Sample:
-    inputs: dict[str, torch.Tensor]
-    loss_history: List[float]
-
-
 class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
     @abstractmethod
-    def get_loss(
+    def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-    ) -> Sequence[Sample]: ...
-
-    @abstractmethod
-    def pgd(
-        self,
-        bound_vars: Sequence[BoundVarData],
-        loss_fn: Callable[..., torch.Tensor],
-    ) -> Sample: ...
+        search: bool = False,
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]: ...
 
 
 class DefaultPyTorchSampler(PyTorchSampler):
@@ -66,27 +54,29 @@ class DefaultPyTorchSampler(PyTorchSampler):
         self.num_steps = num_steps
         self.seed = seed
 
-    def get_loss(
+    def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-    ) -> Float[torch.Tensor, "1 losses"]:
+        search: bool = False,
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
         """
-        Use PGD to generate adversarial samples and evaluate the search lambda.
+        Uses gradient ascent or descent to generate samples and evaluate the search lambda.
 
         The step size is automatically inferred from the bounds to provide
         an out-of-the-box implementation that works for most applications.
 
         Args:
-            dims: The dimensions for the sampling (currently unused for scalar sampling)
+            dims: The dimensions for the sampling
             lower_bound: The lower bound tensor
             upper_bound: The upper bound tensor
-            search_lambda: A callable representing the property to evaluate
+            search_lambda: A callable representing a loss function
 
         Returns:
-            A sequence of loss values evaluated at the PGD-perturbed points
+            A sequence of loss values evaluated at the PGD-perturbed points and
+            the final perturbed point
         """
         # Set seed for reproducibility if provided
         if self.seed is not None:
@@ -97,6 +87,9 @@ class DefaultPyTorchSampler(PyTorchSampler):
         epsilon = range_size / self.num_steps
 
         results = []
+        # At the moment we only return the final perturbed point out of all trajectories
+        # Maybe we can return the final point for each trajectory in future
+        final_point = None
 
         # Use multiple random starting points to ensure diversity
         for _ in range(self.num_samples):
@@ -119,6 +112,11 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     # Compute gradient of search_lambda with respect to input
                     loss = search_lambda(current_point_var)
 
+                    # NOTE: This is only for my evaluation, once done I will delete this and
+                    # the search flag (we don't need to track the loss at each iteration)
+                    if search is True:
+                        results.append(torch.as_tensor(loss))
+
                     # Compute gradient ONLY w.r.t. the input, not network weights
                     # Using autograd.grad instead of backward() to avoid accumulating
                     # gradients in network parameters during adversarial search
@@ -138,9 +136,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     else:
                         gradient = torch.zeros_like(current_point_var)
 
-                # FGSM: perturb in the direction of the gradient sign
                 # To find worst-case inputs that make the loss high, we need to
-                # move in the opposite direction of the gradient (gradient ascent).
+                # move in the opposite direction of the gradient (gradient descent).
                 perturbation = -epsilon * torch.sign(gradient)
 
                 # Apply perturbation and clip to bounds
@@ -148,92 +145,9 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     current_point + perturbation.detach(), lower_bound, upper_bound
                 )
 
+            final_point = current_point
             # Evaluate and store the final result from this trajectory
             result = search_lambda(current_point.detach())
             results.append(torch.as_tensor(result))
 
-        return torch.stack(results)
-
-    def pgd(
-        self,
-        bound_vars: Sequence[BoundVarData],
-        loss_fn: Callable[..., torch.Tensor],
-    ) -> Sample:
-        """
-        Uses PGD to generate a single witness. A round-robin approach is used to find
-        an optimal input for each bound variable in turn.
-
-        Uses a similar algorithm as `get_loss` except each step minimises the loss
-        function. (can be unified/improved in future)
-
-        Args:
-            bound_vars: Contains the name, lower bound and upper bound of each bound
-                variable to search
-            loss_fn: A callable representing the loss function to minimise
-            num_steps: The number of steps to take when searching each bound variable
-
-        Returns:
-        A Sample object representing a witness with the input for each bound variable,
-        its loss value, and the loss values at each step in generating the witness.
-        """
-
-        # Set starting points for all bound variables
-        current_inputs = {}
-        for bound_var in bound_vars:
-            dims = bound_var.dims
-            upper_bound = bound_var.upper_bound
-            lower_bound = bound_var.lower_bound
-            range_size = upper_bound - lower_bound
-
-            initial_point = (
-                lower_bound + torch.rand(dims, dtype=lower_bound.dtype) * range_size
-            )
-            current_inputs[bound_var.name] = initial_point
-
-        loss_history = []
-        # Find an optimal input for each bound variable one at a time while keeping all other
-        # inputs constant
-        for bound_var in bound_vars:
-            upper_bound = bound_var.upper_bound
-            lower_bound = bound_var.lower_bound
-            epsilon = (upper_bound - lower_bound) / self.num_steps
-
-            for _ in range(self.num_steps):
-                current_point = (
-                    current_inputs[bound_var.name].detach().clone().requires_grad_(True)
-                )
-                current_inputs[bound_var.name] = current_point
-
-                loss = loss_fn(**current_inputs)
-                loss_history.append(loss.item())
-
-                if loss.requires_grad:
-                    gradient = torch.autograd.grad(
-                        loss,
-                        current_point,
-                        create_graph=False,
-                        retain_graph=False,
-                        only_inputs=True,
-                    )[0]
-
-                    if gradient is not None:
-                        gradient = torch.where(
-                            torch.isnan(gradient), torch.zeros_like(gradient), gradient
-                        )
-                    else:
-                        gradient = torch.zeros_like(current_point)
-                else:
-                    gradient = torch.zeros_like(current_point)
-
-                sign_grad = torch.sign(gradient)
-                # -epsilon * sign_grad because to search for witnesses, the loss must be minimised
-                perturbation = -epsilon * sign_grad
-
-                perturbed_point = torch.clamp(
-                    current_point + perturbation.detach(), lower_bound, upper_bound
-                ).detach()
-                current_inputs[bound_var.name] = perturbed_point
-
-        final_loss = loss_fn(**current_inputs)
-        loss_history.append(final_loss.item())
-        return Sample(inputs=current_inputs, loss_history=loss_history)
+        return torch.stack(results), final_point

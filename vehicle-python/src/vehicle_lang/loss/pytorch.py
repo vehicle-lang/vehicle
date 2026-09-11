@@ -7,12 +7,13 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 
 import torch
-from vehicle_lang.loss._search_tree import search_tree
+
+from vehicle_lang.loss._search_tree import Sample, search_tree
 
 from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
 from ._common import load_search_loss, load_training_loss
 from ._pytorch._translation import PyTorchTranslation
-from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler, Sample
+from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler
 
 __all__ = [
     "load_specification",
@@ -48,14 +49,13 @@ def search(
     path: str | Path,
     *,
     logic: DifferentiableLogic = DL2DifferentiableLogic(),
+    samplers: dict[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: dict[str, Any] | None = None,
     networks: dict[DeclarationName, Any] = {},
     datasets: dict[DeclarationName, Any] = {},
     parameters: dict[DeclarationName, Any] = {},
     num_searches: int = 1,
-    num_steps: int = 5,
-    seed: int | None = None,
 ) -> dict[str, SearchResults]:
     """
     Gradient-based search for properties in a specification.
@@ -76,8 +76,6 @@ def search(
     boolean_trees = search_data.boolean_trees
     search_bounds = search_data.search_bounds
 
-    sampler = DefaultPyTorchSampler(num_steps=num_steps, seed=seed)
-
     all_search_results: dict[str, SearchResults] = {}
     for property in boolean_trees:
         search_results = []
@@ -86,7 +84,6 @@ def search(
                 boolean_tree=property,
                 declarations=declarations,
                 bound_vars=search_bounds,
-                sampler=sampler,
             )
 
             search_results.append(result)

@@ -39,11 +39,10 @@ def test_pytorch_search_bounded() -> None:
 
     search_results = loss_pt.search(
         spec_path,
-        logic=DL2DifferentiableLogic(),
+        logic=VehicleDifferentiableLogic(),
         declarations=declarations,
         networks=networks,
         num_searches=5,
-        num_steps=10,
     )
 
     for property, results in search_results.items():
@@ -87,11 +86,10 @@ def test_pytorch_search_andGate() -> None:
 
     search_results = loss_pt.search(
         spec_path,
-        logic=DL2DifferentiableLogic(),
+        logic=VehicleDifferentiableLogic(),
         declarations=declarations,
         networks=networks,
         num_searches=5,
-        num_steps=10,
     )
 
     for property, results in search_results.items():
@@ -147,10 +145,10 @@ def test_pytorch_search_increasing() -> None:
 
     search_results = loss_pt.search(
         spec_path,
-        logic=DL2DifferentiableLogic(),
+        logic=VehicleDifferentiableLogic(),
         declarations=declarations,
         networks=networks,
-        num_steps=10,
+        num_searches=5,
     )
 
     for property, results in search_results.items():
