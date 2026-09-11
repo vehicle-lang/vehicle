@@ -40,6 +40,12 @@
     "produces": ["DL2Loss.vcl"]
   },
   {
+    "name": "DL2LossSearch",
+    "run": "vehicle compile loss --lossMode Search -s spec.vcl -l DL2Loss -o DL2LossSearch.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["DL2LossSearch.vcl"]
+  },
+  {
     "name": "Isabelle",
     "run": "vehicle compile itp -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy",
     "needs": [

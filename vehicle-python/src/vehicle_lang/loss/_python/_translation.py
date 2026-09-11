@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, field
 from fractions import Fraction
 from functools import reduce
 from pathlib import Path
+from types import CodeType
 from typing import Any, Iterator, Mapping, Sequence
 
 import black
@@ -11,6 +12,17 @@ from vehicle_lang._temporary_files import VEHICLE_PATH
 
 from ..._ast import _nodes as vcl
 from .._abc import ABCSampler, AnyBuiltins, Index, Tensor
+
+
+# Helper to raise a TypeError while compiling
+def invalid_type(py_ast: py.Module | py.Expression, error: TypeError) -> TypeError:
+    py_ast_str: str
+    try:
+        py_ast_str = py.unparse(py_ast)
+    except Exception:
+        py_ast_str = py.dump(py_ast)
+    raise TypeError(f"{error}\n{py_ast_str}")
+
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST
@@ -36,11 +48,20 @@ class PythonTranslation(metaclass=ABCMeta):
     module_footer: Sequence[py.stmt] = field(default_factory=tuple)
 
     def compile(
+        self, py_ast: py.Module | py.Expression, path: str | Path, mode: str
+    ) -> CodeType:
+        try:
+            py_bytecode = compile(py_ast, filename=str(path), mode=mode)
+        except TypeError as e:
+            invalid_type(py_ast, e)
+        return py_bytecode
+
+    def compile_program(
         self,
         program: vcl.Program,
         path: str | Path,
         declaration_context: dict[str, Any],
-        samplers: Mapping[str, ABCSampler[Index, Tensor]],
+        samplers: dict[str, Any],
     ) -> dict[str, Any]:
         py_ast = self.translate_program(program)
         try:
@@ -57,23 +78,38 @@ class PythonTranslation(metaclass=ABCMeta):
             python_code_path.parent.mkdir(exist_ok=True)
             python_code_path.write_text(formatted_source_str)
 
-            py_bytecode = compile(
-                formatted_source_str, filename=str(python_code_path), mode="exec"
+            py_bytecode = self.compile(
+                formatted_source_str, path=str(python_code_path), mode="exec"
             )
+
             exec(py_bytecode, declaration_context)
-            return {
-                key: value
-                for key, value in declaration_context.items()
-                if key not in _IGNORED_RETURN_KEYS
-                and (key not in before_exec or before_exec[key] is not value)
-            }
         except TypeError as e:
-            py_ast_str: str
-            try:
-                py_ast_str = py.unparse(py_ast)
-            except Exception:
-                py_ast_str = py.dump(py_ast)
-            raise TypeError(f"{e}\n{py_ast_str}")
+            invalid_type(py_ast, e)
+        return {
+            key: value
+            for key, value in declaration_context.items()
+            if key not in _IGNORED_RETURN_KEYS
+            and (key not in before_exec or before_exec[key] is not value)
+        }
+
+    def compile_expression(
+        self,
+        expression: vcl.Expression,
+        path: str | Path,
+        declaration_context: dict[str, Any],
+    ) -> Any:
+        expr = self.translate_expression(expression)
+        py_ast = py.Expression(body=expr)
+
+        declaration_context["__vehicle__"] = self.builtins
+
+        py_bytecode = self.compile(py_ast, path, mode="eval")
+
+        try:
+            result = eval(py_bytecode, declaration_context)
+            return result
+        except TypeError as e:
+            invalid_type(py_ast, e)
 
     def translate_program(self, program: vcl.Program) -> py.Module:
         match program:
@@ -498,7 +534,6 @@ class PythonTranslation(metaclass=ABCMeta):
             self.translate_expression(expression.upper_bound),
             self.translate_expression(expression.search_lambda),
         )
-
         return py_app(py_builtin("ReduceMaxRatTensor"), sampler_call)
 
     def translate_WhereTensor(self, expression: vcl.WhereTensor) -> py.expr:
