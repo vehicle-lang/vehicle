@@ -1,0 +1,31 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims -> \x -> const 1.0 dims / x, pointwiseConjunction = \dims -> \x -> \y -> x + y, pointwiseDisjunction = \dims -> \x -> \y -> x * y, pointwiseLessThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseEqual = \dims -> \x -> \y -> max (x - y) (y - x), pointwiseNotEqual = \dims -> \x -> \y -> const 1.0 dims / max (x - y) (y - x), reduceConjunction = \dims -> \xs -> reduceAdd xs, reduceDisjunction = \dims -> \xs -> reduceMul xs} 
+
+pos : Index;
+pos = 0
+
+@network;
+classifier : Tensor Real -> Tensor Real
+
+@parameter (infer = True);
+n : Nat
+
+@dataset;
+inputs : Tensor Real
+
+minList : Tensor Real -> Tensor Real;
+minList v = reduceMin v
+
+maxList : Tensor Real -> Tensor Real;
+maxList v = reduceMax v
+
+inputTranspose : Tensor Real;
+inputTranspose = foreach i. foreach j. inputs ! j ! i
+
+@property;
+property_0 : Tensor Real;
+property_0 = search [30] (foreach i. minList (inputTranspose ! i)) (foreach i. maxList (inputTranspose ! i)) (\x -> DL2Loss.reduceDisjunction [2] (foreach k. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseGreaterThan nil (classifier x ! pos) (classifier x ! k)) (not (k != pos)) (DL2Loss.trueElement))))
+
+@property;
+property_0_bool : Tensor Bool;
+property_0_bool = \x -> reduceAnd (foreach k. vectorMin ! k <= x ! k and x ! k <= vectorMax ! k) and reduceOr (foreach k. not (k != pos => classifier x ! pos > classifier x ! k))

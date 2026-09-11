@@ -5,9 +5,9 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 f : Tensor Real -> Tensor Real
 
 @property;
-reachable0 : Tensor Real;
-reachable0 = search [2] (const 0.0 [2]) (const 1.0 [2]) (\x -> DL2Loss.pointwiseEqual nil (f x) 0.0)
+reachable_0 : Tensor Real;
+reachable_0 = search [2] (const 0.0 [2]) (const 1.0 [2]) (\x -> DL2Loss.pointwiseEqual nil (f x) 0.0)
 
 @property;
-reachable0_bool : Tensor Bool;
-reachable0_bool = \x -> (const 0.0 [2] <= x and x <= const 1.0 [2]) and f x == 0.0
+reachable_0_bool : Tensor Bool;
+reachable_0_bool = \x -> (const 0.0 [2] <= x and x <= const 1.0 [2]) and f x == 0.0

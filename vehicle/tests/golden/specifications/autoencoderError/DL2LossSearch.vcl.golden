@@ -2,12 +2,23 @@ DL2Loss : DifferentiableTensorLogic;
 DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims -> \x -> const 1.0 dims / x, pointwiseConjunction = \dims -> \x -> \y -> x + y, pointwiseDisjunction = \dims -> \x -> \y -> x * y, pointwiseLessThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseEqual = \dims -> \x -> \y -> max (x - y) (y - x), pointwiseNotEqual = \dims -> \x -> \y -> const 1.0 dims / max (x - y) (y - x), reduceConjunction = \dims -> \xs -> reduceAdd xs, reduceDisjunction = \dims -> \xs -> reduceMul xs} 
 
 @network;
-f : Tensor Real -> Tensor Real
+encode : Tensor Real -> Tensor Real
+
+@network;
+decode : Tensor Real -> Tensor Real
 
 @property;
-monotonic_0 : Tensor Real;
-monotonic_0 = search nil 0.0 1.0 (\x1 -> search nil (max 0.0 x1) 1.0 (\x2 -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseGreaterThan nil (f x1) (f x2))))
+identity_0 : Tensor Real;
+identity_0 = search [5] (const -infinity [5]) (const infinity [5]) (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.reduceConjunction [5] (DL2Loss.pointwiseGreaterThan [5] (x - (foreach i. 0.1)) (decode (encode x)))))
 
 @property;
-monotonic_0_bool : Tensor Bool;
-monotonic_0_bool = \x1 -> \x2 -> ((0.0 < x1 and x1 < 1.0) and (0.0 < x2 and x2 < 1.0) and x1 <= x2) and reduceOr (f x1 > f x2)
+identity_1 : Tensor Real;
+identity_1 = search [5] (const -infinity [5]) (const infinity [5]) (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.reduceConjunction [5] (DL2Loss.pointwiseGreaterThan [5] (decode (encode x)) (x + (foreach i. 0.1)))))
+
+@property;
+identity_0_bool : Tensor Bool;
+identity_0_bool = \x -> reduceOr (x - (foreach i. 0.1) > decode (encode x))
+
+@property;
+identity_1_bool : Tensor Bool;
+identity_1_bool = \x -> reduceOr (decode (encode x) > x + (foreach i. 0.1))

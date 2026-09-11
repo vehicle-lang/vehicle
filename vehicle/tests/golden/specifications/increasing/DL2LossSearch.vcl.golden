@@ -5,9 +5,9 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 f : Tensor Real -> Tensor Real
 
 @property;
-increasing0 : Tensor Real;
-increasing0 = search nil 0.0 1.0 (\x -> DL2Loss.pointwiseGreaterThan nil x (f x))
+increasing_0 : Tensor Real;
+increasing_0 = search nil 0.0 1.0 (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseGreaterThan nil x (f x)))
 
 @property;
-increasing0_bool : Tensor Bool;
-increasing0_bool = \x -> (0.0 < x and x < 1.0) and reduceOr (x > f x)
+increasing_0_bool : Tensor Bool;
+increasing_0_bool = \x -> (0.0 < x and x < 1.0) and reduceOr (x > f x)

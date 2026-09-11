@@ -31,6 +31,8 @@ type QuantifierData = (Quantifier, Either (UnforcedDims Builtin, UnforcedDims Bu
 
 type LiftedData = ([QuantifierData], Thunk Builtin)
 
+type LiftedBinders = [UnforcedBinder Builtin]
+
 type LeafDisjunction = MaybeTrivial (DisjunctAll LiftedData)
 
 type MonadLiftQuantifiers m =
@@ -117,18 +119,16 @@ compileHardBooleanTree value = do
           throwError $ UnableToLiftQuantifiersInProperty declProv
         Right result -> compileHardBooleanTree result
 
-type ExtraBinders = [UnforcedBinder Builtin]
-
 andResult ::
   forall m.
   (MonadLiftQuantifiers m) =>
   UnforcedDims Builtin ->
   Thunk Builtin ->
   Thunk Builtin ->
-  ExtraBinders ->
+  LiftedBinders ->
   m LeafDisjunction
-andResult dims arg1 arg2 ctxDelta = do
-  arg1' <- liftQuantifiers (arg1, ctxDelta)
+andResult dims arg1 arg2 liftedBinders = do
+  arg1' <- liftQuantifiers (arg1, liftedBinders)
   case arg1' of
     NonTrivial disjuncts -> do
       things <- traverse (flip compileRHS arg2) disjuncts
@@ -138,11 +138,11 @@ andResult dims arg1 arg2 ctxDelta = do
         Trivial True -> return arg1'
         Trivial False -> return $ Trivial False
     Trivial False -> return $ Trivial False
-    Trivial True -> liftQuantifiers (arg2, ctxDelta)
+    Trivial True -> liftQuantifiers (arg2, liftedBinders)
   where
     compileRHS :: (MonadLiftQuantifiers m) => LiftedData -> Thunk Builtin -> m LeafDisjunction
     compileRHS leftLiftedData@(leftQuantifiers, _) arg = do
-      leafDisjunctionRHS <- liftQuantifiers (arg, ctxDelta ++ fmap (\(_, _, binder) -> binder) leftQuantifiers)
+      leafDisjunctionRHS <- liftQuantifiers (arg, liftedBinders ++ fmap (\(_, _, binder) -> binder) leftQuantifiers)
       case leafDisjunctionRHS of
         NonTrivial disjuncts -> return $ NonTrivial $ fmap (constructAnd leftLiftedData) disjuncts
         Trivial True -> return $ NonTrivial $ DisjunctAll [leftLiftedData]
@@ -158,31 +158,31 @@ orResult ::
   (MonadLiftQuantifiers m) =>
   Thunk Builtin ->
   Thunk Builtin ->
-  ExtraBinders ->
+  LiftedBinders ->
   m LeafDisjunction
-orResult arg1 arg2 ctxDelta = do
-  arg1' <- liftQuantifiers (arg1, ctxDelta)
-  arg2' <- liftQuantifiers (arg2, ctxDelta)
+orResult arg1 arg2 liftedBinders = do
+  arg1' <- liftQuantifiers (arg1, liftedBinders)
+  arg2' <- liftQuantifiers (arg2, liftedBinders)
   return $ orTrivial (<>) arg1' arg2'
 
 liftQuantifiers ::
   (MonadLiftQuantifiers m) =>
-  (Thunk Builtin, ExtraBinders) ->
+  (Thunk Builtin, LiftedBinders) ->
   m LeafDisjunction
-liftQuantifiers (value, ctxDelta) = logEntryAndExit value $ do
+liftQuantifiers (value, liftedBinders) = logEntryAndExit value $ do
   forcedValue <- forceThunk value
   case toBoolValue forcedValue of
     VBoolLiteral bool ->
       return $ Trivial bool
-    VAnd (TensorOp2Args dims arg1 arg2) -> andResult dims arg1 arg2 ctxDelta
-    VOr (TensorOp2Args _ arg1 arg2) -> orResult arg1 arg2 ctxDelta
+    VAnd (TensorOp2Args dims arg1 arg2) -> andResult dims arg1 arg2 liftedBinders
+    VOr (TensorOp2Args _ arg1 arg2) -> orResult arg1 arg2 liftedBinders
     VNot args -> do
       errorOrResult <- runExceptT $ lowerNot noUnblocking args
       case errorOrResult of
         Left _ -> do
           declProv <- ask
           throwError $ UnableToLiftQuantifiersInProperty declProv
-        Right result -> liftQuantifiers (result, ctxDelta)
+        Right result -> liftQuantifiers (result, liftedBinders)
     VQuantifyRatTensor (quantifier, QuantifyRatTensorArgs pDims bDims binder closure) -> do
       case quantifier of
         Forall -> do
@@ -192,7 +192,7 @@ liftQuantifiers (value, ctxDelta) = logEntryAndExit value $ do
           lv <- getBinderDepth
           let normBody = extendClosureWithBound closure binder lv
           let quantifierData = (quantifier, Left (pDims, bDims), binder)
-          leafDisjunction <- addNameToContext binder $ liftQuantifiers (normBody, ctxDelta)
+          leafDisjunction <- addNameToContext binder $ liftQuantifiers (normBody, liftedBinders)
           case leafDisjunction of
             NonTrivial disjuncts -> return $ NonTrivial $ fmap (lowerQuantifier quantifierData) disjuncts
             Trivial bool -> return $ Trivial bool
@@ -205,25 +205,25 @@ liftQuantifiers (value, ctxDelta) = logEntryAndExit value $ do
           lv <- getBinderDepth
           let normBody = extendClosureWithBound closure binder lv
           let quantifierData = (quantifier, Right typ, binder)
-          leafDisjunction <- addNameToContext binder $ liftQuantifiers (normBody, ctxDelta)
+          leafDisjunction <- addNameToContext binder $ liftQuantifiers (normBody, liftedBinders)
           case leafDisjunction of
             NonTrivial disjuncts -> return $ NonTrivial $ fmap (lowerQuantifier quantifierData) disjuncts
             Trivial bool -> return $ Trivial bool
     VCompareIndex _ -> do
-      newExpr <- updateVarLevels ctxDelta value
+      newExpr <- updateVarLevels liftedBinders value
       return $ NonTrivial $ DisjunctAll [([], newExpr)]
     VCompareNat _ -> do
-      newExpr <- updateVarLevels ctxDelta value
+      newExpr <- updateVarLevels liftedBinders value
       return $ NonTrivial $ DisjunctAll [([], newExpr)]
     VCompareRatTensor _ -> do
-      newExpr <- updateVarLevels ctxDelta value
+      newExpr <- updateVarLevels liftedBinders value
       return $ NonTrivial $ DisjunctAll [([], newExpr)]
     VBoolIf args -> do
       unfolded <- unfoldIf args
-      liftQuantifiers (unfolded, ctxDelta)
+      liftQuantifiers (unfolded, liftedBinders)
     VImplies args -> do
       let noImplies = elimImplies args
-      liftQuantifiers (noImplies, ctxDelta)
+      liftQuantifiers (noImplies, liftedBinders)
     VBoolVectorAt {} -> unblock
     VBoolFoldList {} -> unblock
     VReduceAndTensor {} -> unblock
@@ -235,9 +235,9 @@ liftQuantifiers (value, ctxDelta) = logEntryAndExit value $ do
       case errorOrResult of
         Left _ -> do
           -- TODO: In order for this to be sound, we need to check that there are no quantifiers in value
-          newExpr <- updateVarLevels ctxDelta value
+          newExpr <- updateVarLevels liftedBinders value
           return $ NonTrivial $ DisjunctAll [([], newExpr)]
-        Right result -> liftQuantifiers (result, ctxDelta)
+        Right result -> liftQuantifiers (result, liftedBinders)
 
 lowerQuantifier ::
   QuantifierData ->
@@ -247,33 +247,33 @@ lowerQuantifier quantifierData (quantifiers, expr) = (quantifierData : quantifie
 
 updateVarLevels ::
   (MonadLiftQuantifiers m) =>
-  ExtraBinders ->
+  LiftedBinders ->
   Thunk Builtin ->
   m (Thunk Builtin)
-updateVarLevels offset value = do
+updateVarLevels liftedBinders value = do
   forcedValue <- forceThunk value
   Forced <$> case forcedValue of
-    VFreeVar ident spine -> VFreeVar ident <$> traverseArgs (updateVarLevels offset) spine
-    VBuiltin ident spine -> VBuiltin ident <$> traverseArgs (updateVarLevels offset) spine
+    VFreeVar ident spine -> VFreeVar ident <$> traverseArgs (updateVarLevels liftedBinders) spine
+    VBuiltin ident spine -> VBuiltin ident <$> traverseArgs (updateVarLevels liftedBinders) spine
     VUniverse args -> return $ VUniverse args
-    VBoundVar lv spine -> VBoundVar (lv + Lv (length offset)) <$> traverseArgs (updateVarLevels offset) spine
+    VBoundVar lv spine -> VBoundVar (lv + Lv (length liftedBinders)) <$> traverseArgs (updateVarLevels liftedBinders) spine
     VPi binder closure -> do
-      binder' <- traverse (updateVarLevels offset) binder
-      closure' <- updateVarLevelsInClosure offset closure
+      binder' <- traverse (updateVarLevels liftedBinders) binder
+      closure' <- updateVarLevelsInClosure liftedBinders closure
       return $ VLam binder' closure'
     VLam binder closure -> do
-      binder' <- traverse (updateVarLevels offset) binder
-      closure' <- updateVarLevelsInClosure offset closure
+      binder' <- traverse (updateVarLevels liftedBinders) binder
+      closure' <- updateVarLevelsInClosure liftedBinders closure
       return $ VLam binder' closure'
-    VRecord i fs -> VRecord i <$> traverse (updateVarLevels offset) fs
+    VRecord i fs -> VRecord i <$> traverse (updateVarLevels liftedBinders) fs
     VRecordAcc typ record field spine -> do
-      typ' <- updateVarLevels offset typ
-      record' <- updateVarLevels offset record
-      VRecordAcc typ' record' field <$> traverseArgs (updateVarLevels offset) spine
+      typ' <- updateVarLevels liftedBinders typ
+      record' <- updateVarLevels liftedBinders record
+      VRecordAcc typ' record' field <$> traverseArgs (updateVarLevels liftedBinders) spine
 
 updateVarLevelsInClosure ::
   (MonadLiftQuantifiers m) =>
-  ExtraBinders ->
+  LiftedBinders ->
   Closure Builtin ->
   m (Closure Builtin)
 updateVarLevelsInClosure binders (Closure (BoundEnv env) body) = do

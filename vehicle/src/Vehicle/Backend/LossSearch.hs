@@ -191,7 +191,7 @@ reconstructDecls p ident sort typ boolExpr domainExtractedExprs = case domainExt
   [] -> return ([], [], [])
   e : es -> do
     exprCount <- demand @Int
-    let newNameDomainExtracted = nameOf ident <> T.pack (show exprCount)
+    let newNameDomainExtracted = nameOf ident <> "_" <> T.pack (show exprCount)
     let newIdentDomainExtracted = changeName ident newNameDomainExtracted
     let domainExtractedDecl = DefFunction p newIdentDomainExtracted sort typ e
     let newNameBool = newNameDomainExtracted <> "_bool"
