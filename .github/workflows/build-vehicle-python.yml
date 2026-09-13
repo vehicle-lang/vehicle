@@ -54,12 +54,23 @@ jobs:
       - name: Get source
         uses: actions/checkout@v7
 
-      - name: Setup GHC ${{ env.DEFAULT_GHC_VERSION }}
-        if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
+      - name: 🛠️ Install Haskell
         uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
+
+      - name: 💾 Restore Cabal dependencies
+        uses: actions/cache/restore@v6
+        if: ${{ !env.ACT }}
+        id: cache-haskell
+        env:
+          key: ${{ matrix.os.name }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ env.key }}-
 
       - name: Build wheel
         uses: pypa/cibuildwheel@v4.2.0
