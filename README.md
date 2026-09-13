@@ -1,25 +1,27 @@
 [![PyPI](https://img.shields.io/pypi/v/vehicle-lang)](https://pypi.org/project/vehicle-lang/)
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/vehicle-lang/vehicle)
 [![GitHub Workflow Status](https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml/badge.svg)](https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml)
 [![readthedocs status](https://readthedocs.org/projects/vehicle-lang/badge/?version=latest)](https://vehicle-lang.readthedocs.io/en/latest/)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/vehicle-lang/vehicle/dev.svg)](https://results.pre-commit.ci/latest/github/vehicle-lang/vehicle/dev)
 
 # Vehicle
 
 Vehicle is a system for embedding logical specifications into neural networks.
-At its heart is the Vehicle specification language, a high-level, functional language for writing mathematically-precise specifications for your networks. For example, the following simple
+At its heart is the Vehicle specification language, a high-level, functional language for writing mathematically-precise specifications for your networks.
+
+<!--
+For example, the following simple
 specification says that a network's output should be monotonically increasing with respect to
 its third input.
 
-<!-- This must be a direct link, because the same README is used on PyPI -->
+This must be a direct link, because the same README is used on PyPI
 ![Example specification](https://github.com/vehicle-lang/vehicle/blob/dev/docs/example-spec.png?raw=true)
+ -->
 
 These specifications can then automatically be compiled down to loss functions to be
 used when training your network.
-After training, the same specification can be compiled down to queries for low-level neural network solvers such as Marabou which either prove that the specification holds or produce a counter-example. Such a proof is far better than simply testing, as you can prove that
+After training, the same specification can be compiled down to queries for low-level neural network solvers which either prove that the specification holds or produce a counter-example. Such a proof is far better than simply testing, as you can prove that
 the specification holds for _all_ inputs.
 Verified specifications can also be exported to interactive theorem provers (ITPs)
-such as Agda.
+such as Rocq, Isabelle/HOL and Agda.
 This in turn allows for the formal verification of larger software systems
 that use neural networks as subcomponents.
 The generated ITP code is tightly linked to the actual deployed network, so changes
@@ -52,14 +54,12 @@ to discuss it with us.
 #### Neural network formats
 
 - [ONNX](https://onnx.ai/)
-
-#### Dataset formats
-
-- [IDX](http://yann.lecun.com/exdb/mnist/)
+- [TensorFlow](https://www.tensorflow.org/)
+- [PyTorch](https://pytorch.org/)
 
 #### Solver backends
 
-- Any [VNNLIB 2.0](https://www.vnnlib.org/) compatible solver
+- [VNNLIB 2.0](https://www.vnnlib.org/) compatible solvers
 - [Marabou](https://github.com/NeuralNetworkVerification/Marabou)
 
 #### Interactive Theorem Prover backends
@@ -67,6 +67,11 @@ to discuss it with us.
 - [Agda](https://agda.readthedocs.io/)
 - [Rocq](https://rocq-prover.org/)
 - [Isabelle](https://isabelle.in.tum.de/)
+- [Imandra](https://www.imandra.ai/)
+
+#### Dataset formats
+
+- [IDX](http://yann.lecun.com/exdb/mnist/)
 
 ## Related papers
 
