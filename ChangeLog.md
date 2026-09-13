@@ -11,7 +11,7 @@
 
   a = 1
   ```
- 
+
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.
