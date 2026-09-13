@@ -235,7 +235,7 @@ The following operations over tensors are currently supported:
        | ``Tensor A (reverse ds)``
      - | |backendloss_full|
        | |backendverification_full|
-       | |backendagda_full|
+       | |backendagda_easy|
        | |backendrocq_part| (:ref:`⤴ <exporting-rocq-transpose-limitation>`)
        | |backendimandra_full|
        | |backendisabelle_full|
