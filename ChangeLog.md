@@ -2,11 +2,39 @@
 
 ## Next release
 
+### Language
+
+* Resource annotations are now parsed greedily, so that the following is now considered valid:
+  ```
+  @parameter
+  x : Real
+
+  a = 1
+  ```
+
+### Solver backend
+
+* Fixed internal error that occassionally happened with non-linear specifications.
+
+## v0.28.0
+
 ### Solver backend
 
 * Fixed bug where VNNLIB 2.0 queries were incorrectly being generated with `equalTo` instead of `equal-to`.
 
 ### Loss backend
+
+* Fixed the following bugs:
+  - the translation of `==` and `!=` were incorrectly specified in the DL2Loss logic.
+  - a few `Internal scoping` errors that occasionally occured.
+  - in default `Sampler` implementations which weren't generating initial starting points with maximal randomness.
+  - in default PyTorch `Sampler` implementation where PGD search wasn't being run correctly if the loss function was being called in a `torch.no_grad()` environment.
+  - constraints with multiple quantified variables in them were being incorrectly added to the sampler domains.
+
+* Generated Python code is now written out to a temporary directory which allows you to step through it as normal when you attach a debugger.
+
+* Generated Python code preserves far more of the specification's original structure instead
+of normalising it out.
 
 * Quantified variables are no longer required to have a well-defined domain.
   e.g. instead of
@@ -33,8 +61,7 @@
   ```
   where `[[e]]` represents the denotation computed using the provided differentiable logic.
 
-* The compiler will now error if a quantified variable has no useful gradients associated with it, e.g.
-  in the following where `f` is never actually used:
+* The compiler will now error if a quantified variable has no useful gradients associated with it, e.g. in the following where `f` is never actually used:
   ```
   @network
   f : Real -> Real

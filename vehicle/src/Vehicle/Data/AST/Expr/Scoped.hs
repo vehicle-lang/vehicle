@@ -54,7 +54,7 @@ import Vehicle.Data.Code.Interface (HasBuiltinConstructor (..), HasLambdaConstru
 import Vehicle.Data.Code.Interface.Args (HasLambdaConstructor (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
-import Vehicle.Data.Variable.Bound.Level.Core (Lv, dbIndexToLevel, unLv)
+import Vehicle.Data.Variable.Bound.Level.Core (Lv, dbIndexToLevel, dbLevelToIndex, unLv)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -341,8 +341,11 @@ traverseBoundVariables_ f ctxSize = go ctxSize
       Universe {} -> return ()
       App fun args -> do go depth fun; traverse_ (traverse (go depth)) args
       BoundVar _ ix -> do
-        when (dbIndexToLevel depth ix < ctxSize) $
-          f ctxSize ix
+        -- `ix` is relative to the local `depth`, but `f` operates on the
+        -- outer `ctxSize` frame, so re-express it as a level and back.
+        let lvl = dbIndexToLevel depth ix
+        when (lvl < ctxSize) $
+          f ctxSize (dbLevelToIndex ctxSize lvl)
       Pi _ binder body -> do
         traverse_ (go depth) binder
         go (depth + 1) body

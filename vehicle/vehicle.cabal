@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.27.1
+version:            0.28.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -139,7 +139,6 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
-    Vehicle.Compile.Constants.ForcedValue
     Vehicle.Compile.Constants.Rational
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
@@ -214,6 +213,8 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames
+    Vehicle.Compile.Constants.TensorValue
+    Vehicle.Compile.Constants.TensorValue.Core
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources

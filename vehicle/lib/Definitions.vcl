@@ -21,10 +21,10 @@ existsInList f xs = fold (\x y -> x or y) False (map f xs)
 --------------------------------------------------------------------------------
 
 existsIndex : forallT {n} . (Index n -> Bool) -> Bool
-existsIndex f = reduceOr (foreach i . f i)
+existsIndex f = reduceOr (foreach k . f k)
 
 forallIndex : forallT {n} . (Index n -> Bool) -> Bool
-forallIndex f = reduceAnd (foreach i . f i)
+forallIndex f = reduceAnd (foreach k . f k)
 
 --------------------------------------------------------------------------------
 -- Type classes
@@ -296,8 +296,8 @@ DL2Loss =
   , pointwiseLessEqualThan     = \{dims} x y -> max (const 0 dims) (x - y)
   , pointwiseGreaterThan       = \{dims} x y -> max (const 0 dims) (y - x)
   , pointwiseGreaterEqualThan  = \{dims} x y -> max (const 0 dims) (y - x)
-  , pointwiseEqual             = \{dims} x y -> - (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
-  , pointwiseNotEqual          = \{dims} x y -> (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
+  , pointwiseEqual             = \x y -> max (x - y) (y - x)
+  , pointwiseNotEqual          = \{dims} x y -> (const 1 dims) / max (x - y) (y - x)
   , reduceConjunction          = \xs -> reduceAdd xs
   , reduceDisjunction          = \xs -> reduceMul xs
   }
