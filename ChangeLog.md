@@ -2,6 +2,16 @@
 
 ## Next release
 
+### Language
+
+* Resource annotations are now parsed greedily, so that the following is now considered valid:
+  ```
+  @parameter
+  x : Real
+
+  a = 1
+  ```
+ 
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.
