@@ -9,13 +9,16 @@ module Vehicle.Prelude.IO
     fatalError,
     programOutput,
     getVehiclePath,
+    lockedReadFile,
+    lockedWriteFile,
+    lockedWriteTextFile,
     ExternalOutputFormat (..),
     CommentStyle (..),
     MonadStdIO (..),
   )
 where
 
-import Control.Exception (catch, throwIO)
+import Control.Exception (catch, finally, throwIO)
 -- import Control.Monad (forM_)
 
 import Control.Monad.Except (ExceptT)
@@ -25,12 +28,16 @@ import Control.Monad.Reader (ReaderT)
 import Control.Monad.State (StateT)
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Writer.Strict (WriterT)
+import Data.ByteString qualified as BIO
 import Data.Text (Text)
+import Data.Text.IO qualified as TIO
 import Data.Version (Version)
+import GHC.IO.Handle.Lock (LockMode (..), hLock, hUnlock)
 import System.Directory (createDirectoryIfMissing, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
 import System.FilePath ((</>))
+import System.IO (Handle, IOMode (..), hFileSize, withBinaryFile)
 import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
 import Vehicle.Prelude.Prettyprinter
@@ -119,6 +126,40 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
     handleExists e
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
+
+-- | Runs an action on a file handle while holding an OS-level file lock, so
+-- that concurrent instances of the compiler can't interleave reads and writes,
+-- or read a half-written version, of the same file. Blocks until the lock is
+-- available rather than failing immediately.
+withLockedFile :: LockMode -> FilePath -> IOMode -> (Handle -> IO a) -> IO a
+withLockedFile lockMode filepath mode action =
+  withBinaryFile filepath mode $ \h -> do
+    hLock h lockMode
+    action h `finally` hUnlock h
+
+-- | Reads a file while holding a shared OS-level file lock, so that it can't
+-- be read while another instance of the compiler is mid-write to the same
+-- file. Blocks until the lock is available rather than failing immediately.
+--
+-- Note we use `hGet` rather than `hGetContents` here, as the latter closes
+-- the handle once it has read the contents, which would cause the subsequent
+-- `hUnlock` in `withLockedFile` to fail with a bad file descriptor error.
+lockedReadFile :: FilePath -> IO BIO.ByteString
+lockedReadFile filepath =
+  withLockedFile SharedLock filepath ReadMode $ \h -> do
+    size <- hFileSize h
+    BIO.hGet h (fromIntegral size)
+
+lockedWriteTextFile :: FilePath -> Text -> IO ()
+lockedWriteTextFile filepath contents =
+  withLockedFile ExclusiveLock filepath WriteMode $ \h -> TIO.hPutStr h contents
+
+-- | Writes a file while holding an exclusive OS-level file lock, so that
+-- concurrent instances of the compiler can't interleave writes to, or read a
+-- half-written version of, the same file.
+lockedWriteFile :: FilePath -> BIO.ByteString -> IO ()
+lockedWriteFile filepath contents =
+  withLockedFile ExclusiveLock filepath WriteMode $ \h -> BIO.hPut h contents
 
 fatalError :: (MonadStdIO m) => Doc a -> m b
 fatalError message = do
