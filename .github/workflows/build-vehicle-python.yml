@@ -62,6 +62,11 @@ jobs:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
+      - name: 🛠️ Configure
+        run: |
+          cabal configure --project-file=./vehicle-python/cabal.project
+          cabal build all --project-file=./vehicle-python/cabal.project --dry-run
+
       - name: 💾 Restore Cabal dependencies
         uses: actions/cache/restore@v6
         if: ${{ !env.ACT && (matrix.os.name == 'macOS' || matrix.os.name == 'Windows') }}
