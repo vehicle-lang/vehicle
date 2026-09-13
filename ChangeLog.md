@@ -16,6 +16,10 @@
 
 * Fixed internal error that occassionally happened with non-linear specifications.
 
+### Agda backend
+
+* Fixed error where Agda library didn't type-check due to malformed transpose definition.
+
 ## v0.28.0
 
 ### Solver backend

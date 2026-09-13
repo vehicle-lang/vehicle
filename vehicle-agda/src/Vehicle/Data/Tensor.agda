@@ -108,17 +108,6 @@ infix 6 _!_
 _!_ : Tensor A (d ∷ ds) → Fin d → Tensor A ds
 tensor xs ! i = tensor (λ j → xs (combine i j))
 
--- Transpose reverses axes: `Tensor A ds -> Tensor A (reverse ds)`.
--- Implemented by accumulator recursion over dimensions.
-transposeAcc : ∀ {ds ds' : Dimensions}
-             → Tensor (Tensor A ds) ds' → Tensor A (reverseAcc ds' ds)
-transposeAcc {ds = []}     xss = xss
-transposeAcc {ds = _ ∷ _}  xss =
-  transposeAcc (λ i → map (λ inner → inner i) xss)
-
-transpose : ∀ {ds : Dimensions} → Tensor A ds → Tensor A (reverse ds)
-transpose t = transposeAcc t
-
 --------------------------------------------------------------------------------
 -- Rational specialisations
 
