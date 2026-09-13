@@ -61,14 +61,14 @@ purifyExpr actions incrDims value = do
   forcedValue <- forceAndRewriteTensor value
   let purifyFn = case toRatTensorValue forcedValue of
         VRatTensorLiteral t -> purifyRatTensor t
-        VNegRatTensor args -> purifyTensorOp1 accessNegRatTensor args
-        VLogRatTensor args -> purifyTensorOp1 accessLogRatTensor args
-        VExpRatTensor args -> purifyTensorOp1 accessExpRatTensor args
-        VAddRatTensor args -> purifyTensorOp2 accessAddRatTensor args
-        VSubRatTensor args -> purifyTensorOp2 accessSubRatTensor args
-        VMulRatTensor args -> purifyTensorOp2 accessMulRatTensor args
-        VDivRatTensor args -> purifyTensorOp2 accessDivRatTensor args
-        VPowRatTensor args -> purifyTensorOp2 accessPowRatTensor args
+        VNegRatTensor args -> purifyTensorOp1 accessNegRatTensor evalNegRatTensor args
+        VLogRatTensor args -> purifyTensorOp1 accessLogRatTensor evalLogRatTensor args
+        VExpRatTensor args -> purifyTensorOp1 accessExpRatTensor evalExpRatTensor args
+        VAddRatTensor args -> purifyTensorOp2 accessAddRatTensor evalAddRatTensor args
+        VSubRatTensor args -> purifyTensorOp2 accessSubRatTensor evalSubRatTensor args
+        VMulRatTensor args -> purifyTensorOp2 accessMulRatTensor evalMulRatTensor args
+        VDivRatTensor args -> purifyTensorOp2 accessDivRatTensor evalDivRatTensor args
+        VPowRatTensor args -> purifyTensorOp2 accessPowRatTensor evalPowRatTensor args
         VRatConstTensor args -> purifyConstTensor args
         VRatStackTensor args -> purifyStackTensor args
         VIfRatTensor args -> purifyIf args
@@ -147,22 +147,24 @@ purifyMinMax isMin (TensorOp2Args ds xs ys) actions incrDims = do
 
 purifyTensorOp1 ::
   TensorOp1Accessor ForcedValue Thunk Builtin ->
+  EvalSimple ForcedValue Thunk TensorOp1Args Builtin m ->
   TensorOp1Args (Thunk Builtin) ->
   PurifyFn m
-purifyTensorOp1 accessOp args actions incrDims = do
+purifyTensorOp1 accessOp evalOp args actions incrDims = do
   unblockTensorOp1
     (purifyExpr actions incrDims)
-    (return . Forced . mkExpr accessOp)
+    (forceEvaluation accessOp evalOp)
     args
 
 purifyTensorOp2 ::
   TensorOp2Accessor ForcedValue Thunk Builtin ->
+  EvalSimple ForcedValue Thunk TensorOp2Args Builtin m ->
   TensorOp2Args (Thunk Builtin) ->
   PurifyFn m
-purifyTensorOp2 accessOp args actions incrDims = do
+purifyTensorOp2 accessOp evalOp args actions incrDims = do
   unblockTensorOp2
     (purifyExpr actions incrDims)
-    (return . Forced . mkExpr accessOp)
+    (forceEvaluation accessOp evalOp)
     args
 
 purifyIf :: IfArgs (Thunk Builtin) -> PurifyFn m
