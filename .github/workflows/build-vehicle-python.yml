@@ -54,12 +54,29 @@ jobs:
       - name: Get source
         uses: actions/checkout@v7
 
-      - name: Setup GHC ${{ env.DEFAULT_GHC_VERSION }}
+      - name: 🛠️ Install Haskell
         if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
         uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
+
+      - name: 🛠️ Configure
+        run: |
+          cabal configure --project-file=./vehicle-python/cabal.project
+          cabal build all --project-file=./vehicle-python/cabal.project --dry-run
+
+      - name: 💾 Restore Cabal dependencies
+        uses: actions/cache/restore@v6
+        if: ${{ !env.ACT && (matrix.os.name == 'macOS' || matrix.os.name == 'Windows') }}
+        id: cache-haskell
+        env:
+          key: ${{ matrix.os.name }}-${{ matrix.os.arch }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.key }}-plan-${{ hashFiles('vehicle-python/dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ env.key }}-
 
       - name: Build wheel
         uses: pypa/cibuildwheel@v4.2.0
@@ -73,6 +90,13 @@ jobs:
           CIBW_TEST_EXTRAS: "${{ matrix.os.test }}"
           CIBW_BEFORE_ALL_LINUX: "cabal update"
           MACOSX_DEPLOYMENT_TARGET: "${{ matrix.os.arch == 'x86_64' && '10.10' || '11.0' }}"
+
+      - name: 💾 Save Cabal dependencies
+        uses: actions/cache/save@v6
+        if: ${{ !env.ACT && (matrix.os.name == 'macOS' || matrix.os.name == 'Windows') && steps.cache-haskell.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
 
       - name: Upload wheels
         uses: actions/upload-artifact@v7
