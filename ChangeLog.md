@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Solver backend
+
+* Fixed internal error that occassionally happened with non-linear specifications.
+
 ## v0.28.0
 
 ### Solver backend
