@@ -17,18 +17,16 @@ import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Data.Either (partitionEithers)
 import Data.List.NonEmpty (NonEmpty (..))
-import Vehicle.Compile.Constants.ForcedValue ()
 import Vehicle.Compile.Constants.Rational (LinearExpression)
+import Vehicle.Compile.Constants.TensorValue ()
+import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin (evalConstTensor, forceEvaluation)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll (..), eliminateTrivialConjunctions)
-import Vehicle.Data.Code.ForcedValue (DimensionedTensorValue (..), GenericThunk (..), Thunk)
-import Vehicle.Data.Code.Interface (ConstTensorArgs (..))
-import Vehicle.Data.Code.Interface.Operations (accessConstTensor)
+import Vehicle.Data.Code.ForcedValue (GenericThunk (..), Thunk)
 import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
@@ -115,28 +113,26 @@ fourierMotzkinTensorBoundsElimination ::
   forall m.
   (MonadLogger m, MonadFreeContext Builtin m, MonadNameContext m, MonadReadableNameContext m) =>
   (KnownPrefixOfTensorShape, Thunk Builtin) ->
-  TensorBounds (DimensionedTensorValue Builtin) ->
-  m (Domain (DimensionedTensorValue Builtin))
+  TensorBounds TensorConstantValue ->
+  m (Domain TensorConstantValue)
 fourierMotzkinTensorBoundsElimination (fullKnownPrefix, remainingShape) TensorBounds {..} = do
   lowerBound <- go NegInfinity fullKnownPrefix lowerBounds tensorSliceBounds
   upperBound <- go PosInfinity fullKnownPrefix upperBounds tensorSliceBounds
   return $ Domain lowerBound upperBound
   where
     go ::
-      (IsBound bound (DimensionedTensorValue Builtin) m) =>
+      (IsBound bound (TensorConstantValue) m) =>
       ExtendedRational ->
       KnownPrefixOfTensorShape ->
-      (SliceBounds (DimensionedTensorValue Builtin) -> [bound (DimensionedTensorValue Builtin)]) ->
-      NestedSliceBounds (DimensionedTensorValue Builtin) ->
-      m (bound (DimensionedTensorValue Builtin))
+      (SliceBounds TensorConstantValue -> [bound TensorConstantValue]) ->
+      NestedSliceBounds TensorConstantValue ->
+      m (bound TensorConstantValue)
     go defaultBound knownPrefix getBound (NestedSliceBounds sliceBounds maybeChildBounds) = do
       maybeBounds <- andBoundList (getBound sliceBounds)
       case (knownPrefix, maybeChildBounds, maybeBounds) of
         (_, Nothing, Nothing) -> do
           let dims = foldr (\d ds -> Forced $ IDimCons (Forced (INatLiteral d)) ds) remainingShape knownPrefix
-          let args = ConstTensorArgs (Forced IRatType) (Forced $ IRatLiteral defaultBound) dims
-          value <- forceEvaluation accessConstTensor evalConstTensor args
-          valueToBound (Strict, TensorValue dims value)
+          valueToBound (Strict, TensorConstantValue dims defaultBound Nothing)
         (_, Nothing, Just bounds) ->
           return bounds
         (_d : ds, Just childTensorBounds, _) -> do

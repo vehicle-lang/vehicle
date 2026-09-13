@@ -47,7 +47,7 @@ lookupIxInBoundCtx ix ctx = case lookupIx ctx ix of
     outOfBoundsError pass ctx ix
   Just x -> x
 
-outOfBoundsError :: Doc () -> GenericBoundCtx a -> Ix -> b
+outOfBoundsError :: (HasCallStack) => Doc () -> GenericBoundCtx a -> Ix -> b
 outOfBoundsError pass ctx i =
   developerError $
     "Internal scoping error during"

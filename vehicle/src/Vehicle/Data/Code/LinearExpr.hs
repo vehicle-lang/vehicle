@@ -219,6 +219,9 @@ eliminateVars solutions expr@(Sparse coeffs _) = do
               { coefficients = Map.delete var $ coefficients resultExpr
               }
 
+linearExprNumberOfVariables :: LinearExpr variable constant -> Int
+linearExprNumberOfVariables = Map.size . coefficients
+
 linearExprVariables :: (VariableLike variable) => LinearExpr variable constant -> Set variable
 linearExprVariables linearExpr = Map.keysSet $ coefficients linearExpr
 

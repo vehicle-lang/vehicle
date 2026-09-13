@@ -78,7 +78,7 @@ type Annotation = (B.TokAnnotation, B.DeclAnnOpts)
 
 elabDeclGroup ::
   (MonadElab m, DesugarableBuiltin Builtin) =>
-  [Annotation] ->
+  [AnnotationResult] ->
   NonEmpty B.Decl ->
   m (V.Decl Builtin, [B.Decl])
 elabDeclGroup anns = \case
@@ -110,7 +110,26 @@ elabDeclGroup anns = \case
 
   -- Annotation declaration.
   B.DefAnn ann annOpts :| (d : ds) -> do
-    elabDeclGroup ((ann, annOpts) : anns) (d :| ds)
+    annotation <- parseAnnotation (ann, annOpts)
+
+    -- If we have an abstract annotation, greedily try to consume
+    -- the function type annotations (fixes issue 1260).
+    maybeAbstractNameAndType <- case annotation of
+      AbstractDeclAnn {} -> case d : ds of
+        B.DefFunType n1 _tk1 t : B.DefFunExpr n2 _tk2 _e : _ ->
+          return $
+            if tkSymbol n1 == tkSymbol n2
+              then Nothing
+              else Just (n1, t)
+        B.DefFunType n _tk t : _ -> return $ Just (n, t)
+        _ -> return Nothing
+      _ -> return Nothing
+
+    case maybeAbstractNameAndType of
+      Just (name, typ) -> do
+        d' <- elabDefAbstract (annotation : anns) name typ
+        return (d', ds)
+      Nothing -> elabDeclGroup (annotation : anns) (d :| ds)
 
   -- ERROR: Annotation with no body
   B.DefAnn ann _annOpts :| [] -> do
@@ -160,15 +179,14 @@ parseAnnotation (tkName, opts) = case tkSymbol tkName of
 
 elabDefAbstract ::
   (MonadElab m, DesugarableBuiltin Builtin) =>
-  [Annotation] ->
+  [AnnotationResult] ->
   B.Name ->
   B.Expr ->
   m (V.Decl Builtin)
-elabDefAbstract anns n t = do
+elabDefAbstract annotations n t = do
   p <- mkProvenance n
   ident <- elabName n
 
-  annotations <- traverse parseAnnotation anns
   annotation <- case annotations of
     [AbstractDeclAnn abstractAnn] ->
       return abstractAnn
@@ -184,16 +202,15 @@ elabDefAbstract anns n t = do
 
 elabTypeDef ::
   (MonadElab m, DesugarableBuiltin Builtin) =>
-  [Annotation] ->
+  [AnnotationResult] ->
   B.Name ->
   [B.NameBinder] ->
   B.Expr ->
   m (V.Decl Builtin)
-elabTypeDef anns name binders expr = do
+elabTypeDef annotations name binders expr = do
   p <- mkProvenance name
   ident <- elabName name
 
-  annotations <- traverse parseAnnotation anns
   case annotations of
     ann : _ ->
       throwError $ TypeDefWithAnnotation p ident (pretty ann)
@@ -209,14 +226,14 @@ elabTypeDef anns name binders expr = do
 
 elabFunctionDef ::
   (MonadElab m, DesugarableBuiltin Builtin) =>
-  [Annotation] ->
+  [AnnotationResult] ->
   B.Name ->
   B.Name ->
   B.Expr ->
   [B.NameBinder] ->
   B.Expr ->
   m (V.Decl Builtin)
-elabFunctionDef anns name1 name2 typ binders expr = do
+elabFunctionDef annotations name1 name2 typ binders expr = do
   p <- mkProvenance name1
   ident1 <- elabName name1
   ident2 <- elabName name2
@@ -224,7 +241,6 @@ elabFunctionDef anns name1 name2 typ binders expr = do
   unless (ident1 == ident2) $ do
     throwError $ FunctionWithMismatchedNames p ident1 ident2
 
-  annotations <- traverse parseAnnotation anns
   sort <-
     V.FunctionDecl (length binders) <$> case annotations of
       [FunDeclAnn funAnn] ->
@@ -242,17 +258,16 @@ elabFunctionDef anns name1 name2 typ binders expr = do
 
 elabRecordDefinition ::
   (MonadElab m, DesugarableBuiltin Builtin) =>
-  [Annotation] ->
+  [AnnotationResult] ->
   B.Name ->
   [B.NameBinder] ->
   [B.RecordFieldDef] ->
   B.RecordSupports ->
   m (V.Decl Builtin)
-elabRecordDefinition anns name telescope fields supports = do
+elabRecordDefinition annotations name telescope fields supports = do
   p <- mkProvenance name
   ident <- elabName name
 
-  annotations <- traverse parseAnnotation anns
   sort <- case annotations of
     [RecordDeclAnn recordAnn] ->
       return $ Just recordAnn

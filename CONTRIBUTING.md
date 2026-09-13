@@ -67,7 +67,7 @@ Install both extras or combine them with any others to only install what is need
 
 ### Getting the source
 
-The main repository is [vehicle-lang/vehicle]. This contains the Vehicle compiler, the the standard library, bindings for Python, Agda and Rocq, and a bunch of examples and tools.
+The main repository is [vehicle-lang/vehicle]. This contains the Vehicle compiler, the standard library, bindings for Python, Agda and Rocq, and a bunch of examples and tools.
 
 The very first step to work on Vehicle is to clone the repository:
 
@@ -95,7 +95,7 @@ We recommend you install GHC and Cabal using [GHCup].
 
 1. Install GHCup following the instruction on the website: <https://www.haskell.org/ghcup/>
 
-2. Instal GHC 9.4.8 and the latest version of Cabal.
+2. Install GHC 9.4.8 and the latest version of Cabal.
 
    Run the following commands:
 
@@ -540,7 +540,7 @@ Ensure that you have the source code and that you have installed GHC and Cabal.
    vehicle --version
    ```
 
-   This should print `0.27.1`.
+   This should print `0.28.0`.
 
 ### Building the Vehicle Python bindings
 
@@ -726,14 +726,14 @@ Follow the Python setup instructions above and then:
   uv build
   ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.27.1-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.28.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.27.1-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.28.0-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
@@ -778,7 +778,7 @@ uv run --extra wheel scripts/build-wheel.sh
    vehicle --version
    ```
 
-   This should print `0.27.1`.
+   This should print `0.28.0`.
 
 4. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -934,11 +934,11 @@ The procedure to create a new release is:
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.27.1-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.27.1-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.27.1-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.27.1-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.27.1-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.28.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.28.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.28.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.28.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.28.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -959,7 +959,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.27.1>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.28.0>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

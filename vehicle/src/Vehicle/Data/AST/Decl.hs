@@ -195,12 +195,19 @@ instance NFData DefFunctionSort
 
 instance Serialize DefFunctionSort
 
-incrLHSBinderCount :: DefFunctionSort -> DefFunctionSort
-incrLHSBinderCount = \case
-  TypeDecl count -> TypeDecl (count + 1)
-  FunctionDecl count ann -> FunctionDecl (count + 1) ann
-  ProjectionDecl count -> ProjectionDecl (count + 1)
-  TensorCoercionDecl count -> TensorCoercionDecl (count + 1)
+incrLHSBinderCount :: Int -> DefFunctionSort -> DefFunctionSort
+incrLHSBinderCount amount = \case
+  TypeDecl count -> TypeDecl (count + amount)
+  FunctionDecl count ann -> FunctionDecl (count + amount) ann
+  ProjectionDecl count -> ProjectionDecl (count + amount)
+  TensorCoercionDecl count -> TensorCoercionDecl (count + amount)
+
+lhsBinderCount :: DefFunctionSort -> LHSBinderCount
+lhsBinderCount = \case
+  TypeDecl count -> count
+  FunctionDecl count _ann -> count
+  ProjectionDecl count -> count
+  TensorCoercionDecl count -> count
 
 -- | The priority of the candidate when trying to find a default.
 -- Instances with lower priority will be used as a default in

@@ -1,6 +1,6 @@
 robustAround : Tensor Real -> Tensor Bool;
-robustAround = \ image -> True
+robustAround image = True
 
 @property;
 robust : Vector (Tensor Real) -> Vector (Tensor Bool);
-robust = \ trainingImages -> foreach i. robustAround (trainingImages ! i)
+robust trainingImages = foreach i. robustAround (trainingImages ! i)

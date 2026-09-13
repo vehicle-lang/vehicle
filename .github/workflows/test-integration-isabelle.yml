@@ -1,17 +1,7 @@
 name: Test Isabelle
 
 on:
-  push:
-    branches:
-      - dev
-    tags:
-      - "v*"
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-  merge_group:
+  workflow_call:
 
 defaults:
   run:

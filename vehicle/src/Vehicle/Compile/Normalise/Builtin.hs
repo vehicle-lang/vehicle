@@ -126,8 +126,8 @@ evalTensorOp1 accessOp accessLit op = go
       case (ds', xs') of
         (_ds, getExpr accessLit -> Just t) ->
           return $ Evaluated $ exprToThunk $ mkExpr accessLit $ mapTensor op t
-        (IDimCons _ ds, getExpr accessConstTensor -> Just xs) -> do
-          xs'' <- traverseConstTensorValue (evalFull ds) xs
+        (_ds, getExpr accessConstTensor -> Just xs) -> do
+          xs'' <- traverseConstTensorValue (evalFull (exprToThunk IDimNil)) xs
           return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor xs''
         (IDimCons _ ds, getExpr accessStackTensor -> Just xs) -> do
           xs'' <- traverseStackTensorElements (evalFull ds) xs
@@ -171,10 +171,16 @@ evalHeteroTensorOp2 accessOp2 inputLit outputLit op leftUnit rightUnit leftZero 
       fxs <- force @expr vxs
       fys <- force @expr vys
       case (fds, fxs, fys) of
-        (_ds, getExpr inputLit -> Just xs, getExpr inputLit -> Just ys) -> do
+        (_, getExpr inputLit -> Just xs, getExpr inputLit -> Just ys) -> do
           return $ Evaluated $ exprToThunk $ mkExpr outputLit $ zipWithTensor op xs ys
-        (IDimCons _ ds, getExpr accessConstTensor -> Just xs, getExpr accessConstTensor -> Just ys) -> do
-          newConstValue <- evalFull ds (constValue xs) (constValue ys)
+        (_, getExpr inputLit -> Just (ConstantTensor _ x), getExpr accessConstTensor -> Just ys) -> do
+          newConstValue <- evalFull (exprToThunk IDimNil) (exprToThunk $ mkExpr inputLit $ ZeroDimTensor x) (constValue ys)
+          return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor $ ys {constValue = newConstValue}
+        (_, getExpr accessConstTensor -> Just xs, getExpr inputLit -> Just (ConstantTensor _ y)) -> do
+          newConstValue <- evalFull (exprToThunk IDimNil) (constValue xs) (exprToThunk $ mkExpr inputLit $ ZeroDimTensor y)
+          return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor $ xs {constValue = newConstValue}
+        (_, getExpr accessConstTensor -> Just xs, getExpr accessConstTensor -> Just ys) -> do
+          newConstValue <- evalFull (exprToThunk IDimNil) (constValue xs) (constValue ys)
           return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor $ xs {constValue = newConstValue}
         -- Unlike const tensors, we need to eval stack tensors as after being combined with constants, short-circuiting of
         -- operations may allow for further reduction.

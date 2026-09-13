@@ -113,8 +113,9 @@ functionaliseDecl d =
 
       finalType <- replaceResourceUses (mkTypeBinder, typeBinders, binderNames) initialType
       finalBody <- replaceResourceUses (mkBodyBinder, bodyBinders, binderNames) initialBody
+      let finalAnns = incrLHSBinderCount (length bodyBinders) anns
 
-      let fun = DefFunction p i anns finalType finalBody
+      let fun = DefFunction p i finalAnns finalType finalBody
       logDebug MaxDetail $ "Prepending resources" <+> pretty binderNames
       logDebug MaxDetail $ prettyFriendly fun
       return (addResourceUsage i binderNames, Just fun)
