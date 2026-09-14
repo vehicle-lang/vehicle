@@ -83,12 +83,7 @@ The following operations over tensors are currently supported:
      - ``foreach i . e``
      - | ``(Index d → Tensor A ds) →``
        | ``Tensor A [d, ds]``
-     - | |backendloss_part|
-       | |backendverification_full|
-       | |backendagda_full|
-       | |backendrocq_full|
-       | |backendimandra_full|
-       | |backendisabelle_full|
+     - |backendall_full|
    * - Comparisons
      - | ``x < y``
        | ``x > y``
