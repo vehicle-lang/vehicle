@@ -33,12 +33,12 @@ the value :code:`0.1` can be achieved using :code:`--parameter epsilon:0.1`.
 Inferable Parameters
 --------------------
 
-|backendloss_part| (:ref:`⤴ <loading-declarations>`)
-|backendverification_full|
-|backendagda_full|
-|backendrocq_full|
-|backendimandra_full|
-|backendisabelle_full|
+| |backendloss_part| (:ref:`⤴ <loading-declarations>`)
+| |backendverification_full|
+| |backendagda_full|
+| |backendrocq_full|
+| |backendimandra_full|
+| |backendisabelle_full|
 
 Sometimes the value of the parameter can be inferred from other parts of the
 specification, but is still inconvenient to pass in at compile time.
