@@ -49,7 +49,7 @@ validateCmd checkArgs = cmdSpec VEHICLE_COMMAND
   where open CheckArgs checkArgs
 
 checkSuccessful : String → Bool
-checkSuccessful output = "verified" ⊆ output
+checkSuccessful output = "Status: verified" ⊆ output
 
 postulate valid : ∀ {a} {A : Set a} → A
 
