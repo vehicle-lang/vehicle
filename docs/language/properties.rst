@@ -26,12 +26,7 @@ element of the ``Vector`` or ``Tensor`` individually.
 Multiple properties
 -------------------
 
-| |backendloss_easy|
-| |backendverification_full|
-| |backendagda_full|
-| |backendrocq_full|
-| |backendimandra_full|
-| |backendisabelle_full|
+|backendall_full|
 
 Vehicle also supports marking vectors or tensors of Booleans as properties.
 This is particularly useful when checking that a property holds over

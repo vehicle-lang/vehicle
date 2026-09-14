@@ -43,7 +43,7 @@ For example:
   CustomDL : DifferentiableTensorLogic
   CustomDL =
     { trueElement                = 0
-    , falseElement               = 1000000
+    , falseElement               = infinity
     , pointwiseLessThan          = \{dims} x y -> max (const 0 dims) (x - y)
     , pointwiseLessEqualThan     = \{dims} x y -> max (const 0 dims) (x - y)
     , pointwiseGreaterThan       = \{dims} x y -> max (const 0 dims) (y - x)
@@ -58,7 +58,6 @@ For example:
     }
 
 Notes on the logic above:
-  1. Vehicle does not yet currently support infinite values, so we use a large constant to represent falsehood.
-  2. Strict and non-strict inequalities are treated the same in this logic, but you could define them differently if desired.
+  1. Strict and non-strict inequalities are treated the same in this logic, but you could define them differently if desired.
 
 This custom logic can then be used in the loss function backend as described in :doc:`../training`.
