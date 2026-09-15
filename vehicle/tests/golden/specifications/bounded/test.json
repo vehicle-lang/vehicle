@@ -19,5 +19,11 @@
     "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],
     "produces": ["DL2Loss.vcl"]
+  },
+  {
+    "name": "DL2LossSearch",
+    "run": "vehicle compile loss --lossMode Search -s spec.vcl -l DL2Loss -o DL2LossSearch.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["DL2LossSearch.vcl"]
   }
 ]

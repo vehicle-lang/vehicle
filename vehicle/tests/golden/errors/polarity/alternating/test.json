@@ -1,5 +1,12 @@
-{
-  "name": "Marabou",
-  "run": "vehicle compile queries -s alternating.vcl -f MarabouQueries --network f:fake.onnx",
-  "needs": ["alternating.vcl", "fake.onnx"]
-}
+[
+  {
+    "name": "Marabou",
+    "run": "vehicle compile queries -s alternating.vcl -f MarabouQueries --network f:fake.onnx",
+    "needs": ["alternating.vcl", "fake.onnx"]
+  },
+  {
+    "name": "DL2LossSearch",
+    "run": "vehicle compile loss --lossMode Search -s alternating.vcl -l DL2Loss -o DL2LossSearch.vcl",
+    "needs": ["alternating.vcl"]
+  }
+]

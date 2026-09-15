@@ -402,7 +402,7 @@ class SearchRatTensor(Expression):
     dims: Expression
     lower_bound: Expression
     upper_bound: Expression
-    search_lambda: Expression
+    search_lambda: Lam
 
 
 @dataclass(frozen=True)
@@ -519,6 +519,56 @@ class DefFunction(Declaration):
         return self.name
 
 
+@dataclass(frozen=True)
+class DefAbstract(Declaration):
+    name: Name
+    sort: str
+    type: BuiltinType
+
+    @override
+    def get_name(self) -> Name:
+        return self.name
+
+
+################################################################################
+# Boolean Tree
+################################################################################
+
+
+@dataclass(frozen=True)
+class BooleanExpression(AST):
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class BooleanExpression")
+
+
+@dataclass(frozen=True)
+class Conjunct(BooleanExpression):
+    conjunct_all: Sequence[BooleanExpression]
+
+
+@dataclass(frozen=True)
+class Disjunct(BooleanExpression):
+    disjunct_all: Sequence[BooleanExpression]
+
+
+@dataclass(frozen=True)
+class NonTrivialQuery(BooleanExpression):
+    negated: bool
+    disjunct_all: Sequence[Name]
+
+
+@dataclass(frozen=True)
+class TrivialQuery(BooleanExpression):
+    boolean_value: bool
+
+
+@dataclass(frozen=True)
+class BooleanTree(AST):
+    provenance: Provenance = field(repr=False)
+    name: Name
+    boolean_expression: BooleanExpression
+
+
 ################################################################################
 # Modules
 ################################################################################
@@ -538,3 +588,11 @@ class Program(AST):
 @dataclass(frozen=True)
 class Main(Program):
     declarations: Sequence[Declaration]
+
+
+@dataclass(frozen=True)
+class SearchMain(Program):
+    """Stores boolean trees and declarations"""
+
+    trees: Sequence[BooleanTree]
+    program: Main
