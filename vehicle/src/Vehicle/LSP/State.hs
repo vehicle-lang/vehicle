@@ -3,6 +3,7 @@ module Vehicle.LSP.State
     newServer,
     initialiseServer,
     fileUpdated,
+    FileVersion,
   )
 where
 
@@ -116,7 +117,7 @@ lspTypeCheck uri _txt = do
           ( logCompileError
               ( typeCheckUserProg
                   TypeCheckOptions
-                    { specification = filePath,
+                    { specification = filePath, -- TODO: this needs to look at `txt`, because otherwise it won't see new changes until the user saves the document
                       secondaryTypeSystem = Nothing, -- TODO: run all type systems
                       declarationsToCompile = []
                     }
