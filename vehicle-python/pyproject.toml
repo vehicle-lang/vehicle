@@ -21,6 +21,7 @@ dependencies = [
     "jaxtyping>=0.2, <0.4",
     "pytest>=8.4.2",
     "pre-commit>=4.3.0",
+    "black>=24.0.0"
 ]
 
 [project.optional-dependencies]

@@ -33,6 +33,7 @@ instance ToJSON NetworkContextInfo
 instance FromJSON NetworkContextInfo
 
 -- | A list of neural networks used in a given query.
+-- The last `int` refers to the number of times it is applied.
 type MetaNetwork = [(Name, NetworkContextInfo, Int)]
 
 inputShape :: NetworkContextInfo -> NetworkModality TensorShape
@@ -44,7 +45,7 @@ outputShape = fmap getIODims . networkOutputType . networkType
 --------------------------------------------------------------------------------
 -- Queries misc
 
--- | Location of a verifier query file.
+-- | Location of a solver query file.
 type QueryFile = FilePath
 
 type QueryText = Text

@@ -12,7 +12,6 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.ForcedValue (UnforcedBinder)
 import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
 import Vehicle.Data.Tensor (TensorShape)
-import Vehicle.Data.Tensor.Traversal (KnownPrefixOfTensorShape)
 import Vehicle.Data.Variable.Bound.Context.Core
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
 import Vehicle.Data.Variable.Bound.Context.Name.Class
@@ -123,16 +122,15 @@ lookupParentTensorVariable var = do
     [(_, Just v)] -> return v
     _ -> developerError "Missing variable"
 
-lookupVariableInNestedCtx ::
+-- | Takes a level and looks up if it represents some slice of a tensor. If it
+-- does then it returns the slice variable.
+lookupSliceVariableInNestedCtx ::
   (MonadReadableTensorBoundContext m) =>
   Lv ->
-  m (OriginalLv, Maybe (NestedSliceVariable, SliceVariable))
-lookupVariableInNestedCtx lv = do
+  m (Maybe SliceVariable)
+lookupSliceVariableInNestedCtx lv = do
   ctx <- getNestedVariableCtx
-  -- TODO turn this into a binary search for added efficiency?
-  return $ case findCorrespondingVariableInOriginalCtx ctx (Set.singleton lv) of
-    [(originalCtxLv, maybeParentVar)] -> (originalCtxLv, fmap (,SliceVariable lv) maybeParentVar)
-    _ -> developerError "could not find variable in nested context"
+  return $ fmap snd $ snd $ findOriginalVariableInCtx ctx lv
 
 --------------------------------------------------------------------------------
 -- Context monad class

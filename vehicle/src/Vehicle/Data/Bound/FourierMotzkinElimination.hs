@@ -1,5 +1,6 @@
 module Vehicle.Data.Bound.FourierMotzkinElimination
   ( fourierMotzkinSliceBoundsElimination,
+    fourierMotzkinTensorBoundsEliminationWithErrors,
     fourierMotzkinTensorBoundsElimination,
   )
 where
@@ -13,20 +14,49 @@ where
 
 import Control.Monad (zipWithM)
 import Control.Monad.Identity (Identity (..))
-import Control.Monad.Reader (ReaderT)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Data.Either (partitionEithers)
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Constants.Rational (LinearExpression)
+import Vehicle.Compile.Constants.TensorValue ()
+import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll (..), eliminateTrivialConjunctions)
+import Vehicle.Data.Code.ForcedValue (GenericThunk (..), Thunk)
+import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
-import Vehicle.Data.Tensor.Traversal
 import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Bound.Context.Tensor.Core (KnownPrefixOfTensorShape)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
+
+--------------------------------------------------------------------------------
+-- Tensor traversal
+
+type MonadTraverseTensor m = MonadReader TensorIndices m
+
+traverseTensorRows :: (MonadTraverseTensor m) => (a -> m b) -> [a] -> m [b]
+traverseTensorRows f rows = do
+  let fLocal (i, v) = local (i :) (f v)
+  traverse fLocal (zip [0 ..] rows)
+
+currentIndices :: (MonadTraverseTensor m) => m TensorIndices
+currentIndices = asks reverse
+
+runTraverseTensorT ::
+  (Monad m) =>
+  ReaderT TensorIndices m a ->
+  m a
+runTraverseTensorT action = runReaderT action mempty
+
+--------------------------------------------------------------------------------
+-- Tensor traversal
 
 -- | Takes in bounds over a tensor and tries to compute a single lower and upper bound for the
 -- whole tensor. If it fails then it returns a list of the indices of the tensor which
@@ -34,27 +64,21 @@ import Vehicle.Data.Variable.Bound.Context.Name
 --
 -- NOTE: this function is currently unsound as at the moment it discards the strictness information.
 -- See https://github.com/vehicle-lang/vehicle/issues/74
-fourierMotzkinTensorBoundsElimination ::
+fourierMotzkinTensorBoundsEliminationWithErrors ::
   (MonadLogger m, MonadReadableNameContext m, ConstantLike constant (ReaderT TensorIndices m)) =>
   TensorBounds constant ->
   m (Either UnboundedIndices (Domain constant))
-fourierMotzkinTensorBoundsElimination TensorBounds {..} = do
-  errorOrLowerBound <- runTraverseTensorT (flattenNestedSliceBounds lowerBounds tensorSliceBounds)
-  errorOrUpperBounds <- runTraverseTensorT (flattenNestedSliceBounds upperBounds tensorSliceBounds)
+fourierMotzkinTensorBoundsEliminationWithErrors TensorBounds {..} = do
+  errorOrLowerBound <- runTraverseTensorT (go lowerBounds tensorSliceBounds)
+  errorOrUpperBounds <- runTraverseTensorT (go upperBounds tensorSliceBounds)
   return $ theseErrors Domain errorOrLowerBound errorOrUpperBounds
-
-flattenNestedSliceBounds ::
-  forall m bound expr.
-  (MonadLogger m, MonadReadableNameContext m, MonadTraverseTensor m, IsBound bound expr m) =>
-  (SliceBounds expr -> [bound expr]) ->
-  NestedSliceBounds expr ->
-  m (Either (NonEmpty TensorIndices) (bound expr))
-flattenNestedSliceBounds getBound = go
   where
     go ::
+      (MonadLogger m, MonadReadableNameContext m, MonadTraverseTensor m, IsBound bound expr m) =>
+      (SliceBounds expr -> [bound expr]) ->
       NestedSliceBounds expr ->
       m (Either (NonEmpty TensorIndices) (bound expr))
-    go (NestedSliceBounds sliceBounds maybeChildBounds) = do
+    go getBound (NestedSliceBounds sliceBounds maybeChildBounds) = do
       maybeBounds <- andBoundList (getBound sliceBounds)
       case (maybeChildBounds, maybeBounds) of
         (Nothing, Nothing) -> do
@@ -63,7 +87,7 @@ flattenNestedSliceBounds getBound = go
         (Nothing, Just bounds) ->
           return $ Right bounds
         (Just childTensorBounds, _) -> do
-          childErrorOrBounds <- traverseTensorRows go childTensorBounds
+          childErrorOrBounds <- traverseTensorRows (go getBound) childTensorBounds
           let (missingChildIndices, childBounds) = partitionEithers childErrorOrBounds
           case maybeBounds of
             Nothing -> case missingChildIndices of
@@ -79,6 +103,46 @@ flattenNestedSliceBounds getBound = go
                 [] -> do
                   childBound <- stackBounds childBounds
                   Right <$> andBound bound childBound
+
+-- | Takes in bounds over a tensor and computes a single lower and upper bound for the
+-- whole tensor, filling in any missing bounds with the default.
+--
+-- NOTE: this function is currently unsound as at the moment it discards the strictness information.
+-- See https://github.com/vehicle-lang/vehicle/issues/74
+fourierMotzkinTensorBoundsElimination ::
+  forall m.
+  (MonadLogger m, MonadFreeContext Builtin m, MonadNameContext m, MonadReadableNameContext m) =>
+  (KnownPrefixOfTensorShape, Thunk Builtin) ->
+  TensorBounds TensorConstantValue ->
+  m (Domain TensorConstantValue)
+fourierMotzkinTensorBoundsElimination (fullKnownPrefix, remainingShape) TensorBounds {..} = do
+  lowerBound <- go NegInfinity fullKnownPrefix lowerBounds tensorSliceBounds
+  upperBound <- go PosInfinity fullKnownPrefix upperBounds tensorSliceBounds
+  return $ Domain lowerBound upperBound
+  where
+    go ::
+      (IsBound bound (TensorConstantValue) m) =>
+      ExtendedRational ->
+      KnownPrefixOfTensorShape ->
+      (SliceBounds TensorConstantValue -> [bound TensorConstantValue]) ->
+      NestedSliceBounds TensorConstantValue ->
+      m (bound TensorConstantValue)
+    go defaultBound knownPrefix getBound (NestedSliceBounds sliceBounds maybeChildBounds) = do
+      maybeBounds <- andBoundList (getBound sliceBounds)
+      case (knownPrefix, maybeChildBounds, maybeBounds) of
+        (_, Nothing, Nothing) -> do
+          let dims = foldr (\d ds -> Forced $ IDimCons (Forced (INatLiteral d)) ds) remainingShape knownPrefix
+          valueToBound (Strict, TensorConstantValue dims defaultBound Nothing)
+        (_, Nothing, Just bounds) ->
+          return bounds
+        (_d : ds, Just childTensorBounds, _) -> do
+          childBounds <- traverse (go defaultBound ds getBound) childTensorBounds
+          case maybeBounds of
+            Nothing -> stackBounds childBounds
+            Just bound -> do
+              childBound <- stackBounds childBounds
+              andBound bound childBound
+        _ -> developerError $ "malformed tensor prefix" <+> pretty fullKnownPrefix
 
 fourierMotzkinSliceBoundsElimination ::
   (MonadCompile m, MonadReadableNameContext m) =>

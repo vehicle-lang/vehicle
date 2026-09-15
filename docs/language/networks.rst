@@ -71,6 +71,6 @@ The following are not currently allowed:
 .. code-block:: agda
 
    -- Reason: boolean inputs are not current allowed
-   -- Justification: lack of support for verifiers or training methods
+   -- Justification: lack of support for solvers or training methods
    @network
    myNetwork : Tensor Bool [4] -> Tensor Real [1]

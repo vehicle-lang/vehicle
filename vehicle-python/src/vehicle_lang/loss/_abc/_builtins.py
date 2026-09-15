@@ -4,7 +4,7 @@ from typing import Any, Callable, Generic, List, Sequence
 
 from typing_extensions import TypeAlias, TypeVar, override
 
-from ..._ast._nodes import Tensor
+from ..._ast._nodes import ExtendedFraction, Tensor
 from . import _types as vcl
 
 
@@ -22,7 +22,47 @@ class ABCBuiltins(
         return value
 
     @abstractmethod
-    def RatTensor(self, value: Tensor) -> vcl.Tensor: ...
+    def BoolTensor(self, x: Tensor[bool]) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolNot(self, x: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolAnd(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolOr(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolImplies(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolCompareIndex(self, op: str, x: vcl.Index, y: vcl.Index) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolCompareNat(self, op: str, x: vcl.Index, y: vcl.Index) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolCompareRatTensor(
+        self,
+        op: str,
+        pointwise_dims: Sequence[vcl.Index],
+        reduce_dims: Sequence[vcl.Index],
+        x: vcl.Tensor,
+        y: vcl.Tensor,
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolReduceAnd(self, x: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolReduceOr(self, x: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def BoolIf(self, c: vcl.Tensor, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def RatTensor(self, x: Tensor[ExtendedFraction]) -> vcl.Tensor: ...
 
     @abstractmethod
     def NegRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
@@ -67,6 +107,11 @@ class ABCBuiltins(
     def ReduceMaxRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
+    def WhereTensor(
+        self, input: vcl.Tensor, condition: vcl.Tensor, false_value: vcl.Tensor
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
     def DimensionCons(
         self, head: vcl.Index, tail: Sequence[vcl.Index]
     ) -> Sequence[vcl.Index]:
@@ -90,6 +135,9 @@ class ABCBuiltins(
         # Use tuple as the default empty sequence type
         # Concrete implementations can override this if needed
         return ()
+
+    @abstractmethod
+    def Transpose(self, xs: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
     def StackTensor(self, tensors: Sequence[vcl.Tensor]) -> vcl.Tensor: ...

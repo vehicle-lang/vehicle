@@ -25,7 +25,6 @@ module Vehicle.Data.AST.Expr.Desugared
     Type,
 
     -- * Utilities
-    isTypeSynonym,
     mkHole,
     normAppList,
     headOf,
@@ -193,11 +192,3 @@ instance HasBuiltinBinders (Expr Builtin) where
 
 mkHole :: Provenance -> Name -> Expr builtin
 mkHole p name = Hole p ("_" <> name)
-
--- | Tests if a definition's type indicates that the definition is a type
--- synonym.
-isTypeSynonym :: Type builtin -> Bool
-isTypeSynonym = \case
-  Universe {} -> True
-  Pi _ _ res -> isTypeSynonym res
-  _ -> False

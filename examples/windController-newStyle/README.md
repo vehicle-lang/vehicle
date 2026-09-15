@@ -13,8 +13,6 @@ This folder contains the following files:
 
 - `agdaProof/SafetyProof.agda` - the Agda proof the car never leaves the road.
 
-- `rocqProof/SafetyProof.v` - the Rocq proof the car never leaves the road.
-
 The `newStyle` in the title of this folder refers to the use of the `records` in the specification which makes for a
 much clearer specification. The normalisation has also been folded into the network itself.
 
@@ -26,16 +24,16 @@ The controller can be verified against the specification by running the followin
 vehicle verify \
   --specification examples/windController-newStyle/windController.vcl \
   --network controller:examples/windController-newStyle/controller.onnx \
-  --verifier Marabou \
+  --solver Marabou \
   --cache examples/windController-newStyle/verificationResult
 ```
 
 where the last line tells Vehicle where to write out the result of the verification
 which can then be used by Agda in the next step.
 
-The intermediate Marabou queries can be found in `examples/windController/verificationResult`.
+The intermediate Marabou queries can be found in `examples/windController-newStyle/verificationResult`.
 
-## Compiling to specification to an ITP backend
+## Compiling the specification to an ITP backend
 
 ### Agda
 

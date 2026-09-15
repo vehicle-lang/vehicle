@@ -55,12 +55,14 @@ traverseMultiProperty compileProp propertyName declType declBody =
     goVector :: UnforcedType Builtin -> Int -> TensorIndices -> Thunk Builtin -> ExceptT MultiPropertyTraveralError m (MultiProperty a)
     goVector typ dim indices value = do
       forcedValue <- runFreshNameBoundContextT $ forceThunk value
+      logDebug MaxDetail $ prettyFriendlyEmptyCtx forcedValue
       case toVectorValue forcedValue of
         VVectorLiteral args -> MultiProperty <$> zipWithM (\i e -> go typ (i : indices) e) [0 ..] (vecLitElements args)
         VVectorBoundVar {} -> unexpectedExprError currentPass "boundVar"
         VVectorRecordAcc {} -> unexpectedExprError currentPass "recordAcc"
         VVectorDataset {} -> throwError $ UnsupportedVectorValue forcedValue
         VVectorIf {} -> throwError $ UnsupportedVectorValue forcedValue
+        VVectorAt {} -> throwError $ UnsupportedVectorValue forcedValue
         VVectorForeach args -> do
           evalResult <- runFreshNameBoundContextT $ forceEval evalForeachVector args
           logDebug MaxDetail $ prettyFriendlyEmptyCtx evalResult

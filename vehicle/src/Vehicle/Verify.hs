@@ -1,23 +1,30 @@
 module Vehicle.Verify
   ( VerifyOptions (..),
-    VerifierID (..),
     verify,
   )
 where
 
 import Control.Monad.IO.Class (MonadIO (..), liftIO)
+import Data.List (isInfixOf)
+import Data.Version (parseVersion)
 import System.Directory (doesFileExist, findExecutable, makeAbsolute)
 import System.FilePath (takeExtension)
 import System.IO.Temp (withSystemTempDirectory)
+import System.Process (readProcess)
+import Text.ParserCombinators.ReadP (eof, readP_to_S)
 import Vehicle.Compile (CompileOptions (..), QueryOptions (..), compile)
 import Vehicle.Compile.Prelude (DatasetLocations, NetworkLocations, ParameterValues)
 import Vehicle.Prelude
 import Vehicle.Prelude.Logging
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core (QueryFormatID)
+import Vehicle.Verify.Solver
+import Vehicle.Verify.Solver.Marabou (marabouSolver)
+import Vehicle.Verify.Solver.Test (testSolver)
+import Vehicle.Verify.Solver.VNNLIB (vnnlibSolver)
 import Vehicle.Verify.Specification.Execute (verifySpecification)
 import Vehicle.Verify.Specification.Execute.Reporting
 import Vehicle.Verify.Specification.IO
-import Vehicle.Verify.Verifier
 
 data VerifyOptions = VerifyOptions
   { specification :: FilePath,
@@ -28,29 +35,27 @@ data VerifyOptions = VerifyOptions
     parameterValues :: ParameterValues,
     verificationCache :: Maybe FilePath,
     -- Shared options
-    verifierID :: VerifierID,
-    verifierLocation :: Maybe VerifierExecutable,
-    verifierExtraArgs :: Maybe String,
+    solverExecutable :: SolverExecutable,
+    solverExtraArgs :: Maybe String,
     noSatPrint :: Bool
   }
   deriving (Eq, Show)
 
 verify :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> VerifyOptions -> IO ()
 verify loggingSettings outputAsJSON options@VerifyOptions {..} = do
+  solver <- runLoggerT loggingSettings $ locateSolver solverExecutable
   validQueryFolder <- isValidQueryFolder specification
   if validQueryFolder
-    then verifyQueries loggingSettings outputAsJSON specification verifierID verifierLocation verifierExtraArgs noSatPrint
+    then verifyQueries loggingSettings outputAsJSON specification solver solverExtraArgs noSatPrint
     else
       if takeExtension specification /= specificationFileExtension
         then fatalError (invalidTargetError specification)
-        else compileAndVerifyQueries loggingSettings outputAsJSON options $ \folder ->
-          verifyQueries loggingSettings outputAsJSON folder verifierID verifierLocation verifierExtraArgs noSatPrint
+        else compileAndVerifyQueries loggingSettings outputAsJSON options (solverQueryFormatID solver) $ \folder ->
+          verifyQueries loggingSettings outputAsJSON folder solver solverExtraArgs noSatPrint
 
 -- | Compiles the specification to a temporary directory and then tries to verify it.
-compileAndVerifyQueries :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> VerifyOptions -> (FilePath -> IO ()) -> IO ()
-compileAndVerifyQueries loggingSettings outputAsJSON VerifyOptions {..} verifyCommand = do
-  let queryFormatID = verifierQueryFormatID $ verifiers verifierID
-
+compileAndVerifyQueries :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> VerifyOptions -> QueryFormatID -> (FilePath -> IO ()) -> IO ()
+compileAndVerifyQueries loggingSettings outputAsJSON VerifyOptions {..} queryFormatID verifyCommand = do
   let inFolder = case verificationCache of
         Nothing -> withSystemTempDirectory "specification"
         Just folder -> \f -> f folder
@@ -75,53 +80,73 @@ verifyQueries ::
   LoggingSettings ->
   OutputAsJSON ->
   FilePath ->
-  VerifierID ->
-  Maybe VerifierExecutable ->
+  Solver ->
   Maybe String ->
   Bool ->
   IO ()
-verifyQueries loggingSettings outputAsJSON queryFolder verifierID verifierLocation maybeVerifierExtraArgs noSatOutputs = do
-  let verifier = verifiers verifierID
-  verifierExecutable <- locateVerifierExecutable verifier verifierLocation
-  let verifierExtraArgs = maybe [] words maybeVerifierExtraArgs
-  let verifierSettings = VerificationSettings verifier verifierExecutable verifierExtraArgs queryFolder noSatOutputs
-  runLoggerT loggingSettings $ verifySpecification outputAsJSON verifierSettings
+verifyQueries loggingSettings outputAsJSON queryFolder solver maybeSolverExtraArgs noSatOutputs = do
+  let solverExtraArgs = maybe [] words maybeSolverExtraArgs
+  let solverSettings = VerificationSettings solver solverExtraArgs queryFolder noSatOutputs
+  runLoggerT loggingSettings $ verifySpecification outputAsJSON solverSettings
 
-locateVerifierExecutable ::
-  (MonadStdIO m) =>
-  Verifier ->
-  Maybe VerifierExecutable ->
-  m VerifierExecutable
-locateVerifierExecutable Verifier {..} = \case
-  Just providedLocation -> do
-    absolutePath <- liftIO $ makeAbsolute providedLocation
-    exists <- liftIO $ doesFileExist providedLocation
+locateSolver :: (MonadStdIO m, MonadLogger m) => SolverExecutable -> m Solver
+locateSolver solverExecutable = do
+  -- First try to treat as a path
+  solverPath <- do
+    absolutePath <- liftIO $ makeAbsolute solverExecutable
+    exists <- liftIO $ doesFileExist absolutePath
     if exists
       then return absolutePath
-      else fatalError (missingVerifierExecutableError verifierID providedLocation)
-  Nothing -> do
-    maybeLocationOnPath <- liftIO $ findExecutable verifierExecutableName
-    case maybeLocationOnPath of
-      Just locationOnPath -> return locationOnPath
-      Nothing -> fatalError (unlocatableVerifierExecutableError verifierExecutableName)
+      else do
+        maybePath <- liftIO $ findExecutable solverExecutable
+        case maybePath of
+          Just path -> return path
+          Nothing -> fatalError $ unlocatableSolverExecutableError absolutePath
 
-missingVerifierExecutableError :: VerifierID -> FilePath -> Doc a
-missingVerifierExecutableError verifierID location =
-  "No"
-    <+> pretty verifierID
-    <+> "executable found"
-    <+> "at the provided location"
-    <+> quotePretty location
-    <> "."
+  solver <-
+    if "Marabou" `isInfixOf` solverPath
+      then return $ marabouSolver solverPath
+      else
+        if "testVerifier" `isInfixOf` solverPath
+          then return $ testSolver solverPath
+          else do
+            solverName <- do
+              solverNameOutput <- liftIO $ readProcess solverExecutable ["--name"] ""
+              return $ takeWhile (/= '\n') solverNameOutput
 
-unlocatableVerifierExecutableError :: String -> Doc a
-unlocatableVerifierExecutableError verifierName =
-  "Could not locate the executable"
-    <+> quotePretty verifierName
-    <+> "via the PATH environment variable."
-    <> line
-    <> "Please either provide it using the `--verifier-location` command line option"
-      <+> "or add it to the PATH environment variable."
+            solverVersion <- do
+              solverVersionOutput <- liftIO $ readProcess solverExecutable ["--version"] ""
+              let maybeVersion = readP_to_S (parseVersion <* eof) $ takeWhile (/= '\n') solverVersionOutput
+              logDebug MidDetail $ pretty maybeVersion
+              case maybeVersion of
+                [(version, "")] -> return version
+                _ ->
+                  fatalError $
+                    "There was an error interfacing with the solver" <+> quotePretty solverName
+                      <> "."
+                      <> line
+                      <> "The command"
+                        <+> squotes (pretty solverExecutable <+> "--version")
+                        <+> "produced"
+                        <+> lineIndent (pretty solverVersionOutput)
+                      <> line
+                      <> "which could not be parsed a valid version."
+
+            return $ vnnlibSolver solverPath solverName solverVersion
+
+  logDebug MinDetail $ "Found solver" <+> squotes (pretty (solverName solver) <> "-" <> pretty (solverVersion solver)) <+> "at" <+> pretty solverPath
+
+  return solver
+  where
+    unlocatableSolverExecutableError :: FilePath -> Doc a
+    unlocatableSolverExecutableError path =
+      "Could not locate the solver either at the location:"
+        <> lineIndent (pretty path)
+        <> line
+        <> "or as an executable named" <+> quotePretty solverExecutable <+> "on the system PATH."
+        <> line
+        <> "Please either provide the path to the solver"
+          <+> "or add it to the PATH environment variable."
 
 invalidTargetError :: FilePath -> Doc a
 invalidTargetError target =

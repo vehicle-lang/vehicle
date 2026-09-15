@@ -53,7 +53,7 @@ type CompileQuery =
   ConjunctAll (QueryAssertion QueryVariable) ->
   m Text
 
--- | A format for an output query that verifiers can parse.
+-- | A format for an output query that solvers can parse.
 data QueryFormat = QueryFormat
   { queryFormatID :: QueryFormatID,
     queryOutputFormat :: ExternalOutputFormat,

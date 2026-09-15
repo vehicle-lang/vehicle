@@ -128,9 +128,6 @@ hasQuantifier q t = typeClass (HasQuantifier q) [t]
 numOp2TypeClass :: (BuiltinHasStandardTypeClasses builtin) => TypeClass -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 numOp2TypeClass tc t1 t2 t3 = typeClass tc [t1, t2, t3]
 
-standardLib :: Name -> DSLExpr builtin
-standardLib = freeVar . stdlibIdentifier
-
 hasNeg :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasNeg t1 t2 = typeClass HasNeg [t1, t2]
 
@@ -223,6 +220,9 @@ stackTensor t d ds xs = builtinFunction StackTensor @@@ [t, d, ds] @@ xs
 
 atTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 atTensor t d ds tens idx = builtinFunction AtTensor @@@ [t] .@@@ [d, ds] @@ [tens, idx]
+
+reverseDims :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin
+reverseDims ds = builtinFunction ReverseList @@@ [tNat] @@ [ds]
 
 iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 iterate t f n e = do

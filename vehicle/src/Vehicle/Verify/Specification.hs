@@ -80,7 +80,7 @@ instance FromJSON CompilationStep
 -- input and output varibles.
 -- These are used to recreate a satisfying assignment for the user variables
 -- from the satisfying assignment for the network variables spat out by the
--- verifier.
+-- solver.
 -- The steps are stored in the same order they occured during compilation.
 newtype VariableCompilationTrace = Reconstruction
   { reconstructionSteps :: [CompilationStep]

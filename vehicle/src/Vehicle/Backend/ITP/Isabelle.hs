@@ -21,7 +21,7 @@ import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Prettyprinter.Render.Text (renderStrict)
 import System.FilePath (takeBaseName)
-import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -848,7 +848,9 @@ compileBuiltin isOutType localeAssms b args = case b of
           as
     FoldList -> annotateApp localeAssms [] "foldr" args
     MapList -> annotateApp localeAssms [] "map" args
+    ReverseList -> annotateApp localeAssms [] "rev" args
     AppendList {} -> unsupportedError
+    Transpose -> annotateApp localeAssms [RequireImport VehicleTensor] "tensor_transpose" args
     ReduceAndTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceAnd" args
     ReduceOrTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> annotateApp localeAssms [] "reduceAdd" args
@@ -868,6 +870,8 @@ compileBuiltin isOutType localeAssms b args = case b of
     StackTensor -> compileStack localeAssms args
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
+    SearchRatTensor {} -> unsupportedError
+    WhereTensor {} -> unsupportedError
     Iterate -> unsupportedError
     Pow {} -> unsupportedError
     Log {} -> unsupportedError
@@ -919,13 +923,14 @@ compileBuiltin isOutType localeAssms b args = case b of
           <+> quotePretty (show b)
 
 compileApp :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> Expr DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> m Code
-compileApp isOutType localeAssms fun args = do
-  let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
-  case fun of
-    Builtin _p b -> compileBuiltin isOutType localeAssms b userArgs
-    _ -> do
-      cFun <- compileExpr False localeAssms fun
-      annotateApp localeAssms [] cFun userArgs
+compileApp isOutType localeAssms fun args = case fun of
+  Builtin _p b -> do
+    let userArgs = builtinAppArgs b args
+    compileBuiltin isOutType localeAssms b userArgs
+  _ -> do
+    cFun <- compileExpr False localeAssms fun
+    let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
+    annotateApp localeAssms [] cFun userArgs
 
 compileDerivedFunction :: (MonadIsabelleCompile m) => [LocaleDef] -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction localeAssms fn args = case fn of

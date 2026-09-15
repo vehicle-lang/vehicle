@@ -1,8 +1,10 @@
 module Vehicle.Compile.Normalise.Builtin where
 
+import Control.Applicative ((<|>))
 import Control.Monad (foldM, zipWithM)
 import Data.Maybe (isJust)
 import Data.Ratio
+import Data.Vector qualified as Vector
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core.BasicOperations (ComparisonOp, comparisonOp)
@@ -11,6 +13,7 @@ import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
+import Vehicle.Data.Tensor qualified as Tensor
 
 -- Okay so the important thing to remember about this module is that we have
 -- a variety of different typing schemes for builtins (standard, polarity,
@@ -31,14 +34,12 @@ type MonadNormBuiltin m =
   )
 
 forceEvaluation ::
-  forall expr thunk builtin args m.
   (MonadNormBuiltin m, NormalisableExpr expr thunk builtin m) =>
   Accessor (expr builtin) (args (thunk builtin)) ->
   EvalSimple expr thunk args builtin m ->
   args (thunk builtin) ->
   m (thunk builtin)
 forceEvaluation accessOp evalFn args = do
-  -- This is a total cludge and we may need to plum the whole monad through `ConstantLike`...
   evalResult <- evalFn args
   return $ case evalResult of
     Evaluated result -> result
@@ -125,8 +126,8 @@ evalTensorOp1 accessOp accessLit op = go
       case (ds', xs') of
         (_ds, getExpr accessLit -> Just t) ->
           return $ Evaluated $ exprToThunk $ mkExpr accessLit $ mapTensor op t
-        (IDimCons _ ds, getExpr accessConstTensor -> Just xs) -> do
-          xs'' <- traverseConstTensorValue (evalFull ds) xs
+        (_ds, getExpr accessConstTensor -> Just xs) -> do
+          xs'' <- traverseConstTensorValue (evalFull (exprToThunk IDimNil)) xs
           return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor xs''
         (IDimCons _ ds, getExpr accessStackTensor -> Just xs) -> do
           xs'' <- traverseStackTensorElements (evalFull ds) xs
@@ -170,10 +171,16 @@ evalHeteroTensorOp2 accessOp2 inputLit outputLit op leftUnit rightUnit leftZero 
       fxs <- force @expr vxs
       fys <- force @expr vys
       case (fds, fxs, fys) of
-        (_ds, getExpr inputLit -> Just xs, getExpr inputLit -> Just ys) -> do
+        (_, getExpr inputLit -> Just xs, getExpr inputLit -> Just ys) -> do
           return $ Evaluated $ exprToThunk $ mkExpr outputLit $ zipWithTensor op xs ys
-        (IDimCons _ ds, getExpr accessConstTensor -> Just xs, getExpr accessConstTensor -> Just ys) -> do
-          newConstValue <- evalFull ds (constValue xs) (constValue ys)
+        (_, getExpr inputLit -> Just (ConstantTensor _ x), getExpr accessConstTensor -> Just ys) -> do
+          newConstValue <- evalFull (exprToThunk IDimNil) (exprToThunk $ mkExpr inputLit $ ZeroDimTensor x) (constValue ys)
+          return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor $ ys {constValue = newConstValue}
+        (_, getExpr accessConstTensor -> Just xs, getExpr inputLit -> Just (ConstantTensor _ y)) -> do
+          newConstValue <- evalFull (exprToThunk IDimNil) (constValue xs) (exprToThunk $ mkExpr inputLit $ ZeroDimTensor y)
+          return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor $ xs {constValue = newConstValue}
+        (_, getExpr accessConstTensor -> Just xs, getExpr accessConstTensor -> Just ys) -> do
+          newConstValue <- evalFull (exprToThunk IDimNil) (constValue xs) (constValue ys)
           return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor $ xs {constValue = newConstValue}
         -- Unlike const tensors, we need to eval stack tensors as after being combined with constants, short-circuiting of
         -- operations may allow for further reduction.
@@ -398,6 +405,85 @@ evalFoldList (FoldListArgs a b f e xs) = do
       Evaluated . exprToThunk <$> forceApp f [explicit v, explicit r]
     _ -> return $ Unevaluable [fxs]
 
+evalReverseList ::
+  forall m expr thunk builtin.
+  (MonadNormBuiltin m, PrintableBuiltin builtin, BuiltinHasListLiterals builtin, NormalisableExpr expr thunk builtin m) =>
+  EvalSimple expr thunk ReverseListArgs builtin m
+evalReverseList (ReverseListArgs t xs) = go xs (exprToThunk (INil t))
+  where
+    go :: thunk builtin -> thunk builtin -> m (BuiltinEvaluationResult expr thunk builtin)
+    go curr acc = do
+      fcurr <- force curr
+      case fcurr of
+        INil _ -> return $ Evaluated acc
+        ICons _ v vs -> go vs (exprToThunk (ICons t v acc))
+        _ -> return $ Unevaluable [fcurr]
+
+evalTransposeTensor ::
+  forall m expr thunk builtin.
+  (MonadNormBuiltin m, NormalisableExpr expr thunk builtin m, HasTensorLiterals expr builtin, BuiltinHasNatLiterals builtin, BuiltinHasNatType builtin, HasTensorExpr expr thunk builtin) =>
+  EvalSimple expr thunk TransposeTensorArgs builtin m
+evalTransposeTensor (TransposeTensorArgs _ inputDims tensor) = do
+  ftensor <- force tensor
+  case goLiteral ftensor tensorLiterals <|> goConst ftensor of
+    Just result -> return $ Evaluated $ exprToThunk result
+    Nothing -> do
+      maybeResult <- goStack ftensor
+      case maybeResult of
+        Just result -> return $ Evaluated result
+        Nothing -> return $ Unevaluable [ftensor]
+  where
+    goLiteral :: expr builtin -> [TensorLiteralAccessor expr builtin] -> Maybe (expr builtin)
+    goLiteral _ [] = Nothing
+    goLiteral ft (Wrapper Access {getExpr = getLit, mkExpr = mkLit} : rest) =
+      (mkLit . Tensor.transposeTensor <$> getLit ft) <|> goLiteral ft rest
+
+    goConst :: expr builtin -> Maybe (expr builtin)
+    goConst ft = do
+      ConstTensorArgs t v _ <- getExpr accessConstTensor ft
+      let rds = exprToThunk $ mkExpr accessReverseList $ ReverseListArgs (exprToThunk INatType) inputDims
+      pure $ mkExpr accessConstTensor (ConstTensorArgs t v rds)
+
+    goStack :: expr builtin -> m (Maybe (thunk builtin))
+    goStack forcedTensor = do
+      maybeShape <- getDims inputDims
+      case maybeShape of
+        Just shape -> do
+          maybeLeaves <- gatherStack shape forcedTensor
+          case maybeLeaves of
+            Just leaves -> return $ Just $ foldMapTensorLike id mkStack (reverse shape) (permuteFlat shape leaves)
+            Nothing -> return Nothing
+        Nothing -> return Nothing
+      where
+        gatherStack :: TensorShape -> expr builtin -> m (Maybe [thunk builtin])
+        gatherStack [] v = return $ Just [exprToThunk v]
+        gatherStack (d : ds) v = case getExpr accessStackTensor v of
+          Nothing -> return Nothing
+          Just (StackTensorArgs _ _ _ rows) ->
+            if length rows /= d
+              then return Nothing
+              else do
+                forcedRows <- traverse (force @expr) rows
+                subs <- traverse (gatherStack ds) forcedRows
+                return $ fmap concat (sequence subs)
+
+        permuteFlat :: TensorShape -> [thunk builtin] -> [thunk builtin]
+        permuteFlat shape leaves = do
+          let values = Vector.fromList leaves
+          [values Vector.! flattenIndices shape (reverse revIs) | revIs <- allMultiIndices (reverse shape)]
+
+        mkStack :: TensorShape -> [thunk builtin] -> thunk builtin
+        mkStack ds elems =
+          exprToThunk $
+            mkExpr
+              accessStackTensor
+              ( StackTensorArgs
+                  (exprToThunk INatType)
+                  (exprToThunk (INatLiteral (length elems)))
+                  (exprToThunk (mkDims ds))
+                  elems
+              )
+
 evalAppendList ::
   forall m expr thunk builtin.
   (MonadNormBuiltin m, PrintableBuiltin builtin, BuiltinHasListLiterals builtin, NormalisableExpr expr thunk builtin m) =>
@@ -483,10 +569,11 @@ evalAtVector (AtVectorArgs _t _d vector index) = do
 -----------------------------------------------------------------------------
 -- Generic tensor operations
 -----------------------------------------------------------------------------
+-- At
 
 evalAtTensor ::
   forall expr thunk builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals expr builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr expr thunk builtin) =>
+  (MonadNormBuiltin m, HasTensorLiterals expr builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasNatType builtin, HasTensorExpr expr thunk builtin) =>
   EvalSimple expr thunk AtTensorArgs builtin m
 evalAtTensor (AtTensorArgs _t _d ds tensor index) = do
   fTensor <- force @expr tensor
@@ -693,3 +780,13 @@ evalCompareRatTensor op (TensorComparisonArgs pointwiseDims rDims xs ys) = do
   where
     unstackExpr :: Tensor ExtendedRational -> [thunk builtin]
     unstackExpr t = exprToThunk . mkExpr accessRatTensorLiteral <$> unstack t
+
+-----------------------------------------------------------------------------
+-- Where
+
+evalWhereTensor ::
+  forall expr thunk builtin m.
+  (MonadNormBuiltin m, HasTensorLiterals expr builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasNatType builtin, HasTensorExpr expr thunk builtin) =>
+  EvalSimple expr thunk WhereTensorArgs builtin m
+evalWhereTensor (WhereTensorArgs _dims _input _condition _index) = do
+  developerError "evalWhereTensor not yet implemented"

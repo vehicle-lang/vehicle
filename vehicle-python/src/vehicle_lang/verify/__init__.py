@@ -121,9 +121,8 @@ def parse_progress_events(output: str) -> List[ProgressEvent]:
 
 def verify(
     specification: str | Path,
-    verifier: str,
-    verifier_location: Optional[str | Path] = None,
-    verifier_args: Optional[List[str]] = None,
+    solver: str | Path,
+    solver_args: Optional[List[str]] = None,
     properties: Optional[Iterable[DeclarationName]] = None,
     networks: dict[DeclarationName, str | Path] = {},
     datasets: dict[DeclarationName, str | Path] = {},
@@ -146,9 +145,8 @@ def verify(
     the moment only returns when the verification finishes.
 
     :param specification: The path to the Vehicle specification file or Vehicle to verify.
-    :param verifier: The verifier to be used.
-    :param verifier_location: The path to the verifier executable, defaults to searching the system path.
-    :param verifier_args: A list of extra arguments to pass to the verifier, defaults to no extra arguments.
+    :param solver: The path to the solver executable, or the name of the executable on the system path.
+    :param solver_args: A list of extra arguments to pass to the solver, defaults to no extra arguments.
     :param properties: The names of the properties in the specification to verify, defaults to all declarations.
     :param networks: A map from the network names in the specification to files containing the networks.
     :param datasets: A map from the dataset names in the specification to files containing the datasets.
@@ -163,15 +161,12 @@ def verify(
         "verify",
         "--specification",
         str(specification),
-        "--verifier",
-        verifier,
+        "--solver",
+        str(solver),
     ]
 
-    if verifier_location is not None:
-        args.extend(["--verifier-location", str(verifier_location)])
-
-    if verifier_args is not None:
-        args.extend(["--verifier-args", " ".join(verifier_args)])
+    if solver_args is not None:
+        args.extend(["--solver-args", " ".join(solver_args)])
 
     if properties is not None:
         for property_name in set(properties):

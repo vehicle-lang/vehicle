@@ -83,6 +83,7 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
+  ReverseList -> forAllPolarities $ \pol -> pol ~> pol
   AppendList -> typeOfOp2 maxPolarity
   AtVector -> typeOfAt
   AtTensor -> typeOfAt
@@ -91,6 +92,9 @@ typeOfBuiltinFunction = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Transpose -> forAllPolarities $ \pol -> pol ~> pol
+  SearchRatTensor {} -> developerError "SearchRatTensor should not appear in polarity typing"
+  WhereTensor {} -> developerError "WhereTensor should not appear in polarity typing"
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case
@@ -201,7 +205,7 @@ typeOfStack = typeOfVectorLiteral
 --------------------------------------------------------------------------------
 
 instance HasTypeSystem PolarityBuiltin where
-  convertFromStandardBuiltins = traverseBuiltinsM convertToPolarityTypes
+  convertFromStandardBuiltins = traverse $ traverseBuiltinsM convertToPolarityTypes
   restrictDeclType = restrictDeclPolarityType
   restrictRecordAnnotatedAsTensor = restrictPolarityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = True
@@ -213,7 +217,7 @@ pattern PolarityExpr :: Provenance -> Polarity -> Expr PolarityBuiltin
 pattern PolarityExpr p pol = Builtin p (Polarity pol)
 
 freshPolarityMeta :: (MonadTypeChecker PolarityBuiltin m) => Provenance -> m (Expr PolarityBuiltin)
-freshPolarityMeta p = freshMetaExpr p (TypeUniverse p 0) mempty
+freshPolarityMeta p = freshMetaExpr p (TypeUniverse p 0) Relevant mempty
 
 convertToPolarityTypes ::
   forall m.

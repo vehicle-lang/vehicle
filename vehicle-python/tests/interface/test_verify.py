@@ -11,8 +11,7 @@ def test_errors() -> None:
     """
     verify(
         specification=PYTHON_TEST_SPECS_PATH / "test_multiproperty.vcl",
-        verifier="TestVerifier",
-        verifier_location=TEST_VERIFIER_PATH,
-        verifier_args=["unsat"],
+        solver=TEST_VERIFIER_PATH,
+        solver_args=["unsat"],
         networks={"f": PYTHON_TEST_SPECS_PATH / "fake.onnx"},
     )

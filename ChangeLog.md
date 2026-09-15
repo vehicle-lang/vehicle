@@ -2,9 +2,115 @@
 
 ## Next release
 
+### Language
+
+* Resource annotations are now parsed greedily, so that the following is now considered valid:
+  ```
+  @parameter
+  x : Real
+
+  a = 1
+  ```
+
+### Solver backend
+
+* Fixed internal error that occassionally happened with non-linear specifications.
+
+### Agda backend
+
+* Fixed error where Agda library didn't type-check due to malformed transpose definition.
+
+## v0.28.0
+
+### Solver backend
+
+* Fixed bug where VNNLIB 2.0 queries were incorrectly being generated with `equalTo` instead of `equal-to`.
+
+### Loss backend
+
+* Fixed the following bugs:
+  - the translation of `==` and `!=` were incorrectly specified in the DL2Loss logic.
+  - a few `Internal scoping` errors that occasionally occured.
+  - in default `Sampler` implementations which weren't generating initial starting points with maximal randomness.
+  - in default PyTorch `Sampler` implementation where PGD search wasn't being run correctly if the loss function was being called in a `torch.no_grad()` environment.
+  - constraints with multiple quantified variables in them were being incorrectly added to the sampler domains.
+
+* Generated Python code is now written out to a temporary directory which allows you to step through it as normal when you attach a debugger.
+
+* Generated Python code preserves far more of the specification's original structure instead
+of normalising it out.
+
+* Quantified variables are no longer required to have a well-defined domain.
+  e.g. instead of
+  ```
+  forall x . 0 < x < 1 => p x
+  ```
+  one can now write:
+  ```
+  forall x . 0 < x => p x
+  ```
+  or even:
+  ```
+  forall x . p x
+  ```
+
+* Non-differentiable comparisons are now handled correctly,
+  e.g. if `i` and `j` are indices and `e` is some expression with gradients then
+  ```
+  i != j and e
+  ```
+  is now translated to
+  ```
+  where [[e]] (i != j) [[False]]
+  ```
+  where `[[e]]` represents the denotation computed using the provided differentiable logic.
+
+* The compiler will now error if a quantified variable has no useful gradients associated with it, e.g. in the following where `f` is never actually used:
+  ```
+  @network
+  f : Real -> Real
+
+  @property
+  p : Bool
+  p = forall x . 0 <= x <= 1 => x ** 2 > 2
+  ```
+
+## v0.27.1
+
+### Loss backend
+
+* Fixed an occasional internal compiler error when using `@dataset`.
+
+### ITP backend
+
+* Fixed an internal compiler error when compiling non-Prop comparisons.
+
+## v0.27.0
+
 ### General
 
 * 50% speedup in compilation times across all backends.
+
+* Added the `transpose` operator on tensors.
+  See [tensors](docs/language/tensors.rst) for documentation.
+
+### Loss backend
+
+* BREAKING: all DifferentiableLogic implementations must now represent losses so that `false` is mapped to strictly larger values than `true`.
+
+* BREAKING: correspondingly the `Sampler.get_loss` method in the Python bindings no longer takes a `minimise` parameter.
+
+* The implementation of quantifier search has changed slightly so that samples returned by `Sampler` classes
+  are no longer aggregated by the implementation `reduceConjunction` provided by the logic but instead the maximum value is taken.
+
+### Solver backend
+
+* BREAKING: removed the `--verifierLocation` option and have renamed the `--verifier` option to `--solver` in both the `vehicle verify` CLI command and the `verify` method in the Python bindings.
+  Instead, you can now pass the file path directly to the `--solver` argument.
+  The old behaviour of Vehicle searching for the solver via the PATH environment variable is still present.
+  Therefore if `Marabou` is on your system path, you can pass either `--solver Marabou` or `--solver my/path/to/Marabou` and either should work.
+
+* Added support for any VNN-LIB 2.0 compatible solver. Simply pass a reference to the executable via the `--solver` argument.
 
 ### ITP backends
 
@@ -105,6 +211,8 @@ the ITP backend code can be invoked from any location.
   in `vehicle-rocq/plugin/`.
 
 ### Loss backend
+
+* `--declaration` now accepts non-property declarations and restricts output to exactly the names listed.
 
 * Added the ability to declare custom Differentiable Logics internally in Vehicle (see documentation for details).
 

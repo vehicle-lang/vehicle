@@ -8,13 +8,13 @@ import Control.Monad.Reader (MonadReader (..), ReaderT)
 import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import Vehicle.Prelude (MonadStdIO (..), Pretty (..))
+import Vehicle.Prelude (Doc, MonadStdIO (..), Pretty (..))
 import Vehicle.Prelude.Supply
 
 --------------------------------------------------------------------------------
 -- Triviality
 
--- | A single individual query for a verifier. Is either a trivial query or
+-- | A single individual query for a solver. Is either a trivial query or
 -- holds arbitrary data.
 data MaybeTrivial a
   = Trivial !Bool
@@ -32,11 +32,14 @@ instance Functor MaybeTrivial where
     Trivial s -> Trivial s
     NonTrivial s -> NonTrivial (f s)
 
+prettyMaybeTrivial :: (a -> Doc b) -> MaybeTrivial a -> Doc b
+prettyMaybeTrivial f = \case
+  Trivial True -> "True"
+  Trivial False -> "False"
+  NonTrivial a -> f a
+
 instance (Pretty a) => Pretty (MaybeTrivial a) where
-  pretty = \case
-    Trivial True -> "True"
-    Trivial False -> "False"
-    NonTrivial a -> pretty a
+  pretty = prettyMaybeTrivial pretty
 
 trivialElim :: (Bool -> b) -> (a -> b) -> MaybeTrivial a -> b
 trivialElim f g = \case

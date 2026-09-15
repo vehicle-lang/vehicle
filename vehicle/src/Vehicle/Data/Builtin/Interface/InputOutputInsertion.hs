@@ -79,11 +79,11 @@ addFunctionConstraint constraint declProv@(_, declP) position existingExpr = do
       existingSubsitutions <- get
       case MetaMap.lookup metaID existingSubsitutions of
         Nothing -> do
-          meta <- freshMetaExpr p (TypeUniverse p 0) mempty
+          meta <- freshMetaExpr p (TypeUniverse p 0) Relevant mempty
           modify (MetaMap.insert metaID meta)
           return meta
         Just existingMeta -> return existingMeta
-    _ -> freshMetaExpr p (TypeUniverse p 0) mempty
+    _ -> freshMetaExpr p (TypeUniverse p 0) Relevant mempty
 
   let constraintArgs = case position of
         FunctionInput {} -> [newExpr, existingExpr]

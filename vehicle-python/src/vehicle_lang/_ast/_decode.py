@@ -114,15 +114,21 @@ class TaggedObjectDecoder(Decoder[_T]):
         if not hasattr(cls_origin, "__parameters__"):
             return fld_type
         # If the field type has __args__, we need to resolve type arguments recursively:
-        if hasattr(fld_type, "__args__"):
-            fld_type = copy.deepcopy(fld_type)
-            fld_type.__args__ = tuple(  # type: ignore
+        args = get_args(fld_type)
+        if args:
+            origin = get_origin(fld_type)
+
+            resolved_args = tuple(
                 TaggedObjectDecoder._resolve_field_type(
                     cls_origin, cls_args, fld_type_arg
                 )
-                for fld_type_arg in fld_type.__args__  # type: ignore
+                for fld_type_arg in args
             )
-            return fld_type
+
+            if origin is not None:
+                return cast(Type[_S], origin[resolved_args])
+            else:
+                return fld_type
         # If the field type is a type variable, resolve it to the corresponding type argument:
         try:
             fld_type_index = cls_origin.__parameters__.index(fld_type)

@@ -1,5 +1,5 @@
 -- | Builtins for deciding whether or not a given expression uses alternating quantifiers
--- or not during compilation to verifier queries.
+-- or not during compilation to solver queries.
 module Vehicle.Data.Builtin.Polarity where
 
 import Control.DeepSeq (NFData (..))
@@ -185,6 +185,7 @@ instance BuiltinHasListLiterals PolarityBuiltin where
 
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
   accessAppendListBuiltin = functionAccessor AppendList
 
 instance BuiltinHasIterate PolarityBuiltin where

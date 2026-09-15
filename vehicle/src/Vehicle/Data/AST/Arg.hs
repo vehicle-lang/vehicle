@@ -116,6 +116,11 @@ implicitIrrelevant = Arg (Implicit True) Irrelevant
 instanceIrrelevant :: expr -> GenericArg expr
 instanceIrrelevant = Arg (Instance True) Irrelevant
 
+-- | Constructs a relevant implicit argument marked as being inserted by
+-- the compiler.
+instanceArg :: expr -> GenericArg expr
+instanceArg = Arg (Instance True) Relevant
+
 --------------------------------------------------------------------------------
 -- Args
 

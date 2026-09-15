@@ -9,7 +9,7 @@ import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (getDeclType)
+import Vehicle.Compile.Type.Monad.Class (prependMissingFreeVarImplicitArgs)
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface.Type
@@ -186,7 +186,7 @@ typeOp2 t = t ~> t ~> t
 --------------------------------------------------------------------------------
 
 instance HasTypeSystem DecidabilityBuiltin where
-  convertFromStandardBuiltins x = traverseFreeVarsM (const id) convertToDecidabilityFreeVars =<< traverseBuiltinsM convertToDecidabilityBuiltins x
+  convertFromStandardBuiltins decl = prependMissingFreeVarImplicitArgs =<< traverse (traverseBuiltinsM convertToDecidabilityBuiltins) decl
   restrictDeclType = restrictDecidabilityDeclType
   restrictRecordAnnotatedAsTensor = restrictDecidabilityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = False
@@ -194,24 +194,6 @@ instance HasTypeSystem DecidabilityBuiltin where
   solveAuxiliaryInstanceConstraint _ = return ()
   addAuxiliaryInputOutputConstraints = return
   generateDefaultAuxiliaryConstraint _ = return False
-
-convertToDecidabilityFreeVars ::
-  forall m.
-  (MonadTypeChecker DecidabilityBuiltin m) =>
-  FreeVarUpdate m DecidabilityBuiltin
-convertToDecidabilityFreeVars f p ident args = do
-  declType <- getDeclType (Proxy @DecidabilityBuiltin) ident
-  args' <- traverseArgs f args
-  finalArgs <- insertNewArgs args' declType
-  return $ normAppList (FreeVar p ident) finalArgs
-  where
-    insertNewArgs :: [Arg DecidabilityBuiltin] -> Type DecidabilityBuiltin -> m [Arg DecidabilityBuiltin]
-    insertNewArgs as = \case
-      Pi _ binder result -> do
-        if wasInsertedByCompiler binder && isImplicit binder
-          then (argFromBinder binder (Hole p "_") :) <$> insertNewArgs as result
-          else return as
-      _ -> return as
 
 convertToDecidabilityBuiltins ::
   forall m.
@@ -235,8 +217,8 @@ convertToDecidabilityBuiltins p b args = return $
         AtTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldAtTensor)
         CompareIndex op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareIndex op)
         CompareNat op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
+        QuantifyRatTensor q -> quantifier q
         -- Nothing needs to change
-        QuantifyRatTensor {} -> sameFunction f
         QuantifyRecord {} -> sameFunction f
         If -> sameFunction f
         Neg {} -> sameFunction f
@@ -255,10 +237,14 @@ convertToDecidabilityBuiltins p b args = return $
         ReduceMaxRatTensor -> sameFunction f
         FoldList -> sameFunction f
         MapList -> sameFunction f
+        ReverseList -> sameFunction f
         AppendList -> sameFunction f
         Iterate -> sameFunction f
+        Transpose -> sameFunction f
         StackTensor -> sameFunction f
         ConstTensor -> sameFunction f
+        SearchRatTensor {} -> developerError "Should not encounter SearchRatTensor as only created internally"
+        WhereTensor {} -> developerError "Should not encounter WhereTensor as only created internally"
     BuiltinConstructor c -> do
       let original = normAppList (Builtin p (StandardBuiltinConstructor c)) args
       case c of
@@ -280,6 +266,10 @@ convertToDecidabilityBuiltins p b args = return $
     -- Nothing changes
     sameDerivedFunction f = normAppList (Builtin p (StandardBuiltinDerivedFunction f)) args
     sameFunction f = normAppList (Builtin p (StandardBuiltinFunction f)) args
+    quantifier q = case args of
+      [] -> developerError "unexpected quantifier args"
+      -- We remove the extra unused _pDims in this pass as we don't need it in the decidability backend.
+      _pDims : as -> normAppList (Builtin p (StandardBuiltinFunction $ QuantifyRatTensor q)) as
 
     -- Apply a cast
     castWith f original = normAppList (Builtin p $ DecidabilityBuiltinTypeClassOp f) [explicit original]

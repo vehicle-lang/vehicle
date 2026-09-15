@@ -18,7 +18,7 @@ import Vehicle.Verify.QueryFormat.Interface
 --------------------------------------------------------------------------------
 -- Marabou query format
 
--- | The query format accepted by the Marabou verifier.
+-- | The query format accepted by the Marabou solver.
 marabouQueryFormat :: QueryFormat
 marabouQueryFormat =
   QueryFormat

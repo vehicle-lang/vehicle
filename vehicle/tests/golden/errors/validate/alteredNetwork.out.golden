@@ -5,7 +5,7 @@
     "contents": [
       {
         "name": "f",
-        "filePath": "fake.onnx",
+        "filePath": "/tmp/alteredNetwork-f913843b586609f9/fake.onnx",
         "fileHash": -1645482762009093786
       }
     ]

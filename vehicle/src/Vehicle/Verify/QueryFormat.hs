@@ -10,7 +10,7 @@ where
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
 import Vehicle.Verify.QueryFormat.Marabou (marabouQueryFormat)
-import Vehicle.Verify.QueryFormat.VNNLib (vnnlibQueryFormat)
+import Vehicle.Verify.QueryFormat.VNNLIB (vnnlibQueryFormat)
 
 queryFormats :: QueryFormatID -> QueryFormat
 queryFormats = \case

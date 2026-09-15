@@ -1,9 +1,12 @@
+{-# LANGUAGE DerivingVia #-}
+
 module Vehicle.Data.Builtin.Core.Derived where
 
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
+import Generic.Data (FiniteEnumeration (..))
 import Vehicle.Data.AST.Name
 import Vehicle.Data.Builtin.Core.BasicOperations
 import Vehicle.Prelude.Prettyprinter
@@ -13,6 +16,7 @@ data DerivedFunction
   | QuantifyIndex Quantifier
   | QuantifyInList Quantifier
   deriving (Eq, Show, Ord, Generic)
+  deriving (Enum, Bounded) via (FiniteEnumeration DerivedFunction)
 
 instance Pretty DerivedFunction where
   pretty = \case

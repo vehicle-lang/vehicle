@@ -110,3 +110,28 @@ Definition geRatTensorReduced := reduceAndMap [rel x y | x >= y].
 Definition gtRatTensorReduced := reduceAndMap [rel x y | x > y].
 
 End Tensor.
+
+(* -------------------------------------------------------------------------- *)
+(* Staging area for tensor definitions intended to be upstreamed to           *)
+(* mathcomp's tensor library. Until then they live here so that the           *)
+(* Vehicle-to-Rocq backend can refer to them.                                 *)
+(* -------------------------------------------------------------------------- *)
+
+Section TensorTranspose.
+
+(* 2-D transpose only. The general n-D case needs a tabulate-and-lookup
+   primitive on tensors that mathcomp's tensor library does not yet expose.
+   The dimensions are kept as `{posnum nat}` (rather than `_.+1`) so the type
+   unifies directly with the literal posnat dimensions emitted by the backend. *)
+Context {R : Type} {n m : {posnum nat}}.
+
+Definition transpose_t (t : 'nT[R]_([tuple n; m])) : 'nT[R]_([tuple m; n]) :=
+  nstack (fun j => nstack (fun i => (t ^^ i) ^^ j)).
+
+(* Correctness: transpose_t swaps the two axes,
+   i.e. (transpose_t t)[j][i] = t[i][j]. *)
+Lemma transpose_tE (t : 'nT[R]_([tuple n; m])) i j :
+  ((transpose_t t) ^^ j) ^^ i = (t ^^ i) ^^ j.
+Proof. by rewrite /transpose_t !nstackE. Qed.
+
+End TensorTranspose.

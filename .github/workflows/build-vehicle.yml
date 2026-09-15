@@ -191,13 +191,9 @@ jobs:
             ${{ matrix.haskell.cabal.extra-args-test-golden }}
         shell: sh
 
-      - name: 🏗️ Install Vehicle
+      - name: 🏗️ Build the Vehicle .exe
         run: |
-          mkdir -p bin
-          cabal install                                             \
-            vehicle:exe:vehicle                                     \
-            --overwrite-policy=always                               \
-            --install-method=copy                                   \
-            --installdir=bin                                        \
-            --project-file=${{ matrix.haskell.cabal.project-file }} \
+          cabal build                                                \
+            vehicle:exe:vehicle                                      \
+            --project-file=${{ matrix.haskell.cabal.project-file }}  \
             ${{ matrix.haskell.cabal.extra-args }}

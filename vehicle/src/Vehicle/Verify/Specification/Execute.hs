@@ -18,6 +18,7 @@ import Data.Map qualified as Map
 import Data.Set qualified as Set (difference, fromList, null)
 import Data.Vector qualified as BoxedVector
 import Data.Vector.Unboxed qualified as Vector (fromList)
+import Data.Version (Version (..))
 import System.Directory (copyFile, createDirectoryIfMissing)
 import System.Exit (ExitCode (..))
 import System.FilePath (takeFileName, (</>))
@@ -30,12 +31,11 @@ import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Tensor as Tensor (HasShape (..), stack, toVector)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.Solver
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Execute.Reporting
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Specification.Status
-import Vehicle.Verify.Verifier
-import Vehicle.Verify.Verifier.Core (QueryVariableAssignment (..))
 
 --------------------------------------------------------------------------------
 -- Verification
@@ -47,16 +47,16 @@ type MonadVerify m =
     MonadReader VerificationSettings m
   )
 
--- | Uses the verifier to verify the specification. Failure of one property does
+-- | Uses the solver to verify the specification. Failure of one property does
 -- not prevent the verification of the other properties.
 verifySpecification ::
   (MonadLogger m, MonadStdIO m) =>
   Bool ->
   VerificationSettings ->
   m ()
-verifySpecification outputAsJSON verifierSettings
-  | outputAsJSON = runReaderT (runJSONProgressReporterT verifySpecificationActual) verifierSettings
-  | otherwise = runReaderT (runTextProgressReporterT verifySpecificationActual) verifierSettings
+verifySpecification outputAsJSON solverSettings
+  | outputAsJSON = runReaderT (runJSONProgressReporterT verifySpecificationActual) solverSettings
+  | otherwise = runReaderT (runTextProgressReporterT verifySpecificationActual) solverSettings
 
 verifySpecificationActual :: (MonadVerify m) => m ()
 verifySpecificationActual = do
@@ -106,7 +106,7 @@ verifyProperty address = do
 
 type MonadVerifyProperty m =
   ( MonadVerify m,
-    MonadError (QueryMetaData, VerifierError) m
+    MonadError (QueryMetaData, SolverError) m
   )
 
 -- | Lazily tries to verify the property, avoiding evaluating parts
@@ -171,7 +171,7 @@ type MonadVerifyQuery m =
   ( MonadLogger m,
     MonadStdIO m,
     MonadReader VerificationSettings m,
-    MonadError VerifierError m
+    MonadError SolverError m
   )
 
 verifyQuery ::
@@ -180,11 +180,11 @@ verifyQuery ::
   m (QueryResult UserVariableAssignment)
 verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork variables reconstruction) = do
   logCompilerSection MidDetail ("Verifying query" <+> quotePretty queryAddress) $ do
-    verifierSettings <- ask
-    let queryFile = calculateQueryFileName (specificationCache verifierSettings) queryAddress
+    VerificationSettings {..} <- ask
+    let queryFile = calculateQueryFileName specificationCache queryAddress
 
     errorOrResult <- reportQuery queryAddress $ runExceptT $ do
-      result <- invokeVerifier verifierSettings metaNetwork queryFile
+      result <- invokeSolver solver solverExtraArgs metaNetwork queryFile
       case result of
         SAT Nothing -> do
           logDebug MidDetail $ "Query is SAT (no witness)" <> line
@@ -202,20 +202,21 @@ verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork variables reco
       Left err -> throwError (queryMetaData, err)
       Right result -> return result
 
-invokeVerifier ::
+invokeSolver ::
   (MonadVerifyQuery m) =>
-  VerificationSettings ->
+  Solver ->
+  [String] ->
   MetaNetwork ->
   QueryFile ->
   m (QueryResult QueryVariableAssignment)
-invokeVerifier VerificationSettings {..} metaNetworkEntries queryFile = do
+invokeSolver solver solverExtraArgs metaNetworkEntries queryFile = do
   -- Prepare the command
-  let args = prepareArgs verifier metaNetworkEntries queryFile <> verifierExtraArgs
-  let command = unwords (verifierExecutable : args)
+  let args = prepareArgs solver metaNetworkEntries queryFile <> solverExtraArgs
+  let command = unwords (solverExecutable solver : args)
 
   -- Run the verification command
   logDebug MidDetail $ "Running verification command: " <> lineIndent (pretty command) <> line
-  (exitCode, out, err) <- liftIO $ readProcessWithExitCode verifierExecutable args ""
+  (exitCode, out, err) <- liftIO $ readProcessWithExitCode (solverExecutable solver) args ""
   logDebug MinDetail $ "Command status:" <+> pretty (show exitCode) <> line
   logDebug MinDetail $ "Command stdout:" <> lineIndent (pretty out) <> line
   logDebug MinDetail $ "Command stderr:" <> lineIndent (pretty err) <> line
@@ -223,12 +224,14 @@ invokeVerifier VerificationSettings {..} metaNetworkEntries queryFile = do
   -- Check for errors
   case exitCode of
     ExitFailure exitValue
+      -- Handles https://github.com/stanleybak/vibecheck-nn/issues/3
+      | exitValue == 1 && solverName solver == "vibecheck" && solverVersion solver <= Version [1, 1, 0] [] -> parseOutput solver out
       -- Killed by the system.
       -- See System.Process.html#waitForProcess documentation
-      | exitValue < 0 -> throwError $ VerifierTerminatedByOS (-exitValue)
-      | otherwise -> throwError $ VerifierError (if null err then out else err)
+      | exitValue < 0 -> throwError $ SolverTerminatedByOS (-exitValue)
+      | otherwise -> throwError $ SolverError (if null err then out else err)
     -- Parse the result
-    _ -> parseOutput verifier out
+    _ -> parseOutput solver out
 
 checkWitness :: (MonadVerifyQuery m) => [QueryVariable] -> QueryVariableAssignment -> m ()
 checkWitness queryVariables (QueryVariableAssignment witness) = do
@@ -237,20 +240,19 @@ checkWitness queryVariables (QueryVariableAssignment witness) = do
   let missingVariables = Set.difference allVariables providedVariables
   unless (Set.null missingVariables) $
     throwError $
-      VerifierIncompleteWitness missingVariables
+      SolverIncompleteWitness missingVariables
 
 --------------------------------------------------------------------------------
 -- Errors
 
 createReproducer ::
   (MonadVerify m) =>
-  Verifier ->
-  VerifierExecutable ->
+  Solver ->
   FilePath ->
   MetaNetwork ->
   QueryAddress ->
   m (Doc a)
-createReproducer verifier verifierExecutable verificationCache metaNetwork queryAddress = do
+createReproducer solver verificationCache metaNetwork queryAddress = do
   -- Create the reproducer directory
   vehiclePath <- getVehiclePath
   randomNumber <- liftIO (randomIO :: IO Int)
@@ -274,7 +276,7 @@ createReproducer verifier verifierExecutable verificationCache metaNetwork query
       newNetworkFilePath <- copyOverFile networkFilepath
       return (name, NetworkContextInfo {networkFilepath = newNetworkFilePath, ..}, apps)
 
-  let command = unwords (verifierExecutable : prepareArgs verifier copiedMetaNetwork copiedQueryFile)
+  let command = unwords (solverExecutable solver : prepareArgs solver copiedMetaNetwork copiedQueryFile)
 
   -- Return the explanatory text
   return $
@@ -310,11 +312,11 @@ outputPropertyResult address result = do
       NonTrivial (_, SAT (Just assignment)) -> writeWitnessToFile specificationCache address assignment
       _ -> return ()
     PropertyErrored (QueryMetaData {..}, err) -> do
-      let VerificationErrorAction {..} = convertVerificationError verifier queryAddress err
+      let VerificationErrorAction {..} = convertVerificationError solver queryAddress err
 
       reproducerMessage <-
         if reproducerIsUseful
-          then createReproducer verifier verifierExecutable specificationCache metaNetwork queryAddress
+          then createReproducer solver specificationCache metaNetwork queryAddress
           else return ""
 
       unless (isTimeoutError err) $ do

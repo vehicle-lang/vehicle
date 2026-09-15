@@ -90,11 +90,11 @@ accessArgsForOp accessor op =
 -- Types of accessors
 --------------------------------------------------------------------------------
 
-type NatComparisonAccessor expr thunk builtin op = Accessor (expr builtin) (op, Op2Args (thunk builtin))
+type NatComparisonAccessor expr thunk builtin = Accessor (expr builtin) (ComparisonOp, Op2Args (thunk builtin))
 
-type IndexComparisonAccessor expr thunk builtin op = Accessor (expr builtin) (op, IndexComparisonArgs (thunk builtin))
+type IndexComparisonAccessor expr thunk builtin = Accessor (expr builtin) (ComparisonOp, IndexComparisonArgs (thunk builtin))
 
-type RatTensorComparisonAccessor expr thunk builtin op = Accessor (expr builtin) (op, TensorComparisonArgs (thunk builtin))
+type RatTensorComparisonAccessor expr thunk builtin = Accessor (expr builtin) (ComparisonOp, TensorComparisonArgs (thunk builtin))
 
 type Op1Accessor expr thunk builtin = Accessor (expr builtin) (Op1Args (thunk builtin))
 
@@ -148,13 +148,13 @@ accessReduceOr = accessArgs accessReduceOrBuiltin
 accessIf :: (HasBoolExpr expr thunk builtin) => Accessor (expr builtin) (IfArgs (thunk builtin))
 accessIf = accessArgs accessIfBuiltin
 
-accessCompareIndex :: (HasBoolExpr expr thunk builtin) => IndexComparisonAccessor expr thunk builtin ComparisonOp
+accessCompareIndex :: (HasBoolExpr expr thunk builtin) => IndexComparisonAccessor expr thunk builtin
 accessCompareIndex = accessOpAndArgs accessCompareIndexBuiltin
 
-accessCompareNat :: (HasBoolExpr expr thunk builtin) => NatComparisonAccessor expr thunk builtin ComparisonOp
+accessCompareNat :: (HasBoolExpr expr thunk builtin) => NatComparisonAccessor expr thunk builtin
 accessCompareNat = accessOpAndArgs accessCompareNatBuiltin
 
-accessCompareRatTensor :: (HasBoolExpr expr thunk builtin) => RatTensorComparisonAccessor expr thunk builtin ComparisonOp
+accessCompareRatTensor :: (HasBoolExpr expr thunk builtin) => RatTensorComparisonAccessor expr thunk builtin
 accessCompareRatTensor = accessOpAndArgs accessCompareRatTensorBuiltin
 
 accessQuantifyRatTensor ::
@@ -321,6 +321,9 @@ accessMapList = accessArgs accessMapListBuiltin
 accessFoldList :: (HasListExpr expr thunk builtin) => Accessor (expr builtin) (FoldListArgs (thunk builtin))
 accessFoldList = accessArgs accessFoldListBuiltin
 
+accessReverseList :: (HasListExpr expr thunk builtin) => Accessor (expr builtin) (ReverseListArgs (thunk builtin))
+accessReverseList = accessArgs accessReverseListBuiltin
+
 accessAppendList :: (HasListExpr expr thunk builtin) => Accessor (expr builtin) (AppendListArgs (thunk builtin))
 accessAppendList = accessArgs accessAppendListBuiltin
 
@@ -390,3 +393,8 @@ accessIterate ::
   (HasBuiltinConstructor expr thunk, BuiltinHasIterate builtin) =>
   Accessor (expr builtin) (IterateArgs (thunk builtin))
 accessIterate = accessArgs accessIterateBuiltin
+
+accessTransposeTensor ::
+  (HasBuiltinConstructor expr thunk, BuiltinHasTensors builtin) =>
+  Accessor (expr builtin) (TransposeTensorArgs (thunk builtin))
+accessTransposeTensor = accessArgs accessTransposeBuiltin

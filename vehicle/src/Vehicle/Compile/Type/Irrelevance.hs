@@ -1,11 +1,10 @@
 module Vehicle.Compile.Type.Irrelevance
   ( RemoveIrrelevantCode,
     removeIrrelevantCodeFromProg,
-    removeIrrelevantCode,
   )
 where
 
-import Control.Monad.Identity
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
@@ -15,44 +14,47 @@ import Vehicle.Data.Builtin.Interface.Print
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCodeFromProg ::
   (MonadCompile m, PrintableBuiltin builtin) =>
+  (Type builtin -> Bool, Expr builtin -> Bool) ->
   Prog builtin ->
   m (Prog builtin)
-removeIrrelevantCodeFromProg x = do
+removeIrrelevantCodeFromProg filters prog = do
   logCompilerSection2 MinDetail "removal of irrelevant code" $ do
-    result <- remove x
-    logDebug MaxDetail $ prettyExternal result
+    result <- runReaderT (remove prog) filters
+    logDebug MidDetail $ "Result:" <> lineIndent (prettyExternal result)
     return result
-
-removeIrrelevantCode :: (RemoveIrrelevantCode Identity a) => a -> a
-removeIrrelevantCode x = runIdentity $ remove x
 
 -------------------------------------------------------------------------------
 -- Remove polarity and linearity annotations
 
-type MonadRemove m =
-  (Monad m)
+type MonadRemove builtin m =
+  ( MonadReader (Type builtin -> Bool, Expr builtin -> Bool) m,
+    MonadLogger m,
+    PrintableBuiltin builtin
+  )
 
-class RemoveIrrelevantCode m a where
-  remove :: (MonadRemove m) => a -> m a
+class RemoveIrrelevantCode builtin m a where
+  remove :: (MonadRemove builtin m) => a -> m a
 
-instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg expr) where
+instance RemoveIrrelevantCode builtin m (Prog builtin) where
+  remove = traverseDecls remove
+
+instance RemoveIrrelevantCode builtin m (Decl builtin) where
   remove = traverse remove
 
-instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
-  remove = traverse remove
-
-instance RemoveIrrelevantCode m (Expr builtin) where
+instance RemoveIrrelevantCode builtin m (Expr builtin) where
   remove expr = do
     -- showRemoveEntry expr
     result <- case expr of
       App fun args -> do
         normAppList <$> remove fun <*> removeArgs (NonEmpty.toList args)
-      Pi p binder res ->
-        if isIrrelevant binder
+      Pi p binder res -> do
+        (typeFilter, _) <- ask
+        if isIrrelevant binder && typeFilter (typeOf binder)
           then remove $ arbitraryExpr `substDBInto` res
           else Pi p <$> remove binder <*> remove res
-      Lam p binder body ->
-        if isIrrelevant binder
+      Lam p binder body -> do
+        (typeFilter, _) <- ask
+        if isIrrelevant binder && typeFilter (typeOf binder)
           then remove $ arbitraryExpr `substDBInto` body
           else Lam p <$> remove binder <*> remove body
       Let p bound binder body -> Let p <$> remove bound <*> remove binder <*> remove body
@@ -68,20 +70,27 @@ instance RemoveIrrelevantCode m (Expr builtin) where
     -- showRemoveExit result
     return result
 
-instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericArg expr) where
+instance (RemoveIrrelevantCode builtin m (Expr builtin)) => RemoveIrrelevantCode builtin m (Arg builtin) where
   remove = traverse remove
 
-instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericBinder expr) where
+instance (RemoveIrrelevantCode builtin m (Expr builtin)) => RemoveIrrelevantCode builtin m (Binder builtin) where
   remove = traverse remove
 
 removeArgs ::
-  (MonadRemove m, RemoveIrrelevantCode m expr) =>
-  [GenericArg expr] ->
-  m [GenericArg expr]
-removeArgs = traverse remove . filter isRelevant
+  (MonadRemove builtin m, RemoveIrrelevantCode builtin m (Expr builtin)) =>
+  [Arg builtin] ->
+  m [Arg builtin]
+removeArgs args = do
+  (_, argFilter) <- ask
+  traverse remove $ filter (\a -> isRelevant a || keepArg argFilter a) args
+
+keepArg :: (Expr builtin -> Bool) -> Arg builtin -> Bool
+keepArg argFilter arg = case argExpr arg of
+  BoundVar _ (-1) -> False
+  expr -> not (argFilter expr)
 
 arbitraryExpr :: Expr builtin
-arbitraryExpr = developerError "arbitrary expression should not be evaluated"
+arbitraryExpr = BoundVar mempty (-1)
 
 {-
 --------------------------------------------------------------------------------

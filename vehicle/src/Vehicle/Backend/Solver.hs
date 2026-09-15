@@ -30,6 +30,7 @@ import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.ForcedValue
@@ -48,7 +49,7 @@ import Vehicle.Verify.Specification.IO
 -- Compilation to individual queries
 
 -- | Compiles the provided program to individual queries suitable for a
--- verifier and outputs them. We need to output them as they are generated as
+-- solver and outputs them. We need to output them as they are generated as
 -- otherwise storing all the queries can result in an out-of-memory errors.
 compileToQueries ::
   (MonadStdIO m, MonadCompile m) =>
@@ -151,7 +152,7 @@ compilePropertyDecl settings prov typ body = do
     Left err -> throwError $ MultiPropertyTraveralError prov err
     Right result -> return result
 
--- Compiles an individual property of type `Bool`
+-- | Compiles an individual property of type `Bool`
 compileSingleProperty ::
   (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   CompilationSettings ->
@@ -317,10 +318,9 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
 topLevelUnblockingActions :: (Monad m) => UnblockingActions m
 topLevelUnblockingActions =
   UnblockingActions
-    { unblockRatTensorBoundVar = developerError "No bound variables should exist at top-level",
-      unblockRecordBoundVar = developerError "No bound variables should exist at top-level",
-      unblockNetworkApp = \_ _ _ -> developerError "Unblocking of constant network functions at top-level not yet supported",
-      unblockDatasetOrParameter = developerError "Should not be unblocking datasets or parameters"
+    { unblockBoundVar = \_ _ -> developerError "No bound variables should exist at top-level",
+      unblockNetworkApp = \_ _ ident args -> return $ IfLeaf $ Forced $ VFreeVar ident (mkExpr accessSpine args),
+      unblockDatasetOrParameter = \_ _ -> developerError "Should not be unblocking datasets or parameters"
     }
 
 handlePropertyCompileError ::

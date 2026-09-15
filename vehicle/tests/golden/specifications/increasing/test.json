@@ -2,12 +2,17 @@
   {
     "name": "TypeCheck",
     "run": "vehicle typecheck -s spec.vcl",
-    "needs": ["spec.vcl"]
+    "needs": [
+      "spec.vcl"
+    ]
   },
   {
     "name": "Marabou",
     "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
-    "needs": ["spec.vcl", "fake.onnx"],
+    "needs": [
+      "spec.vcl",
+      "fake.onnx"
+    ],
     "produces": [
       "Marabou.queries/*.txt",
       "Marabou.queries/increasing.vcl-plan"
@@ -20,21 +25,40 @@
   {
     "name": "Agda",
     "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
-    "needs": ["spec.vcl"],
-    "produces": ["Agda.agda"]
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "Agda.agda"
+    ]
   },
   {
     "name": "Rocq",
     "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v",
-    "needs": ["spec.vcl"],
-    "produces": ["Rocq.v"]
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "Rocq.v"
+    ]
   },
   {
     "name": "RocqVerify",
     "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v && rocq compile -w none -vok Rocq.v",
-    "needs": ["spec.vcl"],
-    "external": ["rocq"],
-    "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
+    "needs": [
+      "spec.vcl"
+    ],
+    "ignore": {
+      "files": [
+        "Rocq.v",
+        ".Rocq.aux",
+        "Rocq.glob",
+        "Rocq.vok"
+      ]
+    },
+    "external": [
+      "spec.vcl"
+    ]
   },
   {
     "name": "Isabelle",
@@ -50,7 +74,6 @@
     "name": "IsabelleVerify",
     "run": "vehicle compile itp -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy && isabelle build -d vehicle-isabelle/ -d isabelle/ IsabelleTest > /dev/null 2>&1 && echo $? || echo 1",
     "enabled": true,
-    "external": ["isabelle"],
     "needs": [
       "spec.vcl",
       "isabelle/ROOT",
@@ -58,9 +81,23 @@
       "../../../../../vehicle-isabelle/Vehicle.thy"
     ],
     "ignore": {
-      "files": [
-        "isabelle/Isabelle.thy"
-      ]
-    }
+      "files": "isabelle/Isabelle.thy"
+    },
+    "external": [
+      "spec.vcl",
+      "isabelle/ROOT",
+      "../../../../../vehicle-isabelle/ROOT",
+      "../../../../../vehicle-isabelle/Vehicle.thy"
+    ]
+  },
+  {
+    "name": "VehicleLoss",
+    "run": "vehicle compile loss -s spec.vcl -l VehicleLoss -o VehicleLoss.vcl",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "VehicleLoss.vcl"
+    ]
   }
 ]

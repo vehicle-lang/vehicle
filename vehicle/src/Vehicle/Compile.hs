@@ -25,7 +25,7 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
-import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
+import Vehicle.Data.Builtin.Interface.Print (ConvertableBuiltin (..), PrintableBuiltin)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
@@ -112,9 +112,9 @@ compileToQueryFormat ::
   m ()
 compileToQueryFormat QueryOptions {..} typedProg = do
   logCompilerPass Solver $ do
-    let verifier = queryFormats queryFormatID
+    let solver = queryFormats queryFormatID
     let resources = Resources specification networkLocations datasetLocations parameterValues
-    compileToQueries verifier typedProg resources outputFolder
+    compileToQueries solver typedProg resources outputFolder
 
 compileToITP ::
   (MonadCompile m, MonadStdIO m) =>
@@ -162,11 +162,15 @@ compileToLossFunction LossOptions {..} typedProg outputAsJSON = do
   lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
   hoistedProg <- hoistInferableParameters lossTensorProg
   functionalisedProg <- functionaliseResources hoistedProg
-  jsonProg <- convertToJSONProg functionalisedProg
+  builtinProg <- traverse (traverseBuiltinsM toStandardBuiltins) functionalisedProg
+  jsonProg <- convertToJSONProg builtinProg
   let outputText
         | outputAsJSON = prettyAsJSON jsonProg
         | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
   writeResultToFile Nothing outputFile outputText
+  where
+    toStandardBuiltins p b args =
+      return $ normAppList (convertBuiltin p b :: Expr Builtin) args
 
 hoistInferableParameters ::
   (MonadCompile m, PrintableBuiltin builtin) =>
@@ -175,7 +179,7 @@ hoistInferableParameters ::
 hoistInferableParameters (Main ds) =
   logCompilerSection2 MinDetail "hoisting inferable parameters" $ do
     (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
-    logDebug MaxDetail $ "Hoisted parameters:" <> lineIndent (vsep $ fmap prettyFriendly inferableParameters)
+    logDebug MidDetail $ "Hoisted parameters:" <+> if null inferableParameters then "none" else lineIndent (vsep $ fmap prettyFriendly inferableParameters)
     return $ Main (inferableParameters <> otherDecls)
   where
     goDecls :: (MonadWriter [Decl builtin] m) => [Decl builtin] -> m [Decl builtin]

@@ -139,6 +139,16 @@ Postulated resources
 Similarly to Agda, networks and datasets are expressed as opaque :code:`Parameter`
 declarations within Rocq. Hence it is not possible to evaluate a network within Rocq.
 
+.. _exporting-rocq-transpose-limitation:
+
+Rank of ``transpose``
+#####################
+
+Targeting Rocq with a ``transpose`` of rank higher than 2 is a compile-time
+error. The mathcomp matrix module wrapped by ``'nT[R]_(us)`` does not
+expose the tabulate-and-lookup primitive that the general-rank case would
+need.
+
 Isabelle
 ~~~~~~~~
 

@@ -26,23 +26,23 @@ evaluateQuery negated q = negated `xor` isVerified q
 --------------------------------------------------------------------------------
 -- Verification status of a single property
 
--- | Errors thrown by a verifier
-data VerifierError
-  = VerifierTerminatedByOS Int
-  | VerifierError String
-  | VerifierOutputMalformed (Doc ())
-  | VerifierIncompleteWitness (Set QueryVariable)
-  | VerifierTimedOut
+-- | Errors thrown by a solver
+data SolverError
+  = SolverTerminatedByOS Int
+  | SolverError String
+  | SolverOutputMalformed (Doc ())
+  | SolverIncompleteWitness (Set QueryVariable)
+  | SolverTimedOut
   deriving (Show)
 
-isTimeoutError :: VerifierError -> Bool
+isTimeoutError :: SolverError -> Bool
 isTimeoutError = \case
-  VerifierTimedOut -> True
+  SolverTimedOut -> True
   _ -> False
 
 data PropertyStatus
   = PropertyCompleted (MaybeTrivial (QuerySetNegationStatus, QueryResult UserVariableAssignment))
-  | PropertyErrored (QueryMetaData, VerifierError)
+  | PropertyErrored (QueryMetaData, SolverError)
 
 instance IsVerified PropertyStatus where
   isVerified = \case

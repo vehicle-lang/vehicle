@@ -27,8 +27,8 @@ import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.Solver
 import Vehicle.Verify.Specification
-import Vehicle.Verify.Verifier.Core
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction

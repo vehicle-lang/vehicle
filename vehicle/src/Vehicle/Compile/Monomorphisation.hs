@@ -320,8 +320,8 @@ replacePreviousApplications prog =
           case maybeSolution of
             Nothing -> return $ normAppList (Builtin p b) args
             Just (typ, applications) -> do
-              logCompilerSection2 MaxDetail "replacing monomorphised derived application" $ do
-                logDebug MaxDetail $ "function: " <+> pretty ident
+              logCompilerSection2 MidDetail "replacing monomorphised derived application" $ do
+                logDebug MidDetail $ "function: " <+> pretty ident
                 logDebug MaxDetail $ "arguments:" <+> prettyVerbose args
                 let (argsToMono, remainingArgs) = obtainArgsToMonomorphise typ args
                 logDebug MaxDetail $ "arguments-to-mono:" <+> prettyVerbose argsToMono

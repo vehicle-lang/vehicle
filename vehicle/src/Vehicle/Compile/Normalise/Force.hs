@@ -112,7 +112,8 @@ instance
 
 -- Merge into `TypedEvalScheme`?
 instance
-  ( MonadNorm builtin m,
+  ( Show meta,
+    MonadNorm builtin m,
     TypedEvalScheme meta builtin m
   ) =>
   NormalisableExpr (GenericForcedValue meta) (GenericThunk meta) builtin m
@@ -262,7 +263,7 @@ forceBuiltin b spine = do
     Eval evalFn -> forceBuiltinEval evalFn b spine
     None -> return $ VBuiltin b spine
     Derived ident -> forceFreeVar ident spine
-    TypeClassOp -> do
+    TypeClassOperation -> do
       logDebug MaxDetail $ pretty $ length spine
       (inst, remainingArgs) <- findInstanceArg b spine
       forceApplication inst remainingArgs

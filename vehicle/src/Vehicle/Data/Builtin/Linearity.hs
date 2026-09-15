@@ -1,5 +1,5 @@
 -- | Builtins for deciding whether or not a property is `Constant`, `Linear` or
--- `NonLinear` during compilation to verifier queries.
+-- `NonLinear` during compilation to solver queries.
 module Vehicle.Data.Builtin.Linearity where
 
 import Control.DeepSeq (NFData (..))
@@ -197,6 +197,7 @@ instance BuiltinHasListLiterals LinearityBuiltin where
 
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
+  accessReverseListBuiltin = functionAccessor ReverseList
   accessAppendListBuiltin = functionAccessor AppendList
 
 instance BuiltinHasIterate LinearityBuiltin where

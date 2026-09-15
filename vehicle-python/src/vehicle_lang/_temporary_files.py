@@ -1,8 +1,9 @@
 import contextlib
+import os
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Iterator, List, Optional, Sequence
+from typing import TYPE_CHECKING, Generator, Iterator, List, Optional, Sequence
 
 from typing_extensions import TypeAlias
 
@@ -11,7 +12,21 @@ if TYPE_CHECKING or sys.version_info >= (3, 9):
 else:
     _StrTemporaryDirectory: TypeAlias = TemporaryDirectory
 
-__all__: List[str] = ["TemporaryFile", "temporary_files"]
+__all__: List[str] = ["TemporaryFile", "temporary_files", "VEHICLE_PATH"]
+
+
+# Needs to be kept up to date with `Vehicle.Prelude.IO.getVehiclePath`
+VEHICLE_PATH = Path(
+    os.environ.get(
+        "VEHICLE_PATH",
+        Path(
+            os.environ.get(
+                "APPDATA" if sys.platform == "win32" else "HOME", Path.home()
+            )
+        )
+        / ".vehicle",
+    )
+)
 
 
 class TemporaryFile:
@@ -46,7 +61,7 @@ def temporary_files(
     *names: str,
     prefix: Optional[str] = None,
     suffix: Optional[str] = None,
-) -> Iterator[Sequence[TemporaryFile]]:
+) -> Generator[Sequence[TemporaryFile], None, None]:
     dir = TemporaryDirectory(prefix=prefix, suffix=suffix)
     files: dict[str, TemporaryFile] = {}
     try:

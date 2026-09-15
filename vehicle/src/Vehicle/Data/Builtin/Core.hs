@@ -101,8 +101,7 @@ data BuiltinFunction
   | CompareIndex ComparisonOp
   | CompareNat ComparisonOp
   | CompareRatTensor ComparisonOp
-  | -- | CompareRatTensorPointwise ComparisonOp
-    ReduceAndTensor
+  | ReduceAndTensor
   | ReduceOrTensor
   | -- Rat operations
     Add AddDomain
@@ -125,12 +124,16 @@ data BuiltinFunction
   | ConstTensor
   | Iterate
   | ForeachTensor
+  | Transpose
+  | WhereTensor
+  | SearchRatTensor
   | -- Vector operations
     AtVector
   | ForeachVector
   | -- List operations
     FoldList
   | MapList
+  | ReverseList
   | AppendList
   deriving (Eq, Ord, Show, Generic)
 
@@ -170,9 +173,9 @@ instance Pretty BuiltinFunction where
     CompareIndex op -> comparisonOpName op <> "Index"
     CompareNat op -> comparisonOpName op <> "Nat"
     CompareRatTensor op -> comparisonOpName op <> "RatTensor"
-    -- CompareRatTensorPointwise op -> comparisonOpName op <> "RatTensorPointwise"
     FoldList -> "foldList"
     MapList -> "mapList"
+    ReverseList -> "reverseList"
     AppendList -> "appendList"
     ForeachTensor -> "foreachTensor"
     ForeachVector -> "foreachVector"
@@ -181,6 +184,9 @@ instance Pretty BuiltinFunction where
     AtVector -> "atVector"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
+    Transpose -> "transpose"
+    SearchRatTensor -> "search"
+    WhereTensor -> "where"
 
 data BuiltinCast
   = -- Cast operations
