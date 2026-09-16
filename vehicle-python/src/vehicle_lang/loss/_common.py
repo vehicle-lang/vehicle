@@ -45,6 +45,23 @@ class BoundVarData:
 
 TranslationFactory = Callable[[], Any]
 SamplerFactory = Callable[[], _SamplerProtocol]
+DomainValidator = Callable[[Any, Any], None]
+
+
+def _validate_sampler(
+    sampler: Callable[..., Any],
+    domain_validator: DomainValidator,
+) -> Callable[..., Any]:
+    def validated_sampler(
+        dims: Any,
+        lower_bound: Any,
+        upper_bound: Any,
+        search_lambda: Any,
+    ) -> Any:
+        domain_validator(lower_bound, upper_bound)
+        return sampler(dims, lower_bound, upper_bound, search_lambda)
+
+    return validated_sampler
 
 
 def load_loss_ast(
@@ -125,6 +142,7 @@ def load_training_loss(
     declaration_context: dict[str, Any] | None,
     translation_factory: TranslationFactory,
     default_sampler_factory: SamplerFactory,
+    domain_validator: DomainValidator,
 ) -> dict[str, Any]:
     """Load a specification for training."""
 
@@ -133,9 +151,16 @@ def load_training_loss(
 
     if samplers is None:
         default_sampler = default_sampler_factory()
-        samplers = defaultdict(lambda: default_sampler.get_loss)
+        validated_sampler = _validate_sampler(
+            default_sampler.get_loss,
+            domain_validator,
+        )
+        samplers = defaultdict(lambda: validated_sampler)
     else:
-        samplers = {k: s.get_loss for k, s in samplers.items()}
+        samplers = {
+            k: _validate_sampler(s.get_loss, domain_validator)
+            for k, s in samplers.items()
+        }
 
     program = load_loss_ast(
         path, mode=LossMode.Training, logic=logic, declarations=declarations
