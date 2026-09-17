@@ -11,6 +11,7 @@ open import Vehicle.Data.Tensor as 𝕋
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module Agda where
 
@@ -22,7 +23,7 @@ record Test1 : Set where
 open Test1
 
 _Test1ToTensor : Test1 → Tensor ℚ (2 ∷ [])
-_Test1ToTensor x = stack (f1 x) (f2 x)
+_Test1ToTensor x = stack (f1 x ∷ᵥ f2 x ∷ᵥ []ᵥ)
 
 _Test1FromTensor : Tensor ℚ (2 ∷ []) → Test1
 _Test1FromTensor x = record
