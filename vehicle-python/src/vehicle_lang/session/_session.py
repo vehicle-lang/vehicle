@@ -1,9 +1,8 @@
 import atexit
-import io
 import os
 import pty
 import sys
-from contextlib import AbstractContextManager, redirect_stderr, redirect_stdout
+from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import ClassVar, Optional, Sequence, Type
 
@@ -66,28 +65,11 @@ class Session(SessionContextManager):
             raise VehicleSessionClosed()
 
     def check_output(
-        self,
-        args: Sequence[str],
-    ) -> tuple[int, Optional[str], Optional[str], Optional[str]]:
-        with redirect_stdout(io.StringIO()) as out:
-            with redirect_stderr(io.StringIO()) as err:
-                with temporary_files("log", prefix="vehicle") as (log,):
-                    exitCode = self.check_call(
-                        [
-                            f"--redirect-logs={log}",
-                            *args,
-                        ]
-                    )
-                    return (
-                        exitCode,
-                        out.getvalue() or None,
-                        err.getvalue() or None,
-                        log.read_text(),
-                    )
-
-    def check_output_pty(
         self, args: Sequence[str]
     ) -> tuple[int, Optional[str], Optional[str], Optional[str]]:
+        """
+        Uses PTY-based output capture to handle C-level stdout from the Haskell RTS.
+        """
         import select
         import threading
 
