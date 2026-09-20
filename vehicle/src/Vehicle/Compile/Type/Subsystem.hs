@@ -97,7 +97,9 @@ gradientTypeCheck ::
 gradientTypeCheck lossMode differentiableLogic prog = do
   errorOrGradProg <- typeCheckWithSubsystem GradientCarryingTypes (lossBuiltinInstances lossMode differentiableLogic) prog
   gradProg <- case errorOrGradProg of
-    Left err -> developerError $ errorInSubsystemMessage "determining the parts of the program with gradients for export to a loss function" err
+    -- An untypeable specification is unsupported, so surface it to the user.
+    Left err@DevError {} -> throwError err
+    Left err -> throwError $ UntypeableLossSpecification differentiableLogic err
     Right gradProg -> return gradProg
 
   let isGradientType = \case

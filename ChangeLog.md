@@ -16,6 +16,9 @@
 
 * Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
 
+* A specification the gradient type system cannot type is now reported as a user error naming the
+  value involved, rather than as an internal error.
+
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.

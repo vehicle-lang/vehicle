@@ -1009,6 +1009,21 @@ formatCompileError = \case
             <+> "has no constraints that will generate useful gradients.",
         fix = Nothing
       }
+  UntypeableLossSpecification logic err ->
+    VehicleUserError
+      { provenance = Nothing,
+        problem =
+          "Unable to work out which parts of the specification carry gradients, so it cannot be"
+            <+> "compiled to a loss function using"
+            <+> quotePretty (nameOf logic)
+            <> "."
+            <> line
+            <> indent 2 (problem (formatCompileError err)),
+        fix =
+          Just $
+            "the value named above is either unsupported by the loss backend, or mixes values that"
+              <+> "do and do not carry gradients. Try rewriting the specification to avoid it."
+      }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =

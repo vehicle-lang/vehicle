@@ -231,6 +231,7 @@ data CompileError
   | UnorderableDifferentiableLogic DeclProvenance (Thunk Builtin) (Either BlockingReason (ForcedValue Builtin))
   | BackwardsDifferentiableLogic DeclProvenance (Thunk Builtin)
   | QuantifierWithNoGradients Provenance (Binder Builtin)
+  | UntypeableLossSpecification Identifier CompileError
   | -- ITP backend errors
     UnimplementedFeature Provenance (Doc Void)
   | -- Other
