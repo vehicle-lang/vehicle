@@ -69,12 +69,15 @@ instance Hashable LossBuiltinType
 data LossBuiltinConstructor
   = WithGradients
   | WithoutGradients
+  | -- | A vector literal whose elements each keep their own gradient.
+    VectorLiteralWithGradients
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty LossBuiltinConstructor where
   pretty = \case
     WithGradients -> "withGradients"
     WithoutGradients -> "withoutGradients"
+    VectorLiteralWithGradients -> "vecLitWithGradients"
 
 instance Hashable LossBuiltinConstructor
 
@@ -515,6 +518,9 @@ instance NormalisableBuiltin (LossBuiltin mode) where
   isCast p b = case b of
     LossBuiltinCast FromBoolTensorToBoolTensor -> Just $ forceEvalSimpleBuiltin p b forcedEvalFromBoolTensorToBoolTensor
     LossBuiltinCast FromBoolTensorToRatTensor -> Just $ forceEvalSimpleBuiltin p b forcedEvalFromBoolTensorToRatTensor
+    -- Eliminated to a standard vector literal.
+    LossBuiltinConstructor VectorLiteralWithGradients ->
+      Just $ return . normAppList (Builtin p (StandardBuiltinConstructor S.VectorLiteral))
     _ -> Nothing
 
 forcedEvalFromBoolTensorToBoolTensor ::
