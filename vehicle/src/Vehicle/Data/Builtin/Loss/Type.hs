@@ -12,6 +12,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (getDeclType, prependMissingFreeVarImplicitArgs)
 import Vehicle.Compile.Type.System
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
@@ -22,6 +23,7 @@ import Vehicle.Data.Builtin.Standard
     DerivedFunction (..),
   )
 import Vehicle.Data.Code.DSL
+import Vehicle.Data.Code.Interface.Args (IsArgs (..), StackTensorArgs (..))
 import Vehicle.Data.DSL
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
@@ -210,8 +212,7 @@ typeStandardFunction f = case f of
           ~> tBoolTensor dims
           ~> tRatTensorWithoutGradients dimNil
           ~> tTensor (tRat .@@ [g]) dims
-  -- TODO: known bug. Have to separate out stack into a specialised rat type that takes the max over gradients
-  StackTensor -> typeOfBuiltinFunction f
+  StackTensor -> typeOfStackTensorWithGradients
   CompareIndex {} -> typeOfBuiltinFunction f
   CompareNat {} -> typeOfBuiltinFunction f
   Add AddNat -> typeOfBuiltinFunction f
@@ -236,6 +237,30 @@ typeStandardFunction f = case f of
   AppendList -> typeOfBuiltinFunction f
   where
     removed = developerError $ pretty f <+> "should have been removed prior to loss type-checking"
+
+typeOfStackTensorWithGradients :: DSLExpr (LossBuiltin mode)
+typeOfStackTensorWithGradients =
+  forAll "n" tNat $ \n ->
+    forAllDim Relevant $ \d ->
+      forAllDims $ \ds ->
+        iterate (tGradient ~> type0) (accumulateGradient (\g -> tTensor (tRat .@@ [g]) ds)) n (finalTensor d ds)
+          @@ [withoutGradients]
+  where
+    finalTensor d ds =
+      explLam "g" tGradient $ \g ->
+        tTensor (tRat .@@ [g]) (dimCons d ds)
+
+accumulateGradient ::
+  (DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)) ->
+  DSLExpr (LossBuiltin mode) ->
+  DSLExpr (LossBuiltin mode) ->
+  DSLExpr (LossBuiltin mode)
+accumulateGradient elementType recurse base =
+  explLam "g" tGradient $ \accSoFar ->
+    forAllGradients $ \element ->
+      forAllGradients $ \accNext ->
+        maxGradients accSoFar element accNext
+          .~~~> (elementType element ~> (recurse @@ [base]) @@ [accNext])
 
 typeOp1 :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOp1 t = t ~> t
@@ -412,7 +437,13 @@ convertToLossBuiltins decl = do
             AppendList -> sameFunction f
             Iterate -> sameFunction f
             Transpose -> sameFunction f
-            StackTensor -> sameFunction f
+            -- Each element is typed separately, so the shared type slot holds the arity.
+            StackTensor -> case getExpr accessSpine args of
+              Just stackArgs ->
+                return $
+                  normAppList (Builtin p (StandardBuiltinFunction f)) $
+                    mkExpr accessSpine stackArgs {stackType = arityOf (stackElements stackArgs)}
+              Nothing -> developerError "Malformed type-checked stack"
             AtTensor -> sameFunction f
             ConstTensor -> sameFunction f
             ForeachTensor -> sameFunction f
@@ -439,6 +470,8 @@ convertToLossBuiltins decl = do
         -- Nothing changes
         sameFunction f = return $ normAppList (Builtin p (StandardBuiltinFunction f)) args
         sameConstructor c = normAppList (Builtin p $ StandardBuiltinConstructor c) args
+
+        arityOf elements = Builtin p (StandardBuiltinConstructor (NatLiteral (length elements)))
 
         -- Apply a cast
         prependHoles n xs = replicate n (implicit $ Hole p "_") <> xs

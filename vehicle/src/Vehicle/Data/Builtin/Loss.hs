@@ -502,7 +502,7 @@ instance NormalisableBuiltin (LossBuiltin mode) where
       S.ForeachTensor -> Eval evalForeachTensor
       S.ForeachVector -> Eval evalForeachVector
       S.AtVector -> Eval evalAtVector
-      S.Iterate -> Eval evalIterate
+      S.Iterate -> Eval evalSeededIterate
       S.WhereTensor -> None
       S.SearchRatTensor -> None
     LossBuiltinTypeClassOp {} -> TypeClassOperation

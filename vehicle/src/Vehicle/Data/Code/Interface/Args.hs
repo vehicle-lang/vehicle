@@ -318,6 +318,8 @@ traverseConstTensorValue f ConstTensorArgs {..} = do
 -- requires the argument to participate in relevant elaboration.
 
 -- | Arguments for `StackTensor`
+--
+-- NOTE: in the loss subsystem `stackType` holds the arity, as each element is typed separately.
 data StackTensorArgs expr = StackTensorArgs
   { stackType :: expr,
     stackFirstDim :: expr,
@@ -785,6 +787,26 @@ instance IsArgs WhereTensorArgs where
             explicit cond,
             explicit value
           ]
+      }
+
+--------------------------------------------------------------------------------
+-- SeededIterate (loss builtins)
+
+-- | Arguments for an `Iterate` applied to further arguments.
+data SeededIterateArgs expr = SeededIterateArgs
+  { seededIterateArgs :: IterateArgs expr,
+    seededIterateSeed :: [GenericArg expr]
+  }
+
+instance IsArgs SeededIterateArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          t : fn : n : e : seed ->
+            Just $ SeededIterateArgs (IterateArgs t (argExpr fn) (argExpr n) (argExpr e)) seed
+          _ -> Nothing,
+        mkExpr = \(SeededIterateArgs (IterateArgs t fn n e) seed) ->
+          t : explicit fn : explicit n : explicit e : seed
       }
 
 --------------------------------------------------------------------------------
