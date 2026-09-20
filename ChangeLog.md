@@ -16,6 +16,10 @@
 
 * Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
 
+* Fixed the default `Sampler` implementations returning `nan` when a quantified variable is
+  unbounded. Starting points are now drawn from a finite region, whose size is controlled by the
+  new `unbounded_search_distance` parameter.
+
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.
