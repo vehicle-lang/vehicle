@@ -108,10 +108,20 @@ tryPurifyRatTensorComparison op (TensorComparisonArgs _pDims rDims e1 e2) = do
         let args = TensorComparisonArgs (Forced IDimNil) rDims (value e1'') (value e2'')
         let val = Forced $ mkExpr accessCompareRatTensor (op, args)
         maybeSolvedVal <- sequence $ liftA2 (comparisonToAssertion op) (valueAsLinearExpr e1'') (valueAsLinearExpr e2'')
-        return $ case maybeSolvedVal of
-          Nothing -> NonTrivial (val, Nothing)
-          Just (Trivial b) -> Trivial b
-          Just (NonTrivial le) -> NonTrivial (val, Just le)
+        case maybeSolvedVal of
+          Nothing -> return $ NonTrivial (val, Nothing)
+          Just (Trivial b) -> return $ Trivial b
+          Just (NonTrivial le) -> do
+            isUsable <- isUsableBound le
+            return $ NonTrivial (val, if isUsable then Just le else Nothing)
+
+isUsableBound :: (MonadPurifyAssertion m) => Assertion TensorValueLinearExpr -> m Bool
+isUsableBound lexp = do
+  let variables = variablesOf lexp
+  parentVariables <- lookupParentTensorVariables (variablesOf lexp)
+  -- Cannot currently create a bound from an assertion linking multiple
+  -- sub-tensors of a single variable, e.g. `x ! 0 < x ! 1`.
+  return $ length variables == length parentVariables
 
 --------------------------------------------------------------------------------
 -- Compiling linear expressions
