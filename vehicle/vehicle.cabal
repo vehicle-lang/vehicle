@@ -195,6 +195,7 @@ library
     Paths_vehicle
     Vehicle.Backend.ITP.Core
     Vehicle.Backend.Loss
+    Vehicle.Backend.Loss.Constant
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
     Vehicle.Backend.Loss.LogicCompilation
@@ -213,6 +214,7 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames
+    Vehicle.Compile.Constants.Atom.Core
     Vehicle.Compile.Constants.TensorValue
     Vehicle.Compile.Constants.TensorValue.Core
     Vehicle.Compile.Dependency

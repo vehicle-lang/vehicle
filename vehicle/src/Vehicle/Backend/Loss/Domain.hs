@@ -12,9 +12,9 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Proxy (Proxy (..))
+import Vehicle.Backend.Loss.Constant
 import Vehicle.Backend.Loss.PurifyAssertion
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
-import Vehicle.Compile.Constants.TensorValue
 import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
@@ -38,7 +38,6 @@ import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial
-import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Variable.Bound.Context.Generic (toNamedBoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
@@ -230,7 +229,7 @@ compileConstraints p dims knownShape binder var (maybeConstraints, maybeRemainde
         boundsDoc <- prettyFriendlyInCtx (BoundedValue var tensorBounds)
         return $ "all-variable-bounds:" <> lineIndent boundsDoc
 
-      domain <- fourierMotzkinTensorBoundsElimination knownShape tensorBounds
+      domain <- fourierMotzkinTensorBoundsElimination uniformConstant knownShape tensorBounds
 
       logDebugM MaxDetail $ do
         boundsDoc <- prettyFriendlyInCtx (BoundedValue var domain)
@@ -250,13 +249,13 @@ compileSearch ::
   Expr Builtin ->
   Binder Builtin ->
   Expr Builtin ->
-  Domain TensorConstantValue ->
+  Domain PureConstant ->
   m (Expr Builtin)
 compileSearch p dims binder closure (Domain lowerBound upperBound) = do
   -- Create the final expression
   -- NOTE that this is unsound as we discard the strictness information.
-  lowerBound' <- unnormaliseInTensorCtx =<< foldConstant (lowerBoundValue lowerBound)
-  upperBound' <- unnormaliseInTensorCtx =<< foldConstant (upperBoundValue upperBound)
+  lowerBound' <- unnormaliseInTensorCtx =<< reconstruct (lowerBoundValue lowerBound)
+  upperBound' <- unnormaliseInTensorCtx =<< reconstruct (upperBoundValue upperBound)
 
   let spine =
         mkExpr accessSpine $
@@ -274,14 +273,14 @@ findTensorBounds ::
   NestedSliceVariable ->
   (KnownPrefixOfTensorShape, Thunk Builtin) ->
   Maybe UserVariableConstraintTree ->
-  m (DisjunctAll (TensorBounds TensorConstantValue, Maybe UserVariableConstraintTree))
+  m (DisjunctAll (TensorBounds PureConstant, Maybe UserVariableConstraintTree))
 findTensorBounds parentVar (parentVarShapePrefix, _parentVarRemainingShape) constraints =
   go (DisjunctAll [(emptyBounds, constraints)]) parentVar
   where
     go ::
-      DisjunctAll (TensorBounds TensorConstantValue, Maybe UserVariableConstraintTree) ->
+      DisjunctAll (TensorBounds PureConstant, Maybe UserVariableConstraintTree) ->
       NestedSliceVariable ->
-      m (DisjunctAll (TensorBounds TensorConstantValue, Maybe UserVariableConstraintTree))
+      m (DisjunctAll (TensorBounds PureConstant, Maybe UserVariableConstraintTree))
     go allBounds var = do
       result <- forM allBounds $ \(bounds, maybeTree) ->
         case maybeTree of
@@ -303,22 +302,19 @@ findVarBound ::
   NestedSliceVariable ->
   VariableInfo ->
   UserVariableConstraint ->
-  m (Maybe (TensorBounds TensorConstantValue))
+  m (Maybe (TensorBounds PureConstant))
 findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
   | not (expr `containsVariable` toSliceVar var) = return Nothing
   | otherwise = do
       (coef, expr') <- rearrangeExprToSolveFor (toSliceVar var) expr
-      boundExpr <- tensorValueLinearExprToValue expr'
+      boundExpr <- sliceVarsToAtoms expr'
       bounds <- convertToTensorBounds parentShape indices rel coef boundExpr
       return $ Just bounds
 
-tensorValueLinearExprToValue ::
-  (MonadNorm Builtin m) =>
-  LinearExpr SliceVariable TensorConstantValue ->
-  m TensorConstantValue
-tensorValueLinearExprToValue linearExpr = do
-  let dims = tensorValueDims $ constantValue linearExpr
-  let mkTerm (v, coeff) = mkTensorConstantValue dims (Finite coeff) (Forced $ VBoundVar (toLv v) [])
+sliceVarsToAtoms :: (MonadDomain m) => TensorValueLinearExpr -> m PureConstant
+sliceVarsToAtoms linearExpr = do
+  let dims = tensorValueDims $ constantValue $ constantValue linearExpr
+  let mkTerm (v, coeff) = return $ singletonAtom dims coeff (Forced $ VBoundVar (toLv v) [])
   linearExprToExpr id mkTerm (addConstants 1 1) linearExpr
 
 --------------------------------------------------------------------------------

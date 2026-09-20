@@ -30,6 +30,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.TypeLits
 import Prettyprinter (fill)
+import Vehicle.Compile.Constants.Atom.Core (Atom, atomBody)
 import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Descope
@@ -228,6 +229,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Unnamed tags) (GenericThunk meta builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Expr Builtin))
   StrategyFor tags (GenericBoundEnv meta builtin `In` ctx) = StrategyFor tags (ForcedValue builtin `In` ctx)
   StrategyFor tags (TensorConstantValue `In` ctx) = StrategyFor tags (Thunk Builtin `In` ctx)
+  StrategyFor tags (Atom `In` ctx) = StrategyFor tags (Thunk Builtin `In` ctx)
   -------------------
   -- Context setup --
   -------------------
@@ -537,6 +539,13 @@ instance
     pretty coefficient <> case maybeValue of
       Nothing -> ""
       Just value -> "*" <> prettyUsing @rest (value, ctx)
+
+instance
+  ( PrettyUsing rest (Thunk Builtin `In` ctx)
+  ) =>
+  PrettyUsing rest (Atom `In` ctx)
+  where
+  prettyUsing (atom, ctx) = prettyUsing @rest (atomBody atom, ctx)
 
 --------------------------------------------------------------------------------
 -- Linear expression

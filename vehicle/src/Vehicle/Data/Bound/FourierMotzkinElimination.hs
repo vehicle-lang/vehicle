@@ -18,15 +18,13 @@ import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Data.Either (partitionEithers)
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Constants.Rational (LinearExpression)
-import Vehicle.Compile.Constants.TensorValue ()
-import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll (..), eliminateTrivialConjunctions)
-import Vehicle.Data.Code.ForcedValue (GenericThunk (..), Thunk)
+import Vehicle.Data.Code.ForcedValue (GenericThunk (..), Thunk, UnforcedDims)
 import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
@@ -34,7 +32,6 @@ import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor.Core (KnownPrefixOfTensorShape)
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
 --------------------------------------------------------------------------------
 -- Tensor traversal
@@ -110,29 +107,30 @@ fourierMotzkinTensorBoundsEliminationWithErrors TensorBounds {..} = do
 -- NOTE: this function is currently unsound as at the moment it discards the strictness information.
 -- See https://github.com/vehicle-lang/vehicle/issues/74
 fourierMotzkinTensorBoundsElimination ::
-  forall m.
-  (MonadLogger m, MonadFreeContext Builtin m, MonadNameContext m, MonadReadableNameContext m) =>
+  forall m constant.
+  (ConstantLike constant m) =>
+  (UnforcedDims Builtin -> ExtendedRational -> constant) ->
   (KnownPrefixOfTensorShape, Thunk Builtin) ->
-  TensorBounds TensorConstantValue ->
-  m (Domain TensorConstantValue)
-fourierMotzkinTensorBoundsElimination (fullKnownPrefix, remainingShape) TensorBounds {..} = do
+  TensorBounds constant ->
+  m (Domain constant)
+fourierMotzkinTensorBoundsElimination mkUnbounded (fullKnownPrefix, remainingShape) TensorBounds {..} = do
   lowerBound <- go NegInfinity fullKnownPrefix lowerBounds tensorSliceBounds
   upperBound <- go PosInfinity fullKnownPrefix upperBounds tensorSliceBounds
   return $ Domain lowerBound upperBound
   where
     go ::
-      (IsBound bound (TensorConstantValue) m) =>
+      (IsBound bound constant m) =>
       ExtendedRational ->
       KnownPrefixOfTensorShape ->
-      (SliceBounds TensorConstantValue -> [bound TensorConstantValue]) ->
-      NestedSliceBounds TensorConstantValue ->
-      m (bound TensorConstantValue)
+      (SliceBounds constant -> [bound constant]) ->
+      NestedSliceBounds constant ->
+      m (bound constant)
     go defaultBound knownPrefix getBound (NestedSliceBounds sliceBounds maybeChildBounds) = do
       maybeBounds <- andBoundList (getBound sliceBounds)
       case (knownPrefix, maybeChildBounds, maybeBounds) of
         (_, Nothing, Nothing) -> do
           let dims = foldr (\d ds -> Forced $ IDimCons (Forced (INatLiteral d)) ds) remainingShape knownPrefix
-          valueToBound (Strict, TensorConstantValue dims defaultBound Nothing)
+          valueToBound (Strict, mkUnbounded dims defaultBound)
         (_, Nothing, Just bounds) ->
           return bounds
         (_d : ds, Just childTensorBounds, _) -> do

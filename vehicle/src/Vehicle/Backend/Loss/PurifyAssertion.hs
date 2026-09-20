@@ -17,8 +17,8 @@ import Control.Applicative (liftA2)
 
 import Control.Monad (liftM2)
 import Control.Monad.Except (MonadError (..), runExceptT)
+import Vehicle.Backend.Loss.Constant
 import Vehicle.Compile.Constants.TensorValue
-import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalCompareIndex, evalCompareNat, evalCompareRatTensor, forceEvaluation)
 import Vehicle.Compile.Normalise.Force
@@ -39,7 +39,7 @@ import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level (SliceVariable)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
-type TensorValueLinearExpr = LinearExpr SliceVariable TensorConstantValue
+type TensorValueLinearExpr = LinearExpr SliceVariable PureConstant
 
 -- | Monad purify
 type MonadPurifyAssertion m =
@@ -203,7 +203,7 @@ compileAsConstantExpr ::
   Thunk Builtin ->
   m BranchingResult
 compileAsConstantExpr dims value = do
-  constValue <- mkTensorConstantValue dims 1 value
+  constValue <- atomiseConstant =<< mkTensorConstantValue dims 1 value
   return $
     IfLeaf $
       Result
@@ -226,7 +226,7 @@ compileRatTensorVar dims lv spine = do
       -- we calculate the gradients correctly with respect to the bounds via the reparameterisation trick.
       compileAsConstantExpr dims (Forced $ VBoundVar lv spine)
     Just variable -> do
-      let linearExpr = singletonVarExpr (TensorConstantValue dims 0 Nothing) variable
+      let linearExpr = singletonVarExpr (uniformConstant dims 0) variable
       return $
         IfLeaf $
           Result
@@ -393,9 +393,9 @@ multiplyLinearExprs ::
   TensorValueLinearExpr ->
   Maybe (m TensorValueLinearExpr)
 multiplyLinearExprs le1 le2 = case (isConstant le1, isConstant le2) of
-  (Just (isFiniteConstant -> Just c1), _) -> Just $ scaleExpr c1 le2
-  (_, Just (isFiniteConstant -> Just c2)) -> Just $ scaleExpr c2 le1
-  (Just v1, Just v2) -> Just (constantExpr <$> mulDimensionedValue v1 v2)
+  (Just (isFinitePureConstant -> Just c1), _) -> Just $ scaleExpr c1 le2
+  (_, Just (isFinitePureConstant -> Just c2)) -> Just $ scaleExpr c2 le1
+  (Just v1, Just v2) -> Just (constantExpr <$> combineWith mulDimensionedValue v1 v2)
   _ -> Nothing
 
 divideLinearExprs ::
@@ -404,8 +404,8 @@ divideLinearExprs ::
   TensorValueLinearExpr ->
   Maybe (m TensorValueLinearExpr)
 divideLinearExprs le1 le2 = case (isConstant le1, isConstant le2) of
-  (_, Just (isFiniteConstant -> Just c2)) -> Just $ scaleExpr (1 / c2) le1
-  (Just v1, Just v2) -> Just (constantExpr <$> divDimensionedValue v1 v2)
+  (_, Just (isFinitePureConstant -> Just c2)) -> Just $ scaleExpr (1 / c2) le1
+  (Just v1, Just v2) -> Just (constantExpr <$> combineWith divDimensionedValue v1 v2)
   _ -> Nothing
 
 logEntryAndExit ::

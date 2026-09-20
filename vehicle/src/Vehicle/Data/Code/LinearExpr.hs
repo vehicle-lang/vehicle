@@ -12,7 +12,6 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import GHC.Generics (Generic)
 import Vehicle.Data.Tensor (HasShape (..), RatTensor, allTensor)
-import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
 
 -------------------------------------------------------------------------------
@@ -116,7 +115,7 @@ linearExprLikeToExpr constantToExpr variableToExpr combineExprs coefficients con
 -- is a constant. This is often problematic, and unless you are sure you
 -- don't need to check for this case, it is recommended you use `addExprs`.
 addExprsUnsafe ::
-  (VariableLike variable, ConstantLike constant m) =>
+  (Ord variable, ConstantLike constant m) =>
   Coefficient ->
   Coefficient ->
   LinearExpr variable constant ->
@@ -131,7 +130,7 @@ addExprsUnsafe c1 c2 (Sparse coeff1 const1) (Sparse coeff2 const2) = do
   return $ Sparse rcoeff rconst
 
 addExprs ::
-  (VariableLike variable, ConstantLike constant m) =>
+  (Ord variable, ConstantLike constant m) =>
   Coefficient ->
   Coefficient ->
   LinearExpr variable constant ->
@@ -147,7 +146,7 @@ scaleExpr ::
 scaleExpr c (Sparse coefficients constant) =
   Sparse (Map.map (c *) coefficients) <$> scaleConstant c constant
 
-lookupCoefficient :: (VariableLike variable) => LinearExpr variable constant -> variable -> Coefficient
+lookupCoefficient :: (Ord variable) => LinearExpr variable constant -> variable -> Coefficient
 lookupCoefficient (Sparse coefficients _) v = fromMaybe 0 $ Map.lookup v coefficients
 
 isConstant :: LinearExpr variable constant -> Maybe constant
@@ -157,7 +156,7 @@ isConstant (Sparse coeff constant)
 
 evaluateExpr ::
   forall constant m variable.
-  (VariableLike variable, ConstantLike constant m) =>
+  (Ord variable, ConstantLike constant m) =>
   Map variable constant ->
   LinearExpr variable constant ->
   m (Either variable constant)
@@ -179,7 +178,7 @@ evaluateExpr assignment (Sparse coefficients constant) = do
 -- returns (c_i, -(c_0/c_i)*x_0 ... - (c_n/c_i) * x_n), i.e.
 -- the expression is the expression equal to `x_i`.
 rearrangeExprToSolveFor ::
-  (VariableLike variable, ConstantLike constant m) =>
+  (Ord variable, ConstantLike constant m) =>
   variable ->
   LinearExpr variable constant ->
   m (Coefficient, LinearExpr variable constant)
@@ -197,7 +196,7 @@ rearrangeExprToSolveFor var expr = do
 
 eliminateVars ::
   forall variable m constant.
-  (VariableLike variable, ConstantLike constant m) =>
+  (Ord variable, ConstantLike constant m) =>
   Map variable (LinearExpr variable constant) ->
   LinearExpr variable constant ->
   m (Either constant (LinearExpr variable constant))
@@ -222,7 +221,7 @@ eliminateVars solutions expr@(Sparse coeffs _) = do
 linearExprNumberOfVariables :: LinearExpr variable constant -> Int
 linearExprNumberOfVariables = Map.size . coefficients
 
-linearExprVariables :: (VariableLike variable) => LinearExpr variable constant -> Set variable
+linearExprVariables :: (Ord variable) => LinearExpr variable constant -> Set variable
 linearExprVariables linearExpr = Map.keysSet $ coefficients linearExpr
 
 prettyLinearExpr ::
