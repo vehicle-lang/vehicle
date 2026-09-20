@@ -24,6 +24,11 @@
 
 * Fixed error where Agda library didn't type-check due to malformed transpose definition.
 
+### Python bindings
+
+* Fixed the error classes being unraisable through a `contextlib.contextmanager`, which masked the
+  error that caused them.
+
 ## v0.28.0
 
 ### Solver backend
