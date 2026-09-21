@@ -127,6 +127,7 @@ typeLossTypeClass = \case
   HasExists -> type0 ~> type0
   HasIfRatTensor -> tGradient ~> tGradient ~> type0
   MaxGradients {} -> tGradient ~> tGradient ~> tGradient ~> tGradient
+  MaxGradientTypes -> type0 ~> type0 ~> type0 ~> type0
   ValidNetworkType -> type0 ~> type0
   ValidNetworkIOType -> tGradient ~> type0 ~> type0
   ValidDatasetType -> type0 ~> type0
@@ -219,7 +220,7 @@ typeStandardFunction f = case f of
   Not -> typeOfBuiltinFunction f
   And -> typeOfBuiltinFunction f
   Or -> typeOfBuiltinFunction f
-  If -> typeOfBuiltinFunction f
+  If -> typeIf tBool
   Implies -> typeOfBuiltinFunction f
   ReduceAndTensor -> typeOfBuiltinFunction f
   ReduceOrTensor -> typeOfBuiltinFunction f
@@ -297,10 +298,17 @@ typeOfCompareRatTensor t1 t2 t3 =
         ~> tTensor t2 (append tNat pointwiseDims reduceDims)
         ~> tTensor t3 pointwiseDims
 
+-- | The two branches need not have the same gradient, e.g. `if c then x else 0.0`, so the result
+-- takes the join of them.
 typeIf :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
-typeIf inputType =
-  forAllTypes $ \t ->
-    tTensor inputType dimNil ~> t ~> t ~> t
+typeIf conditionType =
+  forAllTypeTriples $ \t1 t2 t3 ->
+    maxGradientTypes t1 t2 t3
+      .~~~> ( tTensor conditionType dimNil
+                ~> t1
+                ~> t2
+                ~> t3
+            )
 
 typeOfQuantifierOrSearch :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOfQuantifierOrSearch outputType = do

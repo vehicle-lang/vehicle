@@ -78,8 +78,16 @@ convertBackFromLossBuiltins = traverse $ traverseBuiltinsM $ \p b args -> do
     StandardBuiltinType t -> return $ normAppList (Builtin p $ BuiltinType t) args
     StandardBuiltinFunction f -> case f of
       QuantifyRatTensor Exists -> handleExistsWithoutGradients p args
+      If -> normAppList (Builtin p $ BuiltinFunction f) <$> dropSpareBranchTypes args
       _ -> return $ normAppList (Builtin p $ BuiltinFunction f) args
     StandardDerivedFunction f -> return $ normAppList (Builtin p $ DerivedFunction f) args
+
+-- | The loss type-system gives each branch of an `if` its own type so the branches can carry
+-- different gradients. Erasing the gradients makes the three equal, so only the result type is kept.
+dropSpareBranchTypes :: (MonadCompile m) => [Arg Builtin] -> m [Arg Builtin]
+dropSpareBranchTypes = \case
+  _thenType : _elseType : rest@(_resultType : _condition : _then : _else : _) -> return rest
+  _ -> developerError "Malformed `if` produced by loss backend"
 
 handleExistsWithoutGradients ::
   (MonadCompile m) =>

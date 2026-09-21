@@ -129,6 +129,7 @@ data LossBuiltinTypeClass
   | HasReducedRatTensorCompare ComparisonOp
   | HasExists
   | MaxGradients
+  | MaxGradientTypes
   | ValidNetworkType
   | ValidNetworkIOType
   | ValidDatasetType
@@ -149,6 +150,7 @@ instance Pretty LossBuiltinTypeClass where
     HasIfRatTensor -> "HasIfRatTensor"
     HasExists -> "HasExists"
     MaxGradients -> "MaxGradients"
+    MaxGradientTypes -> "MaxGradientTypes"
     ValidNetworkType -> "ValidNetworkType"
     ValidNetworkIOType -> "ValidNetworkIOType"
     ValidDatasetType -> "ValidDatasetType"
@@ -663,3 +665,8 @@ validNetworkIOType g t = lossTypeClass ValidNetworkIOType @@ [g, t]
 
 maxGradients :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 maxGradients g1 g2 g3 = lossTypeClass MaxGradients @@ [g1, g2, g3]
+
+-- | `MaxGradients` lifted to whole types, for operations such as `if` that are polymorphic in the
+-- type they join over.
+maxGradientTypes :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+maxGradientTypes t1 t2 t3 = lossTypeClass MaxGradientTypes @@ [t1, t2, t3]

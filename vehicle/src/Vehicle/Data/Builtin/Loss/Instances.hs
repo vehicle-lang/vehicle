@@ -73,6 +73,7 @@ allInstances mode dl =
       -- Other --
       -----------
       <> maxGradientInstances
+      <> maxGradientTypeInstances
 
 booleanLiteralCandidates :: Identifier -> [TempCandidate mode]
 booleanLiteralCandidates dl =
@@ -431,6 +432,33 @@ maxGradientInstances =
     ( maxGradients withoutGradients withoutGradients withoutGradients,
       unitLit,
       Nothing
+    )
+  ]
+
+maxGradientTypeInstances :: [TempCandidate mode]
+maxGradientTypeInstances =
+  [ -- Rational tensors join the gradients of their elements...
+    ( forAllGradientTriples $ \g1 g2 g3 ->
+        forAllDims $ \dims ->
+          maxGradients g1 g2 g3
+            .~~~> maxGradientTypes
+              (tTensor (tRat .@@ [g1]) dims)
+              (tTensor (tRat .@@ [g2]) dims)
+              (tTensor (tRat .@@ [g3]) dims),
+      implLam "g1" tGradient $ \g1 ->
+        implLam "g2" tGradient $ \g2 ->
+          implLam "g3" tGradient $ \g3 ->
+            lamDims $
+              const $
+                instLam "r" (maxGradients g1 g2 g3) $
+                  const unitLit,
+      Nothing
+    ),
+    -- ...and every other type has to agree. The priority also settles the overlap when both
+    -- branches already carry the same gradient.
+    ( forAllTypes $ \t -> maxGradientTypes t t t,
+      lamType $ const unitLit,
+      Just 0
     )
   ]
 
