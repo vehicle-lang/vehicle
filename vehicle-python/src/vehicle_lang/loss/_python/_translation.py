@@ -499,7 +499,7 @@ class PythonTranslation(metaclass=ABCMeta):
             self.translate_expression(expression.search_lambda),
         )
 
-        return py_app(py_builtin("ReduceMaxRatTensor"), sampler_call)
+        return py_app(py_builtin("ReduceMinRatTensor"), sampler_call)
 
     def translate_WhereTensor(self, expression: vcl.WhereTensor) -> py.expr:
         """Translate WhereTensor to builtin call."""

@@ -16,6 +16,11 @@
 
 * Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
 
+* Fixed `forall` and `exists` returning each other's loss. The samples a quantifier's search
+  produces are now combined by taking the minimum, which is the existential that `search`
+  represents. Taking the maximum gave a `forall` the loss of its best sample and an `exists` the
+  loss of its worst.
+
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.
