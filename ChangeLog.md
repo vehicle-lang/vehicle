@@ -16,8 +16,8 @@
 
 * Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
 
-* Tensor and vector literals now take the join of their elements' gradients, so a literal may mix a
-  constant with a quantified variable, e.g. `[1.0, x]`.
+* Fixed an error in the translation when constructing tensors and vectors whose elements are
+  quantified variables, e.g. `[1.0, x]`.
 
 ### Solver backend
 

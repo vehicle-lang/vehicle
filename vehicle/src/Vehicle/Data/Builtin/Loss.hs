@@ -108,11 +108,14 @@ instance Hashable LossBuiltinCast
 -- and removed with a nice user error message.
 data LossBuiltinFunction
   = IfRatTensorWithGradients
+  | -- | A `stack` whose elements each keep their own gradient.
+    StackRatTensorWithGradients
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty LossBuiltinFunction where
   pretty = \case
     IfRatTensorWithGradients -> "ifWithGradients"
+    StackRatTensorWithGradients -> "stackWithGradients"
 
 instance Hashable LossBuiltinFunction
 
@@ -518,9 +521,6 @@ instance NormalisableBuiltin (LossBuiltin mode) where
   isCast p b = case b of
     LossBuiltinCast FromBoolTensorToBoolTensor -> Just $ forceEvalSimpleBuiltin p b forcedEvalFromBoolTensorToBoolTensor
     LossBuiltinCast FromBoolTensorToRatTensor -> Just $ forceEvalSimpleBuiltin p b forcedEvalFromBoolTensorToRatTensor
-    -- Eliminated to a standard vector literal.
-    LossBuiltinConstructor VectorLiteralWithGradients ->
-      Just $ return . normAppList (Builtin p (StandardBuiltinConstructor S.VectorLiteral))
     _ -> Nothing
 
 forcedEvalFromBoolTensorToBoolTensor ::
