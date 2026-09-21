@@ -16,6 +16,9 @@
 
 * Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
 
+* Fixed internal error when an expression cannot be evaluated during unblocking, e.g. quantifying
+  over an index as in `exists i . f y ! 0 >= y ! i`.
+
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.
