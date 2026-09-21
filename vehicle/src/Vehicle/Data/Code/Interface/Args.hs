@@ -318,8 +318,6 @@ traverseConstTensorValue f ConstTensorArgs {..} = do
 -- requires the argument to participate in relevant elaboration.
 
 -- | Arguments for `StackTensor`
---
--- NOTE: in the loss subsystem `stackType` holds the arity, as each element is typed separately.
 data StackTensorArgs expr = StackTensorArgs
   { stackType :: expr,
     stackFirstDim :: expr,

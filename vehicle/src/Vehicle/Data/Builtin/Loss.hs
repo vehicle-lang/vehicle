@@ -105,11 +105,14 @@ instance Hashable LossBuiltinCast
 -- and removed with a nice user error message.
 data LossBuiltinFunction
   = IfRatTensorWithGradients
+  | -- | A `stack` whose elements each keep their own gradient.
+    StackRatTensorWithGradients
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty LossBuiltinFunction where
   pretty = \case
     IfRatTensorWithGradients -> "ifWithGradients"
+    StackRatTensorWithGradients -> "stackWithGradients"
 
 instance Hashable LossBuiltinFunction
 

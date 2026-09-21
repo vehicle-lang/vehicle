@@ -84,6 +84,7 @@ typeLossCast = \case
 typeLossFunction :: LossBuiltinFunction -> DSLExpr (LossBuiltin mode)
 typeLossFunction = \case
   IfRatTensorWithGradients -> typeIf tRatWithGradients
+  StackRatTensorWithGradients -> typeOfStackRatTensorWithGradients
 
 typeStandardBuiltinType :: BuiltinType -> DSLExpr (LossBuiltin mode)
 typeStandardBuiltinType = \case
@@ -212,7 +213,7 @@ typeStandardFunction f = case f of
           ~> tBoolTensor dims
           ~> tRatTensorWithoutGradients dimNil
           ~> tTensor (tRat .@@ [g]) dims
-  StackTensor -> typeOfStackTensorWithGradients
+  StackTensor -> typeOfBuiltinFunction f
   CompareIndex {} -> typeOfBuiltinFunction f
   CompareNat {} -> typeOfBuiltinFunction f
   Add AddNat -> typeOfBuiltinFunction f
@@ -238,8 +239,8 @@ typeStandardFunction f = case f of
   where
     removed = developerError $ pretty f <+> "should have been removed prior to loss type-checking"
 
-typeOfStackTensorWithGradients :: DSLExpr (LossBuiltin mode)
-typeOfStackTensorWithGradients =
+typeOfStackRatTensorWithGradients :: DSLExpr (LossBuiltin mode)
+typeOfStackRatTensorWithGradients =
   forAll "n" tNat $ \n ->
     forAllDim Relevant $ \d ->
       forAllDims $ \ds ->
@@ -437,13 +438,14 @@ convertToLossBuiltins decl = do
             AppendList -> sameFunction f
             Iterate -> sameFunction f
             Transpose -> sameFunction f
-            -- Each element is typed separately, so the shared type slot holds the arity.
             StackTensor -> case getExpr accessSpine args of
-              Just stackArgs ->
-                return $
-                  normAppList (Builtin p (StandardBuiltinFunction f)) $
-                    mkExpr accessSpine stackArgs {stackType = arityOf (stackElements stackArgs)}
-              Nothing -> developerError "Malformed type-checked stack"
+              -- Only rational stacks carry gradients, and the arity replaces the element type.
+              Just (StackTensorArgs elementType d ds xs)
+                | isRatType elementType ->
+                    return $
+                      normAppList (Builtin p (LossBuiltinFunction StackRatTensorWithGradients)) $
+                        implicit (arityOf xs) : implicit d : implicit ds : fmap explicit xs
+              _ -> sameFunction f
             AtTensor -> sameFunction f
             ConstTensor -> sameFunction f
             ForeachTensor -> sameFunction f
@@ -472,6 +474,12 @@ convertToLossBuiltins decl = do
         sameConstructor c = normAppList (Builtin p $ StandardBuiltinConstructor c) args
 
         arityOf elements = Builtin p (StandardBuiltinConstructor (NatLiteral (length elements)))
+
+        -- `Real` has already been given its gradient argument by the time the stack is reached.
+        isRatType = \case
+          Builtin _ (StandardBuiltinType RatType) -> True
+          App (Builtin _ (StandardBuiltinType RatType)) _ -> True
+          _ -> False
 
         -- Apply a cast
         prependHoles n xs = replicate n (implicit $ Hole p "_") <> xs
