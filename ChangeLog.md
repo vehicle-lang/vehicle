@@ -26,8 +26,8 @@
 
 ### Python bindings
 
-* Fixed the error classes being unraisable through a `contextlib.contextmanager`, which masked the
-  error that caused them.
+* Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
+  later, which replaced them with a `FrozenInstanceError`.
 
 ## v0.28.0
 
