@@ -31,6 +31,7 @@ position token TokElse      {"else"};
 position token TokElemOf    {":"};
 position token TokLambda    {"\\"};
 position token TokLet       {"let"};
+position token TokDelta     {"delta"};
 
 position token TokType      {"Type"};
 position token TokUnit      {"Unit"};
@@ -226,6 +227,7 @@ App.       Expr14 ::= Expr14 Arg;
 -- This record declaration causes a shift-reduce conflict.
 Record.    Expr11 ::= "{" [RecordFieldAssign] "}";
 RecordAcc. Expr16 ::= Expr16 FieldAccess;
+Differentiate. Expr16 ::= TokDelta "[" Expr1 "]" TokDiv TokDelta "[" Name "]";
 Var.       Expr17 ::= Name;
 Literal.   Expr17 ::= Lit;
 Hole.      Expr17 ::= HoleToken;

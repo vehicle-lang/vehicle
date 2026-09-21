@@ -128,6 +128,11 @@ data Expr builtin
       (Type builtin) -- Type of the record, e.g. `Pair Int Int`
       (Expr builtin) -- The actual record, e.g. `{a = 1, b = 1}`
       FieldName -- The field to access, e.g. `a`
+  | -- | Differentiation
+    Differentiate
+      Provenance
+      (Expr builtin) --
+      FieldName --
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 --------------------------------------------------------------------------------
@@ -144,7 +149,7 @@ pattern App f xs <- UnsafeApp f xs
   where
     App f xs = normApp f xs
 
-{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj #-}
+{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj, Differentiate #-}
 
 -- | Smart constructor for applications with possibly no arguments.
 normAppList :: Expr builtin -> [Arg builtin] -> Expr builtin
@@ -191,6 +196,7 @@ instance HasProvenance (Expr builtin) where
     Lam p _ _ -> p
     Record p _ _ -> p
     RecordProj p _ _ _ -> p
+    Differentiate p _ _ -> p
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -246,6 +252,7 @@ traverseBuiltinsM f expr = case expr of
   BoundVar p v -> return $ BoundVar p v
   Hole p n -> return $ Hole p n
   Meta p m -> return $ Meta p m
+  Differentiate p e field -> Differentiate p <$> traverseBuiltinsM f e <*> pure field
 
 traverseBuiltinsArg :: (Monad m) => BuiltinUpdate m builtin1 builtin2 -> Arg builtin1 -> m (Arg builtin2)
 traverseBuiltinsArg f = traverse (traverseBuiltinsM f)
@@ -312,6 +319,13 @@ traverseFreeVarsM underBinder processFreeVar = go
         return $ Let p bound' binder' body'
       Record p i fs -> Record p i <$> traverseRecordFields go fs
       RecordProj p t r field -> RecordProj p <$> go t <*> go r <*> pure field
+      Differentiate p e field -> do
+        e' <- go e
+        pure (Differentiate p e' field)
+
+-- versus return $
+-- versus
+-- Differentiate p e field -> Differentiate p <$> go e <*> pure field
 
 freeVarsIn :: Expr builtin -> Set Identifier
 freeVarsIn =
