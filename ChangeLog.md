@@ -24,6 +24,12 @@
 
 * Fixed error where Agda library didn't type-check due to malformed transpose definition.
 
+* Fixed bug where vector literals were compiled incorrectly, causing empty vectors to fail and multi-element vectors to lose elements.
+
+* Fixed bug where tensor stacks and functional vectors generated malformed Agda code.
+
+* Fixed bug where typed lambda and quantifier binders were generated with duplicate parentheses.
+
 ## v0.28.0
 
 ### Solver backend
