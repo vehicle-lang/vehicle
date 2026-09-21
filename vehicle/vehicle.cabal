@@ -363,6 +363,7 @@ library
     , disjoint-containers    >=0.3.0    && <1
     , edit-distance          >=0.2.2    && <1
     , file-embed             >=0.0.15.0 && <0.1
+    , filelock               >=0.1.1.8  && <0.2
     , filepath               >=1.4      && <2
     , generic-data           >=1.0      && <2
     , gitrev                 >=1.3      && <2
@@ -391,7 +392,7 @@ library
     build-depends: unix >=2.7
 
 executable vehicle
-  import:         common-library
+  import:         common-library, common-executable
   main-is:        Main.hs
   hs-source-dirs: app
   build-depends:
