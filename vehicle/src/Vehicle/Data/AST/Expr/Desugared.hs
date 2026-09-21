@@ -20,7 +20,8 @@ module Vehicle.Data.AST.Expr.Desugared
         Let,
         Lam,
         Record,
-        RecordAcc
+        RecordAcc,
+        Differentiate
       ),
     Type,
 
@@ -101,6 +102,10 @@ data Expr builtin
       Provenance
       (Expr builtin) -- The record
       FieldName -- The field to access
+  | Differentiate
+      Provenance
+      (Expr builtin)
+      FieldName
   deriving (Show, Generic)
 
 --------------------------------------------------------------------------------
@@ -141,7 +146,7 @@ pattern App f xs <- UnsafeApp f xs
   where
     App f xs = normApp f xs
 
-{-# COMPLETE Universe, App, Pi, Builtin, Var, Hole, Let, Lam, Record, RecordAcc #-}
+{-# COMPLETE Universe, App, Pi, Builtin, Var, Hole, Let, Lam, Record, RecordAcc, Differentiate #-}
 
 headOf :: Expr builtin -> Expr builtin
 headOf = \case
@@ -163,6 +168,7 @@ instance HasProvenance (Expr builtin) where
     Lam p _ _ -> p
     Record p _ -> p
     RecordAcc p _ _ -> p
+    Differentiate p _ _ -> p
 
 instance HasBasicBinders (Expr builtin) where
   getPiBinder = \case

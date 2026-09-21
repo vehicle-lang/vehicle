@@ -408,6 +408,7 @@ elabExpr expr = case expr of
   B.Lam tk1 ns _tk2 e -> elabLam tk1 ns e
   B.Record xs -> elabRecord xs
   B.RecordAcc e n -> elabRecordAcc e n
+  B.Differentiate delta1 e _slash _delta2 n -> elabDifferentiate delta1 e n
   B.Forall tk1 ns e -> standardLibQuantifier tk1 "forallTC" ns e
   B.Exists tk1 ns e -> standardLibQuantifier tk1 "existsTC" ns e
   B.ForallIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
@@ -550,6 +551,16 @@ elabRecordAcc e field = do
   let fieldName = V.FieldName p $ Text.tail $ tkSymbol field
   r <- elabExpr e
   return $ V.RecordAcc p r fieldName
+
+elabDifferentiate :: (MonadElab m) => B.TokDelta -> B.Expr -> B.Name -> m (V.Expr Builtin)
+elabDifferentiate delta expr field = do
+  deltaProv <- mkProvenance delta
+  expr' <- elabExpr expr
+  field' <- elabRecordFieldName field
+
+  let p = V.fillInProvenance (deltaProv :| [V.provenanceOf expr', V.provenanceOf field'])
+
+  return $ V.Differentiate p expr' field'
 
 elabBasicBinder ::
   (MonadElab m) =>
