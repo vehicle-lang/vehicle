@@ -25,6 +25,9 @@
 * Quantified variables compared against a whole tensor are now bounded, e.g. `forall i . x ! i <= y ! 0`
   now gives `y ! 0` a lower bound rather than leaving the constraint unbounded.
 
+* Fixed non-termination when a quantifier's body quantifies over an index it does not mention,
+  e.g. `forall (i : Index 1) . f y ! 0 >= 0.0`.
+
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.
