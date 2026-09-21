@@ -16,6 +16,9 @@
 
 * Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
 
+* A `Bool` `@parameter` is now treated as an opaque value rather than causing an internal error.
+  Note that using one still fails later, in the differentiability type-system.
+
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.

@@ -444,6 +444,7 @@ compileBool value = logEntryAndExit value $ do
     VReduceOrTensor {} -> unblock forcedValue
     VBoolTensorAt {} -> unblock forcedValue
     VBoolVectorAt {} -> unblock forcedValue
+    VBoolParameter {} -> unblock forcedValue
     VBoolFoldList {} -> unblock forcedValue
     VBoolIf args -> compileBool =<< unfoldIf args
     VNot (TensorOp1Args dims xs) -> unblockWith (lowerNot unblockingActions $ TensorOp1Args dims xs) (Forced forcedValue)
