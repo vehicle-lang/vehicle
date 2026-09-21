@@ -6,6 +6,8 @@ module Vehicle.Backend.Loss.PurifyAssertion
     purifyIndexComparison,
     purifyNotEqualRatTensorComparison,
     unblockingActions,
+    assertionTensorOccurrences,
+    linearExprTensorOccurrences,
     BlockingReason (..),
     TensorValueLinearExpr,
   )
@@ -17,6 +19,11 @@ import Control.Applicative (liftA2)
 
 import Control.Monad (liftM2)
 import Control.Monad.Except (MonadError (..), runExceptT)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Maybe (catMaybes)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Compile.Constants.TensorValue
 import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
@@ -26,17 +33,18 @@ import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue)
-import Vehicle.Data.Assertion (Assertion, comparisonToAssertion)
+import Vehicle.Data.Assertion (Assertion, comparisonToAssertion, expression)
 import Vehicle.Data.Builtin.Interface (Accessor (..), applyAccessor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), forIfTreeM, mapIfTreeLeaves)
 import Vehicle.Data.Code.ForcedValue
+import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
-import Vehicle.Data.Variable.Bound.Level (SliceVariable)
+import Vehicle.Data.Variable.Bound.Level (SliceVariable, toLv)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
 type TensorValueLinearExpr = LinearExpr SliceVariable TensorConstantValue
@@ -111,17 +119,38 @@ tryPurifyRatTensorComparison op (TensorComparisonArgs _pDims rDims e1 e2) = do
         case maybeSolvedVal of
           Nothing -> return $ NonTrivial (val, Nothing)
           Just (Trivial b) -> return $ Trivial b
-          Just (NonTrivial le) -> do
-            isUsable <- isUsableBound le
-            return $ NonTrivial (val, if isUsable then Just le else Nothing)
+          -- Whether an assertion can actually bound a variable is decided when the bound is
+          -- constructed, in `findVarBound`, where the constructed value can be checked directly.
+          -- Anything left unused is returned to the body of the quantifier it mentions.
+          Just (NonTrivial le) -> return $ NonTrivial (val, Just le)
 
-isUsableBound :: (MonadPurifyAssertion m) => Assertion TensorValueLinearExpr -> m Bool
-isUsableBound lexp = do
-  let variables = variablesOf lexp
-  parentVariables <- lookupParentTensorVariables (variablesOf lexp)
-  -- Cannot currently create a bound from an assertion linking multiple
-  -- sub-tensors of a single variable, e.g. `x ! 0 < x ! 1`.
-  return $ length variables == length parentVariables
+-- | Every tensor a linear expression mentions, keyed by level, counting occurrences in the
+-- coefficients and in the part of the constant that could not be reduced to them.
+linearExprTensorOccurrences :: (MonadPurifyAssertion m) => TensorValueLinearExpr -> m (Map Lv Int)
+linearExprTensorOccurrences lexp = do
+  solvable <- tensorOccurrences (variablesOf lexp)
+  residual <- tensorOccurrences =<< constantVariables (constantValue lexp)
+  return $ Map.unionWith (+) solvable residual
+
+assertionTensorOccurrences :: (MonadPurifyAssertion m) => Assertion TensorValueLinearExpr -> m (Map Lv Int)
+assertionTensorOccurrences = linearExprTensorOccurrences . expression
+
+-- | The slice variables mentioned by the part of a constant that could not be reduced to
+-- coefficients. `variablesOf` does not see these, as it reads the coefficients alone.
+constantVariables :: (MonadPurifyAssertion m) => TensorConstantValue -> m (Set SliceVariable)
+constantVariables (TensorConstantValue _dims _coefficient maybeValue) = case maybeValue of
+  Nothing -> return mempty
+  Just value -> do
+    depth <- getBinderDepth
+    let levels = Set.toList $ Forced.boundVariablesIn depth value
+    Set.fromList . catMaybes <$> traverse lookupSliceVariableInNestedCtx levels
+
+-- | How often each tensor is mentioned, keyed by its level, so the innermost is the largest.
+tensorOccurrences :: (MonadPurifyAssertion m) => Set SliceVariable -> m (Map Lv Int)
+tensorOccurrences variables = do
+  ctx <- getNestedVariableCtx
+  let parents = findCorrespondingVariableInOriginalCtx ctx variables
+  return $ Map.fromListWith (+) [(toLv parent, 1 :: Int) | (_, Just parent) <- parents]
 
 --------------------------------------------------------------------------------
 -- Compiling linear expressions
