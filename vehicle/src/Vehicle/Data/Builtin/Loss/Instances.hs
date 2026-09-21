@@ -290,7 +290,7 @@ ifCandidates =
 existsCandidates :: [TempCandidate mode]
 existsCandidates =
   [ ( hasExists tRatWithGradients,
-      builtinFunction SearchRatTensor,
+      builtinFunction (SearchRatTensor Exists),
       Nothing
     ),
     ( hasExists tBool,

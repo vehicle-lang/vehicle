@@ -101,7 +101,7 @@ typeOfBuiltinFunction = \case
   ForeachVector -> typeOfForeachVector
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
   Transpose -> typeOfTranspose
-  SearchRatTensor ->
+  SearchRatTensor {} ->
     forAllDims $ \dims ->
       tRatTensor dims
         ~> tRatTensor dims

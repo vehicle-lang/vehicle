@@ -117,7 +117,7 @@ data JExpr
   | StackTensor [JExpr]
   | ForeachTensor JExpr JExpr
   | AtTensor JExpr JExpr
-  | SearchRatTensor Name JExpr JExpr JExpr JExpr -- (Dims, LowerBound, UpperBound, SearchLambda)
+  | SearchRatTensor Name B.Quantifier JExpr JExpr JExpr JExpr -- (Dims, LowerBound, UpperBound, SearchLambda)
   | WhereTensor JExpr JExpr JExpr
   | -- Vector
     VectorLiteral [JExpr]
@@ -390,7 +390,7 @@ convertBuiltin b spine = case b of
     B.Transpose -> convertTranspose convertExpr spine
     B.ForeachVector -> convertForeachVector spine
     B.AtVector -> convertAtVector spine
-    B.SearchRatTensor -> convertSearch spine
+    B.SearchRatTensor q -> convertSearch q spine
     B.WhereTensor -> convertWhere spine
     -- Dimension operations, not yet converted
     B.Add B.AddNat -> unsupportedError b
@@ -529,17 +529,17 @@ convertTranspose convert spine = case getExpr accessSpine spine of
   Just (TransposeTensorArgs _t _ds xs) -> Transpose <$> convert xs
   Nothing -> arityError B.Transpose 3 spine
 
-convertSearch :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
-convertSearch = convertNonNullaryOp B.SearchRatTensor 4 $
+convertSearch :: (MonadJSONExpr m) => B.Quantifier -> [S.Arg Builtin] -> m JExpr
+convertSearch q = convertNonNullaryOp (B.SearchRatTensor q) 4 $
   \(SearchRatTensorArgs dims lowerBound upperBound fn) -> do
     let name = case fn of
           S.Lam _ binder _ -> getBinderName binder
           _ -> developerError "Malformed search operation"
 
-    SearchRatTensor name <$> convertExpr dims <*> convertExpr lowerBound <*> convertExpr upperBound <*> convertExpr fn
+    SearchRatTensor name q <$> convertExpr dims <*> convertExpr lowerBound <*> convertExpr upperBound <*> convertExpr fn
 
 convertWhere :: (MonadJSONExpr m) => [S.Arg Builtin] -> m JExpr
-convertWhere = convertNonNullaryOp B.SearchRatTensor 3 $
+convertWhere = convertNonNullaryOp B.WhereTensor 3 $
   \(WhereTensorArgs _dims input cond value) -> do
     WhereTensor <$> convertExpr input <*> convertExpr cond <*> convertExpr value
 
@@ -663,7 +663,7 @@ fromJExpr = \case
   ReduceMulRatTensor xs -> toFunction B.ReduceMulRatTensor [xs]
   ReduceMinRatTensor xs -> toFunction B.ReduceMinRatTensor [xs]
   ReduceMaxRatTensor xs -> toFunction B.ReduceMaxRatTensor [xs]
-  SearchRatTensor _name dims lower upper lambda -> toFunction B.SearchRatTensor [dims, lower, upper, lambda]
+  SearchRatTensor _name q dims lower upper lambda -> toFunction (B.SearchRatTensor q) [dims, lower, upper, lambda]
   WhereTensor input cond value -> toFunction B.WhereTensor [input, cond, value]
   Dimension d -> toConstructor (B.NatLiteral d) []
   DimensionNil -> toConstructor B.Nil []

@@ -504,7 +504,7 @@ instance NormalisableBuiltin (LossBuiltin mode) where
       S.AtVector -> Eval evalAtVector
       S.Iterate -> Eval evalIterate
       S.WhereTensor -> None
-      S.SearchRatTensor -> None
+      S.SearchRatTensor {} -> None
     LossBuiltinTypeClassOp {} -> TypeClassOperation
     _ -> None
 
