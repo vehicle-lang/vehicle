@@ -31,9 +31,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
     """
     Default sampler implementation for PyTorch that uses FGSM attack.
 
-    Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples
-    that explore the search space by perturbing points in the direction
-    of the gradient to maximize or minimize the search_lambda.
+    Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples,
+    descending the search_lambda so that the samples approximate its infimum.
     """
 
     def __init__(
@@ -123,9 +122,9 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     else:
                         gradient = torch.zeros_like(current_point_var)
 
-                # FGSM: perturb in the direction of the gradient sign
-                # To find worst-case inputs that make the loss high, we need to
-                # move in the opposite direction of the gradient (gradient ascent).
+                # FGSM: perturb against the gradient. The search approximates an infimum of the
+                # lambda, and for a `forall` the lambda is the negated body, so descending it is
+                # what hunts the worst case.
                 perturbation = -epsilon * torch.sign(gradient)
 
                 # Apply perturbation and clip to bounds

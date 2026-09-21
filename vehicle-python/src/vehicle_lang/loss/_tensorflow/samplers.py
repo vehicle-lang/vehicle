@@ -31,9 +31,8 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
     """
     Default sampler implementation for TensorFlow that uses FGSM attack.
 
-    Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples
-    that explore the search space by perturbing points in the direction
-    of the gradient to maximize or minimize the search_lambda.
+    Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples,
+    descending the search_lambda so that the samples approximate its infimum.
     """
 
     def __init__(
@@ -116,10 +115,10 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                         tf.math.is_nan(gradient), tf.zeros_like(gradient), gradient
                     )
 
-                # FGSM: perturb in the direction of the gradient sign
-                # To find worst-case inputs that make the loss high, we need to
-                # move in the direction of the gradient (gradient ascent).
-                perturbation = epsilon * tf.sign(gradient)
+                # FGSM: perturb against the gradient. The search approximates an infimum of the
+                # lambda, and for a `forall` the lambda is the negated body, so descending it is
+                # what hunts the worst case.
+                perturbation = -epsilon * tf.sign(gradient)
 
                 # Apply perturbation and clip to bounds
                 current_point = tf.clip_by_value(current_point + perturbation, lb, ub)
