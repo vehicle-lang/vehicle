@@ -16,6 +16,10 @@
 
 * Fixed internal error that occassionally happened with non-linear specifications.
 
+### Other
+
+* Vehicle now correctly locks files when reading and writing from the standard library avoiding race conditions if multiple instances of the Vehicle compiler are called concurrently.
+
 ## v0.28.0
 
 ### Solver backend

@@ -18,7 +18,7 @@ module Vehicle.Prelude.IO
   )
 where
 
-import Control.Exception (catch, finally, throwIO)
+import Control.Exception (IOException, catch, throwIO)
 -- import Control.Monad (forM_)
 
 import Control.Monad.Except (ExceptT)
@@ -29,13 +29,14 @@ import Control.Monad.State (StateT)
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Writer.Strict (WriterT)
 import Data.ByteString qualified as BIO
+import Data.Hashable (hash)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Version (Version)
-import GHC.IO.Handle.Lock (LockMode (..), hLock, hUnlock)
-import System.Directory (createDirectoryIfMissing, removeFile)
+import System.Directory (canonicalizePath, createDirectoryIfMissing, getTemporaryDirectory, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
+import System.FileLock (SharedExclusive (..), withFileLock)
 import System.FilePath ((</>))
 import System.IO (Handle, IOMode (..), hFileSize, withBinaryFile)
 import System.IO.Error (isDoesNotExistError)
@@ -127,15 +128,34 @@ removeFileIfExists fileName = removeFile fileName `catch` handleExists
       | isDoesNotExistError e = return ()
       | otherwise = throwIO e
 
--- | Runs an action on a file handle while holding an OS-level file lock, so
--- that concurrent instances of the compiler can't interleave reads and writes,
--- or read a half-written version, of the same file. Blocks until the lock is
--- available rather than failing immediately.
-withLockedFile :: LockMode -> FilePath -> IOMode -> (Handle -> IO a) -> IO a
-withLockedFile lockMode filepath mode action =
-  withBinaryFile filepath mode $ \h -> do
-    hLock h lockMode
-    action h `finally` hUnlock h
+-- | Runs an action on a file while holding an OS-level lock associated with
+-- it, so that concurrent instances of the compiler can't interleave reads and
+-- writes, or read a half-written version, of the same file. Blocks until the
+-- lock is available rather than failing immediately.
+--
+-- We take the lock itself out (using the `filelock` package) on a sidecar
+-- lock file kept in the OS temporary directory, rather than on the target
+-- file itself. On Windows, a file that has an OS-level lock held on it cannot
+-- even be opened by another handle while the lock is held, so locking the
+-- target file directly would make it impossible for any other process to
+-- read or write it, defeating the point. Using a sidecar file in the
+-- temporary directory avoids this, and keeps lock files out of the user's
+-- own directories.
+withLockedFile :: SharedExclusive -> FilePath -> IOMode -> (Handle -> IO a) -> IO a
+withLockedFile lockMode filepath mode action = do
+  lockFilePath <- getLockFilePath filepath
+  withFileLock lockFilePath lockMode $ \_ ->
+    withBinaryFile filepath mode action
+
+-- | Computes the path of the sidecar lock file used to guard the given file,
+-- creating the directory that holds it if necessary.
+getLockFilePath :: FilePath -> IO FilePath
+getLockFilePath filepath = do
+  tmpDir <- getTemporaryDirectory
+  let locksDir = tmpDir </> "vehicle-locks"
+  createDirectoryIfMissing True locksDir
+  canonicalPath <- canonicalizePath filepath `catch` \(_ :: IOException) -> return filepath
+  return $ locksDir </> show (abs (hash canonicalPath)) <> ".lock"
 
 -- | Reads a file while holding a shared OS-level file lock, so that it can't
 -- be read while another instance of the compiler is mid-write to the same
@@ -146,20 +166,20 @@ withLockedFile lockMode filepath mode action =
 -- `hUnlock` in `withLockedFile` to fail with a bad file descriptor error.
 lockedReadFile :: FilePath -> IO BIO.ByteString
 lockedReadFile filepath =
-  withLockedFile SharedLock filepath ReadMode $ \h -> do
+  withLockedFile Shared filepath ReadMode $ \h -> do
     size <- hFileSize h
     BIO.hGet h (fromIntegral size)
 
 lockedWriteTextFile :: FilePath -> Text -> IO ()
 lockedWriteTextFile filepath contents =
-  withLockedFile ExclusiveLock filepath WriteMode $ \h -> TIO.hPutStr h contents
+  withLockedFile Exclusive filepath WriteMode $ \h -> TIO.hPutStr h contents
 
 -- | Writes a file while holding an exclusive OS-level file lock, so that
 -- concurrent instances of the compiler can't interleave writes to, or read a
 -- half-written version of, the same file.
 lockedWriteFile :: FilePath -> BIO.ByteString -> IO ()
 lockedWriteFile filepath contents =
-  withLockedFile ExclusiveLock filepath WriteMode $ \h -> BIO.hPut h contents
+  withLockedFile Exclusive filepath WriteMode $ \h -> BIO.hPut h contents
 
 fatalError :: (MonadStdIO m) => Doc a -> m b
 fatalError message = do
