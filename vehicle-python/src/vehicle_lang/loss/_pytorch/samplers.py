@@ -26,6 +26,23 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
     ) -> Float[torch.Tensor, "1 losses"]: ...
 
+    @staticmethod
+    def starting_region(
+        lower_bound: torch.Tensor, upper_bound: torch.Tensor, distance: float
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Give each unbounded endpoint, which the domain represents as -infinity or infinity, a
+        finite one `distance` away, leaving bounded endpoints alone.
+        """
+        low_infinite = torch.isneginf(lower_bound)
+        high_infinite = torch.isposinf(upper_bound)
+        origin = torch.zeros_like(lower_bound)
+        low_anchor = torch.where(high_infinite, origin, upper_bound)
+        high_anchor = torch.where(low_infinite, origin, lower_bound)
+        start_low = torch.where(low_infinite, low_anchor - distance, lower_bound)
+        start_high = torch.where(high_infinite, high_anchor + distance, upper_bound)
+        return start_low, start_high
+
 
 class DefaultPyTorchSampler(PyTorchSampler):
     """
@@ -59,23 +76,6 @@ class DefaultPyTorchSampler(PyTorchSampler):
         self.seed = seed
         self.unbounded_search_distance = unbounded_search_distance
 
-    def _starting_region(
-        self, lower_bound: torch.Tensor, upper_bound: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Give each unbounded endpoint, which the domain represents as -infinity or infinity, a
-        finite one `unbounded_search_distance` away, leaving bounded endpoints alone.
-        """
-        distance = self.unbounded_search_distance
-        low_infinite = torch.isneginf(lower_bound)
-        high_infinite = torch.isposinf(upper_bound)
-        origin = torch.zeros_like(lower_bound)
-        low_anchor = torch.where(high_infinite, origin, upper_bound)
-        high_anchor = torch.where(low_infinite, origin, lower_bound)
-        start_low = torch.where(low_infinite, low_anchor - distance, lower_bound)
-        start_high = torch.where(high_infinite, high_anchor + distance, upper_bound)
-        return start_low, start_high
-
     def get_loss(
         self,
         dims: Sequence[int],
@@ -103,7 +103,9 @@ class DefaultPyTorchSampler(PyTorchSampler):
             torch.manual_seed(self.seed)
 
         # Infer step size from bounds: use a fraction of the range
-        start_low, start_high = self._starting_region(lower_bound, upper_bound)
+        start_low, start_high = self.starting_region(
+            lower_bound, upper_bound, self.unbounded_search_distance
+        )
         range_size = start_high - start_low
         epsilon = range_size / self.num_steps
 

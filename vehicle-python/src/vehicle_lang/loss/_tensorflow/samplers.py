@@ -26,6 +26,24 @@ class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
     ) -> Float[tf.Tensor, "1 losses"]: ...
 
+    @staticmethod
+    def starting_region(
+        lb: tf.Tensor, ub: tf.Tensor, distance: float
+    ) -> tuple[tf.Tensor, tf.Tensor]:
+        """
+        Give each unbounded endpoint, which the domain represents as -infinity or infinity, a
+        finite one `distance` away, leaving bounded endpoints alone.
+        """
+        offset = tf.cast(distance, tf.float32)
+        low_infinite = tf.math.is_inf(lb) & (lb < 0)
+        high_infinite = tf.math.is_inf(ub) & (ub > 0)
+        origin = tf.zeros_like(lb)
+        low_anchor = tf.where(high_infinite, origin, ub)
+        high_anchor = tf.where(low_infinite, origin, lb)
+        start_low = tf.where(low_infinite, low_anchor - offset, lb)
+        start_high = tf.where(high_infinite, high_anchor + offset, ub)
+        return start_low, start_high
+
 
 class DefaultTensorFlowSampler(TensorFlowSampler):
     """
@@ -59,23 +77,6 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
         self.seed = seed
         self.unbounded_search_distance = unbounded_search_distance
 
-    def _starting_region(
-        self, lb: tf.Tensor, ub: tf.Tensor
-    ) -> tuple[tf.Tensor, tf.Tensor]:
-        """
-        Give each unbounded endpoint, which the domain represents as -infinity or infinity, a
-        finite one `unbounded_search_distance` away, leaving bounded endpoints alone.
-        """
-        distance = tf.cast(self.unbounded_search_distance, tf.float32)
-        low_infinite = tf.math.is_inf(lb) & (lb < 0)
-        high_infinite = tf.math.is_inf(ub) & (ub > 0)
-        origin = tf.zeros_like(lb)
-        low_anchor = tf.where(high_infinite, origin, ub)
-        high_anchor = tf.where(low_infinite, origin, lb)
-        start_low = tf.where(low_infinite, low_anchor - distance, lb)
-        start_high = tf.where(high_infinite, high_anchor + distance, ub)
-        return start_low, start_high
-
     def get_loss(
         self,
         dims: Sequence[int],
@@ -106,7 +107,9 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
         ub = tf.cast(upper_bound, tf.float32)
 
         # Infer step size from bounds: use a fraction of the range
-        start_low, start_high = self._starting_region(lb, ub)
+        start_low, start_high = self.starting_region(
+            lb, ub, self.unbounded_search_distance
+        )
         range_size = tf.subtract(start_high, start_low)
         epsilon = range_size / tf.cast(self.num_steps, tf.float32)
 
