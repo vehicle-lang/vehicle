@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from typing import Iterator
 
 import pytest
-
 from vehicle_lang.error import VehicleInternalError, VehicleUserError
 from vehicle_lang.session.error import VehicleSessionClosed, VehicleSessionUsed
 
