@@ -15,6 +15,7 @@
 ### Loss backend
 
 * Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
+* Fixed internal error when a property contains a `let` binding, e.g. `let y = x in f [y] ! 0 >= 0.5`.
 
 ### Solver backend
 
