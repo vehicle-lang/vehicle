@@ -614,10 +614,10 @@ compileBuiltinFunction p f args = case f of
   ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args
   ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
-  Transpose -> annotateApp [DataTensor] Nothing "transpose" args
+  Transpose -> unsupportedError "transpose"
   SearchRatTensor {} -> unsupportedError "search"
   WhereTensor {} -> unsupportedError "where"
-  Iterate -> unsupportedError "Iterate"
+  Iterate -> unsupportedError "iterate"
   Pow {} -> unsupportedError "^"
   Log {} -> unsupportedError "log"
   Exp {} -> unsupportedError "exp"

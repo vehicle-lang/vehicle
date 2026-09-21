@@ -12,9 +12,17 @@
   a = 1
   ```
 
+### Loss backend
+
+* Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
+
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.
+
+### Agda backend
+
+* Fixed error where Agda library didn't type-check due to malformed transpose definition.
 
 ### Other
 

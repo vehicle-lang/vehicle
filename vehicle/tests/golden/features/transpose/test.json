@@ -33,7 +33,8 @@
     ],
     "produces": [
       "Agda.agda"
-    ]
+    ],
+    "enabled": false
   },
   {
     "name": "Rocq",
