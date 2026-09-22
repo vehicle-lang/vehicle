@@ -7,10 +7,11 @@ import Control.Monad (foldM, forM)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Bifunctor (Bifunctor (..))
-import Data.Foldable (foldrM)
+import Data.Foldable (foldrM, toList)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (isJust, mapMaybe)
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.PurifyAssertion
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
@@ -19,7 +20,7 @@ import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
-import Vehicle.Compile.Normalise.Builtin (elimImplies, evalAnd, evalNot, evalOr, forceEvaluation)
+import Vehicle.Compile.Normalise.Builtin (EvalSimple, elimImplies, evalAnd, evalNot, evalOr, forceEvaluation)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (unnormaliseInTensorCtx)
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
@@ -27,18 +28,19 @@ import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Unblock (unblockBoolExpr)
-import Vehicle.Data.Assertion (Assertion, NormalisedRelation (..), Relation (..))
+import Vehicle.Data.Assertion (Assertion, InequalityRelation (..), NormalisedRelation (..), Relation (..))
 import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Code.BooleanExpr (BooleanExpr (..), DisjunctAll (..), andBoolExpr, conjunctDisjunctsM, disjunctDisjuncts, disjunctsToList, elimIfTree, eliminateTrivialDisjunctions, flattenBoolExpr)
+import Vehicle.Data.Code.BooleanExpr (BooleanExpr (..), ConjunctAll (..), DisjunctAll (..), andBoolExpr, conjunctDisjunctsM, disjunctDisjuncts, disjunctsToList, elimIfTree, eliminateTrivialDisjunctions, flattenBoolExpr)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Real (ExtendedRational (..))
+import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Data.Variable.Bound.Context.Generic (toNamedBoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
@@ -46,7 +48,10 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), addDeclToContext, runFreshFreeContextT)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
-type UserVariableConstraint = Assertion TensorValueLinearExpr
+-- | An assertion, paired with the term it was derived from. The term is kept so that an assertion
+-- that no quantifier ends up using can be put back into the body it came from, rather than being
+-- reconstructed from the linear expression in a less readable normal form.
+type UserVariableConstraint = (Assertion TensorValueLinearExpr, Thunk Builtin)
 
 type UserVariableConstraintTree = BooleanExpr UserVariableConstraint
 
@@ -241,8 +246,23 @@ compileConstraints p dims knownShape binder var (maybeConstraints, maybeRemainde
         remDoc <- maybe (return "") (fmap lineIndent . prettyFriendlyInCtx) remainingTree
         return $ "remaining-constraints:" <> remDoc
 
-      searchExpr <- compileSearch p dims binder remainingBody domain
-      return $ singletonPartition (remainingTree, Just searchExpr)
+      -- Constraints mentioning this quantifier's variables cannot be emitted outside its binder,
+      -- so put them back into its body rather than propagating them outwards.
+      (inScope, outOfScope) <- case remainingTree of
+        Nothing -> return (Nothing, Nothing)
+        Just tree -> splitTreeByScope (toLv var) tree
+
+      finalBody <- case inScope of
+        Nothing -> return remainingBody
+        Just tree -> do
+          leftovers <- treeToExpr tree
+          logDebugM MaxDetail $ do
+            doc <- prettyFriendlyInCtx tree
+            return $ "constraints-returned-to-body:" <> lineIndent doc
+          combineBool accessAndTensor evalAnd remainingBody leftovers
+
+      searchExpr <- compileSearch p dims binder finalBody domain
+      return $ singletonPartition (outOfScope, Just searchExpr)
     NonTrivial <$> disjunctPartitions IDimNil newPartitions
 
 compileSearch ::
@@ -305,13 +325,94 @@ findVarBound ::
   VariableInfo ->
   UserVariableConstraint ->
   m (Maybe (TensorBounds TensorConstantValue))
-findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
-  | not (expr `containsVariable` toSliceVar var) = return Nothing
+findVarBound var info@VariableInfo {..} (NormalisedRelation rel expr, _originalValue)
+  | not (expr `containsVariable` toSliceVar var) = findBroadcastVarBound var info rel expr
   | otherwise = do
       (coef, expr') <- rearrangeExprToSolveFor (toSliceVar var) expr
-      boundExpr <- tensorValueLinearExprToValue expr'
-      bounds <- convertToTensorBounds parentShape indices rel coef boundExpr
-      return $ Just bounds
+      validBoundOr Nothing parentVariable expr' $ do
+        boundExpr <- tensorValueLinearExprToValue expr'
+        Just <$> convertToTensorBounds parentShape indices rel coef boundExpr
+
+-- | A bound is emitted outside the binder it bounds, so it cannot mention the tensor being bounded,
+-- e.g. `x ! 0 < x ! 1`, nor anything bound inside it. Both live at a level at or above the tensor's
+-- own, as the slices of a tensor occupy a contiguous range of levels.
+validBoundOr ::
+  (MonadDomain m) =>
+  a ->
+  TensorVariable ->
+  TensorValueLinearExpr ->
+  m a ->
+  m a
+validBoundOr invalid parentVariable boundExpr action = do
+  occurrences <- linearExprTensorOccurrences boundExpr
+  if any (>= toLv parentVariable) (Map.keys occurrences)
+    then return invalid
+    else action
+
+-- | A variable can also be bounded when it appears only as a broadcast inside the constant, e.g.
+-- `forall i . x ! i <= y ! 0` becomes `x <= const (y ! 0) [3]`. Broadcasting is adjoint to
+-- reduction, so `(forall k . a_k <= b) <=> (max_k a_k) <= b`, and the bound for the broadcast slice
+-- is the other side of the assertion reduced over the dimensions it was broadcast across.
+findBroadcastVarBound ::
+  (MonadDomain m) =>
+  NestedSliceVariable ->
+  VariableInfo ->
+  Relation ->
+  TensorValueLinearExpr ->
+  m (Maybe (TensorBounds TensorConstantValue))
+findBroadcastVarBound _var VariableInfo {..} rel expr = do
+  let TensorConstantValue dims coefficient maybeValue = constantValue expr
+  maybeBroadcast <- traverse (isBroadcastOfSlice (toLv parentVariable) indices) maybeValue
+  case (maybeBroadcast, coefficient) of
+    (Just True, Finite coef) | coef /= 0 -> do
+      -- Drop the broadcast term from the constant and solve the rest for it.
+      let rest = expr {constantValue = TensorConstantValue dims 0 Nothing}
+      validBoundOr Nothing parentVariable rest $ do
+        restValue <- tensorValueLinearExprToValue rest
+        scaledRest <- scaleConstant (-(1 / coef)) restValue
+        scaledThunk <- foldConstant scaledRest
+        -- A negative coefficient puts the broadcast on the greater side, making this a lower bound.
+        let strictness = if rel == OLt then Strict else NonStrict
+        lower <- mkReducedBound reduceMaxThunks dims scaledThunk
+        upper <- mkReducedBound reduceMinThunks dims scaledThunk
+        let sliceBounds = case rel of
+              OEq -> SliceBounds [LowerBound NonStrict lower] [UpperBound NonStrict upper]
+              _
+                | coef < 0 -> SliceBounds [LowerBound strictness lower] mempty
+                | otherwise -> SliceBounds mempty [UpperBound strictness upper]
+        return $ Just $ TensorBounds $ singleNestedSliceBound sliceBounds parentShape indices
+    _ -> return Nothing
+  where
+    mkReducedBound reduceFn dims thunk = do
+      reduced <- reduceFn dims thunk
+      return $ TensorConstantValue (Forced IDimNil) 1 (Just reduced)
+
+-- | Whether a term is exactly `tensor ! indices` broadcast across some dimensions. The slice is
+-- written as a projection out of the whole tensor rather than as a slice variable of its own, so it
+-- has to be decoded rather than looked up.
+isBroadcastOfSlice :: (MonadDomain m) => Lv -> TensorIndices -> Thunk Builtin -> m Bool
+isBroadcastOfSlice tensorLv indices thunk = do
+  forced <- forceAndRewriteTensor thunk
+  case toRatTensorValue forced of
+    VRatConstTensor (ConstTensorArgs _ payload _) -> do
+      projected <- projectionOf tensorLv payload
+      return $ projected == Just indices
+    _ -> return False
+
+-- | The indices a term projects out of the given tensor variable, if that is all it does.
+projectionOf :: (MonadDomain m) => Lv -> Thunk Builtin -> m (Maybe TensorIndices)
+projectionOf tensorLv thunk = do
+  forced <- forceAndRewriteTensor thunk
+  case toRatTensorValue forced of
+    VRatTensorBoundVar lv [] | lv == tensorLv -> return $ Just []
+    VRatAtTensor (AtTensorArgs _ _ _ tensor index) -> do
+      forcedIndex <- forceThunk index
+      case forcedIndex of
+        IIndexLiteral i _ -> do
+          rest <- projectionOf tensorLv tensor
+          return $ fmap (<> [i]) rest
+        _ -> return Nothing
+    _ -> return Nothing
 
 tensorValueLinearExprToValue ::
   (MonadNorm Builtin m) =>
@@ -321,6 +422,59 @@ tensorValueLinearExprToValue linearExpr = do
   let dims = tensorValueDims $ constantValue linearExpr
   let mkTerm (v, coeff) = mkTensorConstantValue dims (Finite coeff) (Forced $ VBoundVar (toLv v) [])
   linearExprToExpr id mkTerm (addConstants 1 1) linearExpr
+
+-- | A bound is emitted outside the binder it bounds, so an assertion mentioning the variables of
+-- the quantifier currently being compiled cannot travel outwards with the rest of the constraints.
+-- Split those off so that they can be put back into the quantifier's body, where the variables they
+-- mention are still in scope.
+--
+-- A disjunction cannot be split, so it stays inside if any of its disjuncts has to.
+splitTreeByScope ::
+  (MonadDomain m) =>
+  Lv ->
+  UserVariableConstraintTree ->
+  m (Maybe UserVariableConstraintTree, Maybe UserVariableConstraintTree)
+splitTreeByScope quantifierLevel = go
+  where
+    go tree = case tree of
+      Query (assertion, _) -> do
+        occurrences <- assertionTensorOccurrences assertion
+        let mentionsQuantifier = any (>= quantifierLevel) (Map.keys occurrences)
+        return $
+          if mentionsQuantifier
+            then (Just tree, Nothing)
+            else (Nothing, Just tree)
+      Conjunct (ConjunctAll xs) -> do
+        results <- traverse go xs
+        let combine f = combineWith andBoolExpr $ mapMaybe f $ toList results
+        return (combine fst, combine snd)
+      Disjunct (DisjunctAll xs) -> do
+        results <- traverse go xs
+        return $
+          if any (isJust . fst) results
+            then (Just tree, Nothing)
+            else (Nothing, Just tree)
+
+    combineWith f = \case
+      [] -> Nothing
+      x : xs -> Just $ foldr f x xs
+
+-- | Put the terms the assertions were derived from back together, so that they can be emitted into
+-- the body of the quantifier whose variables they mention.
+treeToExpr :: (MonadDomain m) => UserVariableConstraintTree -> m (Expr Builtin)
+treeToExpr = \case
+  Query (_, value) -> unnormaliseInTensorCtx value
+  Conjunct (ConjunctAll xs) -> foldrM1 (combineBool accessAndTensor evalAnd) =<< traverse treeToExpr xs
+  Disjunct (DisjunctAll xs) -> foldrM1 (combineBool accessOrTensor evalOr) =<< traverse treeToExpr xs
+
+combineBool ::
+  (MonadDomain m) =>
+  Accessor (Expr Builtin) (TensorOp2Args (Expr Builtin)) ->
+  EvalSimple Expr Expr TensorOp2Args Builtin m ->
+  Expr Builtin ->
+  Expr Builtin ->
+  m (Expr Builtin)
+combineBool accessor evalFn x y = forceEvaluation accessor evalFn $ TensorOp2Args IDimNil x y
 
 --------------------------------------------------------------------------------
 -- Constraint search
@@ -383,16 +537,21 @@ notPartitions dims partitions = do
       notValue <- traverse (forceEvaluation accessNotTensor evalNot . TensorOp1Args dims) value
       return (fmap flattenBoolExpr notConstraintTree, notValue)
 
+    -- NOTE: the `OEq` case produces `expr <= 0 or -expr <= 0`, which is a tautology. Negating
+    -- `expr == 0` should give strict inequalities. Left as-is, as fixing it is a separate concern.
     notConstraint :: UserVariableConstraint -> m (BooleanExpr UserVariableConstraint)
-    notConstraint (NormalisedRelation rel expr) = do
+    notConstraint (NormalisedRelation rel expr, value) = do
       negExpr <- scaleExpr (-1) expr
+      -- The term an assertion came from is a scalar comparison, so it is negated at nil dimensions
+      -- rather than at the dimensions of the partition it sits in.
+      negValue <- forceEvaluation accessNotTensor evalNot $ TensorOp1Args (Forced IDimNil) value
       return $ case rel of
-        OLe -> Query $ NormalisedRelation OLt negExpr
-        OLt -> Query $ NormalisedRelation OLe negExpr
+        OLe -> Query (NormalisedRelation OLt negExpr, negValue)
+        OLt -> Query (NormalisedRelation OLe negExpr, negValue)
         OEq -> do
           let less = NormalisedRelation OLe expr
           let greater = NormalisedRelation OLe negExpr
-          Disjunct $ DisjunctAll [Query less, Query greater]
+          Disjunct $ DisjunctAll [Query (less, negValue), Query (greater, negValue)]
 
 partitionsToDisjuncts :: Partitions -> DisjunctAll Partition
 partitionsToDisjuncts ps = case Map.toList ps of
@@ -519,7 +678,7 @@ compileComparison (op, args) =
           Just assertion
             | Map.null $ coefficients $ expression assertion -> singletonUnconstrainedPartition value
             | otherwise -> do
-                let partitions = Map.singleton (Just (Query assertion)) Nothing
+                let partitions = Map.singleton (Just (Query (assertion, value))) Nothing
                 logDebugM MaxDetail $ do
                   doc <- prettyFriendlyInCtx assertion
                   return $ "Found domain constraint:" <+> doc

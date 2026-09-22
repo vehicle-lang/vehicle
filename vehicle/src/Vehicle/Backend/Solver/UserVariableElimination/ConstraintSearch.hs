@@ -161,57 +161,59 @@ conjunctSingleConstraints search conjuncts = searchConjuncts $ unConjunctAll con
 --------------------------------------------------------------------------------
 -- Multiple constraints
 
-type ConstraintTree constant = BooleanExpr (Assertion (LinearExpr SliceVariable constant))
+-- | The search is indifferent to what a leaf holds, so callers are free to pair an assertion with
+-- whatever else they need to recover, e.g. the term the assertion was derived from.
+type ConstraintTree leaf = BooleanExpr leaf
 
 -- Implicitly conjuncted
-type BoundedTree bounds constant expr = (bounds expr, Maybe (ConstraintTree constant))
+type BoundedTree bounds leaf expr = (bounds expr, Maybe (ConstraintTree leaf))
 
-type BoundedTrees bounds constant expr = DisjunctAll (BoundedTree bounds constant expr)
+type BoundedTrees bounds leaf expr = DisjunctAll (BoundedTree bounds leaf expr)
 
-noResults :: (IsBounds bounds expr) => ConstraintTree constant -> BoundedTrees bounds constant expr
+noResults :: (IsBounds bounds expr) => ConstraintTree leaf -> BoundedTrees bounds leaf expr
 noResults tree = DisjunctAll [(emptyBounds, Just tree)]
 
-oneResult :: bounds expr -> BoundedTrees bounds constant expr
+oneResult :: bounds expr -> BoundedTrees bounds leaf expr
 oneResult bounds = DisjunctAll [(bounds, Nothing)]
 
 findAllBounds ::
-  forall m bounds constant expr.
+  forall m bounds leaf expr.
   (MonadCompile m, IsBounds bounds expr, Ord (bounds expr)) =>
-  (Assertion (LinearExpr SliceVariable constant) -> m (Maybe (bounds expr))) ->
-  BooleanExpr (Assertion (LinearExpr SliceVariable constant)) ->
-  m (BoundedTrees bounds constant expr)
-findAllBounds assertionToConstraint = go
+  (leaf -> m (Maybe (bounds expr))) ->
+  ConstraintTree leaf ->
+  m (BoundedTrees bounds leaf expr)
+findAllBounds leafToConstraint = go
   where
-    go :: ConstraintTree constant -> m (BoundedTrees bounds constant expr)
+    go :: ConstraintTree leaf -> m (BoundedTrees bounds leaf expr)
     go = \case
       Disjunct xs -> findAllBoundsDisjunct =<< traverse go xs
       Conjunct xs -> findAllBoundsConjunct =<< traverse go xs
-      Query assertion -> do
-        maybeConstraint <- assertionToConstraint assertion
+      Query leaf -> do
+        maybeConstraint <- leafToConstraint leaf
         case maybeConstraint of
-          Nothing -> return $ noResults (Query assertion)
+          Nothing -> return $ noResults (Query leaf)
           Just constraint -> return $ oneResult constraint
 
 findAllBoundsDisjunct ::
-  forall m bounds constant expr.
+  forall m bounds leaf expr.
   (MonadCompile m, Ord (bounds expr)) =>
-  DisjunctAll (BoundedTrees bounds constant expr) ->
-  m (BoundedTrees bounds constant expr)
+  DisjunctAll (BoundedTrees bounds leaf expr) ->
+  m (BoundedTrees bounds leaf expr)
 findAllBoundsDisjunct disjuncts = return $ optimiseDisjuncts $ disjunctDisjuncts disjuncts
   where
-    optimiseDisjuncts :: BoundedTrees bounds constant expr -> BoundedTrees bounds constant expr
+    optimiseDisjuncts :: BoundedTrees bounds leaf expr -> BoundedTrees bounds leaf expr
     optimiseDisjuncts allDisjuncts = do
       let mergeDisjuncts = fmap (conjunctExprs . ConjunctAll) . sequence
       DisjunctAll $ mergeNonEmptyKeyValues mergeDisjuncts (unDisjunctAll allDisjuncts)
 
 findAllBoundsConjunct ::
-  forall m bounds constant expr.
+  forall m bounds leaf expr.
   (MonadCompile m, IsBounds bounds expr) =>
-  ConjunctAll (BoundedTrees bounds constant expr) ->
-  m (BoundedTrees bounds constant expr)
+  ConjunctAll (BoundedTrees bounds leaf expr) ->
+  m (BoundedTrees bounds leaf expr)
 findAllBoundsConjunct conjuncts = return $ combineConjuncts conjuncts
   where
-    combineConjuncts :: ConjunctAll (BoundedTrees bounds constant expr) -> BoundedTrees bounds constant expr
+    combineConjuncts :: ConjunctAll (BoundedTrees bounds leaf expr) -> BoundedTrees bounds leaf expr
     combineConjuncts = foldr1 $ conjunctDisjuncts (\(a, b) (c, d) -> (andBounds a c, unionMaybeWith andBoolExpr b d))
 
 tryConvertAssertionToSliceBounds ::

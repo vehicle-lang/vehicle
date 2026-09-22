@@ -264,6 +264,22 @@ maxThunks dims x y =
         tensorOp2Arg2 = y
       }
 
+reduceMaxThunks :: (MonadNorm Builtin m) => UnforcedDims Builtin -> Thunk Builtin -> m (Thunk Builtin)
+reduceMaxThunks dims x =
+  forceEvaluation accessReduceMaxRat evalReduceMaxRatTensor $
+    TensorReductionArgs
+      { tensorReductionDims = dims,
+        tensorReductionTensor = x
+      }
+
+reduceMinThunks :: (MonadNorm Builtin m) => UnforcedDims Builtin -> Thunk Builtin -> m (Thunk Builtin)
+reduceMinThunks dims x =
+  forceEvaluation accessReduceMinRat evalReduceMinRatTensor $
+    TensorReductionArgs
+      { tensorReductionDims = dims,
+        tensorReductionTensor = x
+      }
+
 stackThunks :: (MonadNorm Builtin m) => UnforcedDims Builtin -> [Thunk Builtin] -> m (Thunk Builtin)
 stackThunks dims elements =
   forceEvaluation accessStackTensor evalStackTensor $

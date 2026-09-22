@@ -788,6 +788,26 @@ instance IsArgs WhereTensorArgs where
       }
 
 --------------------------------------------------------------------------------
+-- SeededIterate (loss builtins)
+
+-- | Arguments for an `Iterate` applied to further arguments.
+data SeededIterateArgs expr = SeededIterateArgs
+  { seededIterateArgs :: IterateArgs expr,
+    seededIterateSeed :: [GenericArg expr]
+  }
+
+instance IsArgs SeededIterateArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          t : fn : n : e : seed ->
+            Just $ SeededIterateArgs (IterateArgs t (argExpr fn) (argExpr n) (argExpr e)) seed
+          _ -> Nothing,
+        mkExpr = \(SeededIterateArgs (IterateArgs t fn n e) seed) ->
+          t : explicit fn : explicit n : explicit e : seed
+      }
+
+--------------------------------------------------------------------------------
 -- FromBoolTensorToRatTensor (loss builtins)
 
 data FromBoolTensorToRatTensorArgs expr = FromBoolTensorToRatTensorArgs

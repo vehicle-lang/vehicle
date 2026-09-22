@@ -69,12 +69,15 @@ instance Hashable LossBuiltinType
 data LossBuiltinConstructor
   = WithGradients
   | WithoutGradients
+  | -- | A vector literal whose elements each keep their own gradient.
+    VectorLiteralWithGradients
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty LossBuiltinConstructor where
   pretty = \case
     WithGradients -> "withGradients"
     WithoutGradients -> "withoutGradients"
+    VectorLiteralWithGradients -> "vecLitWithGradients"
 
 instance Hashable LossBuiltinConstructor
 
@@ -105,11 +108,14 @@ instance Hashable LossBuiltinCast
 -- and removed with a nice user error message.
 data LossBuiltinFunction
   = IfRatTensorWithGradients
+  | -- | A `stack` whose elements each keep their own gradient.
+    StackRatTensorWithGradients
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty LossBuiltinFunction where
   pretty = \case
     IfRatTensorWithGradients -> "ifWithGradients"
+    StackRatTensorWithGradients -> "stackWithGradients"
 
 instance Hashable LossBuiltinFunction
 
@@ -502,7 +508,7 @@ instance NormalisableBuiltin (LossBuiltin mode) where
       S.ForeachTensor -> Eval evalForeachTensor
       S.ForeachVector -> Eval evalForeachVector
       S.AtVector -> Eval evalAtVector
-      S.Iterate -> Eval evalIterate
+      S.Iterate -> Eval evalSeededIterate
       S.WhereTensor -> None
       S.SearchRatTensor -> None
     LossBuiltinTypeClassOp {} -> TypeClassOperation
