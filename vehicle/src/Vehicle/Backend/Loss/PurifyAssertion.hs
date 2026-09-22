@@ -171,6 +171,9 @@ compileLinearExpr ::
 compileLinearExpr dims expr =
   logEntryAndExit expr $ do
     forcedValue <- forceAndRewriteTensor expr
+    -- Unblock the rewritten value, not the original: rewriting turns `const (f y ! 0) nil` into
+    -- `f y ! 0`, and unblocking the original returns it unchanged, so we would re-enter on it.
+    let tryUnblock = tryAndUnblock dims (Forced forcedValue)
     case toRatTensorValue forcedValue of
       ---------------------
       -- Handlable cases --
@@ -216,9 +219,6 @@ compileLinearExpr dims expr =
     ------------------------
     -- Helper definitions --
     ------------------------
-
-    tryUnblock :: m BranchingResult
-    tryUnblock = tryAndUnblock dims expr
 
     blocked :: m BranchingResult
     blocked = return $ IfLeaf $ Result expr Nothing
