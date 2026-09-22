@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Callable, Sequence
 
 from jaxtyping import Float
 
+from ..._ast._nodes import Quantifier
 from ..._deps import require_optional_dependency
 from .._abc import ABCSampler
 
@@ -24,6 +25,7 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
+        quantifier: Quantifier,
     ) -> Float[torch.Tensor, "1 losses"]: ...
 
 
@@ -31,9 +33,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
     """
     Default sampler implementation for PyTorch that uses FGSM attack.
 
-    Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples
-    that explore the search space by perturbing points in the direction
-    of the gradient to maximize or minimize the search_lambda.
+    Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples, descending the
+    search_lambda for an existential and ascending it for a universal.
     """
 
     def __init__(
@@ -57,6 +58,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
+        quantifier: Quantifier,
     ) -> Float[torch.Tensor, "1 losses"]:
         """
         Use PGD to generate adversarial samples and evaluate the search lambda.
@@ -123,10 +125,11 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     else:
                         gradient = torch.zeros_like(current_point_var)
 
-                # FGSM: perturb in the direction of the gradient sign
-                # To find worst-case inputs that make the loss high, we need to
-                # move in the opposite direction of the gradient (gradient ascent).
-                perturbation = -epsilon * torch.sign(gradient)
+                # FGSM: an existential wants the infimum of the lambda so descends it, a
+                # universal wants the supremum so ascends. For a universal the lambda is the
+                # property itself, so ascending is what hunts the worst case.
+                step = epsilon if quantifier == "Forall" else -epsilon
+                perturbation = step * torch.sign(gradient)
 
                 # Apply perturbation and clip to bounds
                 current_point = torch.clamp(

@@ -54,7 +54,7 @@ class PythonTranslation(metaclass=ABCMeta):
             python_code_path = (
                 VEHICLE_PATH / "generated_python" / (Path(path).stem + ".py")
             )
-            python_code_path.parent.mkdir(exist_ok=True)
+            python_code_path.parent.mkdir(parents=True, exist_ok=True)
             python_code_path.write_text(formatted_source_str)
 
             py_bytecode = compile(
@@ -497,9 +497,16 @@ class PythonTranslation(metaclass=ABCMeta):
             self.translate_expression(expression.lower_bound),
             self.translate_expression(expression.upper_bound),
             self.translate_expression(expression.search_lambda),
+            py.Constant(value=expression.quantifier, **asdict(vcl.MISSING)),
         )
 
-        return py_app(py_builtin("ReduceMaxRatTensor"), sampler_call)
+        # An existential wants the infimum over the samples and a universal the supremum.
+        reduction = (
+            "ReduceMinRatTensor"
+            if expression.quantifier == "Exists"
+            else "ReduceMaxRatTensor"
+        )
+        return py_app(py_builtin(reduction), sampler_call)
 
     def translate_WhereTensor(self, expression: vcl.WhereTensor) -> py.expr:
         """Translate WhereTensor to builtin call."""

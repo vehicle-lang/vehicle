@@ -465,7 +465,7 @@ convertToLossBuiltins decl = do
             ReduceMinRatTensor -> convertTo 1 (StandardBuiltinFunction f)
             ReduceMaxRatTensor -> convertTo 1 (StandardBuiltinFunction f)
             WhereTensor -> convertTo 1 (StandardBuiltinFunction f)
-            SearchRatTensor -> convertTo 1 (StandardBuiltinFunction f)
+            SearchRatTensor {} -> convertTo 1 (StandardBuiltinFunction f)
             -- Nothing needs to change
             Add AddNat -> sameFunction f
             Mul MulNat -> sameFunction f

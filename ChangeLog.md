@@ -39,6 +39,17 @@
 
 * The branches of an `if` may now have different gradients, e.g. `if c then x else 0.0`.
 
+* Fixed `forall` and `exists` returning each other's loss. The samples a quantifier's search
+  produces are now combined by taking the minimum, which is the existential that `search`
+  represents. Taking the maximum gave a `forall` the loss of its best sample and an `exists` the
+  loss of its worst.
+
+* Fixed the default TensorFlow `Sampler` searching in the opposite direction to the PyTorch one.
+
+* BREAKING: `Sampler.get_loss` now takes the quantifier being searched, so that an existential can
+  look for a witness and a universal for a counterexample. The default samplers descend the
+  function they are given for the former and ascend it for the latter.
+
 ### Solver backend
 
 * Fixed error that occassionally happened with non-linear specifications.
