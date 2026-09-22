@@ -7,15 +7,21 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Utils
 open import Vehicle.Data.Tensor as 𝕋
-open import Data.Product
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List.Base
 open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module Agda where
 
-postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ []
+empty : Vector (Tensor ℚ []) 0
+empty = []ᵥ
 
-postulate spec : ∀ x → (natScalar 0) < x × x < (natScalar 1) → f (stack (x ∷ᵥ (natScalar 0) ∷ᵥ []ᵥ)) ≥ (natScalar 0)
+singleton : Vector (Tensor ℚ []) 1
+singleton = (natScalar 1) ∷ᵥ []ᵥ
+
+multiple : Vector (Tensor ℚ []) 3
+multiple = (natScalar 1) ∷ᵥ (natScalar 2) ∷ᵥ (natScalar 3) ∷ᵥ []ᵥ
+
+variables : Tensor ℚ [] → Tensor ℚ [] → Vector (Tensor ℚ []) 2
+variables x y = x ∷ᵥ y ∷ᵥ []ᵥ

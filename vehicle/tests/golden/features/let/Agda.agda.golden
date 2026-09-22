@@ -28,14 +28,14 @@ e3 : ℕ
 e3 = let y = 1 ℕ.+ 1 in y
 
 lamLet : ℕ → ℕ
-lamLet = λ ((x : ℕ)) → let y = x in y
+lamLet = λ (x : ℕ) → let y = x in y
 
 letLam : ℕ → ℕ
 letLam = let y = λ x → x in y
 
-postulate forallLet : ∀ ((x : Tensor ℚ [])) → let y = x in y ≈ (natScalar 1)
+postulate forallLet : ∀ (x : Tensor ℚ []) → let y = x in y ≈ (natScalar 1)
 
-postulate letForall : let y = natScalar 1 in ∀ ((x : Tensor ℚ [])) → y ≈ x
+postulate letForall : let y = natScalar 1 in ∀ (x : Tensor ℚ []) → y ≈ x
 
 postulate forallInLet : List.All (λ x → let y = x in y ≈ 1) (1 ∷ [])
 

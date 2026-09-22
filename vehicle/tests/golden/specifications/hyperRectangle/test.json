@@ -16,5 +16,11 @@
       "lines": ".*\"fileHash\".*"
     },
     "sizeOnly": ".vcl-plan"
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   }
 ]
