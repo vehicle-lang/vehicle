@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Callable, Sequence
 
 from jaxtyping import Float
 
+from ..._ast._nodes import Quantifier
 from ..._deps import require_optional_dependency
 from .._abc import ABCSampler
 
@@ -24,6 +25,7 @@ class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
+        quantifier: Quantifier,
     ) -> Float[tf.Tensor, "1 losses"]: ...
 
 
@@ -31,8 +33,8 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
     """
     Default sampler implementation for TensorFlow that uses FGSM attack.
 
-    Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples,
-    descending the search_lambda so that the samples approximate its infimum.
+    Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples, descending the
+    search_lambda for an existential and ascending it for a universal.
     """
 
     def __init__(
@@ -56,6 +58,7 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
+        quantifier: Quantifier,
     ) -> Float[tf.Tensor, "1 losses"]:
         """
         Use PGD to generate adversarial samples and evaluate the search lambda.
@@ -115,10 +118,11 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                         tf.math.is_nan(gradient), tf.zeros_like(gradient), gradient
                     )
 
-                # FGSM: perturb against the gradient. The search approximates an infimum of the
-                # lambda, and for a `forall` the lambda is the negated body, so descending it is
-                # what hunts the worst case.
-                perturbation = -epsilon * tf.sign(gradient)
+                # FGSM: an existential wants the infimum of the lambda so descends it, a
+                # universal wants the supremum so ascends. For a universal the lambda is the
+                # property itself, so ascending is what hunts the worst case.
+                step = epsilon if quantifier == "Forall" else -epsilon
+                perturbation = step * tf.sign(gradient)
 
                 # Apply perturbation and clip to bounds
                 current_point = tf.clip_by_value(current_point + perturbation, lb, ub)
@@ -146,6 +150,7 @@ class ConstantTensorFlowSampler(TensorFlowSampler):
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
+        quantifier: Quantifier,
     ) -> Any:
         """Returns the original constant value."""
         results = []

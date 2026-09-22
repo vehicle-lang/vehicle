@@ -22,7 +22,10 @@
   loss of its worst.
 
 * Fixed the default TensorFlow `Sampler` searching in the opposite direction to the PyTorch one.
-  Both now descend the function they are given, which is what approximates the worst case.
+
+* BREAKING: `Sampler.get_loss` now takes the quantifier being searched, so that an existential can
+  look for a witness and a universal for a counterexample. The default samplers descend the
+  function they are given for the former and ascend it for the latter.
 
 ### Solver backend
 

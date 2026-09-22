@@ -14,6 +14,7 @@ from ._decode import JsonValue, decode
 Name: TypeAlias = str
 UniverseLevel: TypeAlias = int
 ComparisonOp: TypeAlias = Literal["Eq", "Ne", "Le", "Lt", "Ge", "Gt"]
+Quantifier: TypeAlias = Literal["Forall", "Exists"]
 
 
 @dataclass(frozen=True, init=False)
@@ -399,6 +400,7 @@ class ReduceMaxRatTensor(Expression):
 class SearchRatTensor(Expression):
 
     name: str
+    quantifier: Quantifier
     dims: Expression
     lower_bound: Expression
     upper_bound: Expression

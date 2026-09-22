@@ -3,6 +3,7 @@ from typing import Callable, Generic
 
 from jaxtyping import Float
 
+from ..._ast._nodes import Quantifier
 from . import _types as vcl
 
 
@@ -20,6 +21,7 @@ class ABCSampler(
         lower_bound: vcl.Tensor,
         upper_bound: vcl.Tensor,
         search_lambda: Callable[[vcl.Tensor], vcl.Tensor],
+        quantifier: Quantifier,
     ) -> Float[vcl.Tensor, "1 losses"]:
         """
         Calculates the loss based on the provided bounds and search lambda.
@@ -29,8 +31,10 @@ class ABCSampler(
             lower_bound: The lower bound tensor.
             upper_bound: The upper bound tensor.
             search_lambda: A callable representing the search lambda.
+            quantifier: Whether the search is for a witness or for a counterexample.
         Returns:
             Sequence[vcl.Tensor]: The computed loss as a 1D tensor. If the size is greater than 1,
-            the losses will be combined by taking the minimum.
+            the losses will be combined by taking the minimum for `Exists` and the maximum for
+            `Forall`.
         """
         ...

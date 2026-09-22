@@ -28,6 +28,7 @@ class FixedPointSampler:
         lower_bound: "torch.Tensor",
         upper_bound: "torch.Tensor",
         search_lambda: Callable[["torch.Tensor"], "torch.Tensor"],
+        quantifier: str,
     ) -> "torch.Tensor":
         return torch.stack(
             [
