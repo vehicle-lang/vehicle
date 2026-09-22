@@ -48,27 +48,21 @@ def test_pytorch_search_bounded() -> None:
     for property, results in search_results.items():
         print(f"Property: {property} \n")
 
-        for boolean_result, samples in results:
-            print(f"Boolean result: {boolean_result}")
-
-            if boolean_result is False:
-                # If this property evaluates to False, this means we have found
-                # exactly one counter-example
+        for samples in results:
+            if len(samples) > 0:
+                # If a counter-example has been found, it should consist
+                # of only one sample
                 assert len(samples) == 1
-                x = samples[0].inputs["x"].unsqueeze(0)
+                x = samples[0]["x"].unsqueeze(0)
 
                 output = model(x)
 
-                print(f"Sample: {samples[0]}")
+                print(f"Counter-example: {samples[0]}")
                 print(f"Output: {output.item()} \n")
 
                 # Check that the counter-example actually violates the property
                 assert 0 < x < 1
                 assert not (0 < output < 1)
-            else:
-                # If this property evaluates to True, this means we did not
-                # manage to find any counter-examples
-                assert len(samples) == 0
 
 
 def test_pytorch_search_andGate() -> None:
@@ -95,20 +89,18 @@ def test_pytorch_search_andGate() -> None:
     for property, results in search_results.items():
         print(f"Property: {property} \n")
 
-        for boolean_result, samples in results:
-            print(f"Boolean result: {boolean_result}")
-
-            if boolean_result is False:
-                # If this property evaluates to False, this means we have found
-                # exactly one counter-example
+        for samples in results:
+            if len(samples) > 0:
+                # If a counter-example has been found, it should consist
+                # of only one sample
                 assert len(samples) == 1
-                x1 = samples[0].inputs["x1"]
-                x2 = samples[0].inputs["x2"]
+                x1 = samples[0]["x1"]
+                x2 = samples[0]["x2"]
 
                 inputs = torch.stack([x1, x2])
                 output = model(inputs)
 
-                print(f"Sample: {samples[0]}")
+                print(f"Counter-example: {samples[0]}")
                 print(f"Output: {output.item()} \n")
 
                 # Check that the counter-example actually violates the property
@@ -119,10 +111,6 @@ def test_pytorch_search_andGate() -> None:
                     or (x1 <= 0.5 and x2 >= 0.5 and not output <= 0.5)
                     or (x1 <= 0.5 and x2 <= 0.5 and not output <= 0.5)
                 )
-            else:
-                # If this property evaluates to True, this means we did not
-                # manage to find any counter-examples
-                assert len(samples) == 0
 
 
 def test_pytorch_search_increasing() -> None:
@@ -135,7 +123,6 @@ def test_pytorch_search_increasing() -> None:
     model = torch.nn.Sequential(
         torch.nn.Linear(1, 2), torch.nn.ReLU(), torch.nn.Linear(2, 1, bias=False)
     )
-
     with torch.no_grad():
         model[0].weight[:] = torch.tensor([[1.0], [-1.0]])
         model[0].bias[:] = torch.tensor([-0.5, 0.5])
@@ -154,24 +141,18 @@ def test_pytorch_search_increasing() -> None:
     for property, results in search_results.items():
         print(f"Property: {property} \n")
 
-        for boolean_result, samples in results:
-            print(f"Boolean result: {boolean_result}")
-
-            if boolean_result is False:
-                # If this property evaluates to False, this means we have found
-                # exactly one counter-example
+        for samples in results:
+            if len(samples) > 0:
+                # If a counter-example has been found, it should consist
+                # of only one sample
                 assert len(samples) == 1
-                x = samples[0].inputs["x"].unsqueeze(0)
+                x = samples[0]["x"].unsqueeze(0)
 
                 output = model(x)
 
-                print(f"Sample: {samples[0]}")
+                print(f"Counter-example: {samples[0]}")
                 print(f"Output: {output.item()} \n")
 
                 # Check that the counter-example actually violates the property
                 assert 0 < x < 1
                 assert not (x <= output)
-            else:
-                # If this property evaluates to True, this means we did not
-                # manage to find any counter-examples
-                assert len(samples) == 0

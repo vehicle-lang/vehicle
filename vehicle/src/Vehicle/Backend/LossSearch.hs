@@ -42,8 +42,8 @@ type MonadSearch m =
     MonadFreeContext Builtin m
   )
 
--- Returns a list of boolean trees, a list of boolean decls, and a Prog of all
--- decls in a specification (with domains extracted if they are properties)
+-- Returns a list of boolean trees, a list of decls which will not be converted into loss
+-- (boolean expressions), and a Prog of all decls which will be converted into loss
 convertToSearchTree ::
   (MonadCompile m) =>
   Prog Builtin ->

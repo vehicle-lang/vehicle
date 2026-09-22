@@ -20,7 +20,6 @@ class ABCSampler(
         lower_bound: vcl.Tensor,
         upper_bound: vcl.Tensor,
         search_lambda: Callable[[vcl.Tensor], vcl.Tensor],
-        search: bool = False,
     ) -> tuple[Float[vcl.Tensor, "1 losses"], vcl.Tensor]:
         """
         Uses gradient ascent or descent to generate samples and evaluate the search lambda.
@@ -62,6 +61,5 @@ class ABCSampler(
             lower_bound=lower_bound,
             upper_bound=upper_bound,
             search_lambda=search_lambda,
-            search=False,
         )
         return loss

@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, MutableMapping, Sequence
+from typing import Any, Iterable, Sequence
 
-import torch
-
-from vehicle_lang.loss._search_tree import Sample, search_tree
+from vehicle_lang.loss._search_tree import search_tree
 
 from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
 from ._common import load_search_loss, load_training_loss
@@ -21,7 +18,7 @@ __all__ = [
     "DefaultPyTorchSampler",
 ]
 
-SearchResults = Sequence[tuple[bool, Sequence[Sample]]]
+SearchResults = Sequence[Sequence[dict[str, Any]]]
 
 
 def load_specification(
@@ -57,9 +54,7 @@ def search(
     parameters: dict[DeclarationName, Any] = {},
     num_searches: int = 1,
 ) -> dict[str, SearchResults]:
-    """
-    Gradient-based search for properties in a specification.
-    """
+    """Gradient-based search for properties in a specification."""
 
     search_data = load_search_loss(
         path,
@@ -84,6 +79,7 @@ def search(
                 boolean_tree=property,
                 declarations=declarations,
                 bound_vars=search_bounds,
+                samplers=samplers,
             )
 
             search_results.append(result)
