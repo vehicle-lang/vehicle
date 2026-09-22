@@ -21,7 +21,7 @@ import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.ForcedValue (isVTypeUniverse)
-import Vehicle.Data.Code.Interface (IsArgs (..), SearchRatTensorArgs (..), accessLambda)
+import Vehicle.Data.Code.Interface (IsArgs (..), SearchRatTensorArgs (..), accessLambda, pattern IRatType)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, getDeclEntry, isFunctionWhoseReturnType, runFreshFreeContextT, traverseProgDecls)
 
 convertToLossTensors ::
@@ -69,10 +69,20 @@ convertBackFromLossBuiltins = traverse $ traverseBuiltinsM $ \p b args -> do
     LossBuiltinTypeClass {} -> gradientOpErr
     LossBuiltinTypeClassOp {} -> gradientOpErr
     LossBuiltinType {} -> gradientOpErr
+    LossBuiltinConstructor VectorLiteralWithGradients -> case args of
+      elementType : d : xs ->
+        return $ normAppList (Builtin p (BuiltinConstructor VectorLiteral)) (elementType : d : xs)
+      _ -> developerError "Malformed type-checked vector literal"
     LossBuiltinConstructor {} -> gradientOpErr
     LossBuiltinCast {} -> gradientOpErr
     LossBuiltinFunction f -> case f of
       IfRatTensorWithGradients -> throwError $ UnsupportedIfLossOperation p
+      StackRatTensorWithGradients -> case args of
+        _arity : d : ds : xs ->
+          return $
+            normAppList (Builtin p (BuiltinFunction StackTensor)) $
+              implicit IRatType : d : ds : xs
+        _ -> developerError "Malformed type-checked stack"
     -- Remaining candidates
     StandardBuiltinConstructor c -> return $ normAppList (Builtin p $ BuiltinConstructor c) args
     StandardBuiltinType t -> return $ normAppList (Builtin p $ BuiltinType t) args

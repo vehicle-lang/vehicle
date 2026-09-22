@@ -1,0 +1,34 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims -> \x -> const 1.0 dims / x, pointwiseConjunction = \dims -> \x -> \y -> x + y, pointwiseDisjunction = \dims -> \x -> \y -> x * y, pointwiseLessThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseEqual = \dims -> \x -> \y -> max (x - y) (y - x), pointwiseNotEqual = \dims -> \x -> \y -> const 1.0 dims / max (x - y) (y - x), reduceConjunction = \dims -> \xs -> reduceAdd xs, reduceDisjunction = \dims -> \xs -> reduceMul xs} 
+
+mkVec : Tensor Real -> Vector (Tensor Real);
+mkVec v = [1.0, v]
+
+@property;
+helper : (Tensor Real -> Tensor Real) -> Tensor Real;
+helper f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [mkVec x ! 0, x] ! 0) 0.5)))
+
+@property;
+direct : (Tensor Real -> Tensor Real) -> Tensor Real;
+direct f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [[1.0, x] ! 1, x] ! 0) 0.5)))
+
+nest : Tensor Real -> Vector (Vector (Tensor Real));
+nest v = [[1.0, 2.0], [v, 3.0]]
+
+@property;
+nested : (Tensor Real -> Tensor Real) -> Tensor Real;
+nested f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [nest x ! 1 ! 0, x] ! 0) 0.5)))
+
+pair : Tensor Real -> Vector (Tensor Real);
+pair v = [const 0.5 [2], v]
+
+@property;
+ofTensors : (Tensor Real -> Tensor Real) -> Tensor Real;
+ofTensors f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f (pair [x, x] ! 1) ! 0) 0.5)))
+
+picks : Vector Index;
+picks = [0, 0]
+
+@property;
+indices : (Tensor Real -> Tensor Real) -> Tensor Real;
+indices f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, x] ! (picks ! 1)) 0.5)))

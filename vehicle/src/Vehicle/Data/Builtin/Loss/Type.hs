@@ -5,6 +5,9 @@ module Vehicle.Data.Builtin.Loss.Type
   )
 where
 
+import Control.Monad.Writer.Strict (Writer, runWriter, tell)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Monoid (Any (..))
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Compile.Prelude
@@ -12,6 +15,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (getDeclType, prependMissingFreeVarImplicitArgs)
 import Vehicle.Compile.Type.System
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
@@ -22,6 +26,7 @@ import Vehicle.Data.Builtin.Standard
     DerivedFunction (..),
   )
 import Vehicle.Data.Code.DSL
+import Vehicle.Data.Code.Interface.Args (IsArgs (..), StackTensorArgs (..), VectorLitArgs (..))
 import Vehicle.Data.DSL
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
@@ -82,6 +87,7 @@ typeLossCast = \case
 typeLossFunction :: LossBuiltinFunction -> DSLExpr (LossBuiltin mode)
 typeLossFunction = \case
   IfRatTensorWithGradients -> typeIf tRatWithGradients
+  StackRatTensorWithGradients -> typeOfStackRatTensorWithGradients
 
 typeStandardBuiltinType :: BuiltinType -> DSLExpr (LossBuiltin mode)
 typeStandardBuiltinType = \case
@@ -103,7 +109,7 @@ typeStandardConstructor c = case c of
   UnitLiteral -> typeOfBuiltinConstructor c
   IndexLiteral {} -> typeOfBuiltinConstructor c
   NatLiteral {} -> typeOfBuiltinConstructor c
-  -- TODO: known bug. Have to separate out veclit into a specialised rat type that takes the max over gradients
+  -- Only reached when no `Real` is written in the element type; see `VectorLiteralWithGradients`.
   VectorLiteral -> typeOfBuiltinConstructor c
   BoolTensorLiteral {} -> typeOfBuiltinConstructor c
   NatTensorLiteral {} -> typeOfBuiltinConstructor c
@@ -112,6 +118,7 @@ typeLossBuiltinConstructor :: LossBuiltinConstructor -> DSLExpr (LossBuiltin mod
 typeLossBuiltinConstructor = \case
   WithGradients -> tGradient
   WithoutGradients -> tGradient
+  VectorLiteralWithGradients -> typeOfVectorLiteralWithGradients
 
 typeLossTypeClass :: LossBuiltinTypeClass -> DSLExpr (LossBuiltin mode)
 typeLossTypeClass = \case
@@ -210,7 +217,6 @@ typeStandardFunction f = case f of
           ~> tBoolTensor dims
           ~> tRatTensorWithoutGradients dimNil
           ~> tTensor (tRat .@@ [g]) dims
-  -- TODO: known bug. Have to separate out stack into a specialised rat type that takes the max over gradients
   StackTensor -> typeOfBuiltinFunction f
   CompareIndex {} -> typeOfBuiltinFunction f
   CompareNat {} -> typeOfBuiltinFunction f
@@ -236,6 +242,41 @@ typeStandardFunction f = case f of
   AppendList -> typeOfBuiltinFunction f
   where
     removed = developerError $ pretty f <+> "should have been removed prior to loss type-checking"
+
+typeOfStackRatTensorWithGradients :: DSLExpr (LossBuiltin mode)
+typeOfStackRatTensorWithGradients =
+  forAll "n" tNat $ \n ->
+    forAllDim Relevant $ \d ->
+      forAllDims $ \ds ->
+        iterate (tGradient ~> type0) (accumulateGradient (\g -> tTensor (tRat .@@ [g]) ds)) n (finalTensor d ds)
+          @@ [withoutGradients]
+  where
+    finalTensor d ds =
+      explLam "g" tGradient $ \g ->
+        tTensor (tRat .@@ [g]) (dimCons d ds)
+
+typeOfVectorLiteralWithGradients :: DSLExpr (LossBuiltin mode)
+typeOfVectorLiteralWithGradients =
+  forAll "t" (tGradient .~> type0) $ \t ->
+    forAllDim Relevant $ \d ->
+      iterate (tGradient ~> type0) (accumulateGradient (\g -> t .@@ [g])) d (finalVector t d)
+        @@ [withoutGradients]
+  where
+    finalVector t d =
+      explLam "g" tGradient $ \g ->
+        tVector (t .@@ [g]) d
+
+accumulateGradient ::
+  (DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)) ->
+  DSLExpr (LossBuiltin mode) ->
+  DSLExpr (LossBuiltin mode) ->
+  DSLExpr (LossBuiltin mode)
+accumulateGradient elementType recurse base =
+  explLam "g" tGradient $ \accSoFar ->
+    forAllGradients $ \element ->
+      forAllGradients $ \accNext ->
+        maxGradients accSoFar element accNext
+          .~~~> (elementType element ~> (recurse @@ [base]) @@ [accNext])
 
 typeOp1 :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOp1 t = t ~> t
@@ -426,7 +467,14 @@ convertToLossBuiltins decl = do
             AppendList -> sameFunction f
             Iterate -> sameFunction f
             Transpose -> sameFunction f
-            StackTensor -> sameFunction f
+            StackTensor -> case getExpr accessSpine args of
+              -- Only rational stacks carry gradients, and the arity replaces the element type.
+              Just (StackTensorArgs elementType d ds xs)
+                | isRatType elementType ->
+                    return $
+                      normAppList (Builtin p (LossBuiltinFunction StackRatTensorWithGradients)) $
+                        implicit (arityOf xs) : implicit d : implicit ds : fmap explicit xs
+              _ -> sameFunction f
             AtTensor -> sameFunction f
             ConstTensor -> sameFunction f
             ForeachTensor -> sameFunction f
@@ -439,6 +487,14 @@ convertToLossBuiltins decl = do
             QuantifyRecord {} -> developerError "quantifiers should have been eliminated"
         BuiltinConstructor c -> return $ case c of
           BoolTensorLiteral {} -> castWith FromBoolTensorTC (sameConstructor c)
+          -- Only elements with a `Real` carry gradients, and each is typed separately, so the
+          -- element type becomes a family over the gradient.
+          VectorLiteral -> case getExpr accessSpine args of
+            Just (VectorLitArgs elementType d xs)
+              | Just family <- gradientFamily p elementType ->
+                  normAppList (Builtin p (LossBuiltinConstructor VectorLiteralWithGradients)) $
+                    implicit family : implicitIrrelevant d : fmap explicit xs
+            _ -> sameConstructor c
           _ -> sameConstructor c
         BuiltinType t -> case t of
           RatType -> return $ normAppList (Builtin p $ StandardBuiltinType t) [explicitIrrelevant (mkRatTypeArg p)]
@@ -454,10 +510,45 @@ convertToLossBuiltins decl = do
         sameFunction f = return $ normAppList (Builtin p (StandardBuiltinFunction f)) args
         sameConstructor c = normAppList (Builtin p $ StandardBuiltinConstructor c) args
 
+        arityOf elements = Builtin p (StandardBuiltinConstructor (NatLiteral (length elements)))
+
+        -- `Real` has already been given its gradient argument by the time the stack is reached.
+        isRatType = \case
+          Builtin _ (StandardBuiltinType RatType) -> True
+          App (Builtin _ (StandardBuiltinType RatType)) _ -> True
+          _ -> False
+
         -- Apply a cast
         prependHoles n xs = replicate n (implicit $ Hole p "_") <> xs
         castWith f original = normAppList (Builtin p $ LossBuiltinTypeClassOp f) [explicit original]
         convertTo n f = return $ normAppList (Builtin p f) (prependHoles n args)
+
+-- | The family `\g -> t[g]` giving every `Real` in `t` the gradient `g`, if `t` has one. The binder
+-- is irrelevant, so removing irrelevant code after typing turns the family back into `t`.
+gradientFamily :: Provenance -> Expr (LossBuiltin mode) -> Maybe (Expr (LossBuiltin mode))
+gradientFamily p t = do
+  let (body, Any hasReal) = runWriter $ go 0 (liftDBIndices 1 t)
+  if hasReal then Just (Lam p binder body) else Nothing
+  where
+    binder = Binder (BinderDisplayForm (OnlyName "g" p) True) Explicit Irrelevant (Builtin p (LossBuiltinType GradientType))
+
+    go :: Int -> Expr (LossBuiltin mode) -> Writer Any (Expr (LossBuiltin mode))
+    go depth expr = case expr of
+      App fun@(Builtin _ (StandardBuiltinType RatType)) (gradient :| []) -> do
+        tell (Any True)
+        return $ App fun [BoundVar p (Ix depth) <$ gradient]
+      App fun args -> App <$> go depth fun <*> traverse (traverse (go depth)) args
+      Pi p' b res -> Pi p' <$> traverse (go depth) b <*> go (depth + 1) res
+      Lam p' b body -> Lam p' <$> traverse (go depth) b <*> go (depth + 1) body
+      Let p' bound b body -> Let p' <$> go depth bound <*> traverse (go depth) b <*> go (depth + 1) body
+      Record p' ident fields -> Record p' ident <$> traverseRecordFields (go depth) fields
+      RecordProj p' recordType value field -> RecordProj p' <$> go depth recordType <*> go depth value <*> pure field
+      Universe {} -> return expr
+      FreeVar {} -> return expr
+      BoundVar {} -> return expr
+      Hole {} -> return expr
+      Meta {} -> return expr
+      Builtin {} -> return expr
 
 restrictDecidabilityDeclType ::
   forall m mode.
