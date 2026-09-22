@@ -34,6 +34,9 @@
 * Fixed non-termination when a quantifier's body quantifies over an index it does not mention,
   e.g. `forall (i : Index 1) . f y ! 0 >= 0.0`.
 
+* Fixed internal error when an expression cannot be evaluated during unblocking, e.g. quantifying
+  over an index as in `exists i . f y ! 0 >= y ! i`.
+
 ### Solver backend
 
 * Fixed error that occassionally happened with non-linear specifications.
