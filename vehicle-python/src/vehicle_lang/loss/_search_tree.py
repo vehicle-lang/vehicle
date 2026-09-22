@@ -164,15 +164,14 @@ def search_witness(
     # variables constant
     for bound_var in bound_var_data:
         sampler: DefaultPyTorchSampler = samplers[bound_var.name]
-        _, new_input = sampler.get_loss_and_input(
+        _, new_values = sampler.get_loss_and_input(
             dims=bound_var.dims,
             lower_bound=bound_var.lower_bound,
             upper_bound=bound_var.upper_bound,
             search_lambda=lambda value: loss_fn(
                 **update_current_inputs(current_inputs, bound_var, value)
             ),
-            search=True,
         )
-        current_inputs = update_current_inputs(current_inputs, bound_var, new_input)
+        current_inputs = update_current_inputs(current_inputs, bound_var, new_values[0])
 
     return current_inputs

@@ -110,6 +110,7 @@ compileHardBooleanTree value = do
     VReduceAndTensor {} -> unblock
     VReduceOrTensor {} -> unblock
     VBoolTensorAt {} -> unblock
+    VBoolParameter {} -> unblock
   where
     unblock = do
       errorOrResult <- runExceptT $ unblockBoolExpr noUnblocking value
@@ -229,6 +230,7 @@ liftQuantifiers (value, liftedBinders) = logEntryAndExit value $ do
     VReduceAndTensor {} -> unblock
     VReduceOrTensor {} -> unblock
     VBoolTensorAt {} -> unblock
+    VBoolParameter {} -> unblock
   where
     unblock = do
       errorOrResult <- runExceptT $ unblockBoolExpr noUnblocking value

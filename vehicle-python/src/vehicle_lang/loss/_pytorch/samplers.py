@@ -26,7 +26,6 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-        search: bool = False,
     ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]: ...
 
 
@@ -60,7 +59,6 @@ class DefaultPyTorchSampler(PyTorchSampler):
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-        search: bool = False,
     ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
         """
         Uses gradient ascent or descent to generate samples and evaluate the search lambda.
@@ -75,8 +73,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
             search_lambda: A callable representing a loss function
 
         Returns:
-            A sequence of loss values evaluated at the PGD-perturbed points and
-            the final perturbed point
+            A sequence of loss values evaluated at the PGD-perturbed points and a sequence
+            of those points.
         """
         # Set seed for reproducibility if provided
         if self.seed is not None:
@@ -86,10 +84,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
         range_size = upper_bound - lower_bound
         epsilon = range_size / self.num_steps
 
-        results = []
-        # At the moment we only return the final perturbed point out of all trajectories
-        # Maybe we can return the final point for each trajectory in future
-        final_point = None
+        loss_values = []
+        points = []
 
         # Use multiple random starting points to ensure diversity
         for _ in range(self.num_samples):
@@ -111,11 +107,6 @@ class DefaultPyTorchSampler(PyTorchSampler):
                 with torch.enable_grad():
                     # Compute gradient of search_lambda with respect to input
                     loss = search_lambda(current_point_var)
-
-                    # NOTE: This is only for my evaluation, once done I will delete this and
-                    # the search flag (we don't need to track the loss at each iteration)
-                    if search is True:
-                        results.append(torch.as_tensor(loss))
 
                     # Compute gradient ONLY w.r.t. the input, not network weights
                     # Using autograd.grad instead of backward() to avoid accumulating
@@ -145,9 +136,9 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     current_point + perturbation.detach(), lower_bound, upper_bound
                 )
 
-            final_point = current_point
+            points.append(current_point)
             # Evaluate and store the final result from this trajectory
-            result = search_lambda(current_point.detach())
-            results.append(torch.as_tensor(result))
+            loss = search_lambda(current_point.detach())
+            loss_values.append(torch.as_tensor(loss))
 
-        return torch.stack(results), final_point
+        return torch.stack(loss_values), torch.stack(points)
