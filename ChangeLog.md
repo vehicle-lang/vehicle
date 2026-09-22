@@ -22,6 +22,9 @@
 
 * Fixed error that occurred when using `@parameter`s of type `Bool`.
 
+* Fixed an error in the translation when constructing tensors whose elements are quantified
+  variables, e.g. `[1.0, x]`.
+
 ### Solver backend
 
 * Fixed error that occassionally happened with non-linear specifications.

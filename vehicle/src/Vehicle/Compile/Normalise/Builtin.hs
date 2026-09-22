@@ -723,6 +723,16 @@ evalIterate (IterateArgs t f n e) = do
       Evaluated . exprToThunk <$> forceApp f [explicit recFn, explicit e]
     _ -> return $ Unevaluable [fn]
 
+evalSeededIterate ::
+  forall m expr thunk builtin.
+  (MonadLogger m, NormalisableExpr expr thunk builtin m, HasNatExpr expr thunk builtin, BuiltinHasIterate builtin) =>
+  EvalSimple expr thunk SeededIterateArgs builtin m
+evalSeededIterate (SeededIterateArgs args seed) = do
+  result <- evalIterate args
+  case result of
+    Evaluated value | not (null seed) -> Evaluated . exprToThunk <$> forceApp value seed
+    _ -> return result
+
 evalCompareRatTensor ::
   forall expr thunk builtin m.
   (MonadNormBuiltin m, HasBoolExpr expr thunk builtin, BuiltinHasBoolType builtin, HasRatExpr expr thunk builtin, PrintableBuiltin builtin) =>
