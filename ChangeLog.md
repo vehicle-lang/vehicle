@@ -50,6 +50,15 @@
   look for a witness and a universal for a counterexample. The default samplers descend the
   function they are given for the former and ascend it for the latter.
 
+* Fixed the default `Sampler` implementations returning `nan` when a quantified variable is
+  unbounded, e.g. `forall x . p x`. Starting points are now drawn from a finite region around the
+  bound that is finite, or around the origin when neither is.
+
+* Added the `unbounded_search_distance` parameter to `DefaultPyTorchSampler` and
+  `DefaultTensorFlowSampler`, which sets how far along an unbounded dimension that region extends
+  (default: 10.0). The region is also available to custom samplers as `starting_region` on
+  `PyTorchSampler` and `TensorFlowSampler`.
+
 ### Solver backend
 
 * Fixed error that occassionally happened with non-linear specifications.
