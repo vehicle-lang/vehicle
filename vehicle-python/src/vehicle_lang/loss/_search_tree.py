@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Any, Callable, List, Sequence, cast
 
 import torch
-
 from vehicle_lang._ast._nodes import (
     BooleanExpression,
     BooleanTree,
