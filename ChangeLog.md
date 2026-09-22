@@ -16,6 +16,8 @@
 
 * Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
 
+* A `Bool` `@parameter` is now treated as an opaque value rather than causing an internal error.
+
 ### Solver backend
 
 * Fixed internal error that occassionally happened with non-linear specifications.
@@ -29,6 +31,11 @@
 * Fixed bug where tensor stacks and functional vectors generated malformed Agda code.
 
 * Fixed bug where typed lambda and quantifier binders were generated with duplicate parentheses.
+
+### Python bindings
+
+* Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
+  later, which replaced them with a `FrozenInstanceError`.
 
 ## v0.28.0
 
