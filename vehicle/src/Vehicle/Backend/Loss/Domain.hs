@@ -106,7 +106,8 @@ processExpr expr = case expr of
   FreeVar {} -> return expr
   BoundVar {} -> return expr
   App fun args -> App <$> processExpr fun <*> traverse (traverse processExpr) args
-  Let p bound binder body -> Let p <$> processExpr bound <*> pure binder <*> processExpr body
+  Let p bound binder body ->
+    Let p <$> processExpr bound <*> pure binder <*> addNonTensorBinderToContext binder (processExpr body)
   Lam p binder body -> Lam p binder <$> addNonTensorBinderToContext binder (processExpr body)
   Record p t fs -> Record p t <$> traverseRecordFields processExpr fs
   RecordProj p t r field -> RecordProj p t <$> processExpr r <*> pure field

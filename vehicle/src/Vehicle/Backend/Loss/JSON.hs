@@ -405,7 +405,11 @@ convertExpr expr = do
     S.Pi {} -> resolutionError currentPass "Pi"
     S.Hole {} -> resolutionError currentPass "Pi"
     S.Meta {} -> resolutionError currentPass "Pi"
-    S.Let _ bound binder body -> Let <$> convertExpr bound <*> convertBinder binder <*> convertExpr body
+    S.Let _ bound binder body -> do
+      bound' <- convertExpr bound
+      binder' <- convertBinder binder
+      body' <- addNameToContext binder $ convertExpr body
+      return $ Let bound' binder' body'
     S.Record _ _typ fields -> do
       fields' <- traverse (\(k, v) -> (nameOf k,) <$> convertExpr v) fields
       return $ Record fields'
@@ -762,7 +766,11 @@ fromJExpr = \case
     let fieldIdent = FieldName mempty fieldName
     spine' <- traverse fromJExpr spine
     return $ normAppList (S.RecordProj mempty fakeRecordType record' fieldIdent) $ fmap explicit spine'
-  Let bound binder body -> S.Let mempty <$> fromJExpr bound <*> fromJBinder binder <*> fromJExpr body
+  Let bound binder body -> do
+    bound' <- fromJExpr bound
+    binder' <- fromJBinder binder
+    body' <- addNameToContext binder' (fromJExpr body)
+    return $ S.Let mempty bound' binder' body'
   BoolTensor t -> toConstructor (B.BoolTensorLiteral t) []
   BoolNot e -> toFunction B.Not [e]
   BoolAnd e1 e2 -> toFunction B.And [e1, e2]
