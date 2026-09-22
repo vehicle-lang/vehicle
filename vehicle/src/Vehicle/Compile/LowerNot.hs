@@ -60,6 +60,7 @@ lowerNot actions (TensorOp1Args dims value) = do
     VBoolTensorForeach args -> Forced . mkExpr accessForeachTensor <$> negateForeachArgs args
     VBoolTensorFoldList {} -> unblockAndNegate forcedValue
     VBoolTensorVectorAt {} -> unblockAndNegate forcedValue
+    VBoolTensorParameter {} -> unblockAndNegate forcedValue
 
   logDebugM MaxDetail $ do
     ctx <- getNameContext

@@ -131,6 +131,7 @@ unblockBoolTensorValue actions value = showEntry value $ do
     VBoolTensorVectorAt args -> unblockAtVector unblock (unblockIndexValue actions) args
     VBoolTensorForeach args -> unblockForeachTensor actions args
     VBoolTensorFoldList args -> unblockFoldList actions args
+    VBoolTensorParameter ident -> unblockDatasetOrParameter actions unblock ident
   where
     unblock = unblockBoolTensorValue actions
 
