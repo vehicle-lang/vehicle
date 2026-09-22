@@ -3,4 +3,4 @@ VehicleLoss = {trueElement = - infinity, falseElement = infinity, pointwiseNegat
 
 @property;
 p : (Tensor Real -> Tensor Real) -> Tensor Real;
-p classifier = VehicleLoss.pointwiseNegation nil (search [2] (const -infinity [2]) (const infinity [2]) (\x -> VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseDisjunction nil (VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseGreaterEqualThan nil (x ! 0) (x ! 1))) (VehicleLoss.pointwiseGreaterEqualThan nil (classifier x) 0.5))))
+p classifier = VehicleLoss.pointwiseNegation nil (search [2] (const -infinity [2]) (const infinity [2]) (\x -> VehicleLoss.pointwiseConjunction nil (VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseGreaterEqualThan nil (classifier x) 0.5)) (VehicleLoss.pointwiseGreaterEqualThan nil (x ! 0) (x ! 1))))
