@@ -9,6 +9,12 @@
     }
   },
   {
+    "name": "Agda",
+    "run": "vehicle compile itp -s spec2.vcl -t Agda -o Agda.agda",
+    "needs": ["spec2.vcl"],
+    "produces": ["Agda.agda"]
+  },
+  {
     "name": "DL2Loss",
     "run": "vehicle compile loss -s spec2.vcl -l DL2Loss -o DL2Loss.vcl",
     "needs": ["spec2.vcl"],

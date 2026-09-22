@@ -13,6 +13,7 @@ open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module Agda where
 
@@ -22,10 +23,10 @@ zeroD : Tensor ℚ []
 zeroD = scalar (ℤ.+ 5 ℚ./ 2)
 
 oneD : Tensor ℚ (2 ∷ [])
-oneD = stack zeroD (natScalar 1)
+oneD = stack (zeroD ∷ᵥ (natScalar 1) ∷ᵥ []ᵥ)
 
 twoD : Tensor ℚ (2 ∷ (2 ∷ []))
-twoD = stack oneD (natScalar 2∷ᵥnatScalar 3∷ᵥ[]ᵥ)
+twoD = stack (oneD ∷ᵥ (natScalar 2 ∷ᵥ natScalar 3 ∷ᵥ []ᵥ) ∷ᵥ []ᵥ)
 
 lookup2D : Tensor ℚ []
 lookup2D = (twoD ! # 0) ! # 1

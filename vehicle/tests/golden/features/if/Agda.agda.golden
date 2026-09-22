@@ -15,13 +15,14 @@ open import Data.Rational as ℚ using (ℚ)
 open import Data.Bool as 𝔹 using (Bool; true; false; if_then_else_)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module Agda where
 
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
-postulate prop1 : ∀ x → (natScalar 0) < x × x < (natScalar 1) → if x >ᵇ∙ (scalar (ℤ.+ 1 ℚ./ 2)) then (f (stack x) ! # 0) > (natScalar 0) else (f (stack x) ! # 0) ≤ (natScalar 0)
+postulate prop1 : ∀ x → (natScalar 0) < x × x < (natScalar 1) → if x >ᵇ∙ (scalar (ℤ.+ 1 ℚ./ 2)) then (f (stack (x ∷ᵥ []ᵥ)) ! # 0) > (natScalar 0) else (f (stack (x ∷ᵥ []ᵥ)) ! # 0) ≤ (natScalar 0)
 
-postulate prop2 : ∃ λ x → ((natScalar 0) < x × x < (natScalar 1)) × (f (stack (if x >ᵇ∙ (scalar (ℤ.+ 1 ℚ./ 2)) then x else (scalar (ℤ.+ 1 ℚ./ 5)))) ! # 0) ≥ (natScalar 0)
+postulate prop2 : ∃ λ x → ((natScalar 0) < x × x < (natScalar 1)) × (f (stack ((if x >ᵇ∙ (scalar (ℤ.+ 1 ℚ./ 2)) then x else (scalar (ℤ.+ 1 ℚ./ 5))) ∷ᵥ []ᵥ)) ! # 0) ≥ (natScalar 0)
 
-postulate prop3 : ∃ λ x → ((natScalar 0) < x × x < (natScalar 1)) × (if (f (stack x) ! # 0) >ᵇ∙ (natScalar 0) then x ≥ (scalar (ℤ.+ 1 ℚ./ 2)) else x < (scalar (ℤ.+ 1 ℚ./ 2)))
+postulate prop3 : ∃ λ x → ((natScalar 0) < x × x < (natScalar 1)) × (if (f (stack (x ∷ᵥ []ᵥ)) ! # 0) >ᵇ∙ (natScalar 0) then x ≥ (scalar (ℤ.+ 1 ℚ./ 2)) else x < (scalar (ℤ.+ 1 ℚ./ 2)))

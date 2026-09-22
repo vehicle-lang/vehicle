@@ -20,15 +20,15 @@ open import Function.Base
 module Agda where
 
 Image : Set
-Image = Tensor ℚ (28 ∷ (28 ∷ []))
+Image = Tensor ℚ (2 ∷ (2 ∷ []))
 
 Label : Set
-Label = Fin 10
+Label = Fin 3
 
 ValidImage : Image → Set
 ValidImage x = ∀ i → ∀ j → (natScalar 0) ≤ ((x ! i) ! j) × ((x ! i) ! j) ≤ (natScalar 1)
 
-postulate classifier : Image → Tensor ℚ (10 ∷ [])
+postulate classifier : Image → Tensor ℚ (3 ∷ [])
 
 Advises : Image → Label → Set
 Advises x i = ∀ j → j ≉ i → (classifier x ! i) > (classifier x ! j)
@@ -41,10 +41,13 @@ BoundedByEpsilon x = ∀ i → ∀ j → 𝕋.- epsilon ≤ ((x ! i) ! j) × ((x
 RobustAround : Image → Label → Set
 RobustAround image label = ∀ perturbation → let perturbedImage = image 𝕋.- perturbation in BoundedByEpsilon perturbation × ValidImage perturbedImage → Advises perturbedImage label
 
-postulate n : ℕ
+n : ℕ
+n = 1
 
-postulate trainingImages : Vector Image n
+trainingImages : Vector Image n
+trainingImages = (natScalar 1 ∷ᵥ natScalar 2 ∷ᵥ []ᵥ ∷ᵥ natScalar 3 ∷ᵥ natScalar 4 ∷ᵥ []ᵥ ∷ᵥ []ᵥ) ∷ᵥ []ᵥ
 
-postulate trainingLabels : Vector Label n
+trainingLabels : Vector Label n
+trainingLabels = # 0 ∷ᵥ []ᵥ
 
 postulate robust : foreachNary (λ i → RobustAround (trainingImages $ i) (trainingLabels $ i))
