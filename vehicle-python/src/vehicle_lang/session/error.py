@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from ..error import VehicleError
 
 
-@dataclass(frozen=True)
+@dataclass(eq=False)
 class VehicleSessionClosed(VehicleError):
     pass
 
 
-@dataclass(frozen=True)
+@dataclass(eq=False)
 class VehicleSessionUsed(VehicleError):
     pass
