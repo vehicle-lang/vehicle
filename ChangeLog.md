@@ -14,13 +14,17 @@
 
 ### Loss backend
 
-* Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
+* Fixed error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
 
-* A `Bool` `@parameter` is now treated as an opaque value rather than causing an internal error.
+* Fixed error when a property contains a `let` binding, both inside a quantifier,
+  e.g. `forall x . let y = x in f [y] ! 0 >= 0.5`, and scoping over one,
+  e.g. `let c = 0.5 in forall x . f [x] ! 0 >= c`.
+
+* Fixed error that occurred when using `@parameter`s of type `Bool`.
 
 ### Solver backend
 
-* Fixed internal error that occassionally happened with non-linear specifications.
+* Fixed error that occassionally happened with non-linear specifications.
 
 ### Agda backend
 
