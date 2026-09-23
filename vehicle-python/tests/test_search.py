@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
-
 from vehicle_lang.typing import DL2DifferentiableLogic, VehicleDifferentiableLogic
 
 from .config import HASKELL_GOLDEN_TESTS_PATH
