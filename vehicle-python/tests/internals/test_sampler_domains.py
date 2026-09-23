@@ -3,7 +3,6 @@
 from typing import Any, Tuple
 
 import pytest
-
 import vehicle_lang as vcl
 
 from ..config import PYTHON_TEST_SPECS_PATH
