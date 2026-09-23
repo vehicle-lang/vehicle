@@ -323,6 +323,7 @@ traverseFreeVarsM underBinder processFreeVar = go
         e' <- go e
         pure (Differentiate p e' field)
 
+-- TODO: ASK
 -- versus return $
 -- versus
 -- Differentiate p e field -> Differentiate p <$> go e <*> pure field
@@ -372,6 +373,7 @@ traverseBoundVariables_ f ctxSize = go ctxSize
         go (depth + 1) body
       Record _ i fs -> do go depth i; traverseRecordFields_ (go depth) fs
       RecordProj _ t r _field -> do go depth t; go depth r
+      Differentiate _ e _ -> do go depth e
 
 replaceProvenance :: Provenance -> Expr builtin -> Expr builtin
 replaceProvenance p = go
@@ -390,6 +392,9 @@ replaceProvenance p = go
       Lam _ binder e -> Lam p (fmap go binder) (go e)
       Record _ ident fields -> Record p ident (mapRecordFields go fields)
       RecordProj _ recordType record field -> RecordProj p (go recordType) (go record) field
+      Differentiate _ e field -> Differentiate p (go e) field
+
+-- super not certain here, why do we not change provenance of fields, but we do for expr?
 
 -----------------------------------------------------------------------------
 -- Instances
@@ -485,6 +490,7 @@ instance Substitutable (Expr builtin) (Expr builtin) where
     Lam p binder e -> Lam p <$> traverse subst binder <*> underDBBinder (subst e)
     Record p i fs -> Record p i <$> traverseRecordFields subst fs
     RecordProj p t r field -> RecordProj p <$> subst t <*> subst r <*> pure field
+    Differentiate p e field -> Differentiate p <$> subst e <*> pure field
 
 shiftDBIndex :: Ix -> Lv -> Ix
 shiftDBIndex i l = Ix (unIx i + unLv l)
