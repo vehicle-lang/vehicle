@@ -133,6 +133,8 @@ data Expr builtin
       Provenance
       (Expr builtin) --
       FieldName --
+      -- scoped will work out the type of the record expr you are trying to match
+      -- should be adding more type information here
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 --------------------------------------------------------------------------------
