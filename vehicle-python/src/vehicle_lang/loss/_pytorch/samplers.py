@@ -19,8 +19,27 @@ else:  # pragma: no cover - exercised implicitly
 
 
 class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
-    @abstractmethod
     def get_loss_and_input(
+        self,
+        dims: Sequence[int],
+        lower_bound: torch.Tensor,
+        upper_bound: torch.Tensor,
+        search_lambda: Callable[[torch.Tensor], torch.Tensor],
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
+        self._validate_domain(lower_bound, upper_bound)
+        return self._get_loss_and_input(dims, lower_bound, upper_bound, search_lambda)
+
+    def _validate_domain(
+        self,
+        lower_bound: torch.Tensor,
+        upper_bound: torch.Tensor,
+    ) -> None:
+        if not torch.all(lower_bound <= upper_bound).item():
+            raise ValueError(
+                "Empty sampling domain: lower bound exceeds upper bound.")
+
+    @abstractmethod
+    def _get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
@@ -53,7 +72,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
         self.num_steps = num_steps
         self.seed = seed
 
-    def get_loss_and_input(
+    def _get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
@@ -91,7 +110,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
         for _ in range(self.num_samples):
             # Start from a random initial point in the valid range
             current_point = (
-                lower_bound + torch.rand(dims, dtype=lower_bound.dtype) * range_size
+                lower_bound +
+                torch.rand(dims, dtype=lower_bound.dtype) * range_size
             )
 
             # Perform PGD iterations from this starting point
@@ -122,7 +142,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     # If gradient contains NaN, replace with zeros
                     if gradient is not None:
                         gradient = torch.where(
-                            torch.isnan(gradient), torch.zeros_like(gradient), gradient
+                            torch.isnan(gradient), torch.zeros_like(
+                                gradient), gradient
                         )
                     else:
                         gradient = torch.zeros_like(current_point_var)

@@ -17,8 +17,29 @@ else:  # pragma: no cover - exercised implicitly
 
 
 class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
-    @abstractmethod
     def get_loss_and_input(
+        self,
+        dims: Sequence[int],
+        lower_bound: tf.Tensor,
+        upper_bound: tf.Tensor,
+        search_lambda: Callable[[tf.Tensor], tf.Tensor],
+    ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]:
+        self._validate_domain(lower_bound, upper_bound)
+        return self._get_loss_and_input(dims, lower_bound, upper_bound, search_lambda)
+
+    def _validate_domain(
+        self,
+        lower_bound: tf.Tensor,
+        upper_bound: tf.Tensor,
+    ) -> None:
+        tf.debugging.assert_less_equal(
+            lower_bound,
+            upper_bound,
+            message="Empty sampling domain: lower bound exceeds upper bound.",
+        )
+
+    @abstractmethod
+    def _get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: tf.Tensor,
@@ -51,7 +72,7 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
         self.num_steps = num_steps
         self.seed = seed
 
-    def get_loss_and_input(
+    def _get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: tf.Tensor,
@@ -114,7 +135,8 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                     gradient = tf.zeros_like(x)
                 else:
                     gradient = tf.where(
-                        tf.math.is_nan(gradient), tf.zeros_like(gradient), gradient
+                        tf.math.is_nan(gradient), tf.zeros_like(
+                            gradient), gradient
                     )
 
                 # To find worst-case inputs that make the loss high, we need to
@@ -122,7 +144,8 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                 perturbation = -epsilon * tf.sign(gradient)
 
                 # Apply perturbation and clip to bounds
-                current_point = tf.clip_by_value(current_point + perturbation, lb, ub)
+                current_point = tf.clip_by_value(
+                    current_point + perturbation, lb, ub)
 
             points.append(current_point)
             # Evaluate and store the final result from this trajectory
@@ -142,7 +165,7 @@ class ConstantTensorFlowSampler(TensorFlowSampler):
         self.constant_value = constant_value
         self.num_samples = num_samples
 
-    def get_loss_and_input(
+    def _get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: tf.Tensor,

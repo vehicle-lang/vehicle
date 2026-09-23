@@ -25,6 +25,8 @@
 * Introduced gradient-based counter-example search for properties. This can be used via the
   the `search` function in Vehicle's Python API, currently only available for the PyTorch module
   (the same can be implemented for the TensorFlow module in future).
+  
+* Fixed bug where samplers were not checking if a sampling domain was actually empty, e.g. `(1, -1)`, before running the underlying search procedure.
 
 ### Solver backend
 
