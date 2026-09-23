@@ -592,7 +592,11 @@ class Main(Program):
 
 @dataclass(frozen=True)
 class SearchMain(Program):
-    """Stores boolean trees and declarations"""
+    """
+    Stores properties in a specification in the form of boolean trees which are
+    traversed for counter-example search, and a program including leaves of the
+    trees as boolean expressions and loss.
+    """
 
     trees: Sequence[BooleanTree]
     program: Main

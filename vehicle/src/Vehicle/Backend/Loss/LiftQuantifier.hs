@@ -54,11 +54,11 @@ compileHardBooleanTree value = do
     VAnd (TensorOp2Args _ arg1 arg2) -> do
       arg1' <- compileHardBooleanTree arg1
       arg2' <- compileHardBooleanTree arg2
-      return $ andTrivial (\x y -> andBoolExpr x y) arg1' arg2'
+      return $ andTrivial andBoolExpr arg1' arg2'
     VOr (TensorOp2Args _ arg1 arg2) -> do
       arg1' <- compileHardBooleanTree arg1
       arg2' <- compileHardBooleanTree arg2
-      return $ orTrivial (\x y -> orBoolExpr x y) arg1' arg2'
+      return $ orTrivial orBoolExpr arg1' arg2'
     VNot args -> do
       errorOrResult <- runExceptT $ lowerNot noUnblocking args
       case errorOrResult of
@@ -68,8 +68,8 @@ compileHardBooleanTree value = do
         Right result -> compileHardBooleanTree result
     VQuantifyRatTensor (quantifier, args) -> do
       case quantifier of
-        -- If a universal quantifier is encountered, convert it to not exists not ...
-        -- then call liftQuantifiers on (exists not ...)
+        -- If a universal quantifier is encountered, convert it to `not exists not` ...
+        -- then call liftQuantifiers on `exists not ...`
         Forall -> do
           let negatedBody = negateQuantifierBody args
           let existsExpr = Forced $ mkExpr accessQuantifyRatTensor (Exists, negatedBody)
@@ -99,12 +99,8 @@ compileHardBooleanTree value = do
     VCompareIndex _ -> unblock
     VCompareNat _ -> unblock
     VCompareRatTensor _ -> unblock
-    VBoolIf args -> do
-      unfolded <- unfoldIf args
-      compileHardBooleanTree unfolded
-    VImplies args -> do
-      let noImplies = elimImplies args
-      compileHardBooleanTree noImplies
+    VBoolIf args -> compileHardBooleanTree =<< unfoldIf args
+    VImplies args -> compileHardBooleanTree $ elimImplies args
     VBoolVectorAt {} -> unblock
     VBoolFoldList {} -> unblock
     VReduceAndTensor {} -> unblock
@@ -258,7 +254,9 @@ updateVarLevels liftedBinders value = do
     VFreeVar ident spine -> VFreeVar ident <$> traverseArgs (updateVarLevels liftedBinders) spine
     VBuiltin ident spine -> VBuiltin ident <$> traverseArgs (updateVarLevels liftedBinders) spine
     VUniverse args -> return $ VUniverse args
-    VBoundVar lv spine -> VBoundVar (lv + Lv (length liftedBinders)) <$> traverseArgs (updateVarLevels liftedBinders) spine
+    VBoundVar lv spine -> do
+      let lv' = lv + Lv (length liftedBinders)
+      VBoundVar lv' <$> traverseArgs (updateVarLevels liftedBinders) spine
     VPi binder closure -> do
       binder' <- traverse (updateVarLevels liftedBinders) binder
       closure' <- updateVarLevelsInClosure liftedBinders closure

@@ -1,12 +1,10 @@
 module Vehicle.Backend.LossSearch
-  ( convertToSearchTree,
-    BooleanTree (..),
+  ( BooleanTree (..),
+    convertToSearchTree,
   )
 where
 
 import Control.Monad.Reader
--- import Data.Map qualified as Map
-
 import Data.List.NonEmpty (fromList, toList)
 import Data.Maybe (fromMaybe, maybeToList)
 import Data.Proxy (Proxy (..))
@@ -33,6 +31,9 @@ import Vehicle.Data.Variable.Bound.Context.Tensor.Instance (runFreshTensorBoundC
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), runFreshFreeContextT)
 import Vehicle.Verify.Specification (Property, QuerySet (..))
 
+-- Represents a property that has been converted into a tree structure with fixed Conjuncts/Disjuncts
+-- and leaves corresponding to expressions which need to be searched to find a counter-example or
+-- witness for the overall property
 data BooleanTree
   = BooleanTree Provenance Identifier (Property Name)
   deriving (Show, Generic)
@@ -63,7 +64,10 @@ convertDecls = \case
   decl : decls -> do
     (maybeBooleanTree, maybeBoolDecl, maybeDomainExtractedDecl) <- convertDecl decl
     (booleanTrees, boolDecls, domainExtractedDecls) <- addDeclEntryToContext decl $ convertDecls decls
-    return (maybeToList maybeBooleanTree ++ booleanTrees, fromMaybe [] maybeBoolDecl ++ boolDecls, fromMaybe [] maybeDomainExtractedDecl ++ domainExtractedDecls)
+    let newBooleanTrees = maybeToList maybeBooleanTree ++ booleanTrees
+    let newBoolDecls = fromMaybe [] maybeBoolDecl ++ boolDecls
+    let newDomainExtractedDecls = fromMaybe [] maybeDomainExtractedDecl ++ domainExtractedDecls
+    return (newBooleanTrees, newBoolDecls, newDomainExtractedDecls)
 
 convertDecl ::
   forall m.
@@ -119,14 +123,13 @@ reconstructQuerySet ::
   QuerySet LiftedData ->
   m (QuerySet Name, [Decl Builtin], [Decl Builtin])
 reconstructQuerySet p ident sort typ (QuerySet negated (DisjunctAll liftedData)) = do
-  reconstructedDisjuncts <- runReaderT (traverse (reconstructQueryDisjunct p ident sort typ) liftedData) (ident, p)
+  reconstructedDisjuncts <- traverse (reconstructQueryDisjunct p ident sort typ) liftedData
   let (domainExtractedNames, boolDecls, domainExtractedDecls) = unzip3 $ toList reconstructedDisjuncts
   return (QuerySet negated (DisjunctAll $ fromList $ concat domainExtractedNames), concat boolDecls, concat domainExtractedDecls)
 
 reconstructQueryDisjunct ::
   ( MonadSearch m,
-    MonadSupply Int m,
-    MonadReader DeclProvenance m
+    MonadSupply Int m
   ) =>
   Provenance ->
   Identifier ->
@@ -135,21 +138,21 @@ reconstructQueryDisjunct ::
   LiftedData ->
   m ([Name], [Decl Builtin], [Decl Builtin])
 reconstructQueryDisjunct p ident sort typ liftedData = do
-  (quantifiedBoolExpr, boolExpr) <- runFreshNameBoundContextT $ reconstructExpr liftedData
+  (quantifiedBoolExpr, unquantifiedBoolExpr) <- runFreshNameBoundContextT $ reconstructExpr liftedData
   logDebug MaxDetail $ prettyFriendlyEmptyCtx quantifiedBoolExpr
   domainExtractedExprs <- runFreshTensorBoundContextT $ do
     forcedValue <- forceThunk quantifiedBoolExpr
     -- Separate VQuantifyRecord case not handled yet
     case toBoolValue forcedValue of
       VQuantifyRatTensor args -> do
-        domainExtracted <- compileQuantifier mempty args
+        domainExtracted <- runReaderT (compileQuantifier mempty args) (ident, p)
         return $ toList $ unDisjunctAll domainExtracted
       _ -> return [unnormalise 0 quantifiedBoolExpr]
-  (domainExtractedNames, boolDecls, domainExtractedDecls) <- reconstructDecls p ident sort typ (unnormalise 0 boolExpr) domainExtractedExprs
+  (domainExtractedNames, boolDecls, domainExtractedDecls) <- reconstructDecls p ident sort typ (unnormalise 0 unquantifiedBoolExpr) domainExtractedExprs
   return (domainExtractedNames, boolDecls, domainExtractedDecls)
 
 -- Returns a Thunk representing a quantified expression, and
--- a Thunk representing a non-quantified expression with VLam(s) around it
+-- a Thunk representing a unquantified expression with VLam(s) around it
 reconstructExpr ::
   ( MonadCompile m,
     MonadFreeContext Builtin m,
@@ -174,7 +177,7 @@ reconstructExpr (quantifiers, value) = case quantifiers of
         Right typ -> return (Forced $ mkExpr accessQuantifyRecord (quantifier, QuantifyRecordArgs typ binder (Closure newEnv newQuantifiedBody)))
     return (newQuantifiedExpr, newLamExpr)
 
--- This takes a single non-quantified expression, and
+-- This takes a single unquantified expression, and
 -- a list of the domain extracted expressions associated with it
 reconstructDecls ::
   ( MonadCompile m,

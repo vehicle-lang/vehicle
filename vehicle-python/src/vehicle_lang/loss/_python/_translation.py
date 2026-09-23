@@ -8,6 +8,7 @@ from types import CodeType
 from typing import Any, Iterator, Mapping, Sequence
 
 import black
+
 from vehicle_lang._temporary_files import VEHICLE_PATH
 
 from ..._ast import _nodes as vcl
@@ -15,7 +16,9 @@ from .._abc import ABCSampler, AnyBuiltins, Index, Tensor
 
 
 # Helper to raise a TypeError while compiling
-def invalid_type(py_ast: py.Module | py.Expression, error: TypeError) -> TypeError:
+def raise_invalid_type(
+    py_ast: py.Module | py.Expression, error: TypeError
+) -> TypeError:
     py_ast_str: str
     try:
         py_ast_str = py.unparse(py_ast)
@@ -53,7 +56,7 @@ class PythonTranslation(metaclass=ABCMeta):
         try:
             py_bytecode = compile(py_ast, filename=str(path), mode=mode)
         except TypeError as e:
-            invalid_type(py_ast, e)
+            raise_invalid_type(py_ast, e)
         return py_bytecode
 
     def compile_program(
@@ -61,7 +64,7 @@ class PythonTranslation(metaclass=ABCMeta):
         program: vcl.Program,
         path: str | Path,
         declaration_context: dict[str, Any],
-        samplers: dict[str, Any],
+        samplers: Mapping[str, ABCSampler[Index, Tensor]],
     ) -> dict[str, Any]:
         py_ast = self.translate_program(program)
         try:
@@ -84,7 +87,7 @@ class PythonTranslation(metaclass=ABCMeta):
 
             exec(py_bytecode, declaration_context)
         except TypeError as e:
-            invalid_type(py_ast, e)
+            raise_invalid_type(py_ast, e)
         return {
             key: value
             for key, value in declaration_context.items()
@@ -109,7 +112,7 @@ class PythonTranslation(metaclass=ABCMeta):
             result = eval(py_bytecode, declaration_context)
             return result
         except TypeError as e:
-            invalid_type(py_ast, e)
+            raise_invalid_type(py_ast, e)
 
     def translate_program(self, program: vcl.Program) -> py.Module:
         match program:

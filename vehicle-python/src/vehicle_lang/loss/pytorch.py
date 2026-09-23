@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 from vehicle_lang.loss._search_tree import search_tree
 
@@ -25,7 +25,7 @@ def load_specification(
     path: str | Path,
     *,
     logic: DifferentiableLogic = DL2DifferentiableLogic(),
-    samplers: dict[str, Any] | None = None,
+    samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -46,7 +46,7 @@ def search(
     path: str | Path,
     *,
     logic: DifferentiableLogic = DL2DifferentiableLogic(),
-    samplers: dict[str, Any] | None = None,
+    samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: dict[str, Any] | None = None,
     networks: dict[DeclarationName, Any] = {},

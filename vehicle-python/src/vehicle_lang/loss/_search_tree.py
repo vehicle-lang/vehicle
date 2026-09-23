@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import Any, Callable, List, Sequence, cast
+from typing import Any, Callable, Mapping, Sequence, cast
 
 import torch
+
 from vehicle_lang._ast._nodes import (
     BooleanExpression,
     BooleanTree,
@@ -18,7 +19,7 @@ def search_tree(
     boolean_tree: BooleanTree,
     declarations: dict[str, Any],
     bound_vars: dict[str, Any],
-    samplers: dict[str, Any] | None = None,
+    samplers: Mapping[str, Any] | None = None,
 ) -> Sequence[dict[str, Any]]:
     """
     Traverses a property's boolean tree and searches for a counter-example if the property is universally quantified,
@@ -40,71 +41,79 @@ def search_tree(
     ) -> tuple[bool, Sequence[dict[str, Any]]]:
 
         if isinstance(node, NonTrivialQuery):
-            for query_disjunct in node.disjunct_all:
-                loss_fn = declarations[query_disjunct]
-                bool_fn = declarations[f"{query_disjunct}_bool"]
-                bound_var_data = bound_vars[query_disjunct]
-
-                sample = search_witness(bound_var_data, loss_fn, samplers)
-
-                # Check if sample found by gradient descent is an actual witness
-                is_witness = bool_fn(**sample).item()
-
-                # If we have found a witness to a query disjunct (i.e. a witness to the entire query), and the query is negated
-                # the boolean result propagated up from here is False
-                if is_witness is True:
-                    if node.negated:
-                        return (False, [sample])
-                    # If we have found a witness to a query disjunct, but the query is not negated
-                    # the boolean value propagated up from here is True
-                    else:
-                        return (True, [sample])
-                # If we did not manage to find a witness to the current query disjunct,
-                # keep searching other disjuncts.
-
-            # If we did not manage to find a witness to any query disjunct, and the query is negated
-            # the boolean result propagated up from here is True
-            if node.negated:
-                return (True, [])
-            # If we did not manage to find a witness to any query disjunct, and the query is not negated
-            # the boolean result propagated up from here is False
-            else:
-                return (False, [])
+            return search_query(node)
 
         elif isinstance(node, Conjunct):
-            new_samples_after_conjunct: list[dict[str, Any]] = []
-
-            for conjunct in node.conjunct_all:
-                boolean_result, samples = traverse_boolean_expr(conjunct)
-
-                # After traversing into the current conjunct, if the boolean result propagated up is False,
-                # there is no need to traverse into other conjuncts
-                if boolean_result is False:
-                    return (False, samples)
-                # If the boolean result propagated up is True, we need to keep traversing into other conjuncts and
-                # form a new set of samples with the sample propagated up
-                else:
-                    new_samples_after_conjunct += samples
-            return (True, new_samples_after_conjunct)
+            return traverse_conjunct(node)
 
         elif isinstance(node, Disjunct):
-            new_samples_after_disjunct: list[dict[str, Any]] = []
-            for disjunct in node.disjunct_all:
-                boolean_result, samples = traverse_boolean_expr(disjunct)
-
-                # After traversing into the current disjunct, if the boolean result propagated up is True,
-                # there is no need to traverse into other disjuncts
-                if boolean_result is True:
-                    return (True, samples)
-                # If the boolean result propagated up is False, we need to keep traversing into other disjuncts and
-                # form a new set of samples with the sample propagated up
-                else:
-                    new_samples_after_disjunct += samples
-            return (False, new_samples_after_disjunct)
+            return traverse_disjunct(node)
 
         else:
             node = cast(TrivialQuery, node)
             return (node.boolean_value, [])
+
+    def search_query(node: NonTrivialQuery) -> tuple[bool, Sequence[dict[str, Any]]]:
+        for query_disjunct in node.disjunct_all:
+            loss_fn = declarations[query_disjunct]
+            bool_fn = declarations[f"{query_disjunct}_bool"]
+            bound_var_data = bound_vars[query_disjunct]
+
+            sample = search_witness(bound_var_data, loss_fn, samplers)
+
+            # Check if sample found by gradient descent is an actual witness
+            is_witness = bool_fn(**sample).item()
+
+            # If we have found a witness to a query disjunct (i.e. a witness to the entire query), and the query is negated
+            # the boolean result propagated up from here is False
+            if is_witness is True:
+                if node.negated:
+                    return (False, [sample])
+                # If we have found a witness to a query disjunct, but the query is not negated
+                # the boolean value propagated up from here is True
+                else:
+                    return (True, [sample])
+            # If we did not manage to find a witness to the current query disjunct,
+            # keep searching other disjuncts.
+
+        # If we did not manage to find a witness to any query disjunct, and the query is negated
+        # the boolean result propagated up from here is True
+        if node.negated:
+            return (True, [])
+        # If we did not manage to find a witness to any query disjunct, and the query is not negated
+        # the boolean result propagated up from here is False
+        else:
+            return (False, [])
+
+    def traverse_conjunct(node: Conjunct) -> tuple[bool, Sequence[dict[str, Any]]]:
+        new_samples_after_conjunct: list[dict[str, Any]] = []
+        for conjunct in node.conjunct_all:
+            boolean_result, samples = traverse_boolean_expr(conjunct)
+
+            # After traversing into the current conjunct, if the boolean result propagated up is False,
+            # there is no need to traverse into other conjuncts
+            if boolean_result is False:
+                return (False, samples)
+            # If the boolean result propagated up is True, we need to keep traversing into other conjuncts and
+            # form a new set of samples with the sample propagated up
+            else:
+                new_samples_after_conjunct += samples
+        return (True, new_samples_after_conjunct)
+
+    def traverse_disjunct(node: Disjunct) -> tuple[bool, Sequence[dict[str, Any]]]:
+        new_samples_after_disjunct: list[dict[str, Any]] = []
+        for disjunct in node.disjunct_all:
+            boolean_result, samples = traverse_boolean_expr(disjunct)
+
+            # After traversing into the current disjunct, if the boolean result propagated up is True,
+            # there is no need to traverse into other disjuncts
+            if boolean_result is True:
+                return (True, samples)
+            # If the boolean result propagated up is False, we need to keep traversing into other disjuncts and
+            # form a new set of samples with the sample propagated up
+            else:
+                new_samples_after_disjunct += samples
+        return (False, new_samples_after_disjunct)
 
     _, samples = traverse_boolean_expr(boolean_tree.boolean_expression)
     return samples
@@ -113,7 +122,7 @@ def search_tree(
 def search_witness(
     bound_var_data: Sequence[BoundVarData],
     loss_fn: Callable[..., torch.Tensor],
-    samplers: dict[str, Any] | None = None,
+    samplers: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Uses gradient descent to search for a single witness. A round-robin approach is used to find

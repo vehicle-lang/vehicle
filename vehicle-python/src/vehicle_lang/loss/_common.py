@@ -55,31 +55,29 @@ def load_loss_ast(
 ) -> Program:
     """Load a loss AST for training or search."""
 
-    program = load_ast(
+    return load_ast(
         path,
         mode=mode,
         target=logic,
         declarations=declarations,
     )
-    return program
 
 
 def translate_loss(
     path: str | Path,
     program: Program,
-    samplers: dict[str, Any],
+    samplers: Mapping[str, Any],
     declaration_context: dict[str, Any],
     translator: PythonTranslation,
 ) -> dict[str, Any]:
     """Translate a loss function using a provided backend factory."""
 
-    compiled = translator.compile_program(
+    return translator.compile_program(
         program=program,
         path=path,
         declaration_context=declaration_context,
         samplers=samplers,
     )
-    return compiled
 
 
 def translate_search_bounds(
@@ -122,7 +120,7 @@ def load_training_loss(
     path: str | Path,
     *,
     logic: DifferentiableLogic,
-    samplers: dict[str, Any] | None,
+    samplers: Mapping[str, Any] | None,
     declarations: Iterable[DeclarationName],
     declaration_context: dict[str, Any] | None,
     translation_factory: TranslationFactory,

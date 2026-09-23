@@ -5,8 +5,8 @@
     "needs": ["alternating.vcl", "fake.onnx"]
   },
   {
-    "name": "DL2LossSearch",
-    "run": "vehicle compile loss --lossMode Search -s alternating.vcl -l DL2Loss -o DL2LossSearch.vcl",
+    "name": "Search",
+    "run": "vehicle compile loss --lossMode Search -s alternating.vcl -l DL2Loss -o Search.vcl",
     "needs": ["alternating.vcl"]
   }
 ]

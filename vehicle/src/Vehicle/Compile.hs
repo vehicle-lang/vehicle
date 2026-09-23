@@ -199,9 +199,7 @@ compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON = do
   jsonSearchProg <- convertToJSONSearchProg (booleanTrees, searchProg)
   let outputText
         | outputAsJSON = prettyAsJSON jsonSearchProg
-        | otherwise =
-            let (_, prog) = convertFromJSONSearchProg jsonSearchProg
-             in prettyFriendly prog
+        | otherwise = prettyFriendly (snd (convertFromJSONSearchProg jsonSearchProg))
   writeResultToFile Nothing outputFile outputText
 
 hoistInferableParameters ::
