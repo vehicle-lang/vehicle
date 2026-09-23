@@ -36,10 +36,10 @@ instance FromJSON NetworkContextInfo
 type MetaNetwork = [(Name, NetworkContextInfo, Int)]
 
 inputShape :: NetworkContextInfo -> NetworkModality TensorShape
-inputShape = fmap getIODims . networkInputType . networkType
+inputShape = fmap dimensions . networkInputType . networkType
 
 outputShape :: NetworkContextInfo -> NetworkModality TensorShape
-outputShape = fmap getIODims . networkOutputType . networkType
+outputShape = fmap dimensions . networkOutputType . networkType
 
 --------------------------------------------------------------------------------
 -- Queries misc

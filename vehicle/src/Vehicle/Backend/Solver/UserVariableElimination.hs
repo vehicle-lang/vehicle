@@ -15,6 +15,11 @@ import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
 import Data.Map qualified as Map
+{- constructTensorisableDims, constructToTensorFreeVar -}
+
+{- replaceTensorVariableWithStackedChildren, -}
+
+import Data.Map.Ordered qualified as OMap
 import Data.Text qualified as Text
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
@@ -33,7 +38,7 @@ import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar {- constructTensorisableDims, constructToTensorFreeVar -})
+import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar)
 import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..))
 import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
@@ -43,8 +48,9 @@ import Vehicle.Data.Code.BooleanExpr (elimIfTree)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.MaybeTrivial
+import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name (getFreshTensorBinderName, getNameContext, prettyFriendlyInCtx)
-import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStackedChildren)
+import Vehicle.Data.Variable.Bound.Context.Tensor (lookupNestedSliceVariable)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields, getRecordProvenance)
 import Vehicle.Libraries.StandardLibrary (standardLibIdent)
@@ -126,7 +132,7 @@ eliminateExists (QuantifyRatTensorArgs _ binder closure) = do
 
     -- Update the global context
     globalCtx <- get
-    (userVar, newGlobalCtx) <- addUserVarToGlobalContext binder (UniModal userVarShape) globalCtx
+    (userVar, newGlobalCtx) <- addUserVarToGlobalContext binder (UniModal . TensorModality $ userVarShape) globalCtx
     put newGlobalCtx
 
     -- Normalise the expression
@@ -280,10 +286,52 @@ unblockQuantifiedBoundVar ::
   (MonadQuantifierBody m) =>
   Lv ->
   m (Thunk Builtin)
-unblockQuantifiedBoundVar lv =
-  replaceTensorVariableWithStackedChildren (SliceVariable lv)
+unblockQuantifiedBoundVar lv = do
+  sliceVar <- lookupNestedSliceVariable (SliceVariable lv)
+  return $ case nestedTensorShape sliceVar of
+    UniModal (TensorModality shape) -> replaceWithStackedChildren shape
+    UniModal (RecordModality recordId fields shape) -> replaceWithRecordOfChildren recordId (map (,shape) fields)
+    MultiModal recordId shapes -> replaceWithRecordOfChildren recordId shapes
+  where
+    replaceWithStackedChildren :: TensorShape -> Thunk Builtin
+    replaceWithStackedChildren shape = Forced $ case (getChildrenOfTensor lv shape, shape) of
+      (Nothing, []) -> VBoundVar lv []
+      (Just childVars, d : ds) ->
+        mkExpr accessStackTensor $
+          StackTensorArgs
+            { stackType = Forced IRatType,
+              stackFirstDim = Forced (INatLiteral d),
+              stackRemainingDims = Forced (mkDims ds),
+              stackElements = flip map childVars $ \v -> Forced $ VBoundVar (toLv v) []
+            }
+      _ -> developerError "mismatched children and shape"
+
+    replaceWithRecordOfChildren :: Identifier -> [(Name, NetworkTensorModality TensorShape)] -> Thunk Builtin
+    replaceWithRecordOfChildren recordId shapes = do
+      let recordType = Forced (VFreeVar recordId [])
+      let childShapes = getChildrenOfRecord lv shapes
+      let childFields = OMap.fromList . flip map childShapes $ \(name, var) ->
+            ( FieldName mempty name,
+              Forced (flip VBoundVar [] $ toLv var)
+            )
+      Forced (VRecord recordType childFields)
+
+    getChildrenOfTensor :: Lv -> TensorShape -> Maybe [NestedSliceVariable]
+    getChildrenOfTensor _ [] = Nothing
+    getChildrenOfTensor start (d : ds) = Just $ do
+      let subSize = numberOfSliceVariablesIn ds
+      let calculateChildStartingVar i = SliceVariable $ start + Lv (1 + subSize * i)
+      fmap (NestedSliceVariable (UniModal (TensorModality ds)) . calculateChildStartingVar) [0 .. d - 1]
+
+    getChildrenOfRecord :: Lv -> [(Name, NetworkTensorModality TensorShape)] -> [(Name, NestedSliceVariable)]
+    getChildrenOfRecord _ [] = []
+    getChildrenOfRecord start ((field, shape) : rest) = do
+      let first = (field, NestedSliceVariable (UniModal shape) $ SliceVariable start)
+      let nextStart = start + Lv (numberOfSliceVariablesIn . equivalentShape $ shape)
+      first : getChildrenOfRecord nextStart rest
 
 unblockNetworkApplication ::
+  forall m.
   (MonadQuantifierBody m) =>
   TypeUnblockingFunction (Thunk Builtin) m ->
   TypeUnblockingFunction (Thunk Builtin) m ->
@@ -297,57 +345,8 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   -- The low-level network representation works over tensors
   -- Create two tensors representing the network input and output
   (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
-  ctx <- getNameContext
-
-  -- Need to manually resolve the `HasComparison` instances for each
-  -- field in order to fully apply our actual instance. This should
-  -- be doable, given we know everything is either a Tensor or is a
-  -- TensorLike, in which case it carries its type with it anyway.
-  --
-  -- Since `HasComparison` is a type, we need to actually construct
-  -- the instance by hand using the generated `recordXyzHasComparison`
-  -- instances that we generated during scoping.
-
-  let realTensorEq :: Expr Builtin
-      realTensorEq = FreeVar mempty . standardLibIdent $ Text.pack "realTensorHasComparison"
-
-      mkComparisonInstance :: Identifier -> [Expr Builtin] -> Expr Builtin
-      mkComparisonInstance recordIdent argExprs = do
-        let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasComparison"
-        let instanceIdent = Identifier (modulePath recordIdent) instanceName
-        normAppList (FreeVar mempty instanceIdent) $ map explicit argExprs
-
-      mkRecordEqTypeFromTensorLike :: NetworkRecordType -> Expr Builtin
-      mkRecordEqTypeFromTensorLike t = do
-        let fieldComparisonInstances = replicate (length . recordFields $ t) realTensorEq
-        mkComparisonInstance (recordTypeIdent t) fieldComparisonInstances
-
-      mkRecordEqTypeFromMultiModal :: Identifier -> [(Name, NetworkIOBase)] -> Expr Builtin
-      mkRecordEqTypeFromMultiModal recordTy fields = do
-        let fieldCompInstances = flip map fields $ \(_, baseTy) -> case baseTy of
-              RecordIOType tl -> mkRecordEqTypeFromTensorLike tl
-              TensorIOType {} -> realTensorEq
-        mkComparisonInstance recordTy fieldCompInstances
-
-  inputEquality <- case networkInputType typ of
-    UniModal (TensorIOType (NetworkTensorType _ shape)) -> do
-      let dimensions = mkDims shape
-      toComparison
-        ( Eq,
-          TensorOp2Args
-            { tensorOp2Dims = Forced dimensions,
-              tensorOp2Arg1 = inputVarExpr,
-              tensorOp2Arg2 = arg
-            }
-        )
-    other -> do
-      let (recordComp, recordIdent) = case other of
-            UniModal (RecordIOType tl) -> (mkRecordEqTypeFromTensorLike tl, recordTypeIdent tl)
-            MultiModal recordTyp fields -> (mkRecordEqTypeFromMultiModal recordTyp fields, recordTyp)
-
-      let recordCompTy = Forced $ VFreeVar recordIdent []
-      let eqFn = Forced $ VRecordAcc recordCompTy (Unforced (namedBoundContextToEnv ctx) recordComp) (FieldName mempty "eq") [explicit inputVarExpr, explicit arg]
-      pure eqFn
+  env <- namedBoundContextToEnv <$> getNameContext
+  inputEquality <- makeNetworkEqualityFn env (networkInputType typ) inputVarExpr arg
 
   tell [inputEquality]
 
@@ -361,9 +360,55 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
 
   case networkOutputType typ of
     -- Unblock depending on the type of the output expression from our network
-    UniModal (RecordIOType (NetworkRecordType {})) -> unblockFnRecord outputVarExpr
-    UniModal (TensorIOType (NetworkTensorType {})) -> unblockFnTensor outputVarExpr
-    MultiModal _ _ -> unblockFnRecord outputVarExpr
+    UniModal (TensorModality {}) -> unblockFnTensor outputVarExpr
+    _ -> unblockFnRecord outputVarExpr
+  where
+    makeNetworkEqualityFn :: GenericBoundEnv NoMeta Builtin -> NetworkIOType -> Thunk Builtin -> Thunk Builtin -> m (Thunk Builtin)
+    makeNetworkEqualityFn env = \case
+      UniModal shape -> makeUniModalEqualityVal env shape
+      MultiModal recordId shapes -> makeMultiModalEqualityVal env recordId shapes
+
+    makeUniModalEqualityVal :: GenericBoundEnv NoMeta Builtin -> NetworkTensorModality NetworkIOBase -> Thunk Builtin -> Thunk Builtin -> m (Thunk Builtin)
+    makeUniModalEqualityVal env modality l r = case modality of
+      TensorModality shape ->
+        toComparison
+          ( Eq,
+            TensorOp2Args
+              { tensorOp2Dims = Forced (mkDims . dimensions $ shape),
+                tensorOp2Arg1 = l,
+                tensorOp2Arg2 = r
+              }
+          )
+      RecordModality recordId fields shape -> do
+        let comparisonTy = Forced (VFreeVar recordId [])
+        let comparisonFn = makeUniModalEqualityFn (RecordModality recordId fields shape)
+        let comparison = VRecordAcc comparisonTy (Unforced env comparisonFn) (FieldName mempty "eq") (map explicit [l, r])
+        pure (Forced comparison)
+
+    makeUniModalEqualityFn :: NetworkTensorModality NetworkIOBase -> Expr Builtin
+    makeUniModalEqualityFn modality = case modality of
+      TensorModality {} -> do
+        let comparisonName = Text.pack "realTensorHasComparison"
+        FreeVar mempty (standardLibIdent comparisonName)
+      RecordModality recordId fields shape -> do
+        let comparisonName = Text.pack "record" <> nameOf recordId <> "HasComparison"
+        let comparisonIdent = Identifier (modulePath recordId) comparisonName
+        let comparisonArgs = replicate (length fields) (makeUniModalEqualityFn shape)
+        normAppList (FreeVar mempty comparisonIdent) (map explicit comparisonArgs)
+
+    makeMultiModalEqualityVal :: GenericBoundEnv NoMeta Builtin -> Identifier -> [(Name, NetworkTensorModality NetworkIOBase)] -> Thunk Builtin -> Thunk Builtin -> m (Thunk Builtin)
+    makeMultiModalEqualityVal env recordId fields l r = do
+      let comparisonTy = Forced (VFreeVar recordId [])
+      let comparisonFn = makeMultiModalEqualityFn recordId fields
+      let comparison = VRecordAcc comparisonTy (Unforced env comparisonFn) (FieldName mempty "eq") (map explicit [l, r])
+      pure (Forced comparison)
+
+    makeMultiModalEqualityFn :: Identifier -> [(Name, NetworkTensorModality NetworkIOBase)] -> Expr Builtin
+    makeMultiModalEqualityFn recordId fields = do
+      let comparisonName = Text.pack "record" <> nameOf recordId <> "HasComparison"
+      let comparisonIdent = Identifier (modulePath recordId) comparisonName
+      let comparisonArgs = map (makeUniModalEqualityFn . snd) fields
+      normAppList (FreeVar mempty comparisonIdent) (map explicit comparisonArgs)
 
 --------------------------------------------------------------------------------
 -- Elimination operations

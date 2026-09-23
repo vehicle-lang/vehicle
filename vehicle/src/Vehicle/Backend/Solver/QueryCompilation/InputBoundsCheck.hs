@@ -26,7 +26,7 @@ import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsE
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.MaybeTrivial (MonadMaybeTrivial (..))
-import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorShape)
+import Vehicle.Data.Tensor (RatTensor, TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadReadableTensorBoundContext, getCompleteNamedCtx, lookupParentTensorVariable)
 import Vehicle.Data.Variable.Bound.Level
@@ -170,7 +170,7 @@ lookupCorrespondingInputVar var = do
       Just $
         VariableInfo
           { parentVariable = toTensorVar inputVar,
-            parentShape = shapeOf nestedSliceVar,
+            parentShape = nestedTensorShape nestedSliceVar,
             indices = indices
           }
 

@@ -68,28 +68,42 @@ getNetworkType decl networkType = do
       case toTypeValue forcedType of
         VTensorType _ dims -> do
           shape <- tensorDimensions io dims
-          return $ UniModal (TensorIOType $ NetworkTensorType NetworkRatType shape)
+          return (UniModal . TensorModality $ NetworkIOBase NetworkRatType shape)
         VTypeFreeVar ident _spine -> do
           sort <- getRecordSort ident
           fields <- getRecordFields ident
           case sort of
-            Just AnnTensor -> mkUniModalNetwork ident fields
+            Just AnnTensor -> UniModal <$> makeTensorLikeShape io tElem
             _ -> mkMultiModalNetwork io ident fields
         _ -> resourceTypingError ("network" <+> pretty io <+> "tensor") forcedType
 
-    mkUniModalNetwork :: Identifier -> GenericRecordFields (Expr Builtin) -> m NetworkIOType
-    mkUniModalNetwork ident fields = do
-      fieldNames <- getRecordFieldNames ident
-      shape <- getTensorRecordShape fields
-      let recordType = NetworkRecordType NetworkRatType ident shape (NonEmpty.toList fieldNames)
-      return . UniModal $ RecordIOType recordType
+    makeTensorLikeShape :: InputOrOutput -> UnforcedType Builtin -> m (NetworkTensorModality NetworkIOBase)
+    makeTensorLikeShape io ty = do
+      forcedTy <- forceThunk ty
+      case toTypeValue forcedTy of
+        VTensorType _ dims -> do
+          shape <- tensorDimensions io dims
+          return (TensorModality $ NetworkIOBase NetworkRatType shape)
+        VTypeFreeVar ident _ -> do
+          fieldNames <- NonEmpty.toList <$> getRecordFieldNames ident
+          nestedShape <- makeTensorLikeShape io =<< innerShapeOfTensorLike ident
+          return (RecordModality ident fieldNames nestedShape)
+        _ -> resourceTypingError ("network" <+> pretty io <+> "tensor") forcedTy
+
+    innerShapeOfTensorLike :: Identifier -> m (UnforcedType Builtin)
+    innerShapeOfTensorLike ident = do
+      fields <- getRecordFields ident
+      -- Assuming the record is tensor-like all fields will have the same type, so take the first
+      case fields of
+        ((_name, ty) : _rest) -> return (Unforced emptyBoundEnv ty)
+        _ -> error "Record shouldn't have no fields"
 
     mkMultiModalNetwork :: InputOrOutput -> Identifier -> GenericRecordFields (Expr Builtin) -> m NetworkIOType
     mkMultiModalNetwork io ident fields = do
       shapes <- mapM (mkShape io) fields
       return $ MultiModal ident shapes
 
-    mkShape :: InputOrOutput -> GenericRecordField (Expr Builtin) -> m (Name, NetworkIOBase)
+    mkShape :: InputOrOutput -> GenericRecordField (Expr Builtin) -> m (Name, NetworkTensorModality NetworkIOBase)
     mkShape io (FieldName _ name, typ) = do
       networkShape <- tensorType io $ Unforced emptyBoundEnv typ
       case networkShape of

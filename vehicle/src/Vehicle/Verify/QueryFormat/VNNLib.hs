@@ -4,9 +4,10 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkModality (..), NetworkType (networkInputType), getIODims, networkOutputType)
+import Vehicle.Compile.Resource (NetworkIOBase (dimensions), NetworkModality (..), NetworkTensorModality (..), NetworkType (networkInputType), networkOutputType)
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
+import Vehicle.Data.Variable.Bound.Level (equivalentShape)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
@@ -85,12 +86,12 @@ compileNetworkApp networkName networkType appIndex = do
         | otherwise = ""
   let networkVarName = compileNetworkName networkName appIndex
   let networkInputDocs = case networkTensor networkName networkType appIndex Input of
-        (name, UniModal shape) -> compileNetworkInput name shape
-        (_name, MultiModal _typ _shapes) -> error "MultiModal IO is unimplemented"
+        (name, UniModal shape) -> compileNetworkInput name (equivalentShape shape)
+        (_name, MultiModal _ident _shapes) -> error "MultiModal IO is unimplemented"
 
   let networkOutputDocs = case networkTensor networkName networkType appIndex Output of
-        (name, UniModal shape) -> compileNetworkOutput name shape
-        (_name, MultiModal _typ _shapes) -> error "MultiModal IO is unimplemented"
+        (name, UniModal shape) -> compileNetworkOutput name (equivalentShape shape)
+        (_name, MultiModal _ident _shapes) -> error "MultiModal IO is unimplemented"
 
   "(declare-network" <+> networkVarName
     <> line
@@ -109,8 +110,8 @@ networkTensor :: Name -> NetworkType -> Int -> InputOrOutput -> (Name, NetworkMo
 networkTensor networkName networkType appIndex inputOrOutput = do
   let name = layoutAsText $ compileNetworkVariableName networkName appIndex inputOrOutput
   case inputOrOutput of
-    Input -> (name, getIODims <$> networkInputType networkType)
-    Output -> (name, getIODims <$> networkOutputType networkType)
+    Input -> (name, dimensions <$> networkInputType networkType)
+    Output -> (name, dimensions <$> networkOutputType networkType)
 
 -- | Compile network name. Prefixes an index to all subsequent network applications
 compileNetworkName :: Name -> Int -> Doc a

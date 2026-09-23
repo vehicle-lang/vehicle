@@ -3,6 +3,7 @@ module Vehicle.Verify.QueryFormat.Interface where
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import Vehicle.Compile.Prelude (ExternalOutputFormat, InputOrOutput, MonadLogger, Name)
+import Vehicle.Compile.Resource (NetworkModality)
 import Vehicle.Data.Bound (BoundedValue, Domain)
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll)
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
@@ -27,7 +28,7 @@ data QueryVariableInfo = QueryVariableInfo
     -- | Does the variable represent an input or output tensor
     inputOrOutput :: InputOrOutput,
     -- | The shape of the tensor
-    parentVariableShape :: TensorShape,
+    parentVariableShape :: NetworkModality TensorShape,
     -- | The indices into the tensor to get the element of the tensor.
     parentVariableIndices :: TensorIndices
   }

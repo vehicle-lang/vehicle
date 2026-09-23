@@ -23,7 +23,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error.Property (propertyTraversalErrorDetails)
 import Vehicle.Compile.Print.Error.Typing
-import Vehicle.Compile.Resource (NetworkIOBase (..), NetworkModality (..), NetworkRecordType (..))
+import Vehicle.Compile.Resource (NetworkModality (..), NetworkTensorModality (RecordModality))
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
@@ -939,7 +939,7 @@ formatCompileError = \case
       -- prettyVar v = prettyFriendly (WithContext (VBoundVar @NoMeta @Builtin v mempty) ctx)
       unboundedVarInfo =
         case inputType of
-          UniModal (RecordIOType (NetworkRecordType _ recordTypeIdent _ fieldNames)) -> do
+          UniModal (RecordModality recordTypeIdent fieldNames _) -> do
             let varName = "x" :: Name
             pretty varName
               <> line

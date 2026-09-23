@@ -13,7 +13,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), MonadTrans (..), StateT (..), evalStateT, gets, mapStateT, modify)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkModality (..))
+import Vehicle.Compile.Resource (NetworkModality (..), NetworkTensorModality (TensorModality))
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadNameContext (..), MonadReadableNameContext (..), getBinderDepth)
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class
 import Vehicle.Data.Variable.Bound.Context.Tensor.Core
@@ -94,7 +94,7 @@ instance (Monad m) => MonadTensorBoundContext (TensorBoundContextT m) where
 
   addTensorBinderToContextLocally knownShapePrefix binder action =
     TensorBoundContextT $ do
-      localState (appendTensorVariableToNestedCtx (void binder) (UniModal knownShapePrefix)) $
+      localState (appendTensorVariableToNestedCtx (void binder) (UniModal . TensorModality $ knownShapePrefix)) $
         unTensorBoundContextT action
 
   addTensorBinderToContextPermenantly p name shape = do

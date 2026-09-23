@@ -26,6 +26,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (NetworkContext)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Resource (NetworkModality)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), unstackBounds)
 import Vehicle.Data.Code.BooleanExpr
@@ -253,14 +254,14 @@ compileQueryVariables compileVariable metaNetworkApps = do
       m [(QueryVariable, NetworkIOElementVariable)]
     compileTensorVariables networkName appIndex inputOrOutput var = do
       nestedVar <- lookupNestedTensorVariable var
-      let compileVar = compileQueryVariable networkName appIndex inputOrOutput (shapeOf nestedVar)
+      let compileVar = compileQueryVariable networkName appIndex inputOrOutput (nestedTensorShape nestedVar)
       traverse compileVar (elementVariablesOf nestedVar)
 
     compileQueryVariable ::
       Name ->
       (Int, Int) ->
       InputOrOutput ->
-      TensorShape ->
+      NetworkModality TensorShape ->
       (NetworkIOElementVariable, TensorIndices) ->
       m (QueryVariable, NetworkIOElementVariable)
     compileQueryVariable networkName (appIndex, totalAppsWithName) io parentShape (var, indices) = do

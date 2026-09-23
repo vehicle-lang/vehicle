@@ -6,7 +6,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
-import Vehicle.Compile.Resource (NetworkModality (..))
+import Vehicle.Compile.Resource (NetworkModality (..), NetworkTensorModality (..))
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Context.Core (GenericBoundCtx, boundCtxLv)
 import Vehicle.Data.Variable.Bound.Context.Generic.Core (BoundCtx)
@@ -56,9 +56,17 @@ findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx _) vars
           | toLv v == currentLv -> (currentOriginalLv, Nothing) : go ctx vs (currentOriginalLv + 1, currentLv + 1)
           | otherwise -> go ctx (v : vs) (currentOriginalLv + 1, currentLv + 1)
         Just tensorVar -> do
-          let endPoint = currentLv + Lv (numberOfSliceVariablesIn $ shapeOf tensorVar)
+          let endPoint = currentLv + Lv (numberOfSliceVariablesInShape $ nestedTensorShape tensorVar)
           let (found, notFound) = span (\x -> toLv x < endPoint) (v : vs)
           fmap (const (currentOriginalLv, Just tensorVar)) found ++ go ctx notFound (currentOriginalLv + 1, endPoint)
+
+    numberOfSliceVariablesInShape :: NetworkModality TensorShape -> Int
+    numberOfSliceVariablesInShape = \case
+      UniModal shape -> numberOfSliceVariablesInUniModalShape shape
+      MultiModal _ shapes -> sum . map (numberOfSliceVariablesInUniModalShape . snd) $ shapes
+
+    numberOfSliceVariablesInUniModalShape :: NetworkTensorModality TensorShape -> Int
+    numberOfSliceVariablesInUniModalShape = numberOfSliceVariablesIn . equivalentShape
 
 appendNonTensorVariableToNestedCtx :: GenericBinder () -> NestedTensorVariableCtx -> NestedTensorVariableCtx
 appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx) = do
@@ -80,8 +88,15 @@ appendTensorVariableToNestedCtx binder shape (NestedTensorVariableCtx ctx nameCt
 
 variableNamesForAllSlices :: Name -> NetworkModality TensorShape -> [Name]
 variableNamesForAllSlices parentName = \case
-  UniModal shape -> reverse (fmap mkName (allIndicesForShape shape))
-  MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
+  UniModal shape -> goUniModal parentName shape
+  MultiModal _typ shapes -> goMultiModal parentName shapes
   where
-    mkName :: TensorIndices -> Name
-    mkName indices = parentName <> Text.pack (showTensorIndices indices)
+    goTensor :: Name -> TensorIndices -> Name
+    goTensor baseName indices = baseName <> Text.pack (showTensorIndices indices)
+
+    goUniModal :: Name -> NetworkTensorModality TensorShape -> [Name]
+    goUniModal baseName = reverse . map (goTensor baseName) . allIndicesForShape . equivalentShape
+
+    goMultiModal :: Name -> [(Name, NetworkTensorModality TensorShape)] -> [Name]
+    goMultiModal baseName = concatMap $ \(field, shape) ->
+      goUniModal (baseName <> "." <> field) shape

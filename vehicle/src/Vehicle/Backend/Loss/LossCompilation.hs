@@ -21,10 +21,10 @@ import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DifferentiableLogic
-import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf)
+import Vehicle.Data.Tensor (Tensor, foldMapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
-import Vehicle.Data.Variable.Bound.Level (findSliceIndices)
+import Vehicle.Data.Variable.Bound.Level (NestedSliceVariable (nestedTensorShape), findSliceIndices)
 
 type QuantifierHandling m = Maybe ((Quantifier, QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin)) -> m (Thunk LossBuiltin))
 
@@ -201,7 +201,7 @@ convertThunk quantifiers = go
           Nothing -> return $ Forced var
           Just (parentVar, sliceVar) -> do
             let indices = findSliceIndices parentVar sliceVar
-            return $ Forced $ mkIndexInto (Forced IRatType) var (shapeOf parentVar) indices
+            return $ Forced $ mkIndexInto (Forced IRatType) var (nestedTensorShape parentVar) indices
 
     convertFreeVar ::
       Identifier ->
