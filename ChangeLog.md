@@ -98,6 +98,9 @@
 * Fixed loading a specification whose compiled form names a shared monomorphised helper, such as
   `forallIndex--Real--3`, which is not a Python identifier.
 
+* Fixed output the process had buffered on stdout before a compile being flushed into the
+  capture, which corrupted the compiler's JSON and lost the caller's own output.
+
 * Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
   later, which replaced them with a `FrozenInstanceError`.
 

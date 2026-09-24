@@ -145,6 +145,11 @@ class Session(SessionContextManager):
         reader_thread.start()
 
         try:
+            # Python's buffers must reach the real descriptors before those are redirected,
+            # or they land in the pty in front of the compiler's output.
+            sys.stdout.flush()
+            sys.stderr.flush()
+
             # Redirect stdout and stderr
             os.dup2(receiver_fd, stdout_fd)
             os.dup2(pwrite_fd, stderr_fd)
@@ -155,8 +160,6 @@ class Session(SessionContextManager):
 
             with temporary_files("log", prefix="vehicle") as (log,):
                 exitCode = self.check_call([f"--redirect-logs={log}", *args])
-
-            sys.stdout.flush()
 
         finally:
             # Signal reader thread to finish
