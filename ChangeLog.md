@@ -95,6 +95,9 @@
   subcommand rather than as the flag of `compile loss`, `compile queries` or `compile itp`, and
   treated the empty stdout of a compile to a directory as an error.
 
+* Fixed loading a specification whose compiled form names a shared monomorphised helper, such as
+  `forallIndex--Real--3`, which is not a Python identifier.
+
 * Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
   later, which replaced them with a `FrozenInstanceError`.
 

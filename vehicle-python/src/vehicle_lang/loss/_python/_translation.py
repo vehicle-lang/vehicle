@@ -116,7 +116,7 @@ class PythonTranslation(metaclass=ABCMeta):
 
     def translate_binder(self, binder: vcl.Binder) -> py.arg:
         return py.arg(
-            arg=binder.name,
+            arg=py_identifier(binder.name),
             annotation=None,
             **asdict(binder.provenance),
         )
@@ -227,7 +227,7 @@ class PythonTranslation(metaclass=ABCMeta):
 
         if binders:
             return py.FunctionDef(
-                name=declaration.name,
+                name=py_identifier(declaration.name),
                 args=py_binder(*binders),
                 body=[
                     py.Return(
@@ -242,7 +242,7 @@ class PythonTranslation(metaclass=ABCMeta):
             return py.Assign(
                 targets=[
                     py.Name(
-                        id=declaration.name,
+                        id=py_identifier(declaration.name),
                         ctx=py.Store(),
                         **asdict(vcl.MISSING),
                     )
@@ -601,10 +601,24 @@ class PythonTranslation(metaclass=ABCMeta):
 ################################################################################
 
 
+def py_identifier(name: vcl.Name) -> str:
+    """A Vehicle name as a Python identifier.
+
+    Monomorphisation joins a declaration's name to the types it was specialised at with
+    `--`, giving names such as `forallIndex--Real--3` once a polymorphic helper is shared by
+    several declarations. Every character Python cannot have in an identifier becomes an
+    underscore, and a leading digit gets one in front.
+    """
+    identifier = "".join(c if c.isalnum() or c == "_" else "_" for c in name)
+    if identifier and identifier[0].isdigit():
+        identifier = "_" + identifier
+    return identifier
+
+
 def py_name(name: vcl.Name) -> py.Name:
     """Make a name."""
     return py.Name(
-        id=name,
+        id=py_identifier(name),
         ctx=py.Load(),
         **asdict(vcl.MISSING),
     )
