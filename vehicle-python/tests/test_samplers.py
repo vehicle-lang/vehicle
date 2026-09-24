@@ -30,6 +30,9 @@ def require_tensorflow() -> Tuple[Any, Any]:
 
 
 @pytest.mark.parametrize(  # type: ignore[untyped-decorator]
+    "quantifier", ["Forall", "Exists"]
+)
+@pytest.mark.parametrize(  # type: ignore[untyped-decorator]
     "lower,upper",
     [
         (float("-inf"), float("inf")),
@@ -38,25 +41,28 @@ def require_tensorflow() -> Tuple[Any, Any]:
     ],
 )
 def test_pytorch_sampler_handles_unbounded_variables(
-    lower: float, upper: float
+    lower: float, upper: float, quantifier: Any
 ) -> None:
     torch, samplers = require_pytorch()
     sampler = samplers.DefaultPyTorchSampler(num_samples=4, num_steps=3, seed=0)
 
-    seen = []
-
+    # The search is batched with `vmap`, so the points it sees cannot be captured and
+    # inspected afterwards. The lambda returns the point itself instead, so the losses
+    # are the final points and the bounds check is made on them.
     def search(x: Any) -> Any:
-        seen.append(x)
-        return x[0] * 2.0
+        return x[0]
 
-    losses = sampler.get_loss([1], torch.tensor([lower]), torch.tensor([upper]), search)
+    points = sampler.get_loss(
+        [1], torch.tensor([lower]), torch.tensor([upper]), search, quantifier
+    )
 
-    assert torch.isfinite(losses).all(), "sampled losses must be finite"
-    for point in seen:
-        assert torch.isfinite(point).all(), "sampled points must be finite"
-        assert bool((point >= lower).all()) and bool((point <= upper).all())
+    assert torch.isfinite(points).all(), "sampled points must be finite"
+    assert bool((points >= lower).all()) and bool((points <= upper).all())
 
 
+@pytest.mark.parametrize(  # type: ignore[untyped-decorator]
+    "quantifier", ["Forall", "Exists"]
+)
 @pytest.mark.parametrize(  # type: ignore[untyped-decorator]
     "lower,upper",
     [
@@ -66,7 +72,7 @@ def test_pytorch_sampler_handles_unbounded_variables(
     ],
 )
 def test_tensorflow_sampler_handles_unbounded_variables(
-    lower: float, upper: float
+    lower: float, upper: float, quantifier: Any
 ) -> None:
     tf, samplers = require_tensorflow()
     sampler = samplers.DefaultTensorFlowSampler(num_samples=4, num_steps=3, seed=0)
@@ -77,7 +83,9 @@ def test_tensorflow_sampler_handles_unbounded_variables(
         seen.append(x)
         return x[0] * 2.0
 
-    losses = sampler.get_loss([1], tf.constant([lower]), tf.constant([upper]), search)
+    losses = sampler.get_loss(
+        [1], tf.constant([lower]), tf.constant([upper]), search, quantifier
+    )
 
     assert bool(
         tf.reduce_all(tf.math.is_finite(losses))

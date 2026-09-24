@@ -84,6 +84,10 @@
 
 ### Python bindings
 
+* `DefaultPyTorchSampler` now runs all of its trajectories as one batch, lifting the compiled
+  search over a batch axis with `torch.func.vmap`, so each step is a single forward and backward
+  pass instead of one per starting point.
+
 * Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
   later, which replaced them with a `FrozenInstanceError`.
 

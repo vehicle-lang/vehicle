@@ -50,6 +50,9 @@ class DefaultPyTorchSampler(PyTorchSampler):
     """
     Default sampler implementation for PyTorch that uses FGSM attack.
 
+    After a call, `last_points` holds the final point of every trajectory, in the units of the
+    quantified variable.
+
     Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples, descending the
     search_lambda for an existential and ascending it for a universal.
     """
@@ -76,6 +79,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
         self.num_steps = num_steps
         self.seed = seed
         self.unbounded_search_distance = unbounded_search_distance
+        self.last_points: torch.Tensor | None = None
 
     def get_loss(
         self,
@@ -104,6 +108,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
         if self.seed is not None:
             torch.manual_seed(self.seed)
 
+        device, dtype = lower_bound.device, lower_bound.dtype
+
         # Infer step size from bounds: use a fraction of the range
         start_low, start_high = self.starting_region(
             lower_bound, upper_bound, self.unbounded_search_distance
@@ -111,61 +117,41 @@ class DefaultPyTorchSampler(PyTorchSampler):
         range_size = start_high - start_low
         epsilon = range_size / self.num_steps
 
-        results = []
+        # The compiled search lambda is written for one point. `vmap` lifts it over a leading
+        # batch axis, so every trajectory takes each step in a single forward and backward pass
+        # rather than one pass per point.
+        def scalar_search(point: torch.Tensor) -> torch.Tensor:
+            return search_lambda(point).reshape(())
 
-        # Use multiple random starting points to ensure diversity
-        for _ in range(self.num_samples):
-            # Start from a random initial point in the valid range
-            current_point = (
-                start_low + torch.rand(dims, dtype=lower_bound.dtype) * range_size
-            )
+        batched_gradient = torch.func.vmap(torch.func.grad(scalar_search))
+        batched_search = torch.func.vmap(scalar_search)
 
-            # Perform PGD iterations from this starting point
-            # IMPORTANT: During PGD, we only want gradients w.r.t. the INPUT to find
-            # adversarial examples. We must NOT accumulate gradients in network parameters,
-            # as that would interfere with the actual training gradients computed later.
+        # FGSM: an existential wants the infimum of the lambda so descends it, a universal
+        # wants the supremum so ascends. For a universal the lambda is the property itself,
+        # so ascending is what hunts the worst case.
+        step = epsilon if quantifier == "Forall" else -epsilon
+
+        # Start every trajectory from its own random point in the valid range.
+        points = (
+            start_low
+            + torch.rand((self.num_samples, *dims), dtype=dtype, device=device)
+            * range_size
+        )
+
+        # Gradient tracking is enabled explicitly so the search works when the loss function
+        # is called inside torch.no_grad(). Only the input is differentiated, so nothing
+        # accumulates in the network's parameters.
+        with torch.enable_grad():
             for _ in range(self.num_steps):
-                # Enable gradient computation for the current point
-                current_point_var = current_point.detach().clone().requires_grad_(True)
-
-                # Enable gradient tracking so that we can compute the gradients
-                # for the search even if the loss function is called inside torch.no_grad().
-                with torch.enable_grad():
-                    # Compute gradient of search_lambda with respect to input
-                    loss = search_lambda(current_point_var)
-
-                    # Compute gradient ONLY w.r.t. the input, not network weights
-                    # Using autograd.grad instead of backward() to avoid accumulating
-                    # gradients in network parameters during adversarial search
-                    gradient = torch.autograd.grad(
-                        loss,
-                        current_point_var,
-                        create_graph=False,  # Don't need second-order gradients
-                        retain_graph=False,  # Don't need to backprop again
-                        only_inputs=True,  # Only compute for inputs, not all parameters
-                    )[0]
-
-                    # If gradient contains NaN, replace with zeros
-                    if gradient is not None:
-                        gradient = torch.where(
-                            torch.isnan(gradient), torch.zeros_like(gradient), gradient
-                        )
-                    else:
-                        gradient = torch.zeros_like(current_point_var)
-
-                # FGSM: an existential wants the infimum of the lambda so descends it, a
-                # universal wants the supremum so ascends. For a universal the lambda is the
-                # property itself, so ascending is what hunts the worst case.
-                step = epsilon if quantifier == "Forall" else -epsilon
-                perturbation = step * torch.sign(gradient)
-
-                # Apply perturbation and clip to bounds
-                current_point = torch.clamp(
-                    current_point + perturbation.detach(), lower_bound, upper_bound
+                gradient = batched_gradient(points.detach())
+                gradient = torch.where(
+                    torch.isnan(gradient), torch.zeros_like(gradient), gradient
+                )
+                points = torch.clamp(
+                    points + step * torch.sign(gradient), lower_bound, upper_bound
                 )
 
-            # Evaluate and store the final result from this trajectory
-            result = search_lambda(current_point.detach())
-            results.append(torch.as_tensor(result))
-
-        return torch.stack(results)
+        # Evaluate every trajectory's final point. The points are kept so a caller can measure
+        # something other than the lambda's value at them, such as whether the property holds.
+        self.last_points = points.detach()
+        return batched_search(points.detach())
