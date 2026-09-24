@@ -22,6 +22,10 @@
 
 * Fixed error that occurred when using `@parameter`s of type `Bool`.
 
+* Introduced gradient-based counter-example search for properties. This can be used via the
+  the `search` function in Vehicle's Python API, currently only available for the PyTorch module
+  (the same can be implemented for the TensorFlow module in future).
+
 ### Solver backend
 
 * Fixed error that occassionally happened with non-linear specifications.

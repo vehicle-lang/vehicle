@@ -104,6 +104,12 @@
     "produces": ["DL2Loss.vcl"]
   },
   {
+    "name": "Search",
+    "run": "vehicle compile loss --lossMode Search -s spec.vcl -l DL2Loss -o Search.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Search.vcl"]
+  },
+  {
     "name": "MarabouVerify",
     "run": "vehicle verify -s spec.vcl -v Marabou --network controller:controller.onnx",
     "needs": [

@@ -1,0 +1,53 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims -> \x -> const 1.0 dims / x, pointwiseConjunction = \dims -> \x -> \y -> x + y, pointwiseDisjunction = \dims -> \x -> \y -> x * y, pointwiseLessThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseEqual = \dims -> \x -> \y -> max (x - y) (y - x), pointwiseNotEqual = \dims -> \x -> \y -> const 1.0 dims / max (x - y) (y - x), reduceConjunction = \dims -> \xs -> reduceAdd xs, reduceDisjunction = \dims -> \xs -> reduceMul xs} 
+
+@network;
+f : Tensor Real -> Tensor Real
+
+@property;
+existBelowAnd_0 : Tensor Real;
+existBelowAnd_0 = search nil 0.0 1.0 (\x1 -> DL2Loss.pointwiseGreaterEqualThan nil (f x1) 1.0)
+
+@property;
+existBelowAnd_1 : Tensor Real;
+existBelowAnd_1 = search nil 1.0 2.0 (\x2 -> DL2Loss.pointwiseGreaterEqualThan nil (f x2) 2.0)
+
+@property;
+forallBelowAnd_0 : Tensor Real;
+forallBelowAnd_0 = search nil 0.0 1.0 (\x1 -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseLessThan nil (f x1) 1.0))
+
+@property;
+forallBelowAnd_1 : Tensor Real;
+forallBelowAnd_1 = search nil 1.0 2.0 (\x2 -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseLessThan nil (f x2) 2.0))
+
+@property;
+existsAndForallDifferentScopes_0 : Tensor Real;
+existsAndForallDifferentScopes_0 = search nil 0.0 1.0 (\x1 -> DL2Loss.pointwiseGreaterEqualThan nil (f x1) 1.0)
+
+@property;
+existsAndForallDifferentScopes_1 : Tensor Real;
+existsAndForallDifferentScopes_1 = search nil 1.0 2.0 (\x2 -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseLessThan nil (f x2) 2.0))
+
+@property;
+existBelowAnd_0_bool : Tensor Bool;
+existBelowAnd_0_bool = \x1 -> (0.0 < x1 and x1 < 1.0) and f x1 >= 1.0
+
+@property;
+existBelowAnd_1_bool : Tensor Bool;
+existBelowAnd_1_bool = \x2 -> (1.0 < x2 and x2 < 2.0) and f x2 >= 2.0
+
+@property;
+forallBelowAnd_0_bool : Tensor Bool;
+forallBelowAnd_0_bool = \x1 -> (0.0 < x1 and x1 < 1.0) and reduceOr (f x1 < 1.0)
+
+@property;
+forallBelowAnd_1_bool : Tensor Bool;
+forallBelowAnd_1_bool = \x2 -> (1.0 < x2 and x2 < 2.0) and reduceOr (f x2 < 2.0)
+
+@property;
+existsAndForallDifferentScopes_0_bool : Tensor Bool;
+existsAndForallDifferentScopes_0_bool = \x1 -> (0.0 < x1 and x1 < 1.0) and f x1 >= 1.0
+
+@property;
+existsAndForallDifferentScopes_1_bool : Tensor Bool;
+existsAndForallDifferentScopes_1_bool = \x2 -> (1.0 < x2 and x2 < 2.0) and reduceOr (f x2 < 2.0)

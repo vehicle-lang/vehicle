@@ -1,5 +1,6 @@
 module Vehicle.Backend.Loss.Domain
   ( findAndAttachQuantifierBounds,
+    compileQuantifier,
   )
 where
 
