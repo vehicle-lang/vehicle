@@ -245,7 +245,11 @@ class PyTorchBuiltins(
         return ()
 
     @override
-    def ConstTensor(self, value: float, shape: Sequence[int]) -> torch.Tensor:
+    def ConstTensor(self, value: Any, shape: Sequence[int]) -> torch.Tensor:
+        # `v` is a tensor for `const p dims` with `p` a parameter or a `let`-bound value; it
+        # is broadcast rather than scalarised, which keeps its gradient and works under `vmap`.
+        if isinstance(value, torch.Tensor):
+            return torch.broadcast_to(value.to(self.dtype_rat), tuple(shape))
         return torch.full(
             size=shape,
             fill_value=float(value),

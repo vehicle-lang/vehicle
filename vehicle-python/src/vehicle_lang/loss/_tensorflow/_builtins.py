@@ -245,7 +245,11 @@ class TensorFlowBuiltins(
         return ()
 
     @override
-    def ConstTensor(self, value: float, shape: Sequence[int]) -> tf.Tensor:
+    def ConstTensor(self, value: Any, shape: Sequence[int]) -> tf.Tensor:
+        # A tensor value is broadcast rather than scalarised, keeping its gradient; see the
+        # PyTorch builtins.
+        if isinstance(value, tf.Tensor):
+            return tf.broadcast_to(tf.cast(value, self.dtype_rat), shape)
         return _tf_constant(value=float(value), shape=shape, dtype=self.dtype_rat)
 
     @override

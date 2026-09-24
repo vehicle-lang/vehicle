@@ -101,6 +101,10 @@
 * Fixed output the process had buffered on stdout before a compile being flushed into the
   capture, which corrupted the compiler's JSON and lost the caller's own output.
 
+* Fixed `const v dims` with a tensor `v`, reached by `const p dims` for a parameter or
+  `let m = max a b in const m dims`: it was scalarised with `float()`, dropping the gradient
+  through `v` and failing under `vmap`. A tensor value is now broadcast.
+
 * Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
   later, which replaced them with a `FrozenInstanceError`.
 
