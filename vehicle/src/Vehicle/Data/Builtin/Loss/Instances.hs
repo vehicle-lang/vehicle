@@ -41,8 +41,8 @@ allInstances mode dl =
       -- Boolean operations --
       ------------------------
       <> booleanUnaryOpCandidates dl hasNot Not PointwiseNegation
-      <> booleanBinaryOpCandidates dl hasAnd And PointwiseConjunction TruthityElement
-      <> booleanBinaryOpCandidates dl hasOr Or PointwiseDisjunction FalsityElement
+      <> booleanBinaryOpCandidates dl hasAnd And PointwiseConjunction (mixedConjunction dl)
+      <> booleanBinaryOpCandidates dl hasOr Or PointwiseDisjunction (mixedDisjunction dl)
       <> impliesCandidates dl
       <> booleanReductionOpCandidates dl hasReduceAnd ReduceAndTensor ReduceConjunction
       <> booleanReductionOpCandidates dl hasReduceOr ReduceOrTensor ReduceDisjunction
@@ -110,6 +110,27 @@ booleanUnaryOpCandidates dl hasOp boolOp logicOp =
     )
   ]
 
+-- | The mixed forms of a binary boolean operation, where one side is a decidable `Bool` and
+-- the other a loss value. The decidable side selects a branch, and which branch keeps the loss
+-- differs between the operations, so the caller supplies the whole `where` rather than just a
+-- constant for one branch: `or` has to keep the loss on the branch its condition rejects,
+-- which no single default constant can express.
+type MixedForm mode =
+  DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+
+-- | `b and l` is `l` where the decidable side holds and false where it does not.
+mixedConjunction :: Identifier -> MixedForm mode
+mixedConjunction dl dims b l =
+  builtinFunction WhereTensor .@@@ [withGradients, dims] @@ [l, b, logicField dl FalsityElement]
+
+-- | `b or l` is true where the decidable side holds and `l` where it does not, so the
+-- condition is negated to put the loss on the branch that is taken when `b` fails.
+mixedDisjunction :: Identifier -> MixedForm mode
+mixedDisjunction dl dims b l =
+  builtinFunction WhereTensor
+    .@@@ [withGradients, dims]
+    @@ [l, builtinFunction Not .@@@ [dims] @@ [b], logicField dl TruthityElement]
+
 booleanBinaryOpCandidates ::
   Identifier ->
   ( DSLExpr (LossBuiltin mode) ->
@@ -119,25 +140,26 @@ booleanBinaryOpCandidates ::
   ) ->
   BuiltinFunction ->
   TensorDifferentiableLogicField ->
-  TensorDifferentiableLogicField ->
+  MixedForm mode ->
   [TempCandidate mode]
-booleanBinaryOpCandidates dl hasOp boolOp logicOp logicDefaultValue =
+booleanBinaryOpCandidates dl hasOp boolOp logicOp mixedForm =
   [ ( hasOp tBool tBool tBool,
       builtinFunction boolOp,
       Nothing
     ),
+    -- Both operations commute, so the two mixed orders are the same expression.
     ( hasOp tBool tRatWithGradients tRatWithGradients,
       lamDims $ \dims ->
         explLam "x" (tBoolTensor dims) $ \x ->
           explLam "y" (tRatTensorWithGradients dims) $ \y ->
-            builtinFunction WhereTensor .@@@ [withGradients, dims] @@ [y, x, logicField dl logicDefaultValue],
+            mixedForm dims x y,
       Nothing
     ),
     ( hasOp tRatWithGradients tBool tRatWithGradients,
       lamDims $ \dims ->
         explLam "x" (tRatTensorWithGradients dims) $ \x ->
           explLam "y" (tBoolTensor dims) $ \y ->
-            builtinFunction WhereTensor .@@@ [withGradients, dims] @@ [x, y, logicField dl logicDefaultValue],
+            mixedForm dims y x,
       Nothing
     ),
     ( hasOp tRatWithGradients tRatWithGradients tRatWithGradients,
@@ -155,17 +177,21 @@ impliesCandidates dl =
       Nothing
     ),
     ( hasImplies tBool tRatWithGradients tRatWithGradients,
+      -- `x => y` keeps `y` where the antecedent holds and is vacuously true where it does not,
+      -- so the condition is `x` itself, unnegated.
       lamDims $ \dims ->
         explLam "x" (tBoolTensor dims) $ \x ->
           explLam "y" (tRatTensorWithGradients dims) $ \y ->
-            builtinFunction WhereTensor .@@@ [withGradients, dims] @@ [y, builtinFunction Not .@@@ [dims] @@ [x], logicField dl TruthityElement],
+            builtinFunction WhereTensor .@@@ [withGradients, dims] @@ [y, x, logicField dl TruthityElement],
       Nothing
     ),
     ( hasImplies tRatWithGradients tBool tRatWithGradients,
+      -- `x => y` is `not x or y`: where the decidable consequent fails, the result is the
+      -- negation of the loss.
       lamDims $ \dims ->
         explLam "x" (tRatTensorWithGradients dims) $ \x ->
           explLam "y" (tBoolTensor dims) $ \y ->
-            builtinFunction WhereTensor .@@@ [withGradients, dims] @@ [x, builtinFunction Not .@@@ [dims] @@ [y], logicField dl TruthityElement],
+            mixedDisjunction dl dims y (logicField dl PointwiseNegation .@@@ [dims] @@ [x]),
       Nothing
     ),
     ( hasImplies tRatWithGradients tRatWithGradients tRatWithGradients,

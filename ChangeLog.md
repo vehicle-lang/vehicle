@@ -14,6 +14,11 @@
 
 ### Loss backend
 
+* Fixed `and`, `or` and `=>` between a decidable `Bool` and a loss value. The implication's guard
+  was inverted, so `forall j . i != j => f x ! i >= f x ! j`, the idiom every classification
+  property uses, scored the comparison only at `j == i` and the loss did not depend on the
+  network at all; `and` and `or` discarded the loss side.
+
 * Fixed error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
 
 * Fixed error when a property contains a `let` binding, both inside a quantifier,
