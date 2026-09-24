@@ -31,7 +31,7 @@ def test_pytorch_search_bounded() -> None:
     declarations = ["network", "bounded"]
 
     # A network that calculates y = 2x + bias
-    model = torch.nn.Linear(1, 1, bias=True)
+    model = torch.nn.Linear(1, 1, bias=False)
     with torch.no_grad():
         model.weight.fill_(2.0)
 
@@ -71,8 +71,8 @@ def test_pytorch_search_andGate() -> None:
     spec_path = GOLDEN_SPECS_BASE / "andGate" / "spec.vcl"
     declarations = ["andGate", "andGateCorrect"]
 
-    # A network which takes a tensor [x, y] and calculates x - y + bias
-    model = torch.nn.Linear(2, 1, bias=True)
+    # A network which takes a tensor [x, y] and calculates x - y
+    model = torch.nn.Linear(2, 1, bias=False)
     with torch.no_grad():
         model.weight[:] = torch.tensor([[1.0, -1.0]])
 
