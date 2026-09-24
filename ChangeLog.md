@@ -91,6 +91,10 @@
 * `load_specification` for PyTorch takes a `device`; the compiled code's literals and constants
   were always created on the CPU, which failed as soon as a bound or a network lived on a GPU.
 
+* Fixed `compile_specification`, which still passed the target's name as the `compile`
+  subcommand rather than as the flag of `compile loss`, `compile queries` or `compile itp`, and
+  treated the empty stdout of a compile to a directory as an error.
+
 * Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
   later, which replaced them with a `FrozenInstanceError`.
 

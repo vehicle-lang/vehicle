@@ -31,12 +31,18 @@ def compile_specification(
     :param cache: The location of the verification cache for ITP compilation.
     """
 
-    args: List[str] = [
-        "compile",
-        target._vehicle_option_name(),
-        "--specification",
-        str(path),
-    ]
+    # `vehicle compile` has one subcommand per kind of target, each with its own flag for
+    # the target itself. The loss subcommand takes no resources: they are supplied when the
+    # compiled function is called.
+    if isinstance(target, DifferentiableLogic):
+        args: List[str] = ["compile", "loss", "--logic", target._vehicle_option_name()]
+    elif isinstance(target, QueryFormat):
+        args = ["compile", "queries", "--format", target._vehicle_option_name()]
+    elif isinstance(target, ITP):
+        args = ["compile", "itp", "--target", target._vehicle_option_name()]
+    else:
+        raise TypeError(f"Unsupported compilation target: {target!r}")
+    args.extend(["--specification", str(path)])
 
     # Add declarations if specified
     if declarations is not None:
@@ -44,14 +50,15 @@ def compile_specification(
             args.extend(["--declaration", declaration_name])
 
     # Add networks, datasets, and parameters
-    for network_name, network_path in networks.items():
-        args.extend(["--network", f"{network_name}:{network_path}"])
+    if not isinstance(target, DifferentiableLogic):
+        for network_name, network_path in networks.items():
+            args.extend(["--network", f"{network_name}:{network_path}"])
 
-    for dataset_name, dataset_path in datasets.items():
-        args.extend(["--dataset", f"{dataset_name}:{dataset_path}"])
+        for dataset_name, dataset_path in datasets.items():
+            args.extend(["--dataset", f"{dataset_name}:{dataset_path}"])
 
-    for parameter_name, parameter_value in parameters.items():
-        args.extend(["--parameter", f"{parameter_name}:{parameter_value}"])
+        for parameter_name, parameter_value in parameters.items():
+            args.extend(["--parameter", f"{parameter_name}:{parameter_value}"])
 
     # Add output file
     args.extend(["--output", str(output_file)])
@@ -64,11 +71,9 @@ def compile_specification(
     if cache is not None:
         args.extend(["--cache", str(cache)])
 
-    # Call Vehicle
-    out = session.execute_command(args)
-    if not out:
-        raise VehicleInternalError("Vehicle produced no output")
-    return out
+    # Call Vehicle. With `--output` the result goes to the file system and stdout may well be
+    # empty, so an empty string is not an error here.
+    return session.execute_command(args)
 
 
 def call_vehicle(args: list[str]) -> str:
