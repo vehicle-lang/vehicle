@@ -84,6 +84,8 @@ class PyTorchBuiltins(
 ):
     dtype_index: torch.dtype = torch.int32
     dtype_rat: torch.dtype = torch.float32
+    # Where literals and constants are created; unset means the CPU.
+    device: torch.device | None = None
 
     @override
     def BoolTensor(self, x: _nodes.Tensor[bool]) -> torch.Tensor:
@@ -95,7 +97,9 @@ class PyTorchBuiltins(
             case _:
                 raise VehicleInternalError(f"Unknown tensor type: {type(x)}.")
 
-        return _torch_tensor(data=values, dtype=torch.bool).reshape(x.shape)
+        return _torch_tensor(data=values, dtype=torch.bool, device=self.device).reshape(
+            x.shape
+        )
 
     @override
     def BoolNot(self, x: torch.Tensor) -> torch.Tensor:
@@ -115,14 +119,14 @@ class PyTorchBuiltins(
 
     @override
     def BoolCompareIndex(self, op: str, x: int, y: int) -> torch.Tensor:
-        tx = _torch_tensor(data=x, dtype=self.dtype_index)
-        ty = _torch_tensor(data=y, dtype=self.dtype_index)
+        tx = _torch_tensor(data=x, dtype=self.dtype_index, device=self.device)
+        ty = _torch_tensor(data=y, dtype=self.dtype_index, device=self.device)
         return _comparison(op, tx, ty)
 
     @override
     def BoolCompareNat(self, op: str, x: int, y: int) -> torch.Tensor:
-        tx = _torch_tensor(data=x, dtype=self.dtype_index)
-        ty = _torch_tensor(data=y, dtype=self.dtype_index)
+        tx = _torch_tensor(data=x, dtype=self.dtype_index, device=self.device)
+        ty = _torch_tensor(data=y, dtype=self.dtype_index, device=self.device)
         return _comparison(op, tx, ty)
 
     @override
@@ -166,7 +170,9 @@ class PyTorchBuiltins(
             case _:
                 raise VehicleInternalError(f"Unknown tensor type: {type(x)}.")
 
-        return _torch_tensor(data=values, dtype=self.dtype_rat).reshape(x.shape)
+        return _torch_tensor(
+            data=values, dtype=self.dtype_rat, device=self.device
+        ).reshape(x.shape)
 
     @override
     def NegRatTensor(self, x: torch.Tensor) -> torch.Tensor:
@@ -240,7 +246,12 @@ class PyTorchBuiltins(
 
     @override
     def ConstTensor(self, value: float, shape: Sequence[int]) -> torch.Tensor:
-        return torch.full(size=shape, fill_value=float(value), dtype=self.dtype_rat)
+        return torch.full(
+            size=shape,
+            fill_value=float(value),
+            dtype=self.dtype_rat,
+            device=self.device,
+        )
 
     @override
     def DenseTensor(
@@ -248,7 +259,9 @@ class PyTorchBuiltins(
     ) -> torch.Tensor:
         # Convert Fraction values to floats
         float_values = [float(val) for val in values]
-        return _torch_tensor(data=float_values, dtype=self.dtype_rat).reshape(shape)
+        return _torch_tensor(
+            data=float_values, dtype=self.dtype_rat, device=self.device
+        ).reshape(shape)
 
     @override
     def Transpose(self, xs: torch.Tensor) -> torch.Tensor:

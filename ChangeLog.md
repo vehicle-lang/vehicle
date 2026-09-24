@@ -88,6 +88,9 @@
   search over a batch axis with `torch.func.vmap`, so each step is a single forward and backward
   pass instead of one per starting point.
 
+* `load_specification` for PyTorch takes a `device`; the compiled code's literals and constants
+  were always created on the CPU, which failed as soon as a bound or a network lived on a GPU.
+
 * Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
   later, which replaced them with a `FrozenInstanceError`.
 

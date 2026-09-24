@@ -24,8 +24,13 @@ def load_specification(
     samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,
+    device: Any = None,
 ) -> dict[str, Any]:
-    """Load a loss function compiled for PyTorch."""
+    """Load a loss function compiled for PyTorch.
+
+    `device` is where the compiled code creates its literals and constants; pass the device
+    the network and the resources live on. Left unset they are created on the CPU.
+    """
 
     return load_loss_specification(
         path,
@@ -33,6 +38,6 @@ def load_specification(
         samplers=samplers,
         declarations=declarations,
         declaration_context=declaration_context,
-        translation_factory=PyTorchTranslation,
+        translation_factory=lambda: PyTorchTranslation(device=device),
         default_sampler_factory=DefaultPyTorchSampler,
     )
