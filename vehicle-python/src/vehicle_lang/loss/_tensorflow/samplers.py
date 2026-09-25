@@ -24,6 +24,7 @@ class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
     ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]:
+        """Validates the sampling domain and calls the core sampler implementation."""
         self._validate_domain(lower_bound, upper_bound)
         return self._get_loss_and_input(dims, lower_bound, upper_bound, search_lambda)
 
@@ -32,6 +33,7 @@ class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
     ) -> None:
+        """Checks that the sampling domain is non-empty."""
         tf.debugging.assert_less_equal(
             lower_bound,
             upper_bound,
@@ -45,7 +47,12 @@ class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
-    ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]: ...
+    ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]:
+        """
+        Runs the core sampling procedure for the specific backend.
+        Uses gradient ascent or descent to generate samples and evaluate the search lambda.
+        """
+        ...
 
 
 class DefaultTensorFlowSampler(TensorFlowSampler):
@@ -135,8 +142,7 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                     gradient = tf.zeros_like(x)
                 else:
                     gradient = tf.where(
-                        tf.math.is_nan(gradient), tf.zeros_like(
-                            gradient), gradient
+                        tf.math.is_nan(gradient), tf.zeros_like(gradient), gradient
                     )
 
                 # To find worst-case inputs that make the loss high, we need to
@@ -144,8 +150,7 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                 perturbation = -epsilon * tf.sign(gradient)
 
                 # Apply perturbation and clip to bounds
-                current_point = tf.clip_by_value(
-                    current_point + perturbation, lb, ub)
+                current_point = tf.clip_by_value(current_point + perturbation, lb, ub)
 
             points.append(current_point)
             # Evaluate and store the final result from this trajectory

@@ -26,6 +26,7 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
     ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
+        """Validates the sampling domain and calls the core sampler implementation."""
         self._validate_domain(lower_bound, upper_bound)
         return self._get_loss_and_input(dims, lower_bound, upper_bound, search_lambda)
 
@@ -34,9 +35,9 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
     ) -> None:
+        """Checks that the sampling domain is non-empty."""
         if not torch.all(lower_bound <= upper_bound).item():
-            raise ValueError(
-                "Empty sampling domain: lower bound exceeds upper bound.")
+            raise ValueError("Empty sampling domain: lower bound exceeds upper bound.")
 
     @abstractmethod
     def _get_loss_and_input(
@@ -45,7 +46,12 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]: ...
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
+        """
+        Calls the core sampling procedure for the specific backend.
+        Uses gradient ascent or descent to generate samples and evaluate the search lambda.
+        """
+        ...
 
 
 class DefaultPyTorchSampler(PyTorchSampler):
@@ -110,8 +116,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
         for _ in range(self.num_samples):
             # Start from a random initial point in the valid range
             current_point = (
-                lower_bound +
-                torch.rand(dims, dtype=lower_bound.dtype) * range_size
+                lower_bound + torch.rand(dims, dtype=lower_bound.dtype) * range_size
             )
 
             # Perform PGD iterations from this starting point
@@ -142,8 +147,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     # If gradient contains NaN, replace with zeros
                     if gradient is not None:
                         gradient = torch.where(
-                            torch.isnan(gradient), torch.zeros_like(
-                                gradient), gradient
+                            torch.isnan(gradient), torch.zeros_like(gradient), gradient
                         )
                     else:
                         gradient = torch.zeros_like(current_point_var)
