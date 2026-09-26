@@ -99,5 +99,15 @@
     "produces": [
       "VehicleLoss.vcl"
     ]
+  },
+  {
+    "name": "Search",
+    "run": "vehicle compile loss --lossMode Search -s spec.vcl -l DL2Loss -o Search.vcl",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "Search.vcl"
+    ]
   }
 ]

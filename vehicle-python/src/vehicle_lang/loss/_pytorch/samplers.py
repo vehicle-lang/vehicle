@@ -1,10 +1,12 @@
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Callable, Sequence
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Callable, List, Sequence
 
 from jaxtyping import Float
 
 from ..._deps import require_optional_dependency
 from .._abc import ABCSampler
+from .._common import BoundVarData
 
 if TYPE_CHECKING:
     import torch
@@ -18,13 +20,13 @@ else:  # pragma: no cover - exercised implicitly
 
 class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
     @abstractmethod
-    def get_loss(
+    def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-    ) -> Float[torch.Tensor, "1 losses"]: ...
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]: ...
 
 
 class DefaultPyTorchSampler(PyTorchSampler):
@@ -51,27 +53,28 @@ class DefaultPyTorchSampler(PyTorchSampler):
         self.num_steps = num_steps
         self.seed = seed
 
-    def get_loss(
+    def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-    ) -> Float[torch.Tensor, "1 losses"]:
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
         """
-        Use PGD to generate adversarial samples and evaluate the search lambda.
+        Uses gradient ascent or descent to generate samples and evaluate the search lambda.
 
         The step size is automatically inferred from the bounds to provide
         an out-of-the-box implementation that works for most applications.
 
         Args:
-            dims: The dimensions for the sampling (currently unused for scalar sampling)
+            dims: The dimensions for the sampling
             lower_bound: The lower bound tensor
             upper_bound: The upper bound tensor
-            search_lambda: A callable representing the property to evaluate
+            search_lambda: A callable representing a loss function
 
         Returns:
-            A sequence of loss values evaluated at the PGD-perturbed points
+            A sequence of loss values evaluated at the PGD-perturbed points and a sequence
+            of those points.
         """
         # Set seed for reproducibility if provided
         if self.seed is not None:
@@ -81,7 +84,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
         range_size = upper_bound - lower_bound
         epsilon = range_size / self.num_steps
 
-        results = []
+        loss_values = []
+        points = []
 
         # Use multiple random starting points to ensure diversity
         for _ in range(self.num_samples):
@@ -123,9 +127,8 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     else:
                         gradient = torch.zeros_like(current_point_var)
 
-                # FGSM: perturb in the direction of the gradient sign
                 # To find worst-case inputs that make the loss high, we need to
-                # move in the opposite direction of the gradient (gradient ascent).
+                # move in the opposite direction of the gradient (gradient descent).
                 perturbation = -epsilon * torch.sign(gradient)
 
                 # Apply perturbation and clip to bounds
@@ -133,8 +136,9 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     current_point + perturbation.detach(), lower_bound, upper_bound
                 )
 
+            points.append(current_point)
             # Evaluate and store the final result from this trajectory
-            result = search_lambda(current_point.detach())
-            results.append(torch.as_tensor(result))
+            loss = search_lambda(current_point.detach())
+            loss_values.append(torch.as_tensor(loss))
 
-        return torch.stack(results)
+        return torch.stack(loss_values), torch.stack(points)

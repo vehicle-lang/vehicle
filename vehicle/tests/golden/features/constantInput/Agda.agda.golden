@@ -12,9 +12,10 @@ open import Vehicle.Data.Tensor as 𝕋
 open import Data.Product
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List.Base
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module Agda where
 
 postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ []
 
-postulate spec : ∀ x → (natScalar 0) < x × x < (natScalar 1) → f (stack x (natScalar 0)) ≥ (natScalar 0)
+postulate spec : ∀ x → (natScalar 0) < x × x < (natScalar 1) → f (stack (x ∷ᵥ (natScalar 0) ∷ᵥ []ᵥ)) ≥ (natScalar 0)
