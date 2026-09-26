@@ -32,7 +32,7 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
 class DefaultPyTorchSampler(PyTorchSampler):
     """
     Default sampler implementation for PyTorch that uses Projected Gradient Descent attack
-    to generate adversarial samples, descending the search_lambda so that the samples approximate 
+    to generate adversarial samples, descending the search_lambda so that the samples approximate
     its infimum.
     """
 
