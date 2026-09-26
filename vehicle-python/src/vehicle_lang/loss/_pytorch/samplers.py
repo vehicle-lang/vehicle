@@ -19,14 +19,56 @@ else:  # pragma: no cover - exercised implicitly
 
 
 class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
-    @abstractmethod
     def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]: ...
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
+        """Validates the sampling domain and calls the core sampler implementation."""
+        self._validate_domain(lower_bound, upper_bound)
+        return self._get_loss_and_input(dims, lower_bound, upper_bound, search_lambda)
+
+    def _validate_domain(
+        self,
+        lower_bound: torch.Tensor,
+        upper_bound: torch.Tensor,
+    ) -> None:
+        """Checks that the sampling domain is non-empty."""
+        if not torch.all(lower_bound <= upper_bound).item():
+            raise ValueError("Empty sampling domain: lower bound exceeds upper bound.")
+
+    @abstractmethod
+    def _get_loss_and_input(
+        self,
+        dims: Sequence[int],
+        lower_bound: torch.Tensor,
+        upper_bound: torch.Tensor,
+        search_lambda: Callable[[torch.Tensor], torch.Tensor],
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
+        """
+        Calls the core sampling procedure for the specific backend.
+        Uses gradient ascent or descent to generate samples and evaluate the search lambda.
+        """
+        ...
+
+    @staticmethod
+    def starting_region(
+        lower_bound: torch.Tensor, upper_bound: torch.Tensor, distance: float
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Give each unbounded endpoint, which the domain represents as -infinity or infinity, a
+        finite one `distance` away, leaving bounded endpoints alone.
+        """
+        low_infinite = torch.isneginf(lower_bound)
+        high_infinite = torch.isposinf(upper_bound)
+        origin = torch.zeros_like(lower_bound)
+        low_anchor = torch.where(high_infinite, origin, upper_bound)
+        high_anchor = torch.where(low_infinite, origin, lower_bound)
+        start_low = torch.where(low_infinite, low_anchor - distance, lower_bound)
+        start_high = torch.where(high_infinite, high_anchor + distance, upper_bound)
+        return start_low, start_high
 
 
 class DefaultPyTorchSampler(PyTorchSampler):
@@ -37,7 +79,11 @@ class DefaultPyTorchSampler(PyTorchSampler):
     """
 
     def __init__(
-        self, num_samples: int = 10, num_steps: int = 5, seed: int | None = None
+        self,
+        num_samples: int = 10,
+        num_steps: int = 5,
+        seed: int | None = None,
+        unbounded_search_distance: float = 10.0,
     ):
         """
         Initialize the FGSM sampler.
@@ -46,12 +92,16 @@ class DefaultPyTorchSampler(PyTorchSampler):
             num_samples: Number of independent random starting points (default: 10)
             num_steps: Number of FGSM iterations per starting point (default: 5)
             seed: Random seed for reproducibility (default: None)
+            unbounded_search_distance: How far to search along a dimension the domain leaves
+                unbounded: from the opposite bound, or from the origin when the dimension
+                is unbounded in both directions (default: 10.0)
         """
         self.num_samples = num_samples
         self.num_steps = num_steps
         self.seed = seed
+        self.unbounded_search_distance = unbounded_search_distance
 
-    def get_loss_and_input(
+    def _get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
@@ -79,7 +129,10 @@ class DefaultPyTorchSampler(PyTorchSampler):
             torch.manual_seed(self.seed)
 
         # Infer step size from bounds: use a fraction of the range
-        range_size = upper_bound - lower_bound
+        start_low, start_high = self.starting_region(
+            lower_bound, upper_bound, self.unbounded_search_distance
+        )
+        range_size = start_high - start_low
         epsilon = range_size / self.num_steps
 
         loss_values = []
@@ -89,7 +142,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
         for _ in range(self.num_samples):
             # Start from a random initial point in the valid range
             current_point = (
-                lower_bound + torch.rand(dims, dtype=lower_bound.dtype) * range_size
+                start_low + torch.rand(dims, dtype=lower_bound.dtype) * range_size
             )
 
             # Perform PGD iterations from this starting point

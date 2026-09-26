@@ -26,13 +26,22 @@
   the `search` function in Vehicle's Python API, currently only available for the PyTorch module
   (the same can be implemented for the TensorFlow module in future).
 
-* Fixed `forall` and `exists` returning each other's loss. The samples a quantifier's search
-  produces are now combined by taking the minimum, which is the existential that `search`
-  represents. Taking the maximum gave a `forall` the loss of its best sample and an `exists` the
-  loss of its worst.
+* Fixed bug in training where the sampler searched for the worst example, not the best example. Training should be more effective now.
 
 * Fixed the default TensorFlow `Sampler` searching in the opposite direction to the PyTorch one.
   Both now descend the function they are given, which is what approximates the worst case.
+
+* Fixed bug where samplers were not checking if a sampling domain was actually empty, e.g. `(1, -1)`, before running the underlying search procedure.
+
+* Fixed the default `Sampler` implementations returning `nan` when a quantified variable is
+  unbounded, e.g. `forall x . p x`. Starting points are now drawn from a finite region around the
+  bound that is finite, or around the origin when neither is.
+
+* Added the `unbounded_search_distance` parameter to `DefaultPyTorchSampler` and
+  `DefaultTensorFlowSampler`, which sets how far along an unbounded dimension that region extends
+  (default: 10.0). The region is also available to custom samplers as `starting_region` on
+  `PyTorchSampler` and `TensorFlowSampler`.
+
 
 ### Solver backend
 
