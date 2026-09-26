@@ -24,8 +24,8 @@ inputTranspose = foreach i. foreach j. inputs ! j ! i
 
 @property;
 property_0 : Tensor Real;
-property_0 = search [30] (foreach i. minList (inputTranspose ! i)) (foreach i. maxList (inputTranspose ! i)) (\x -> DL2Loss.reduceDisjunction [2] (foreach k. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseGreaterThan nil (classifier x ! pos) (classifier x ! k)) (not (k != pos)) (DL2Loss.trueElement))))
+property_0 = search [30] (foreach i. minList (inputTranspose ! i)) (foreach i. maxList (inputTranspose ! i)) (\x -> DL2Loss.reduceDisjunction [2] (foreach i. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseGreaterThan nil (classifier x ! pos) (classifier x ! i)) (not (i != pos)) (DL2Loss.trueElement))))
 
 @property;
 property_0_bool : Tensor Bool;
-property_0_bool = \x -> reduceAnd (foreach k. vectorMin ! k <= x ! k and x ! k <= vectorMax ! k) and reduceOr (foreach k. not (k != pos => classifier x ! pos > classifier x ! k))
+property_0_bool = \x -> reduceAnd (foreach i. vectorMin ! i <= x ! i and x ! i <= vectorMax ! i) and reduceOr (foreach i. not (i != pos => classifier x ! pos > classifier x ! i))

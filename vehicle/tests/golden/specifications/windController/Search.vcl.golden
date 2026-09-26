@@ -14,8 +14,8 @@ safe_1 = search [2] (const -3.25 [2]) (const 3.25 [2]) (\x -> DL2Loss.reduceDisj
 
 @property;
 safe_0_bool : Tensor Bool;
-safe_0_bool = \x -> reduceAnd (foreach k. - 3.25 <= x ! k and x ! k <= 3.25) and reduceOr (- 1.25 >= controller (foreach i. (x ! i + 4.0) / 8.0) ! 0 + 2.0 * x ! 0 - x ! 1)
+safe_0_bool = \x -> reduceAnd (foreach i. - 3.25 <= x ! i and x ! i <= 3.25) and reduceOr (- 1.25 >= controller (foreach i. (x ! i + 4.0) / 8.0) ! 0 + 2.0 * x ! 0 - x ! 1)
 
 @property;
 safe_1_bool : Tensor Bool;
-safe_1_bool = \x -> reduceAnd (foreach k. - 3.25 <= x ! k and x ! k <= 3.25) and reduceOr (controller (foreach i. (x ! i + 4.0) / 8.0) ! 0 + 2.0 * x ! 0 - x ! 1 >= 1.25)
+safe_1_bool = \x -> reduceAnd (foreach i. - 3.25 <= x ! i and x ! i <= 3.25) and reduceOr (controller (foreach i. (x ! i + 4.0) / 8.0) ! 0 + 2.0 * x ! 0 - x ! 1 >= 1.25)

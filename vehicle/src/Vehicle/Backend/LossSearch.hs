@@ -19,6 +19,7 @@ import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
+import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.BooleanExpr (DisjunctAll (..))
@@ -180,7 +181,7 @@ reconstructExpr (quantifiers, value) = case quantifiers of
 -- This takes a single unquantified expression, and
 -- a list of the domain extracted expressions associated with it
 reconstructDecls ::
-  ( MonadCompile m,
+  ( MonadSearch m,
     MonadSupply Int m
   ) =>
   Provenance ->
@@ -199,6 +200,19 @@ reconstructDecls p ident sort typ boolExpr domainExtractedExprs = case domainExt
     let domainExtractedDecl = DefFunction p newIdentDomainExtracted sort typ e
     let newNameBool = newNameDomainExtracted <> "_bool"
     let newIdentBool = changeName ident newNameBool
-    let boolDecl = DefFunction p newIdentBool sort typ boolExpr
+    finalBoolExpr <- traverseBuiltinsM replaceDerivedApplication boolExpr
+    let boolDecl = DefFunction p newIdentBool sort typ finalBoolExpr
     (newDomainExtractedNames, boolDecls, domainExtractedDecls) <- reconstructDecls p ident sort typ boolExpr es
     return (newNameDomainExtracted : newDomainExtractedNames, boolDecl : boolDecls, domainExtractedDecl : domainExtractedDecls)
+
+replaceDerivedApplication ::
+  (MonadSearch m) =>
+  BuiltinUpdate m Builtin Builtin
+replaceDerivedApplication p b args = do
+  case isDerivedBuiltin b of
+    Nothing -> return $ normAppList (Builtin p b) args
+    Just ident -> do
+      decl <- getDeclEntry (Proxy @Builtin) ident
+      case decl of
+        DefFunction _ _ _ _ value -> return $ normAppList value args
+        _ -> developerError $ "found invalid derived builtin" <+> quotePretty ident
