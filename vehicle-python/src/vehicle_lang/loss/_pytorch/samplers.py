@@ -19,14 +19,39 @@ else:  # pragma: no cover - exercised implicitly
 
 
 class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
-    @abstractmethod
     def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
-    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]: ...
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
+        """Validates the sampling domain and calls the core sampler implementation."""
+        self._validate_domain(lower_bound, upper_bound)
+        return self._get_loss_and_input(dims, lower_bound, upper_bound, search_lambda)
+
+    def _validate_domain(
+        self,
+        lower_bound: torch.Tensor,
+        upper_bound: torch.Tensor,
+    ) -> None:
+        """Checks that the sampling domain is non-empty."""
+        if not torch.all(lower_bound <= upper_bound).item():
+            raise ValueError("Empty sampling domain: lower bound exceeds upper bound.")
+
+    @abstractmethod
+    def _get_loss_and_input(
+        self,
+        dims: Sequence[int],
+        lower_bound: torch.Tensor,
+        upper_bound: torch.Tensor,
+        search_lambda: Callable[[torch.Tensor], torch.Tensor],
+    ) -> tuple[Float[torch.Tensor, "1 losses"], torch.Tensor]:
+        """
+        Calls the core sampling procedure for the specific backend.
+        Uses gradient ascent or descent to generate samples and evaluate the search lambda.
+        """
+        ...
 
 
 class DefaultPyTorchSampler(PyTorchSampler):
@@ -53,7 +78,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
         self.num_steps = num_steps
         self.seed = seed
 
-    def get_loss_and_input(
+    def _get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: torch.Tensor,
