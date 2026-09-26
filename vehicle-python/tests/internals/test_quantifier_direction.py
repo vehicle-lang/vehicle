@@ -5,15 +5,18 @@ must not return each other's value. The sampler here evaluates at fixed points
 rather than searching, so only the aggregation is under test.
 """
 
-from typing import Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Sequence
 
 import pytest
 
 from ..config import PYTHON_TEST_SPECS_PATH
 
-torch = pytest.importorskip(
-    "torch", reason="PyTorch extra is required for backend tests"
-)
+if TYPE_CHECKING:
+    import torch
+else:
+    torch = pytest.importorskip(
+        "torch", reason="PyTorch extra is required for backend tests"
+    )
 
 SPEC = PYTHON_TEST_SPECS_PATH / "test_quantifier_direction.vcl"
 
@@ -25,10 +28,10 @@ class FixedPointSampler:
     def get_loss(
         self,
         dims: Sequence[int],
-        lower_bound: "torch.Tensor",
-        upper_bound: "torch.Tensor",
-        search_lambda: Callable[["torch.Tensor"], "torch.Tensor"],
-    ) -> "torch.Tensor":
+        lower_bound: torch.Tensor,
+        upper_bound: torch.Tensor,
+        search_lambda: Callable[[torch.Tensor], torch.Tensor],
+    ) -> torch.Tensor:
         return torch.stack(
             [
                 torch.as_tensor(search_lambda(torch.tensor(point))).reshape(())
@@ -49,7 +52,7 @@ def _loss(logic: Any, property_name: str) -> float:
     return float(declarations[property_name](lambda x: x))
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[untyped-decorator]
     ("logic_name", "universal", "existential"),
     [
         # VehicleLoss scores `x >= y` as `y - x`, so the body is 0.5, 0.0, -0.5.
