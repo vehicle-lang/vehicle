@@ -7,20 +7,22 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Utils
+open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin; #_)
+open import Data.Fin.Base as FinBase using (toℕ)
 open import Function.Base
+open import Relation.Binary.PropositionalEquality
 
 module Agda where
 
-postulate eqIndex : (Fin 1 ∋ # 0) ≈ (Fin 2 ∋ # 1)
+postulate eqIndex : FinBase.toℕ (Fin 1 ∋ # 0) ≡ FinBase.toℕ (Fin 2 ∋ # 1)
 
-postulate neqIndex : (Fin 1 ∋ # 0) ≉ (Fin 2 ∋ # 1)
+postulate neqIndex : FinBase.toℕ (Fin 1 ∋ # 0) ≢ FinBase.toℕ (Fin 2 ∋ # 1)
 
-postulate leqIndex : (Fin 1 ∋ # 0) ≤ (Fin 2 ∋ # 1)
+postulate leqIndex : FinBase.toℕ (Fin 1 ∋ # 0) ℕ.≤ FinBase.toℕ (Fin 2 ∋ # 1)
 
-postulate ltIndex : (Fin 1 ∋ # 0) < (Fin 2 ∋ # 1)
+postulate ltIndex : FinBase.toℕ (Fin 1 ∋ # 0) ℕ.< FinBase.toℕ (Fin 2 ∋ # 1)
 
-postulate geqIndex : (Fin 1 ∋ # 0) ≥ (Fin 2 ∋ # 1)
+postulate geqIndex : FinBase.toℕ (Fin 1 ∋ # 0) ℕ.≥ FinBase.toℕ (Fin 2 ∋ # 1)
 
-postulate gtIndex : (Fin 1 ∋ # 0) > (Fin 2 ∋ # 1)
+postulate gtIndex : FinBase.toℕ (Fin 1 ∋ # 0) ℕ.> FinBase.toℕ (Fin 2 ∋ # 1)

@@ -59,6 +59,18 @@
 
 * Fixed bug where typed lambda and quantifier binders were generated with duplicate parentheses.
 
+* Fixed proposition-level natural equality and inequality generating invalid comparison operators.
+
+* Fixed proposition-level comparisons between indices with different bounds by comparing their underlying natural-number values.
+
+* Fixed proposition-level rational tensor equality and inequality generating undefined comparison operators.
+
+* Fixed generated natural-number comparisons conflicting with tensor comparison operators in scope.
+
+* Fixed tensor literals being generated as functional vectors instead of tensors, including nested tensor literals.
+
+* Added the missing rational tensor minimum and maximum reductions used by generated Agda specifications.
+
 ### Python bindings
 
 * Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
