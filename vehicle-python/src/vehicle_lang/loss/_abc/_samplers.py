@@ -54,7 +54,7 @@ class ABCSampler(
             search_lambda: A callable representing the search lambda.
         Returns:
             Sequence[vcl.Tensor]: The computed loss as a 1D tensor. If the size is greater than 1,
-            the losses will be combined by taking the maximum.
+            the losses will be combined by taking the minimum.
         """
         loss, _ = self.get_loss_and_input(
             dims=dims,

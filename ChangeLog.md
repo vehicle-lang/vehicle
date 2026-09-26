@@ -26,6 +26,11 @@
   the `search` function in Vehicle's Python API, currently only available for the PyTorch module
   (the same can be implemented for the TensorFlow module in future).
 
+* Fixed bug in training where the sampler searched for the worst example, not the best example. Training should be more effective now.
+
+* Fixed the default TensorFlow `Sampler` searching in the opposite direction to the PyTorch one.
+  Both now descend the function they are given, which is what approximates the worst case.
+
 * Fixed bug where samplers were not checking if a sampling domain was actually empty, e.g. `(1, -1)`, before running the underlying search procedure.
 
 * Fixed the default `Sampler` implementations returning `nan` when a quantified variable is
@@ -36,6 +41,7 @@
   `DefaultTensorFlowSampler`, which sets how far along an unbounded dimension that region extends
   (default: 10.0). The region is also available to custom samplers as `starting_region` on
   `PyTorchSampler` and `TensorFlowSampler`.
+
 
 ### Solver backend
 
