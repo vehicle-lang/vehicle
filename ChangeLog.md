@@ -28,6 +28,10 @@
 
 * Fixed bug where samplers were not checking if a sampling domain was actually empty, e.g. `(1, -1)`, before running the underlying search procedure.
 
+* Fixed internal error when a quantifier appears inside the body of another quantifier,
+  e.g. `forall x . 0 <= x <= 1 => (exists z . f [x, z] ! 0 >= 0.5)`, including when it is nested
+  under a conjunction or disjunction.
+
 ### Solver backend
 
 * Fixed error that occassionally happened with non-linear specifications.
