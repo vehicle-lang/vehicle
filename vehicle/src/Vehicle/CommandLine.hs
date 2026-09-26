@@ -364,9 +364,14 @@ exportParser :: Parser ExportOptions
 exportParser =
   ExportOptions
     <$> itpParser
-    <*> exportCacheParser
+    <*> optional specificationParser
+    <*> declarationParser
+    <*> networkParser
+    <*> datasetParser
+    <*> parameterParser
     <*> outputParser
     <*> modulePrefixOption
+    <*> optional exportCacheParser
     <*> compileConstReals
 
 exportParserInfo :: ParserInfo ModeOptions
