@@ -28,6 +28,9 @@
 
 * Fixed bug where samplers were not checking if a sampling domain was actually empty, e.g. `(1, -1)`, before running the underlying search procedure.
 
+* Fixed internal error when an expression cannot be evaluated during unblocking, e.g. quantifying
+  over an index as in `exists i . f y ! 0 >= y ! i`.
+
 ### Solver backend
 
 * Fixed error that occassionally happened with non-linear specifications.
