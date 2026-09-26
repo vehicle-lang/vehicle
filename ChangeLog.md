@@ -20,6 +20,8 @@
   e.g. `forall x . let y = x in f [y] ! 0 >= 0.5`, and scoping over one,
   e.g. `let c = 0.5 in forall x . f [x] ! 0 >= c`.
 
+* Fixed error where generated Python code sometimes had erroneous aliasing between variable names.
+
 * Fixed error that occurred when using `@parameter`s of type `Bool`.
 
 * Introduced gradient-based counter-example search for properties. This can be used via the

@@ -14,14 +14,18 @@ import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
 import Data.List.NonEmpty (fromList, toList)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (catMaybes)
 import Data.Proxy
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Backend.LossSearch qualified as L (BooleanTree (..))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude (DeclProvenance, HasProvenance (..), Ix (..), LHSBinderCount, getBinderName)
-import Vehicle.Compile.Prelude qualified as S (Arg, Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
+import Vehicle.Compile.Prelude qualified as S (Arg, Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog, mapBinderNamingForm, mapBindingNamingFormName)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
 import Vehicle.Data.AST.Decl
@@ -275,6 +279,23 @@ type MonadJSONExpr m =
     MonadReader DeclProvenance m
   )
 
+ensureUniqueBinderName :: (MonadJSONExpr m) => S.Binder Builtin -> m (S.Binder Builtin)
+ensureUniqueBinderName binder = do
+  nameSet <- Set.fromList . catMaybes <$> getNameContext
+  let result = flip S.mapBinderNamingForm binder $ S.mapBindingNamingFormName $ \name ->
+        if name `Set.notMember` nameSet
+          then name
+          else findUniqueName name 2 nameSet
+  logDebug MidDetail $ pretty (nameOf binder) <+> pretty (Set.toList nameSet) <+> pretty (nameOf result)
+  return result
+  where
+    findUniqueName :: Name -> Int -> Set Name -> Name
+    findUniqueName name number names = do
+      let newName = Text.pack $ Text.unpack name <> show number
+      if newName `Set.member` names
+        then findUniqueName name (number + 1) names
+        else newName
+
 convertBoundVar ::
   (MonadJSONExpr m) =>
   (S.Expr Builtin -> m jvalue1) ->
@@ -326,7 +347,8 @@ convertTypeValue expr = do
     S.Let {} -> dependentTypesError ("Let" :: String)
     S.Lam {} -> dependentTypesError ("Lam" :: String)
     S.Pi _ binder body -> do
-      typ' <- convertTypeValue (typeOf binder)
+      binder' <- ensureUniqueBinderName binder
+      typ' <- convertTypeValue (typeOf binder')
       closure' <- addNameToContext binder $ convertTypeValue body
       return $ Pi typ' closure'
     S.App fun args -> do
@@ -407,17 +429,19 @@ convertExpr expr = do
     S.Meta {} -> resolutionError currentPass "Pi"
     S.Let _ bound binder body -> do
       bound' <- convertExpr bound
-      binder' <- convertBinder binder
-      body' <- addNameToContext binder $ convertExpr body
-      return $ Let bound' binder' body'
+      binder' <- ensureUniqueBinderName binder
+      binder'' <- convertBinder binder'
+      body' <- addNameToContext binder' $ convertExpr body
+      return $ Let bound' binder'' body'
     S.Record _ _typ fields -> do
       fields' <- traverse (\(k, v) -> (nameOf k,) <$> convertExpr v) fields
       return $ Record fields'
     S.RecordProj _ typ recordVal field -> convertRecordAcc typ recordVal field []
     S.Lam _ binder body -> do
-      binder' <- convertBinder binder
-      closure' <- addNameToContext binder $ convertExpr body
-      return $ Lam binder' closure'
+      binder' <- ensureUniqueBinderName binder
+      binder'' <- convertBinder binder'
+      closure' <- addNameToContext binder' $ convertExpr body
+      return $ Lam binder'' closure'
     S.App fun args -> do
       let args' = NonEmpty.toList args
       case fun of

@@ -2,7 +2,7 @@ DL2Loss : DifferentiableTensorLogic;
 DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims -> \x -> const 1.0 dims / x, pointwiseConjunction = \dims -> \x -> \y -> x + y, pointwiseDisjunction = \dims -> \x -> \y -> x * y, pointwiseLessThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseEqual = \dims -> \x -> \y -> max (x - y) (y - x), pointwiseNotEqual = \dims -> \x -> \y -> const 1.0 dims / max (x - y) (y - x), reduceConjunction = \dims -> \xs -> reduceAdd xs, reduceDisjunction = \dims -> \xs -> reduceMul xs} 
 
 advises : (Tensor Real -> Tensor Real) -> Tensor Real -> Index -> Tensor Real;
-advises classifier x i = DL2Loss.reduceConjunction [10] (foreach k. where (DL2Loss.pointwiseGreaterThan nil (classifier x ! i) (classifier x ! k)) (not (k != i)) (DL2Loss.trueElement))
+advises classifier x i = DL2Loss.reduceConjunction [10] (foreach i2. where (DL2Loss.pointwiseGreaterThan nil (classifier x ! i) (classifier x ! i2)) (not (i2 != i)) (DL2Loss.trueElement))
 
 robustAround : (Tensor Real -> Tensor Real) -> Tensor Real -> Tensor Real -> Index -> Tensor Real;
 robustAround classifier epsilon image label = DL2Loss.pointwiseNegation nil (search [28, 28] (max (image + const -1.0 [28, 28]) (const (- epsilon) [28, 28])) (min image (const epsilon [28, 28])) (\perturbation -> DL2Loss.pointwiseNegation nil (advises classifier (image - perturbation) label)))
