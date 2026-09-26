@@ -31,6 +31,9 @@
   represents. Taking the maximum gave a `forall` the loss of its best sample and an `exists` the
   loss of its worst.
 
+* Fixed the default TensorFlow `Sampler` searching in the opposite direction to the PyTorch one.
+  Both now descend the function they are given, which is what approximates the worst case.
+
 ### Solver backend
 
 * Fixed error that occassionally happened with non-linear specifications.

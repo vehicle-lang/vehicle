@@ -29,11 +29,9 @@ class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
 
 class DefaultTensorFlowSampler(TensorFlowSampler):
     """
-    Default sampler implementation for TensorFlow that uses FGSM attack.
-
-    Uses Fast Gradient Sign Method (FGSM) to generate adversarial samples
-    that explore the search space by perturbing points in the direction
-    of the gradient to maximize or minimize the search_lambda.
+    Default sampler implementation for PyTorch that uses Projected Gradient Descent attack
+    to generate adversarial samples, descending the search_lambda so that the samples approximate
+    its infimum.
     """
 
     def __init__(
@@ -117,8 +115,8 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                         tf.math.is_nan(gradient), tf.zeros_like(gradient), gradient
                     )
 
-                # To find worst-case inputs that make the loss high, we need to
-                # move in the opposite direction of the gradient (gradient descent).
+                # We are searching for the infimum of the lambda,
+                # so we need to follow the gradient downards to find the most true value.
                 perturbation = -epsilon * tf.sign(gradient)
 
                 # Apply perturbation and clip to bounds
