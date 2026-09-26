@@ -17,14 +17,42 @@ else:  # pragma: no cover - exercised implicitly
 
 
 class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
-    @abstractmethod
     def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
-    ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]: ...
+    ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]:
+        """Validates the sampling domain and calls the core sampler implementation."""
+        self._validate_domain(lower_bound, upper_bound)
+        return self._get_loss_and_input(dims, lower_bound, upper_bound, search_lambda)
+
+    def _validate_domain(
+        self,
+        lower_bound: tf.Tensor,
+        upper_bound: tf.Tensor,
+    ) -> None:
+        """Checks that the sampling domain is non-empty."""
+        tf.debugging.assert_less_equal(
+            lower_bound,
+            upper_bound,
+            message="Empty sampling domain: lower bound exceeds upper bound.",
+        )
+
+    @abstractmethod
+    def _get_loss_and_input(
+        self,
+        dims: Sequence[int],
+        lower_bound: tf.Tensor,
+        upper_bound: tf.Tensor,
+        search_lambda: Callable[[tf.Tensor], tf.Tensor],
+    ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]:
+        """
+        Runs the core sampling procedure for the specific backend.
+        Uses gradient ascent or descent to generate samples and evaluate the search lambda.
+        """
+        ...
 
 
 class DefaultTensorFlowSampler(TensorFlowSampler):
@@ -51,7 +79,7 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
         self.num_steps = num_steps
         self.seed = seed
 
-    def get_loss_and_input(
+    def _get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: tf.Tensor,
@@ -142,7 +170,7 @@ class ConstantTensorFlowSampler(TensorFlowSampler):
         self.constant_value = constant_value
         self.num_samples = num_samples
 
-    def get_loss_and_input(
+    def _get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: tf.Tensor,
