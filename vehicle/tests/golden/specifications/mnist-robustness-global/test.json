@@ -7,5 +7,11 @@
     "ignore": {
       "lines": ".*\"fileHash\".*"
     }
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   }
 ]

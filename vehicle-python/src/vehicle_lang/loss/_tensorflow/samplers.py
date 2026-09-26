@@ -18,13 +18,13 @@ else:  # pragma: no cover - exercised implicitly
 
 class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
     @abstractmethod
-    def get_loss(
+    def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
-    ) -> Float[tf.Tensor, "1 losses"]: ...
+    ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]: ...
 
 
 class DefaultTensorFlowSampler(TensorFlowSampler):
@@ -50,13 +50,13 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
         self.num_steps = num_steps
         self.seed = seed
 
-    def get_loss(
+    def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
-    ) -> Float[tf.Tensor, "1 losses"]:
+    ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]:
         """
         Use PGD to generate adversarial samples and evaluate the search lambda.
 
@@ -84,6 +84,7 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
         epsilon = range_size / tf.cast(self.num_steps, tf.float32)
 
         results = []
+        points = []
 
         # Use multiple random starting points to ensure diversity
         for _ in range(self.num_samples):
@@ -115,19 +116,19 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                         tf.math.is_nan(gradient), tf.zeros_like(gradient), gradient
                     )
 
-                # FGSM: perturb against the gradient. The search approximates an infimum of the
-                # lambda, and for a `forall` the lambda is the negated body, so descending it is
-                # what hunts the worst case.
+                # We are searching for the infimum of the lambda, 
+                # so we need to follow the gradient downards to find the most true value.
                 perturbation = -epsilon * tf.sign(gradient)
 
                 # Apply perturbation and clip to bounds
                 current_point = tf.clip_by_value(current_point + perturbation, lb, ub)
 
+            points.append(current_point)
             # Evaluate and store the final result from this trajectory
             result = search_lambda(tf.convert_to_tensor(current_point))
             results.append(tf.convert_to_tensor(result))
 
-        return tf.stack(results)
+        return tf.stack(results), tf.stack(points)
 
 
 class ConstantTensorFlowSampler(TensorFlowSampler):
@@ -140,16 +141,18 @@ class ConstantTensorFlowSampler(TensorFlowSampler):
         self.constant_value = constant_value
         self.num_samples = num_samples
 
-    def get_loss(
+    def get_loss_and_input(
         self,
         dims: Sequence[int],
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
-    ) -> Any:
+    ) -> tuple[Float[tf.Tensor, "1 losses"], tf.Tensor]:
         """Returns the original constant value."""
         results = []
+        points = []
         for _ in range(self.num_samples):
             result = search_lambda(self.constant_value)
             results.append(tf.convert_to_tensor(result))
-        return tf.stack(results)
+            points.append(self.constant_value)
+        return tf.stack(results), tf.stack(points)

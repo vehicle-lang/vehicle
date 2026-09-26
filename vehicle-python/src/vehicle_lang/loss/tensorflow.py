@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping
 
 from ..typing import DeclarationName, DifferentiableLogic, DL2DifferentiableLogic
-from ._common import load_loss_specification
+from ._common import load_training_loss
 from ._tensorflow._translation import TensorFlowTranslation
 from ._tensorflow.samplers import DefaultTensorFlowSampler, TensorFlowSampler
 
@@ -21,13 +21,13 @@ def load_specification(
     path: str | Path,
     *,
     logic: DifferentiableLogic = DL2DifferentiableLogic(),
-    samplers: Mapping[str, TensorFlowSampler] | None = None,
+    samplers: dict[str, TensorFlowSampler] | None = None,
     declarations: Iterable[DeclarationName] = (),
-    declaration_context: MutableMapping[str, Any] | None = None,
+    declaration_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Load a loss function compiled for TensorFlow."""
 
-    return load_loss_specification(
+    return load_training_loss(
         path,
         logic=logic,
         samplers=samplers,
