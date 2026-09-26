@@ -126,7 +126,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
                     else:
                         gradient = torch.zeros_like(current_point_var)
 
-                # We are searching for the infimum of the lambda, 
+                # We are searching for the infimum of the lambda,
                 # so we need to follow the gradient downards to find the most true value.
                 perturbation = -epsilon * torch.sign(gradient)
 

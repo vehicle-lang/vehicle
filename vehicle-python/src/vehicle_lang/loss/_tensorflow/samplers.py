@@ -116,7 +116,7 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
                         tf.math.is_nan(gradient), tf.zeros_like(gradient), gradient
                     )
 
-                # We are searching for the infimum of the lambda, 
+                # We are searching for the infimum of the lambda,
                 # so we need to follow the gradient downards to find the most true value.
                 perturbation = -epsilon * tf.sign(gradient)
 
