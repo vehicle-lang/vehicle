@@ -16,6 +16,7 @@ open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
+open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 open import Relation.Nullary
 
 module Agda where
@@ -65,16 +66,16 @@ UnnormalisedInputVector : Set
 UnnormalisedInputVector = Tensor ℚ (5 ∷ [])
 
 minimumInputValues : UnnormalisedInputVector
-minimumInputValues = stack (natScalar 0) (𝕋.- pi) (𝕋.- pi) (natScalar 100) (natScalar 0)
+minimumInputValues = stack ((natScalar 0) ∷ᵥ 𝕋.- pi ∷ᵥ 𝕋.- pi ∷ᵥ (natScalar 100) ∷ᵥ (natScalar 0) ∷ᵥ []ᵥ)
 
 maximumInputValues : UnnormalisedInputVector
-maximumInputValues = stack (natScalar 60261) pi pi (natScalar 1200) (natScalar 1200)
+maximumInputValues = stack ((natScalar 60261) ∷ᵥ pi ∷ᵥ pi ∷ᵥ (natScalar 1200) ∷ᵥ (natScalar 1200) ∷ᵥ []ᵥ)
 
 ValidInput : UnnormalisedInputVector → Set
 ValidInput x = ∀ i → (minimumInputValues ! i) ≤ (x ! i) × (x ! i) ≤ (maximumInputValues ! i)
 
 meanScalingValues : UnnormalisedInputVector
-meanScalingValues = scalar (ℤ.+ 19791091 ℚ./ 1000)∷ᵥnatScalar 0∷ᵥnatScalar 0∷ᵥnatScalar 650∷ᵥnatScalar 600∷ᵥ[]ᵥ
+meanScalingValues = scalar (ℤ.+ 19791091 ℚ./ 1000) ∷ᵥ natScalar 0 ∷ᵥ natScalar 0 ∷ᵥ natScalar 650 ∷ᵥ natScalar 600 ∷ᵥ []ᵥ
 
 normalise : UnnormalisedInputVector → InputVector
 normalise x = foreach (λ i → ((x ! i) 𝕋.- (meanScalingValues ! i)) 𝕋.÷ ((maximumInputValues ! i) 𝕋.- (minimumInputValues ! i)))

@@ -14,7 +14,17 @@
 
 ### Loss backend
 
-* Fixed internal error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
+* Fixed error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
+
+* Fixed error when a property contains a `let` binding, both inside a quantifier,
+  e.g. `forall x . let y = x in f [y] ! 0 >= 0.5`, and scoping over one,
+  e.g. `let c = 0.5 in forall x . f [x] ! 0 >= c`.
+
+* Fixed error that occurred when using `@parameter`s of type `Bool`.
+
+* Introduced gradient-based counter-example search for properties. This can be used via the
+  the `search` function in Vehicle's Python API, currently only available for the PyTorch module
+  (the same can be implemented for the TensorFlow module in future).
 
 * Fixed `forall` and `exists` returning each other's loss. The samples a quantifier's search
   produces are now combined by taking the minimum, which is the existential that `search`
@@ -23,11 +33,22 @@
 
 ### Solver backend
 
-* Fixed internal error that occassionally happened with non-linear specifications.
+* Fixed error that occassionally happened with non-linear specifications.
 
 ### Agda backend
 
 * Fixed error where Agda library didn't type-check due to malformed transpose definition.
+
+* Fixed bug where vector literals were compiled incorrectly, causing empty vectors to fail and multi-element vectors to lose elements.
+
+* Fixed bug where tensor stacks and functional vectors generated malformed Agda code.
+
+* Fixed bug where typed lambda and quantifier binders were generated with duplicate parentheses.
+
+### Python bindings
+
+* Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
+  later, which replaced them with a `FrozenInstanceError`.
 
 ## v0.28.0
 

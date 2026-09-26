@@ -1,0 +1,131 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims -> \x -> const 1.0 dims / x, pointwiseConjunction = \dims -> \x -> \y -> x + y, pointwiseDisjunction = \dims -> \x -> \y -> x * y, pointwiseLessThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseEqual = \dims -> \x -> \y -> max (x - y) (y - x), pointwiseNotEqual = \dims -> \x -> \y -> const 1.0 dims / max (x - y) (y - x), reduceConjunction = \dims -> \xs -> reduceAdd xs, reduceDisjunction = \dims -> \xs -> reduceMul xs} 
+
+pi : Tensor Real;
+pi = 3.141592
+
+clearOfConflict : Index;
+clearOfConflict = 0
+
+weakLeft : Index;
+weakLeft = 1
+
+strongLeft : Index;
+strongLeft = 3
+
+strongRight : Index;
+strongRight = 4
+
+@network;
+acasXu : Tensor Real -> Tensor Real
+
+minimumInputValues : Tensor Real;
+minimumInputValues = [0.0, - pi, - pi, 100.0, 0.0]
+
+maximumInputValues : Tensor Real;
+maximumInputValues = [60261.0, pi, pi, 1200.0, 1200.0]
+
+meanScalingValues : Tensor Real;
+meanScalingValues = [ 19791.091, 0.0, 0.0, 650.0, 600.0 ]
+
+normalise : Tensor Real -> Tensor Real;
+normalise x = foreach i. (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i)
+
+normAcasXu : Tensor Real -> Tensor Real;
+normAcasXu x = acasXu (normalise x)
+
+@property;
+property1_0 : Tensor Real;
+property1_0 = search [5] [55947.691, max (- pi) -infinity, max (- pi) -infinity, 1145.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 60.0] (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseGreaterThan nil (acasXu (foreach i. (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i)) ! 0) ((1500.0 - 7.518884) / 373.94992)))
+
+@property;
+property2_0 : Tensor Real;
+property2_0 = search [5] [55947.691, max (- pi) -infinity, max (- pi) -infinity, 1145.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 60.0] (\x -> DL2Loss.reduceConjunction [5] (foreach k. where (DL2Loss.pointwiseGreaterThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! k)) (not (clearOfConflict != k)) (DL2Loss.trueElement)))
+
+@property;
+property3_0 : Tensor Real;
+property3_0 = search [5] [1500.0, max (- pi) -6.0e-2, max (- pi) 3.1, 980.0, 960.0] [1800.0, 6.0e-2, 3.141592, 1200.0, 1200.0] (\x -> DL2Loss.reduceConjunction [5] (foreach k. where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! k)) (not (clearOfConflict != k)) (DL2Loss.trueElement)))
+
+@property;
+property4_0 : Tensor Real;
+property4_0 = search [5] [1500.0, max (- pi) -6.0e-2, max (- pi) 0.0, 1000.0, 700.0] [1800.0, 6.0e-2, 0.0, 1200.0, 800.0] (\x -> DL2Loss.reduceConjunction [5] (foreach k. where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! k)) (not (clearOfConflict != k)) (DL2Loss.trueElement)))
+
+@property;
+property5_0 : Tensor Real;
+property5_0 = search [5] [250.0, max (- pi) 0.2, max (- pi) -3.141592, 100.0, 0.0] [400.0, 0.4, -3.136592, 400.0, 400.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach k. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! strongRight) (normAcasXu x ! k)) (not (strongRight != k)) (DL2Loss.trueElement))))
+
+@property;
+property6_0 : Tensor Real;
+property6_0 = search [5] [12000.0, max (- pi) -3.141592, max (- pi) -3.141592, 100.0, 0.0] [60261.0, -0.7, -3.136592, 1200.0, 1200.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach k. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! k)) (not (clearOfConflict != k)) (DL2Loss.trueElement))))
+
+@property;
+property6_1 : Tensor Real;
+property6_1 = search [5] [12000.0, max (- pi) 0.7, max (- pi) -3.141592, 100.0, 0.0] [60261.0, 3.141592, -3.136592, 1200.0, 1200.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach k. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! k)) (not (clearOfConflict != k)) (DL2Loss.trueElement))))
+
+@property;
+property7_0 : Tensor Real;
+property7_0 = search [5] [0.0, max (- pi) -3.141592, max (- pi) -3.141592, 100.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 1200.0] (\x -> DL2Loss.reduceConjunction [5] (foreach k. where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! strongLeft) (normAcasXu x ! k)) (not (strongLeft != k)) (DL2Loss.trueElement)))
+
+@property;
+property7_1 : Tensor Real;
+property7_1 = search [5] [0.0, max (- pi) -3.141592, max (- pi) -3.141592, 100.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 1200.0] (\x -> DL2Loss.reduceConjunction [5] (foreach k. where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! strongRight) (normAcasXu x ! k)) (not (strongRight != k)) (DL2Loss.trueElement)))
+
+@property;
+property8_0 : Tensor Real;
+property8_0 = search [5] [0.0, max (- pi) -3.141592, max (- pi) -0.1, 600.0, 600.0] [60261.0, -2.356194, 0.1, 1200.0, 1200.0] (\x -> DL2Loss.pointwiseConjunction nil (DL2Loss.reduceDisjunction [5] (foreach k. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! k)) (not (clearOfConflict != k)) (DL2Loss.trueElement)))) (DL2Loss.reduceDisjunction [5] (foreach k. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! weakLeft) (normAcasXu x ! k)) (not (weakLeft != k)) (DL2Loss.trueElement)))))
+
+@property;
+property9_0 : Tensor Real;
+property9_0 = search [5] [2000.0, max (- pi) -0.4, max (- pi) -3.141592, 100.0, 0.0] [7000.0, -0.14, -3.131592, 150.0, 150.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach k. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! strongLeft) (normAcasXu x ! k)) (not (strongLeft != k)) (DL2Loss.trueElement))))
+
+@property;
+property10_0 : Tensor Real;
+property10_0 = search [5] [36000.0, max (- pi) 0.7, max (- pi) -3.141592, 900.0, 600.0] [60261.0, 3.141592, -3.131592, 1200.0, 1200.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach k. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! k)) (not (clearOfConflict != k)) (DL2Loss.trueElement))))
+
+@property;
+property1_0_bool : Tensor Bool;
+property1_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and x ! 0 >= 55947.691 and x ! 3 >= 1145.0 and x ! 4 <= 60.0) and reduceOr (acasXu (foreach i. (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i)) ! 0 > (1500.0 - 7.518884) / 373.94992)
+
+@property;
+property2_0_bool : Tensor Bool;
+property2_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and x ! 0 >= 55947.691 and x ! 3 >= 1145.0 and x ! 4 <= 60.0) and reduceAnd (foreach k. clearOfConflict != k => normAcasXu x ! clearOfConflict > normAcasXu x ! k)
+
+@property;
+property3_0_bool : Tensor Bool;
+property3_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and ((1500.0 <= x ! 0 and x ! 0 <= 1800.0) and - 6.0e-2 <= x ! 1 and x ! 1 <= 6.0e-2) and x ! 2 >= 3.1 and x ! 3 >= 980.0 and x ! 4 >= 960.0) and reduceAnd (foreach k. clearOfConflict != k => normAcasXu x ! clearOfConflict < normAcasXu x ! k)
+
+@property;
+property4_0_bool : Tensor Bool;
+property4_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and ((1500.0 <= x ! 0 and x ! 0 <= 1800.0) and - 6.0e-2 <= x ! 1 and x ! 1 <= 6.0e-2) and x ! 2 == 0.0 and 1000.0 <= x ! 3 and 700.0 <= x ! 4 and x ! 4 <= 800.0) and reduceAnd (foreach k. clearOfConflict != k => normAcasXu x ! clearOfConflict < normAcasXu x ! k)
+
+@property;
+property5_0_bool : Tensor Bool;
+property5_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and (250.0 <= x ! 0 and x ! 0 <= 400.0) and (0.2 <= x ! 1 and x ! 1 <= 0.4) and (- 3.141592 <= x ! 2 and x ! 2 <= - 3.141592 + 5.0e-3) and (100.0 <= x ! 3 and x ! 3 <= 400.0) and 0.0 <= x ! 4 and x ! 4 <= 400.0) and reduceOr (foreach k. not (strongRight != k => normAcasXu x ! strongRight < normAcasXu x ! k))
+
+@property;
+property6_0_bool : Tensor Bool;
+property6_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and (12000.0 <= x ! 0 and x ! 0 <= 62000.0) and (- 3.141592 <= x ! 1 and x ! 1 <= - 0.7) and (- 3.141592 <= x ! 2 and x ! 2 <= - 3.141592 + 5.0e-3) and (100.0 <= x ! 3 and x ! 3 <= 1200.0) and 0.0 <= x ! 4 and x ! 4 <= 1200.0) and reduceOr (foreach k. not (clearOfConflict != k => normAcasXu x ! clearOfConflict < normAcasXu x ! k))
+
+@property;
+property6_1_bool : Tensor Bool;
+property6_1_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and (12000.0 <= x ! 0 and x ! 0 <= 62000.0) and (0.7 <= x ! 1 and x ! 1 <= 3.141592) and (- 3.141592 <= x ! 2 and x ! 2 <= - 3.141592 + 5.0e-3) and (100.0 <= x ! 3 and x ! 3 <= 1200.0) and 0.0 <= x ! 4 and x ! 4 <= 1200.0) and reduceOr (foreach k. not (clearOfConflict != k => normAcasXu x ! clearOfConflict < normAcasXu x ! k))
+
+@property;
+property7_0_bool : Tensor Bool;
+property7_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and (0.0 <= x ! 0 and x ! 0 <= 60760.0) and (- 3.141592 <= x ! 1 and x ! 1 <= 3.141592) and (- 3.141592 <= x ! 2 and x ! 2 <= 3.141592) and (100.0 <= x ! 3 and x ! 3 <= 1200.0) and 0.0 <= x ! 4 and x ! 4 <= 1200.0) and reduceAnd (foreach k. strongLeft != k => normAcasXu x ! strongLeft < normAcasXu x ! k)
+
+@property;
+property7_1_bool : Tensor Bool;
+property7_1_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and (0.0 <= x ! 0 and x ! 0 <= 60760.0) and (- 3.141592 <= x ! 1 and x ! 1 <= 3.141592) and (- 3.141592 <= x ! 2 and x ! 2 <= 3.141592) and (100.0 <= x ! 3 and x ! 3 <= 1200.0) and 0.0 <= x ! 4 and x ! 4 <= 1200.0) and reduceAnd (foreach k. strongRight != k => normAcasXu x ! strongRight < normAcasXu x ! k)
+
+@property;
+property8_0_bool : Tensor Bool;
+property8_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and (0.0 <= x ! 0 and x ! 0 <= 60760.0) and (- 3.141592 <= x ! 1 and x ! 1 <= - 0.75 * 3.141592) and (- 0.1 <= x ! 2 and x ! 2 <= 0.1) and (600.0 <= x ! 3 and x ! 3 <= 1200.0) and 600.0 <= x ! 4 and x ! 4 <= 1200.0) and reduceOr (foreach k. not (clearOfConflict != k => normAcasXu x ! clearOfConflict < normAcasXu x ! k)) and reduceOr (foreach k. not (weakLeft != k => normAcasXu x ! weakLeft < normAcasXu x ! k))
+
+@property;
+property9_0_bool : Tensor Bool;
+property9_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and (2000.0 <= x ! 0 and x ! 0 <= 7000.0) and (- 0.4 <= x ! 1 and x ! 1 <= - 0.14) and (- 3.141592 <= x ! 2 and x ! 2 <= - 3.141592 + 1.0e-2) and (100.0 <= x ! 3 and x ! 3 <= 150.0) and 0.0 <= x ! 4 and x ! 4 <= 150.0) and reduceOr (foreach k. not (strongLeft != k => normAcasXu x ! strongLeft < normAcasXu x ! k))
+
+@property;
+property10_0_bool : Tensor Bool;
+property10_0_bool = \x -> (reduceAnd (foreach k. minimumInputValues ! k <= x ! k and x ! k <= maximumInputValues ! k) and (36000.0 <= x ! 0 and x ! 0 <= 60760.0) and (0.7 <= x ! 1 and x ! 1 <= 3.141592) and (- 3.141592 <= x ! 2 and x ! 2 <= - 3.141592 + 1.0e-2) and (900.0 <= x ! 3 and x ! 3 <= 1200.0) and 600.0 <= x ! 4 and x ! 4 <= 1200.0) and reduceOr (foreach k. not (clearOfConflict != k => normAcasXu x ! clearOfConflict < normAcasXu x ! k))

@@ -34,7 +34,7 @@ data BuiltinEvaluationResult expr thunk builtin
 
 type EvalBuiltinFn meta builtin args m =
   ( MonadLogger m,
-    MonadNameContext m,
+    MonadReadableNameContext m,
     NormalisableExpr (GenericForcedValue meta) (GenericThunk meta) builtin m,
     HasBuiltinConstructor (GenericForcedValue meta) (GenericThunk meta),
     HasLambdaConstructor (GenericForcedValue meta) (GenericThunk meta) (GenericClosure meta)
