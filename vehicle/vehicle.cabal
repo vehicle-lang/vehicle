@@ -347,6 +347,7 @@ library
     Vehicle.Verify.Specification.Execute
     Vehicle.Verify.Specification.Execute.Reporting
     Vehicle.Verify.Specification.IO
+    Vehicle.Verify.Specification.IO.Read
     Vehicle.Verify.Specification.Status
 
   autogen-modules: Paths_vehicle

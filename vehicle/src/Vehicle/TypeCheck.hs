@@ -43,7 +43,7 @@ import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
 import Vehicle.Libraries.Core (ResolvedLibrary (..))
 import Vehicle.Libraries.StandardLibrary (standardLibIdent, standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
 import Vehicle.Prelude.Logging.Instance
-import Vehicle.Verify.Specification.IO (readSpecification)
+import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecification)
 
 data TypeCheckOptions = TypeCheckOptions
   { specification :: FilePath,
@@ -68,7 +68,7 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
 -- Useful functions that apply to multiple compiler passes
 
 typeCheckUserProg ::
-  (MonadStdIO m, MonadCompile m) =>
+  (MonadReadSpecification m, MonadStdIO m, MonadCompile m) =>
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
@@ -134,10 +134,10 @@ printPropertyTypes = \case
 
 runCompileMonad ::
   forall m a.
-  (MonadStdIO m) =>
+  (MonadStdIO m, MonadReadSpecification m) =>
   LoggingSettings ->
   OutputAsJSON ->
-  (forall n. (MonadStdIO n, MonadLogger n) => ExceptT CompileError n a) ->
+  (forall n. (MonadStdIO n, MonadLogger n, MonadReadSpecification n) => ExceptT CompileError n a) ->
   m a
 runCompileMonad loggingSettings outputAsJSON x = do
   errorOrResult <- runLoggerT loggingSettings (logCompileError x)
@@ -261,7 +261,7 @@ storeModule modulePath moduleInfo =
 -- Algorithm
 
 loadUserSpecification ::
-  (MonadCompile m, MonadStdIO m) =>
+  (MonadReadSpecification m, MonadCompile m, MonadStdIO m) =>
   FilePath ->
   m (Prog Builtin, Map ModulePath [Decl Builtin], AdjacencyGraph ModulePath)
 loadUserSpecification specificationFile = do
@@ -299,7 +299,7 @@ loadLibraries specificationFile = do
 -- | Loads a module into the program state and returning `True` if
 -- the module .
 loadModule ::
-  (MonadTCMProg m) =>
+  (MonadReadSpecification m, MonadTCMProg m) =>
   ModulePath ->
   m ModuleInfo
 loadModule modulePath =
@@ -310,7 +310,7 @@ loadModule modulePath =
       Nothing -> loadUnloadedModule mempty modulePath
 
 loadUnloadedModule ::
-  (MonadTCMProg m) =>
+  (MonadReadSpecification m, MonadTCMProg m) =>
   [ImportStatement] ->
   ModulePath ->
   m ModuleInfo
@@ -326,7 +326,7 @@ loadUnloadedModule implicitImports modulePath = do
     return moduleInfo
 
 loadCachedModule ::
-  (MonadTCMProg m) =>
+  (MonadTCMProg m, MonadReadSpecification m) =>
   FilePath ->
   [ImportStatement] ->
   ModuleText ->
@@ -347,7 +347,7 @@ loadCachedModule moduleFile implicitImports moduleText moduleInterface = do
           }
 
 loadImports ::
-  (MonadTCMProg m) =>
+  (MonadTCMProg m, MonadReadSpecification m) =>
   [ImportStatement] ->
   m (ModuleStatus, ImportedModuleContext Builtin)
 loadImports imports = do
@@ -361,7 +361,7 @@ loadImports imports = do
   return (finalStatus, importedCtx)
 
 parseAndTypeCheckModule ::
-  (MonadTCMProg m) =>
+  (MonadTCMProg m, MonadReadSpecification m) =>
   FilePath ->
   [ImportStatement] ->
   ModuleText ->

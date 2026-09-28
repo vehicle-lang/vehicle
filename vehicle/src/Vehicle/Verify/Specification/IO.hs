@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Vehicle.Verify.Specification.IO
-  ( readSpecification,
-    writeSpecificationCache,
+  ( writeSpecificationCache,
     readSpecificationCacheIndex,
     writeVerificationQuery,
     writePropertyVerificationPlan,
@@ -20,43 +19,13 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy qualified as BIO
-import Data.Text.IO qualified as TIO
 import System.Directory (doesFileExist)
-import System.FilePath (takeExtension, (<.>), (</>))
+import System.FilePath ((<.>), (</>))
 import Vehicle.Backend.Prelude (writeResultToFile)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
-
---------------------------------------------------------------------------------
--- Specification
-
-readSpecification :: (MonadStdIO m) => FilePath -> m ModuleText
-readSpecification inputFile
-  | takeExtension inputFile /= specificationFileExtension = do
-      fatalError $
-        "Specification"
-          <+> quotePretty inputFile
-          <+> "has unsupported"
-          <+> "extension"
-          <+> quotePretty (takeExtension inputFile)
-          <> "."
-            <+> "Only files with a"
-            <+> quotePretty specificationFileExtension
-            <+> "extension are supported."
-  | otherwise = do
-      errorOrContents <- liftIO $ try @IOException $ TIO.readFile inputFile
-
-      case errorOrContents of
-        Left err -> do
-          fatalError $
-            "Error occured while reading specification"
-              <+> quotePretty inputFile
-              <> ":"
-              <> line
-              <> indent 2 (pretty (show err))
-        Right contents -> return contents
 
 --------------------------------------------------------------------------------
 -- Verification plan output

@@ -26,6 +26,7 @@ import Vehicle.Prelude.Error
 import Vehicle.Prelude.Logging (runSilentLoggerT)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.TypeCheck (TypeCheckOptions (..), typeCheckUserProg)
+import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification)
 
 data Server = Server
   { stateRef :: TVar ServerState,
@@ -60,7 +61,7 @@ newServer = do
 
 initialiseServer :: (MonadStdIO IO) => Server -> LanguageContextEnv Config -> IO ()
 initialiseServer server@Server {..} env = do
-  _ <- liftIO $ forkIO $ jobWorker server
+  _ <- liftIO $ forkIO $ runLspT env $ jobWorker server
   _ <- liftIO $ forkIO $ runLspT env $ resultWorker resultQueue
   return ()
 
@@ -102,7 +103,7 @@ data Job = Job FileVersion NormalizedUri Text
 
 type JobQueue = TQueue Job
 
-lspTypeCheck :: (MonadStdIO IO) => NormalizedUri -> Text -> IO (Either CompileError (Prog Builtin))
+lspTypeCheck :: (MonadLsp Config m, MonadReadSpecification m, MonadStdIO m) => NormalizedUri -> Text -> m (Either CompileError (Prog Builtin))
 lspTypeCheck uri _txt = do
   case maybeFilePath of
     Nothing ->
@@ -117,7 +118,7 @@ lspTypeCheck uri _txt = do
           ( logCompileError
               ( typeCheckUserProg
                   TypeCheckOptions
-                    { specification = filePath, -- TODO: this needs to look at `txt`, because otherwise it won't see new changes until the user saves the document
+                    { specification = filePath,
                       secondaryTypeSystem = Nothing, -- TODO: run all type systems
                       declarationsToCompile = []
                     }
@@ -128,13 +129,13 @@ lspTypeCheck uri _txt = do
     rawUri = fromNormalizedUri uri
     maybeFilePath = uriToFilePath rawUri
 
-jobWorker :: (MonadStdIO IO) => Server -> IO ()
+jobWorker :: (MonadLsp Config m, MonadReadSpecification m, MonadStdIO m) => Server -> m ()
 jobWorker (Server stateVar jobQueue resultQueue) = forever $ do
-  Job version uri txt <- atomically $ readTQueue jobQueue
+  Job version uri txt <- liftIO $ atomically $ readTQueue jobQueue
 
   result <- lspTypeCheck uri txt
 
-  atomically $ do
+  liftIO $ atomically $ do
     oldState@ServerState {..} <- readTVar stateVar
     oldFileState <- case Map.lookup uri sourceFiles of
       Nothing -> developerError "Missing file"

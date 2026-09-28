@@ -28,6 +28,7 @@ import Vehicle.Prelude
 import Vehicle.Prelude.IO as VIO (MonadStdIO (..))
 import Vehicle.Prelude.Logging.Class
 import Vehicle.Prelude.Warning
+import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecification)
 
 --------------------------------------------------------------------------------
 -- Settings
@@ -122,6 +123,9 @@ instance (MonadStdIO m) => MonadStdIO (LoggerT m) where
   writeStdoutLn = lift . VIO.writeStdoutLn
   writeStderrLn = lift . VIO.writeStderrLn
 
+instance (MonadReadSpecification m) => MonadReadSpecification (LoggerT m) where
+  readSpecification = lift . readSpecification
+
 runLoudLoggerT :: (MonadIO m) => LoggingSettings -> LoggerT m a -> m (a, [CompileWarning])
 runLoudLoggerT loggingSettings (LoggerT value) = do
   let initialState = initialLoggingState loggingSettings
@@ -159,6 +163,9 @@ instance (MonadStdIO m) => MonadStdIO (SilentLoggerT m) where
   writeStdoutLn = lift . VIO.writeStdoutLn
   writeStderrLn = lift . VIO.writeStderrLn
 
+instance (MonadReadSpecification m) => MonadReadSpecification (SilentLoggerT m) where
+  readSpecification = lift . readSpecification
+
 runSilentLoggerT :: SilentLoggerT m a -> m (a, [CompileWarning])
 runSilentLoggerT e = runWriterT (unSilentLoggerT e)
 
@@ -168,9 +175,9 @@ runSilentLogger e = fst $ runIdentity $ runSilentLoggerT e
 --------------------------------------------------------------------------------
 
 runLoggerT ::
-  (MonadStdIO m) =>
+  (MonadStdIO m, MonadReadSpecification m) =>
   LoggingSettings ->
-  (forall n. (MonadStdIO n, MonadLogger n) => n a) ->
+  (forall n. (MonadStdIO n, MonadLogger n, MonadReadSpecification n) => n a) ->
   m a
 runLoggerT loggingSettings@LoggingSettings {..} value = do
   (result, warnings) <-
