@@ -188,6 +188,7 @@ compileBoolExpr value = do
     VBoolTensorAt {} -> unblockAndRec forcedValue
     VBoolVectorAt {} -> unblockAndRec forcedValue
     VBoolFoldList {} -> unblockAndRec forcedValue
+    VBoolParameter {} -> unblockAndRec forcedValue
   where
     unblockAndRec e = compileBoolExpr =<< Unblocking.unblockBoolExpr unblockingActions (Forced e)
 

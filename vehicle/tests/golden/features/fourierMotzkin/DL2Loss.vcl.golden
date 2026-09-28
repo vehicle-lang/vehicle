@@ -1,15 +1,18 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims -> \x -> const 1.0 dims / x, pointwiseConjunction = \dims -> \x -> \y -> x + y, pointwiseDisjunction = \dims -> \x -> \y -> x * y, pointwiseLessThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseEqual = \dims -> \x -> \y -> max (x - y) (y - x), pointwiseNotEqual = \dims -> \x -> \y -> const 1.0 dims / max (x - y) (y - x), reduceConjunction = \dims -> \xs -> reduceAdd xs, reduceDisjunction = \dims -> \xs -> reduceMul xs} 
+
 @property;
 unusedVar : (Tensor Real -> Tensor Real) -> Tensor Real;
-unusedVar f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ y -> max 0.0 (0.0 - x) + max 0.0 (x - 1.0) + max 0.0 (0.0 - f [x] ! 0)))
+unusedVar f = search nil 0.0 1.0 (\x -> search nil -infinity infinity (\y -> DL2Loss.pointwiseGreaterEqualThan nil (f [x] ! 0) 0.0))
 
 @property;
 underConstrainedVar1 : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConstrainedVar1 f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ y -> max 0.0 (x - 2.0) + (max 0.0 (y - 3.0) + (max 0.0 (1.0 - x) + (max 0.0 (2.0 - y) + max 0.0 (0.0 - f [x + y] ! 0))))))
+underConstrainedVar1 f = search nil 1.0 2.0 (\x -> search nil 2.0 3.0 (\y -> DL2Loss.pointwiseGreaterEqualThan nil (f [x + y] ! 0) 0.0))
 
 @property;
 underConstrainedVar2 : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConstrainedVar2 f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ y -> max 0.0 (x - 2.0) + (max 0.0 (y - 3.0) + (max 0.0 (1.0 - x) + (max 0.0 (2.0 - 2.0 * y) + max 0.0 (0.0 - f [2.0 * x + y] ! 0))))))
+underConstrainedVar2 f = search nil 1.0 2.0 (\x -> search nil 1.0 3.0 (\y -> DL2Loss.pointwiseGreaterEqualThan nil (f [2.0 * x + y] ! 0) 0.0))
 
 @property;
 underConstrainedVars : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConstrainedVars f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> reduceAdd 0.0 (max [ 0.0, 0.0, 0.0, 0.0, 0.0 ] ([ 0.0, 0.0, 0.0, 0.0, 0.0 ] - x)) + reduceAdd 0.0 (max [ 0.0, 0.0, 0.0, 0.0, 0.0 ] (x - [ 10.0, 10.0, 10.0, 10.0, 10.0 ])) + (max 0.0 (2.0 - x ! 3) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (max 0.0 (2.5 - (x ! 1 - 2.0 * x ! 3)) + max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0)))))
+underConstrainedVars f = search [5] [ 0.0, 0.0, 0.0, 2.0, 0.0 ] (const 10.0 [5]) (\x -> DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseGreaterEqualThan nil (x ! 2 + x ! 3) 1.0) (DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseGreaterEqualThan nil (x ! 1 - 2.0 * x ! 3) 2.5) (DL2Loss.pointwiseGreaterEqualThan nil (f [x ! 0 + x ! 1] ! 0) 2.0)))

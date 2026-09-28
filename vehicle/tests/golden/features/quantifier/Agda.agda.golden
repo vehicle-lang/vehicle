@@ -17,7 +17,7 @@ open import Data.List.Base
 module Agda where
 
 unused : Set
-unused = ∀ ((x : Tensor ℚ [])) → ⊤
+unused = ∀ (x : Tensor ℚ []) → ⊤
 
 postulate f : Tensor ℚ [] → Tensor ℚ []
 

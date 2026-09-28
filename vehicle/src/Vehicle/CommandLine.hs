@@ -16,7 +16,7 @@ import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Options.Applicative
-import Vehicle.Backend.Prelude (BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..))
+import Vehicle.Backend.Prelude (BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, LossFunctionMode (Training), SecondaryTypeSystem (..))
 import Vehicle.Compile (CompileOptions (..), ITPOptions (..), LossOptions (..), QueryOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.LSP (LSPOptions (..))
@@ -231,7 +231,8 @@ compileLossDescription =
 compileLossParser :: Parser LossOptions
 compileLossParser =
   LossOptions
-    <$> lossLogicParser
+    <$> lossModeParser
+    <*> lossLogicParser
     <*> specificationParser
     <*> declarationParser
     <*> outputParser
@@ -243,6 +244,16 @@ lossLogicParser =
       <> short 'l'
       <> metavar "LOGIC"
       <> helpDoc (Just ("The differentiable logic to export to." <+> supportedOptions allBuiltinDifferentiableLogics))
+
+lossModeParser :: Parser LossFunctionMode
+lossModeParser =
+  option auto $
+    long "lossMode"
+      <> short 'm'
+      <> metavar "MODE"
+      <> value Training
+      <> showDefault
+      <> helpDoc (Just ("Sets the loss function for training or search." <+> supportedOptions allLossModes))
 
 --------------------------------------------------------------------------------
 -- Compile query mode
@@ -398,6 +409,9 @@ allITPs = map show (enumerate @InteractiveTheoremProverID)
 
 allSolversFormats :: [String]
 allSolversFormats = map show (enumerate @QueryFormatID)
+
+allLossModes :: [String]
+allLossModes = map show (enumerate @LossFunctionMode)
 
 allBuiltinDifferentiableLogics :: [String]
 allBuiltinDifferentiableLogics = map show (enumerate @BuiltinDifferentiableLogicID)

@@ -8,7 +8,9 @@ class VehicleError(Exception):
     pass
 
 
-@dataclass(frozen=True)
+# Frozen would reject the `__traceback__` assignment `contextlib` makes when re-raising.
+# `eq=False` keeps the identity equality and hashing an exception inherits.
+@dataclass(eq=False)
 class VehicleInternalError(VehicleError):
     """
     An error indicating a bug in Vehicle itself.
@@ -20,7 +22,7 @@ class VehicleInternalError(VehicleError):
         return f"Vehicle threw an unexpected error: {self.message}"
 
 
-@dataclass(frozen=True)
+@dataclass(eq=False)
 class VehicleUserError(VehicleError):
     """
     An error indicating a problem in the Vehicle specification encountered during compilation.

@@ -12,13 +12,57 @@
   a = 1
   ```
 
+### Loss backend
+
+* Fixed error with assertions with intra-tensor dependencies e.g. `forall x . x ! 0 < x ! 1`.
+
+* Fixed error when a property contains a `let` binding, both inside a quantifier,
+  e.g. `forall x . let y = x in f [y] ! 0 >= 0.5`, and scoping over one,
+  e.g. `let c = 0.5 in forall x . f [x] ! 0 >= c`.
+
+* Fixed error where generated Python code sometimes had erroneous aliasing between variable names.
+
+* Fixed error that occurred when using `@parameter`s of type `Bool`.
+
+* Introduced gradient-based counter-example search for properties. This can be used via the
+  the `search` function in Vehicle's Python API, currently only available for the PyTorch module
+  (the same can be implemented for the TensorFlow module in future).
+
+* Fixed bug in training where the sampler searched for the worst example, not the best example. Training should be more effective now.
+
+* Fixed the default TensorFlow `Sampler` searching in the opposite direction to the PyTorch one.
+  Both now descend the function they are given, which is what approximates the worst case.
+
+* Fixed bug where samplers were not checking if a sampling domain was actually empty, e.g. `(1, -1)`, before running the underlying search procedure.
+
+* Fixed the default `Sampler` implementations returning `nan` when a quantified variable is
+  unbounded, e.g. `forall x . p x`. Starting points are now drawn from a finite region around the
+  bound that is finite, or around the origin when neither is.
+
+* Added the `unbounded_search_distance` parameter to `DefaultPyTorchSampler` and
+  `DefaultTensorFlowSampler`, which sets how far along an unbounded dimension that region extends
+  (default: 10.0). The region is also available to custom samplers as `starting_region` on
+  `PyTorchSampler` and `TensorFlowSampler`.
+
+
 ### Solver backend
 
-* Fixed internal error that occassionally happened with non-linear specifications.
+* Fixed error that occassionally happened with non-linear specifications.
 
 ### Agda backend
 
 * Fixed error where Agda library didn't type-check due to malformed transpose definition.
+
+* Fixed bug where vector literals were compiled incorrectly, causing empty vectors to fail and multi-element vectors to lose elements.
+
+* Fixed bug where tensor stacks and functional vectors generated malformed Agda code.
+
+* Fixed bug where typed lambda and quantifier binders were generated with duplicate parentheses.
+
+### Python bindings
+
+* Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and
+  later, which replaced them with a `FrozenInstanceError`.
 
 ## v0.28.0
 

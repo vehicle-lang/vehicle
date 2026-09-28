@@ -80,6 +80,21 @@ class LossBackend(Enum):
         }[self]
 
 
+class LossMode(Enum):
+    """
+    The use cases for which loss functions can be generated.
+    """
+
+    Training = 1
+    Search = 2
+
+    def _vehicle_option_name(self) -> str:
+        return {
+            LossMode.Training: "Training",
+            LossMode.Search: "Search",
+        }[self]
+
+
 class QueryFormat(Enum):
     """
     The query formats supported by Vehicle.

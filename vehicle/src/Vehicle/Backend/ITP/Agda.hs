@@ -30,10 +30,8 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Sugar.Binders
 import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Decidability
-import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
-import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor, TensorShape, foldMapTensor)
 import Vehicle.Data.Universe (UniverseLevel (..))
@@ -490,7 +488,7 @@ compileBinder binder = do
     OnlyName name _ -> return (pretty name, True)
     OnlyType -> return (binderType, True)
     NameAndType name _ -> do
-      let annName = "(" <> pretty name <+> ":" <+> binderType <> ")"
+      let annName = pretty name <+> ":" <+> binderType
       return (annName, False)
 
   return $ binderBrackets noExplicitBrackets (visibilityOf binder) binderDoc
@@ -613,7 +611,7 @@ compileBuiltinFunction p f args = case f of
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
   ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args
   ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
-  StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
+  StackTensor {} -> compileStack args
   Transpose -> unsupportedError "transpose"
   SearchRatTensor {} -> unsupportedError "search"
   WhereTensor {} -> unsupportedError "where"
@@ -669,6 +667,12 @@ compileQuantifierFunction q args = case reverse args of
           <+> prettyVerbose args
           <+> "to Agda unsupported"
 
+compileStack :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
+compileStack stackArgs = do
+  elements <- compileArgs 5 stackArgs
+  let vector = toVec elements
+  return $ annotate (Set.fromList [DataTensor, DataVector], 20) ("stack" <+> parens vector)
+
 compileTypeLevelQuantifier ::
   (MonadAgdaCompile m) =>
   Quantifier ->
@@ -706,12 +710,10 @@ compileRealLiteral = \case
 
 -- | Compiling vector literals. No literals in Agda so have to go via cons.
 toVec :: [Code] -> Code
-toVec = foldr (\v vs -> annotate ([], 5) (v <> "∷ᵥ" <> vs)) "[]ᵥ"
+toVec = foldr (\v vs -> annotate (Set.singleton DataVector, 5) (v <+> "∷ᵥ" <+> vs)) (annotateConstant [DataVector] "[]ᵥ")
 
 compileVecLiteral :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
-compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VectorLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
-  Nothing -> developerError "Malformed type-checked vector literal"
+compileVecLiteral = fmap toVec . compileArgs 5
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement =

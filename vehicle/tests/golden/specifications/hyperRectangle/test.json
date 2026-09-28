@@ -16,5 +16,17 @@
       "lines": ".*\"fileHash\".*"
     },
     "sizeOnly": ".vcl-plan"
+  },
+  {
+    "name": "Search",
+    "run": "vehicle compile loss --lossMode Search -s spec.vcl -l DL2Loss -o Search.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["Search.vcl"]
+  },
+  {
+    "name": "Agda",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
+    "needs": ["spec.vcl"],
+    "produces": ["Agda.agda"]
   }
 ]

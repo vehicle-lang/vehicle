@@ -343,6 +343,10 @@ convertToLossBuiltins decl = do
   -- for the gradient information to be inferred.
   let mkRealTypeArg = (`Hole` "_")
 
+  -- A `Bool` is a proposition, which is translated either to a `Bool` or to a loss value
+  -- depending on whether it has gradients, so the type is left to be inferred.
+  let mkPropositionType = (`Hole` "_")
+
   case decl of
     -- The exception is the record declaration of a DifferentiableLogic whose operations we know
     -- will only be applied to places with gradient information and therefore `Real` is
@@ -350,25 +354,35 @@ convertToLossBuiltins decl = do
     DefRecord p ident sort telescope fields ops | identifierOf decl == differentiableTensorLogicIdent -> do
       let mkRealTypeArgWithGradients p' = Builtin p' (LossBuiltinConstructor WithGradients)
       let mkRealTypeArgWithoutGradients p' = Builtin p' (LossBuiltinConstructor WithoutGradients)
-      telescope' <- traverse (traverse (updateBuiltins mkRealTypeArg)) telescope
+      telescope' <- traverse (traverse (updateBuiltins mkRealTypeArg mkPropositionType)) telescope
 
       let updateField (fieldName, fieldType) = do
             let isElement = nameOf fieldName `elem` ([nameOf TruthityElement, nameOf FalsityElement] :: [Name])
             let mkArgFn = if isElement then mkRealTypeArgWithoutGradients else mkRealTypeArgWithGradients
-            fieldType' <- updateBuiltins mkArgFn fieldType
+            fieldType' <- updateBuiltins mkArgFn mkPropositionType fieldType
             return (fieldName, fieldType')
 
       fields' <- traverse updateField fields
       return $ DefRecord p ident sort telescope' fields' ops
-    _ -> traverse (updateBuiltins mkRealTypeArg) decl
+    -- In a resource a `Bool` is data supplied from outside rather than a proposition, so it stays
+    -- a `Bool`.
+    DefAbstract _ _ sort _ | isAnnotatedAsExternalResource sort -> do
+      let mkBoolType p' = Builtin p' (StandardBuiltinType BoolType)
+      traverse (updateBuiltins mkRealTypeArg mkBoolType) decl
+    _ -> traverse (updateBuiltins mkRealTypeArg mkPropositionType) decl
   where
-    updateBuiltins :: (Provenance -> Expr (LossBuiltin mode)) -> Expr Builtin -> m (Expr (LossBuiltin mode))
-    updateBuiltins mkRealTypeArg = traverseBuiltinsM (updateBuiltin mkRealTypeArg)
+    updateBuiltins ::
+      (Provenance -> Expr (LossBuiltin mode)) ->
+      (Provenance -> Expr (LossBuiltin mode)) ->
+      Expr Builtin ->
+      m (Expr (LossBuiltin mode))
+    updateBuiltins mkRealTypeArg mkBoolTypeExpr = traverseBuiltinsM (updateBuiltin mkRealTypeArg mkBoolTypeExpr)
 
     updateBuiltin ::
       (Provenance -> Expr (LossBuiltin mode)) ->
+      (Provenance -> Expr (LossBuiltin mode)) ->
       BuiltinUpdate m Builtin (LossBuiltin mode)
-    updateBuiltin mkRatTypeArg p b args =
+    updateBuiltin mkRatTypeArg mkBoolTypeExpr p b args =
       case b of
         BuiltinFunction f -> do
           case f of
@@ -428,7 +442,7 @@ convertToLossBuiltins decl = do
           _ -> sameConstructor c
         BuiltinType t -> case t of
           RatType -> return $ normAppList (Builtin p $ StandardBuiltinType t) [explicitIrrelevant (mkRatTypeArg p)]
-          BoolType -> return $ Hole p "_"
+          BoolType -> return $ mkBoolTypeExpr p
           _ -> return $ normAppList (Builtin p $ StandardBuiltinType t) args
         DerivedFunction f -> case f of
           TypeAnn -> convertTo 0 (StandardDerivedFunction f)
