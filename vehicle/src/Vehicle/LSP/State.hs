@@ -12,7 +12,7 @@ import Control.Monad (forever, when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Text (Text, unpack)
+import Data.Text (unpack)
 import GHC.Conc (forkIO)
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
@@ -69,7 +69,6 @@ type FileVersion = Int32
 
 data FileState = FileState
   { fileVersion :: FileVersion,
-    fileSource :: Text,
     fileResult :: Maybe (Either CompileError (Prog Builtin))
   }
 
@@ -78,33 +77,31 @@ fileUpdated ::
   Server ->
   FileVersion ->
   NormalizedUri ->
-  Text ->
   m ()
-fileUpdated Server {..} ver uri txt =
+fileUpdated Server {..} ver uri =
   liftIO $ atomically $ do
     modifyTVar' stateRef $ \serverState@ServerState {..} -> do
       let newFileState =
             FileState
               { fileVersion = ver,
-                fileSource = txt,
                 fileResult = Nothing
               }
       serverState
         { sourceFiles = Map.insert uri newFileState sourceFiles
         }
 
-    writeTQueue jobQueue (Job ver uri txt)
+    writeTQueue jobQueue (Job ver uri)
 
 ----------
 -- Jobs --
 ----------
 
-data Job = Job FileVersion NormalizedUri Text
+data Job = Job FileVersion NormalizedUri
 
 type JobQueue = TQueue Job
 
-lspTypeCheck :: (MonadLsp Config m, MonadReadSpecification m, MonadStdIO m) => NormalizedUri -> Text -> m (Either CompileError (Prog Builtin))
-lspTypeCheck uri _txt = do
+lspTypeCheck :: (MonadLsp Config m, MonadReadSpecification m, MonadStdIO m) => NormalizedUri -> m (Either CompileError (Prog Builtin))
+lspTypeCheck uri = do
   case maybeFilePath of
     Nothing ->
       pure $
@@ -131,9 +128,9 @@ lspTypeCheck uri _txt = do
 
 jobWorker :: (MonadLsp Config m, MonadReadSpecification m, MonadStdIO m) => Server -> m ()
 jobWorker (Server stateVar jobQueue resultQueue) = forever $ do
-  Job version uri txt <- liftIO $ atomically $ readTQueue jobQueue
+  Job version uri <- liftIO $ atomically $ readTQueue jobQueue
 
-  result <- lspTypeCheck uri txt
+  result <- lspTypeCheck uri
 
   liftIO $ atomically $ do
     oldState@ServerState {..} <- readTVar stateVar

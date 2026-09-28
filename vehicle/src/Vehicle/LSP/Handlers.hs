@@ -13,11 +13,11 @@ import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Language.LSP.Protocol.Lens
 import Language.LSP.Protocol.Message (Method (..), SMethod (..))
-import Language.LSP.Protocol.Types as Lsp (ClientCapabilities, NormalizedUri, TextDocumentContentChangeEvent (..), toNormalizedUri, pattern InL, pattern InR)
+import Language.LSP.Protocol.Types as Lsp (ClientCapabilities, toNormalizedUri)
 import Language.LSP.Server (MonadLsp)
 import Language.LSP.Server qualified as Lsp
 import Vehicle.LSP.Config (Config)
-import Vehicle.LSP.State (FileVersion, Server, fileUpdated)
+import Vehicle.LSP.State (Server, fileUpdated)
 
 type MonadVehicleLsp m =
   (MonadLsp Config m)
@@ -58,35 +58,15 @@ handlers logger server clientCapabilities =
     textDocumentDidOpenHandler msg = do
       let doc = msg ^. params . textDocument
       let url = Lsp.toNormalizedUri (doc ^. uri)
-      let txt = doc ^. text
       let ver = doc ^. version
-      fileUpdated server ver url txt
+      fileUpdated server ver url
 
     textDocumentDidChangeHandler :: Lsp.Handler m Method_TextDocumentDidChange
     textDocumentDidChangeHandler msg = do
       let doc = msg ^. params . textDocument
-      let chgs = msg ^. params . contentChanges
       let url = Lsp.toNormalizedUri (doc ^. uri)
       let ver = doc ^. version
-      procChgs ver url chgs
-
-    procChgs ::
-      FileVersion ->
-      NormalizedUri ->
-      [Lsp.TextDocumentContentChangeEvent] ->
-      m ()
-    procChgs ver url chgs = case chgs of
-      [] -> return ()
-      (Lsp.TextDocumentContentChangeEvent (Lsp.InL chg) : rest) -> do
-        -- TextDocumentContentChangePartial
-        -- Can only happen if we set textDocumentSyncOptions.change = TextDocumentSyncKind_Incremental
-        logger <& (T.pack "Got unexpected TextDocumentContentChangePartial: " <> TL.toStrict (encodeToLazyText chg)) `WithSeverity` Warning
-        procChgs ver url rest
-      (Lsp.TextDocumentContentChangeEvent (Lsp.InR chg) : rest) -> do
-        -- TextDocumentContentChangeWholeDocument
-        let txt = chg ^. text
-        fileUpdated server ver url txt
-        procChgs ver url rest
+      fileUpdated server ver url
 
     textDocumentDidCloseHandler :: Lsp.Handler m Method_TextDocumentDidClose
     textDocumentDidCloseHandler _notification = do
