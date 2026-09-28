@@ -38,32 +38,11 @@ instance (MonadUnliftIO m) => MonadReadSpecification (LspT cfg m) where
 instance (MonadReadSpecification m) => MonadReadSpecification (ExceptT e m) where
   readSpecification = lift . readSpecification
 
--- instance (Monoid w, MonadReadSpecification m) => MonadReadSpecification (WriterT w m) where
---   readSpecification = lift . readSpecification
-
 instance (MonadReadSpecification m) => MonadReadSpecification (ReaderT w m) where
   readSpecification = lift . readSpecification
 
 instance (MonadReadSpecification m) => MonadReadSpecification (StateT s m) where
   readSpecification = lift . readSpecification
-
--- instance (MonadReadSpecification m) => MonadReadSpecification (BoundContextT (Type builtin) m) where
---   readSpecification = lift . readSpecification
-
--- instance (MonadReadSpecification m) => MonadReadSpecification (SupplyT a m) where
---   readSpecification = lift . readSpecification
-
--- instance (MonadReadSpecification m) => MonadReadSpecification (MaybeT m) where
---   readSpecification = lift . readSpecification
-
--- instance (MonadReadSpecification m) => MonadReadSpecification (NameBoundContextT m) where
---   readSpecification = lift . readSpecification
-
--- instance MonadStdIO IO => MonadReadSpecification IO where
---   readSpecification = readSpecificationFromDisk
-
--- instance MonadLsp cfg m => MonadReadSpecification (LspT cfg m) where
---   readSpecification = readSpecificationFromLspVfs
 
 readSpecificationFromDisk :: (MonadStdIO m) => FilePath -> m ModuleText
 readSpecificationFromDisk inputFile
