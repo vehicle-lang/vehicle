@@ -13,12 +13,13 @@ import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans.Class (MonadTrans (lift))
-import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Language.LSP.Logging
 import Language.LSP.Protocol.Types (filePathToUri, toNormalizedUri)
 import Language.LSP.Server (LspT, MonadLsp (..), getVirtualFile)
 import Language.LSP.VFS (virtualFileText)
+import Prettyprinter (defaultLayoutOptions, layoutPretty)
+import Prettyprinter.Render.Text (renderStrict)
 import System.Exit (exitFailure)
 import System.FilePath (takeExtension)
 import Vehicle.Compile.Prelude
@@ -44,6 +45,21 @@ instance (MonadReadSpecification m) => MonadReadSpecification (ReaderT w m) wher
 instance (MonadReadSpecification m) => MonadReadSpecification (StateT s m) where
   readSpecification = lift . readSpecification
 
+readFileFromDiskOrErrMsg :: (MonadUnliftIO m) => FilePath -> m (Either (Doc ann) ModuleText)
+readFileFromDiskOrErrMsg inputFile = do
+  errorOrContents <- liftIO $ try @IOException $ TIO.readFile inputFile
+
+  case errorOrContents of
+    Left err ->
+      return $
+        Left $
+          "Error occured while reading specification"
+            <+> quotePretty inputFile
+            <> ":"
+            <> line
+            <> indent 2 (pretty (show err))
+    Right contents -> return $ Right contents
+
 readSpecificationFromDisk :: (MonadStdIO m) => FilePath -> m ModuleText
 readSpecificationFromDisk inputFile
   | takeExtension inputFile /= specificationFileExtension = do
@@ -58,16 +74,10 @@ readSpecificationFromDisk inputFile
             <+> quotePretty specificationFileExtension
             <+> "extension are supported."
   | otherwise = do
-      errorOrContents <- liftIO $ try @IOException $ TIO.readFile inputFile
+      errorOrContents <- liftIO $ readFileFromDiskOrErrMsg inputFile
 
       case errorOrContents of
-        Left err -> do
-          fatalError $
-            "Error occured while reading specification"
-              <+> quotePretty inputFile
-              <> ":"
-              <> line
-              <> indent 2 (pretty (show err))
+        Left err -> fatalError err
         Right contents -> return contents
 
 readSpecificationFromLspVfs :: (MonadLsp config m) => FilePath -> m ModuleText
@@ -77,5 +87,13 @@ readSpecificationFromLspVfs inputFile = do
   case maybeVf of
     Just vf -> return $ virtualFileText vf
     Nothing -> do
-      logToShowMessage <& (T.pack "Couldn't find file in LSP VFS: " <> (T.pack inputFile)) `WithSeverity` Error
-      liftIO exitFailure -- TODO: probably should handle this more gracefully
+      errorOrContents <- liftIO $ readFileFromDiskOrErrMsg inputFile
+
+      case errorOrContents of
+        Left err -> do
+          logToShowMessage
+            <& ( renderStrict $ layoutPretty defaultLayoutOptions $ err
+               )
+              `WithSeverity` Error
+          liftIO exitFailure -- TODO: probably should handle this more gracefully
+        Right contents -> return contents
