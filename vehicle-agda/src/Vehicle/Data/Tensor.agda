@@ -145,6 +145,19 @@ reduceAnd = reduce _∧_ true
 reduceOr : Tensor Bool ds → Tensor Bool []
 reduceOr = reduce _∨_ false
 
+-- Vehicle uses infinities for empty extrema, which ℚ cannot represent.
+-- The non-empty case is exact; zero is the current finite-rational fallback.
+reduceExtrema : (ℚ → ℚ → ℚ) → Tensor ℚ ds → Tensor ℚ []
+reduceExtrema f xs with toList xs
+... | [] = natScalar 0
+... | x ∷ xs = scalar (foldr f x xs)
+
+reduceMin : Tensor ℚ ds → Tensor ℚ []
+reduceMin = reduceExtrema ℚ._⊓_
+
+reduceMax : Tensor ℚ ds → Tensor ℚ []
+reduceMax = reduceExtrema ℚ._⊔_
+
 -- Type operations
 
 infix 4 _≋_ _≤_ _<_ _≥_ _>_

@@ -7,14 +7,15 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Utils
 open import Vehicle.Data.Tensor as 𝕋
 open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
+open import Data.Fin.Base as FinBase using (toℕ)
 open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
+open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
 module Agda where
@@ -58,10 +59,10 @@ ValidImage : Image → Set
 ValidImage x = ∀ i → ∀ j → ValidPixel ((x ! i) ! j)
 
 IsFirstChoice : Image → Dog → Set
-IsFirstChoice x dog1 = let scores = score x in ∀ d → d ≉ dog1 → (scores ! dog1) > (scores ! d)
+IsFirstChoice x dog1 = let scores = score x in ∀ d → FinBase.toℕ d ≢ FinBase.toℕ dog1 → (scores ! dog1) > (scores ! d)
 
 IsSecondChoice : Image → Dog → Set
-IsSecondChoice x dog2 = let scores = score x in ∃ λ dog1 → IsFirstChoice x dog1 × ∀ d → d ≉ dog1 × d ≉ dog2 → (scores ! dog2) > (scores ! d)
+IsSecondChoice x dog2 = let scores = score x in ∃ λ dog1 → IsFirstChoice x dog1 × ∀ d → FinBase.toℕ d ≢ FinBase.toℕ dog1 × FinBase.toℕ d ≢ FinBase.toℕ dog2 → (scores ! dog2) > (scores ! d)
 
 NoConfusionWith : Image → List Dog → List Dog → Set
 NoConfusionWith x dogs1 dogs2 = List.All (λ dog1 → List.All (λ dog2 → ¬ (IsFirstChoice x dog1 × IsSecondChoice x dog2)) dogs2) dogs1

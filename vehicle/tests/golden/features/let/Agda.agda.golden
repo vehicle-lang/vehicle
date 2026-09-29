@@ -7,7 +7,6 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Utils
 open import Vehicle.Data.Tensor as 𝕋
 open import Data.Unit
 open import Data.Empty
@@ -17,12 +16,13 @@ open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
+open import Relation.Binary.PropositionalEquality
 
 module Agda where
 
 postulate e1 : let x = ⊤ in let y = ⊥ in x × y
 
-postulate e2 : let y = 1 in y ≥ 2
+postulate e2 : let y = 1 in y ℕ.≥ 2
 
 e3 : ℕ
 e3 = let y = 1 ℕ.+ 1 in y
@@ -33,13 +33,13 @@ lamLet = λ (x : ℕ) → let y = x in y
 letLam : ℕ → ℕ
 letLam = let y = λ x → x in y
 
-postulate forallLet : ∀ (x : Tensor ℚ []) → let y = x in y ≈ (natScalar 1)
+postulate forallLet : ∀ (x : Tensor ℚ []) → let y = x in y ≋ (natScalar 1)
 
-postulate letForall : let y = natScalar 1 in ∀ (x : Tensor ℚ []) → y ≈ x
+postulate letForall : let y = natScalar 1 in ∀ (x : Tensor ℚ []) → y ≋ x
 
-postulate forallInLet : List.All (λ x → let y = x in y ≈ 1) (1 ∷ [])
+postulate forallInLet : List.All (λ x → let y = x in y ≡ 1) (1 ∷ [])
 
-postulate letForallIn : let y = 1 in List.All (λ x → y ≈ x) (1 ∷ [])
+postulate letForallIn : let y = 1 in List.All (λ x → y ≡ x) (1 ∷ [])
 
 Falsey : Tensor ℚ [] → Set
 Falsey x = x ≤ (scalar (ℤ.+ 1 ℚ./ 2))

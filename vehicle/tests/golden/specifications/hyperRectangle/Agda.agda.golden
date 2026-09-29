@@ -7,13 +7,14 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Vehicle.Utils
 open import Vehicle.Data.Tensor as 𝕋
 open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
+open import Data.Fin.Base as FinBase using (toℕ)
 open import Data.List.Base
+open import Relation.Binary.PropositionalEquality
 
 module Agda where
 
@@ -38,7 +39,7 @@ neg = # 1
 postulate classifier : InputVector → OutputVector
 
 Advises : InputVector → Label → Set
-Advises x i = ∀ j → j ≉ i → (classifier x ! i) > (classifier x ! j)
+Advises x i = ∀ j → FinBase.toℕ j ≢ FinBase.toℕ i → (classifier x ! i) > (classifier x ! j)
 
 postulate n : ℕ
 
