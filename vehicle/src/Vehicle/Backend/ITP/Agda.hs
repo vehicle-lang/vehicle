@@ -273,8 +273,11 @@ annotateApp dependencies qualifier fun args = do
       then return (getPrecedence fun, funDoc)
       else do
         let precedence = 20
+        let bracketedFun
+              | getPrecedence fun > precedence = funDoc
+              | otherwise = parens funDoc
         bracketedArgs <- compileArgs precedence args
-        return (20, hsep (funDoc : bracketedArgs))
+        return (precedence, hsep (bracketedFun : bracketedArgs))
 
   return $ annotate (Set.fromList dependencies, precedence) annDoc
 
@@ -286,12 +289,24 @@ annotateInfixApp ::
   Text ->
   [Arg DecidabilityBuiltin] ->
   m Code
-annotateInfixApp dependencies precedence qualifier op args
+annotateInfixApp dependencies precedence =
+  annotateInfixAppWithResultPrecedence dependencies precedence precedence
+
+annotateInfixAppWithResultPrecedence ::
+  (MonadAgdaCompile m) =>
+  [Dependency] ->
+  Precedence ->
+  Precedence ->
+  Maybe Code ->
+  Text ->
+  [Arg DecidabilityBuiltin] ->
+  m Code
+annotateInfixAppWithResultPrecedence dependencies argumentPrecedence resultPrecedence qualifier op args
   | not (all isExplicit args) = annotateApp dependencies qualifier (pretty op) args
   | otherwise = do
-      bracketedArgs <- compileArgs precedence args
+      bracketedArgs <- compileArgs argumentPrecedence args
       doc <- insertInfixArgs qualifier op bracketedArgs
-      return $ annotate (Set.fromList dependencies, precedence) doc
+      return $ annotate (Set.fromList dependencies, resultPrecedence) doc
 
 -- | Inserts infix args into the correct positions
 --
@@ -427,7 +442,10 @@ compileExpr expr = do
     Let _ bound binder body -> do
       cBoundExpr <- compileLetBinder (binder, bound)
       cBody <- addNameToContext binder $ compileExpr body
-      return $ "let" <+> cBoundExpr <+> "in" <+> cBody
+      return $
+        annotate
+          (mempty, minPrecedence)
+          ("let" <+> cBoundExpr <+> "in" <+> cBody)
     Lam _ binder body -> compileLam binder body
     Builtin p b -> compileBuiltin p b []
     App fun args -> compileApp fun args
@@ -619,7 +637,8 @@ compileBuiltinFunction p f args = case f of
   ConstTensor -> annotateApp [DataTensor] Nothing "constTensor" args
   QuantifyRatTensor q -> compileQuantifierFunction q args
   QuantifyRecord q -> compileQuantifierFunction q args
-  AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
+  AtTensor ->
+    annotateInfixAppWithResultPrecedence [DataTensor] 6 (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
   ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args

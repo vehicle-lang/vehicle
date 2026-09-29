@@ -33,6 +33,22 @@
     ]
   },
   {
+    "name": "AgdaVerify",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda && agda -v0 -WnoUnsupportedIndexedMatch -i . -l vehicle-0.1.0 Agda.agda",
+    "needs": [
+      "spec.vcl"
+    ],
+    "external": [
+      "agda"
+    ],
+    "ignore": {
+      "files": [
+        "Agda.agda",
+        "Agda.agdai"
+      ]
+    }
+  },
+  {
     "name": "Rocq",
     "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v",
     "needs": [
