@@ -43,36 +43,36 @@ handlers logger server clientCapabilities =
       -- Lsp.requestHandler SMethod_TextDocumentSemanticTokensFull textDocumentSemanticTokensFull
     ]
   where
-    initializedHandler :: Lsp.Handler m Method_Initialized
+    initializedHandler :: Lsp.Handler m 'Method_Initialized
     initializedHandler _notification = do
       logger <& (T.pack "ClientCapabilities: " <> TL.toStrict (encodeToLazyText clientCapabilities)) `WithSeverity` Info
       config <- Lsp.getConfig
       logger <& (T.pack "Config: " <> TL.toStrict (encodeToLazyText config)) `WithSeverity` Info
       return ()
 
-    workspaceDidChangeConfigurationHandler :: Lsp.Handler m Method_WorkspaceDidChangeConfiguration
+    workspaceDidChangeConfigurationHandler :: Lsp.Handler m 'Method_WorkspaceDidChangeConfiguration
     workspaceDidChangeConfigurationHandler _notification = do
       return ()
 
-    textDocumentDidOpenHandler :: Lsp.Handler m Method_TextDocumentDidOpen
+    textDocumentDidOpenHandler :: Lsp.Handler m 'Method_TextDocumentDidOpen
     textDocumentDidOpenHandler msg = do
       let doc = msg ^. params . textDocument
       let url = Lsp.toNormalizedUri (doc ^. uri)
       let ver = doc ^. version
       fileUpdated server ver url
 
-    textDocumentDidChangeHandler :: Lsp.Handler m Method_TextDocumentDidChange
+    textDocumentDidChangeHandler :: Lsp.Handler m 'Method_TextDocumentDidChange
     textDocumentDidChangeHandler msg = do
       let doc = msg ^. params . textDocument
       let url = Lsp.toNormalizedUri (doc ^. uri)
       let ver = doc ^. version
       fileUpdated server ver url
 
-    textDocumentDidCloseHandler :: Lsp.Handler m Method_TextDocumentDidClose
+    textDocumentDidCloseHandler :: Lsp.Handler m 'Method_TextDocumentDidClose
     textDocumentDidCloseHandler _notification = do
       return ()
 
-    textDocumentDidSaveHandler :: Lsp.Handler m Method_TextDocumentDidSave
+    textDocumentDidSaveHandler :: Lsp.Handler m 'Method_TextDocumentDidSave
     textDocumentDidSaveHandler _notification = do
       return ()
 
