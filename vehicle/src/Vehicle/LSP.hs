@@ -116,8 +116,7 @@ newtype LSPOptions = LSPOptions
 -- NOTE: LSP follows Reactor-Style. See the following for details:
 --       https://github.com/haskell/lsp/blob/master/lsp/example/Reactor.hs
 
-newtype ReactorInput
-  = ReactorAction {runReactorAction :: IO ()}
+newtype ReactorInput = ReactorAction {runReactorAction :: IO ()}
 
 lspDefinition ::
   (MonadStdIO IO) =>
