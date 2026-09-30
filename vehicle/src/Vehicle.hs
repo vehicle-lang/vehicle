@@ -26,6 +26,7 @@ import System.IO
 import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), commandLineOptionsParserInfo)
 import Vehicle.Compile (compile)
 import Vehicle.Export (export)
+import Vehicle.LSP (runLSP)
 import Vehicle.List (list)
 import Vehicle.Prelude
 import Vehicle.Prelude.IO as VIO (MonadStdIO (writeStderrLn), fatalError, programOutput)
@@ -74,6 +75,7 @@ runVehicle Options {..} = do
             Validate options -> validate logSettings outputAsJson options
             Export options -> export logSettings outputAsJson options
             List options -> list logSettings outputAsJson options
+            LSP options -> runLSP options
             where
               outputAsJson = outputAsJSON globalOptions
 
