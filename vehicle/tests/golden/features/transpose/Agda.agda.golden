@@ -20,7 +20,7 @@ module Agda where
 postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (3 ∷ (2 ∷ []))
 
 trajectory : Tensor ℚ (3 ∷ (2 ∷ []))
-trajectory = f (natScalar 0 ∷ᵥ natScalar 0 ∷ᵥ []ᵥ)
+trajectory = f (stack (natScalar 0 ∷ᵥ natScalar 0 ∷ᵥ []ᵥ))
 
 positions : Tensor ℚ (3 ∷ [])
 positions = transpose trajectory ! # 0
