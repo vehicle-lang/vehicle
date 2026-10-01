@@ -8,17 +8,13 @@
 
 open import Vehicle
 open import Vehicle.Data.Tensor as 𝕋
-open import Data.Nat as ℕ using (ℕ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.List.Base
 
 module Agda where
 
-fin3 : ℕ
-fin3 = 3
+genId : Tensor ℚ [] → Tensor ℚ []
+genId x = x
 
-intMinus3 : Tensor ℚ []
-intMinus3 = 𝕋.- (natScalar 3)
-
-ratMinus3 : Tensor ℚ []
-ratMinus3 = 𝕋.- (natScalar 3)
+natId : Tensor ℚ [] → Tensor ℚ []
+natId = genId
