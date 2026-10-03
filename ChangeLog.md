@@ -71,6 +71,14 @@
 
 * Added the missing rational tensor minimum and maximum reductions used by generated Agda specifications.
 
+* Fixed generated applications failing to parenthesize lambda and `let` expressions used in function position.
+
+* Fixed tensor lookups generating unparseable Agda when the tensor operand contains an infix expression.
+
+* Added golden-test actions and CI coverage that type-check the Vehicle Agda library and all enabled generated Agda specifications, and check verification-cache success and failure behavior.
+
+* Made generated rational tensor division total, removing the unsatisfied `NonZero` instance requirement. As Agda rationals cannot represent Vehicle's infinities, division by zero uses the same finite zero fallback as empty extrema.
+
 ### Python bindings
 
 * Fixed the error classes being unraisable through a `contextlib.contextmanager` on Python 3.11 and

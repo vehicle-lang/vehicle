@@ -36,4 +36,4 @@ addition = twoD 𝕋.+ twoD
 subtraction : Tensor ℚ (2 ∷ (2 ∷ []))
 subtraction = twoD 𝕋.- twoD
 
-postulate p : ∀ i → ∀ j → ((f subtraction 𝕋.+ addition ! i) ! j) ≥ (natScalar 0)
+postulate p : ∀ i → ∀ j → (((f subtraction 𝕋.+ addition) ! i) ! j) ≥ (natScalar 0)
