@@ -77,6 +77,8 @@
 
 * Added golden-test actions and CI coverage that type-check the Vehicle Agda library and all enabled generated Agda specifications, and check verification-cache success and failure behavior.
 
+* Expanded Agda golden generation and semantic verification coverage to 19 additional feature fixtures, including differentiable logic and untyped declarations.
+
 * Made generated rational tensor division total, removing the unsatisfied `NonZero` instance requirement. As Agda rationals cannot represent Vehicle's infinities, division by zero uses the same finite zero fallback as empty extrema.
 
 ### Python bindings
