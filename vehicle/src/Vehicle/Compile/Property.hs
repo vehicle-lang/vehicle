@@ -7,14 +7,13 @@ import Control.Monad (zipWithM)
 import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Control.Monad.State (MonadTrans (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin (evalForeachVector, getDim, getDims)
+import Vehicle.Compile.Normalise.Builtin (evalForeachVector, forceEvaluation, getDim, getDims)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
-import Vehicle.Compile.Unblock (forceEval)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
@@ -64,7 +63,7 @@ traverseMultiProperty compileProp propertyName declType declBody =
         VVectorIf {} -> throwError $ UnsupportedVectorValue forcedValue
         VVectorAt {} -> throwError $ UnsupportedVectorValue forcedValue
         VVectorForeach args -> do
-          evalResult <- runFreshNameBoundContextT $ forceEval evalForeachVector args
+          evalResult <- runFreshNameBoundContextT $ forceEvaluation accessForeachVector evalForeachVector args
           logDebug MaxDetail $ prettyFriendlyEmptyCtx evalResult
           goVector typ dim indices evalResult
 

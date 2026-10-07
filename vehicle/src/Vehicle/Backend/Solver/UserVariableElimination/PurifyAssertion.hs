@@ -74,10 +74,10 @@ purifyExpr actions incrDims value = do
         VIfRatTensor args -> purifyIf args
         VMinRatTensor args -> purifyMinMax True args
         VMaxRatTensor args -> purifyMinMax False args
-        VReduceAddRatTensor args -> purifyReduceTensor evalReduceAddRatTensor args
-        VReduceMulRatTensor args -> purifyReduceTensor evalReduceMulRatTensor args
-        VReduceMinRatTensor args -> purifyReduceTensor evalReduceMinRatTensor args
-        VReduceMaxRatTensor args -> purifyReduceTensor evalReduceMaxRatTensor args
+        VReduceAddRatTensor args -> purifyReduceTensor accessReduceAddRat evalReduceAddRatTensor args
+        VReduceMulRatTensor args -> purifyReduceTensor accessReduceMulRat evalReduceMulRatTensor args
+        VReduceMinRatTensor args -> purifyReduceTensor accessReduceMinRat evalReduceMinRatTensor args
+        VReduceMaxRatTensor args -> purifyReduceTensor accessReduceMaxRat evalReduceMaxRatTensor args
         VRatAtTensor args -> purifyAtTensor args
         VRatForeach args -> purifyForeachTensor args
         VRatTensorTranspose args -> purifyTransposeTensor args
@@ -172,13 +172,14 @@ purifyIf args actions incrDims = do
   unblockIf (purifyExpr actions incrDims) args
 
 purifyReduceTensor ::
+  TensorReductionAccessor ForcedValue Thunk Builtin ->
   EvalSimple ForcedValue Thunk TensorReductionArgs Builtin m ->
   TensorReductionArgs (Thunk Builtin) ->
   PurifyFn m
-purifyReduceTensor eval args actions incrDims = do
+purifyReduceTensor accessor eval args actions incrDims = do
   unblockReduceTensor
     (purifyExpr actions (incrDims + 1))
-    (forceEval eval)
+    (forceEvaluation accessor eval)
     args
 
 purifyTransposeTensor :: TransposeTensorArgs (Thunk Builtin) -> PurifyFn m
