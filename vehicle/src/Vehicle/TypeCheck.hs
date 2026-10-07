@@ -5,6 +5,7 @@ module Vehicle.TypeCheck
     typeCheck,
     typeCheckUserProg,
     runCompileMonad,
+    loadUserSpecification,
   )
 where
 

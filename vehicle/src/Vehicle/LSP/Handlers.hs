@@ -8,8 +8,8 @@ where
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Lens ((^.))
 import Data.Aeson.Text (encodeToLazyText)
+import Data.Foldable (toList)
 import Data.List
-import Data.List.NonEmpty (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -25,6 +25,7 @@ import Language.LSP.Protocol.Types as Lsp
     defaultSemanticTokensLegend,
     makeSemanticTokens,
     toNormalizedUri,
+    uriToFilePath,
     pattern InL,
   )
 import Language.LSP.Server (MonadLsp)
@@ -42,6 +43,7 @@ import Vehicle.Prelude
     Provenance (Provenance),
     Range (..),
   )
+import Vehicle.TypeCheck (loadUserSpecification)
 
 type MonadVehicleLsp m =
   (MonadLsp Config m)
@@ -103,8 +105,8 @@ handlers logger server clientCapabilities =
     textDocumentSemanticTokensFull :: Lsp.Handler m Method_TextDocumentSemanticTokensFull
     textDocumentSemanticTokensFull request responder = do
       let doc = request ^. params . textDocument . uri
-      mdoc <- Lsp.getVirtualFile (Lsp.toNormalizedUri doc)
-      case mdoc of
+      let mFilePath = uriToFilePath doc
+      case mFilePath of
         Nothing ->
           responder $
             Left $
@@ -113,11 +115,11 @@ handlers logger server clientCapabilities =
                   _message = "File not found",
                   _xdata = Nothing
                 }
-        Just vfile -> do
-          let src = virtualFileText vfile
-          expr <- _
+        Just filePath -> do
+          (prog, _, _) <- loadUserSpecification filePath
+          let exprs = toList prog
 
-          case exprToSemanticTokens _ of
+          case exprsToSemanticTokens exprs of
             Left errorMessage ->
               responder $
                 Left $
@@ -130,9 +132,9 @@ handlers logger server clientCapabilities =
               responder $ Right $ InL tokens
 
 -- | Main entry point to convert an Expr into LSP SemanticTokens
-exprToSemanticTokens :: Expr Builtin -> Either Text Lsp.SemanticTokens
-exprToSemanticTokens expr = do
-  let unsortedTokens = collectTokens expr
+exprsToSemanticTokens :: [Expr Builtin] -> Either Text Lsp.SemanticTokens
+exprsToSemanticTokens exprs = do
+  let unsortedTokens = foldMap collectTokens exprs
   let sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) unsortedTokens
   makeSemanticTokens defaultSemanticTokensLegend sortedTokens
 
