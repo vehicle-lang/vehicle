@@ -8,16 +8,40 @@ where
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Lens ((^.))
 import Data.Aeson.Text (encodeToLazyText)
+import Data.List
+import Data.List.NonEmpty (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Language.LSP.Protocol.Lens
-import Language.LSP.Protocol.Message (Method (..), SMethod (..))
-import Language.LSP.Protocol.Types as Lsp (ClientCapabilities, toNormalizedUri)
+import Language.LSP.Protocol.Message (Method (..), SMethod (..), TResponseError (..))
+import Language.LSP.Protocol.Types as Lsp
+  ( ClientCapabilities,
+    LSPErrorCodes (..),
+    SemanticTokenAbsolute (..),
+    SemanticTokenModifiers,
+    SemanticTokenTypes (..),
+    SemanticTokens,
+    defaultSemanticTokensLegend,
+    makeSemanticTokens,
+    toNormalizedUri,
+    pattern InL,
+  )
 import Language.LSP.Server (MonadLsp)
 import Language.LSP.Server qualified as Lsp
+import Language.LSP.VFS (virtualFileText)
+import Vehicle.Data.AST.Expr.Scoped
+import Vehicle.Data.Builtin.Standard (Builtin (..))
 import Vehicle.LSP.Config (Config)
 import Vehicle.LSP.State (Server, fileUpdated)
+import Vehicle.Prelude
+  ( GenericArg (..),
+    GenericBinder (..),
+    HasProvenance (..),
+    Position (..),
+    Provenance (Provenance),
+    Range (..),
+  )
 
 type MonadVehicleLsp m =
   (MonadLsp Config m)
@@ -38,9 +62,9 @@ handlers logger server clientCapabilities =
       Lsp.notificationHandler SMethod_TextDocumentDidOpen textDocumentDidOpenHandler,
       Lsp.notificationHandler SMethod_TextDocumentDidChange textDocumentDidChangeHandler,
       Lsp.notificationHandler SMethod_TextDocumentDidSave textDocumentDidSaveHandler,
-      Lsp.notificationHandler SMethod_TextDocumentDidClose textDocumentDidCloseHandler
+      Lsp.notificationHandler SMethod_TextDocumentDidClose textDocumentDidCloseHandler,
       -- TextDocument requests
-      -- Lsp.requestHandler SMethod_TextDocumentSemanticTokensFull textDocumentSemanticTokensFull
+      Lsp.requestHandler SMethod_TextDocumentSemanticTokensFull textDocumentSemanticTokensFull
     ]
   where
     initializedHandler :: Lsp.Handler m 'Method_Initialized
@@ -76,10 +100,9 @@ handlers logger server clientCapabilities =
     textDocumentDidSaveHandler _notification = do
       return ()
 
-{-
     textDocumentSemanticTokensFull :: Lsp.Handler m Method_TextDocumentSemanticTokensFull
     textDocumentSemanticTokensFull request responder = do
-      let doc = request ^. Lsp.params . Lsp.textDocument . Lsp.uri
+      let doc = request ^. params . textDocument . uri
       mdoc <- Lsp.getVirtualFile (Lsp.toNormalizedUri doc)
       case mdoc of
         Nothing ->
@@ -110,7 +133,7 @@ handlers logger server clientCapabilities =
 exprToSemanticTokens :: Expr Builtin -> Either Text Lsp.SemanticTokens
 exprToSemanticTokens expr = do
   let unsortedTokens = collectTokens expr
-  let sortedTokens = sortOn (\t -> (t ^. Lsp.line, t ^. Lsp.startChar)) unsortedTokens
+  let sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) unsortedTokens
   makeSemanticTokens defaultSemanticTokensLegend sortedTokens
 
 -- \| Helper to convert your Provenance into an LSP Absolute Token.
@@ -136,7 +159,7 @@ collectTokens expr = case expr of
   FreeVar p _ident -> [makeToken p SemanticTokenTypes_Variable []]
   Hole p _name -> [makeToken p SemanticTokenTypes_Decorator []]
   Meta p _metaId -> [makeToken p SemanticTokenTypes_TypeParameter []]
-  App f args -> collectTokens f ++ concatMap collectArgTokens (NonEmpty.toList args)
+  App f args -> collectTokens f ++ concatMap collectArgTokens (toList args)
   Let _prov bound bodyBinder bodyExpr -> collectTokens bound ++ collectBinderTokens bodyBinder ++ collectTokens bodyExpr
   Lam _prov binder body -> collectBinderTokens binder ++ collectTokens body
   Record _prov typ fields -> collectTokens typ ++ collectFieldsTokens fields
@@ -152,4 +175,3 @@ collectBinderTokens = collectTokens . binderValue
 collectFieldsTokens :: RecordFields Builtin -> [Lsp.SemanticTokenAbsolute]
 collectFieldsTokens = concatMap $ \(field, fieldValue) ->
   makeToken (provenanceOf field) SemanticTokenTypes_Method [] : collectTokens fieldValue
-      -}
