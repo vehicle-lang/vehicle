@@ -148,15 +148,12 @@ jobWorker (Server stateVar jobQueue resultQueue) = forever $ do
           { sourceFiles = Map.insert uri newFileState sourceFiles
           }
 
-      case result of
-        Right {} -> return ()
-        Left err ->
-          writeTQueue resultQueue $
-            Result
-              { version = version,
-                uri = uri,
-                typeError = formatCompileError err
-              }
+      writeTQueue resultQueue $
+        Result
+          { version = version,
+            uri = uri,
+            typeError = either (Just . formatCompileError) (const Nothing) result
+          }
 
 -------------
 -- Results --
@@ -165,7 +162,7 @@ jobWorker (Server stateVar jobQueue resultQueue) = forever $ do
 data Result = Result
   { version :: Int32,
     uri :: NormalizedUri,
-    typeError :: VehicleError
+    typeError :: Maybe VehicleError
   }
 
 type ResultQueue = TQueue Result
@@ -178,7 +175,7 @@ resultWorker resultQueue = forever $ do
     100
     uri
     (Just version)
-    [(Nothing, [errorDiagnostic typeError])]
+    [(Nothing, maybe [] (\err -> [errorDiagnostic err]) typeError)]
 
 errorDiagnostic :: VehicleError -> Diagnostic
 errorDiagnostic err =
