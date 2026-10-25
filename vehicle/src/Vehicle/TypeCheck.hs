@@ -209,7 +209,7 @@ data ModuleStack = ModuleStack
 type MonadTCMProg m =
   ( MonadState ProgramContext m,
     MonadReader ModuleStack m,
-    MonadStdIO m,
+    MonadIO m,
     MonadCompile m
   )
 
@@ -262,7 +262,7 @@ storeModule modulePath moduleInfo =
 -- Algorithm
 
 loadUserSpecification ::
-  (MonadReadSpecification m, MonadCompile m, MonadStdIO m) =>
+  (MonadReadSpecification m, MonadCompile m, MonadIO m) =>
   FilePath ->
   m (Prog Builtin, Map ModulePath [Decl Builtin], AdjacencyGraph ModulePath)
 loadUserSpecification specificationFile = do

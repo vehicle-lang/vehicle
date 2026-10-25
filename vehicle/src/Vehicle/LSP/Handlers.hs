@@ -30,7 +30,7 @@ import Language.LSP.Protocol.Types as Lsp
   )
 import Language.LSP.Server (MonadLsp)
 import Language.LSP.Server qualified as Lsp
-import Language.LSP.VFS (virtualFileText)
+import Vehicle.Compile.Print.Error (formatCompileError, logCompileError)
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Builtin.Standard (Builtin (..))
 import Vehicle.LSP.Config (Config)
@@ -43,10 +43,15 @@ import Vehicle.Prelude
     Provenance (Provenance),
     Range (..),
   )
+import Vehicle.Prelude.Logging (runSilentLoggerT)
+import Vehicle.Prelude.Prettyprinter (Pretty (..), layoutAsText)
 import Vehicle.TypeCheck (loadUserSpecification)
+import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification)
 
 type MonadVehicleLsp m =
-  (MonadLsp Config m)
+  ( MonadLsp Config m,
+    MonadReadSpecification m
+  )
 
 handlers ::
   forall m.
@@ -116,20 +121,31 @@ handlers logger server clientCapabilities =
                   _xdata = Nothing
                 }
         Just filePath -> do
-          (prog, _, _) <- loadUserSpecification filePath
-          let exprs = toList prog
-
-          case exprsToSemanticTokens exprs of
-            Left errorMessage ->
+          -- TODO: This means a specification has to successfully type check before we can
+          -- produce semantic tokens for it, which sucks. We should just do scope checking
+          -- here instead.
+          (errorOrResult, _warnings) <- runSilentLoggerT $ logCompileError $ loadUserSpecification filePath
+          case errorOrResult of
+            Left err ->
               responder $
                 Left $
                   TResponseError
                     { _code = InL LSPErrorCodes_RequestFailed,
-                      _message = errorMessage,
+                      _message = layoutAsText $ pretty $ formatCompileError err,
                       _xdata = Nothing
                     }
-            Right tokens ->
-              responder $ Right $ InL tokens
+            Right (prog, _, _) ->
+              case exprsToSemanticTokens $ toList prog of
+                Left errorMessage ->
+                  responder $
+                    Left $
+                      TResponseError
+                        { _code = InL LSPErrorCodes_RequestFailed,
+                          _message = errorMessage,
+                          _xdata = Nothing
+                        }
+                Right tokens ->
+                  responder $ Right $ InL tokens
 
 -- | Main entry point to convert an Expr into LSP SemanticTokens
 exprsToSemanticTokens :: [Expr Builtin] -> Either Text Lsp.SemanticTokens

@@ -100,7 +100,7 @@ data Job = Job FileVersion NormalizedUri
 
 type JobQueue = TQueue Job
 
-lspTypeCheck :: (MonadLsp Config m, MonadReadSpecification m, MonadStdIO m) => NormalizedUri -> m (Either CompileError (Prog Builtin))
+lspTypeCheck :: (MonadReadSpecification m, MonadStdIO m) => NormalizedUri -> m (Either CompileError (Prog Builtin))
 lspTypeCheck uri = do
   case maybeFilePath of
     Nothing ->
@@ -126,7 +126,7 @@ lspTypeCheck uri = do
     rawUri = fromNormalizedUri uri
     maybeFilePath = uriToFilePath rawUri
 
-jobWorker :: (MonadLsp Config m, MonadReadSpecification m, MonadStdIO m) => Server -> m ()
+jobWorker :: (MonadReadSpecification m, MonadStdIO m) => Server -> m ()
 jobWorker (Server stateVar jobQueue resultQueue) = forever $ do
   Job version uri <- liftIO $ atomically $ readTQueue jobQueue
 
