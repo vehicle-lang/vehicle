@@ -127,15 +127,9 @@ handlers logger server clientCapabilities =
           (errorOrResult, _warnings) <- runSilentLoggerT $ logCompileError $ loadUserSpecification filePath
           case errorOrResult of
             Left err ->
-              responder $
-                Left $
-                  TResponseError
-                    { _code = InL LSPErrorCodes_RequestFailed,
-                      _message = layoutAsText $ pretty $ formatCompileError err,
-                      _xdata = Nothing
-                    }
+              logger <& (layoutAsText $ pretty $ formatCompileError err) `WithSeverity` Warning
             Right (prog, _, _) ->
-              case exprsToSemanticTokens $ toList prog of
+              case exprsToSemanticTokens filePath $ toList prog of
                 Left errorMessage ->
                   responder $
                     Left $
@@ -147,49 +141,63 @@ handlers logger server clientCapabilities =
                 Right tokens ->
                   responder $ Right $ InL tokens
 
--- | Main entry point to convert an Expr into LSP SemanticTokens
-exprsToSemanticTokens :: [Expr Builtin] -> Either Text Lsp.SemanticTokens
-exprsToSemanticTokens exprs = do
-  let unsortedTokens = foldMap collectTokens exprs
+exprsToSemanticTokens :: FilePath -> [Expr Builtin] -> Either Text Lsp.SemanticTokens
+exprsToSemanticTokens filePath exprs = do
+  let unsortedTokens = foldMap (collectTokens $ onlyFile filePath) exprs
   let sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) unsortedTokens
   makeSemanticTokens defaultSemanticTokensLegend sortedTokens
 
--- \| Helper to convert your Provenance into an LSP Absolute Token.
--- NOTE: LSP expects 0-indexed lines and columns. If your custom language
--- is 1-indexed, you will need to subtract 1 from 'sl' and 'sc' here.
+-- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
 makeToken :: Provenance -> Lsp.SemanticTokenTypes -> [Lsp.SemanticTokenModifiers] -> Lsp.SemanticTokenAbsolute
 makeToken (Provenance (Range (Position sl sc) (Position _el ec)) _) tType modifiers =
   Lsp.SemanticTokenAbsolute
-    { _line = fromIntegral sl,
-      _startChar = fromIntegral sc,
+    { _line = fromIntegral sl - 1,
+      _startChar = fromIntegral sc - 1,
       _length = fromIntegral (ec - sc),
       _tokenType = tType,
       _tokenModifiers = modifiers
     }
 
+onlyFile :: FilePath -> Provenance -> [a] -> [a]
+onlyFile filePath (Provenance _ provFilePath) lst
+  | filePath == provFilePath = lst
+  | otherwise = []
+
 -- | Traverse the Expr AST and collect all leaf tokens.
-collectTokens :: Expr Builtin -> [Lsp.SemanticTokenAbsolute]
-collectTokens expr = case expr of
-  Universe p _level -> [makeToken p SemanticTokenTypes_Type []]
-  Pi _prov binder res -> collectBinderTokens binder ++ collectTokens res
-  Builtin p _builtinName -> [makeToken p SemanticTokenTypes_Function []]
-  BoundVar p _ix -> [makeToken p SemanticTokenTypes_Variable []]
-  FreeVar p _ident -> [makeToken p SemanticTokenTypes_Variable []]
-  Hole p _name -> [makeToken p SemanticTokenTypes_Decorator []]
-  Meta p _metaId -> [makeToken p SemanticTokenTypes_TypeParameter []]
-  App f args -> collectTokens f ++ concatMap collectArgTokens (toList args)
-  Let _prov bound bodyBinder bodyExpr -> collectTokens bound ++ collectBinderTokens bodyBinder ++ collectTokens bodyExpr
-  Lam _prov binder body -> collectBinderTokens binder ++ collectTokens body
-  Record _prov typ fields -> collectTokens typ ++ collectFieldsTokens fields
-  RecordProj _prov typ body _fieldName -> collectTokens typ ++ collectTokens body
+collectTokens ::
+  (Provenance -> [Lsp.SemanticTokenAbsolute] -> [Lsp.SemanticTokenAbsolute]) ->
+  Expr Builtin ->
+  [Lsp.SemanticTokenAbsolute]
+collectTokens checkProv expr = case expr of
+  Universe p _level -> checkProv p [makeToken p SemanticTokenTypes_Type []]
+  Pi p binder res -> checkProv p $ collectBinderTokens checkProv binder ++ collectTokens checkProv res
+  Builtin p _builtinName -> checkProv p [makeToken p SemanticTokenTypes_Function []]
+  BoundVar p _ix -> checkProv p [makeToken p SemanticTokenTypes_Variable []]
+  FreeVar p _ident -> checkProv p [makeToken p SemanticTokenTypes_Variable []]
+  Hole p _name -> checkProv p [makeToken p SemanticTokenTypes_Decorator []]
+  Meta p _metaId -> checkProv p [makeToken p SemanticTokenTypes_TypeParameter []]
+  App f args -> collectTokens checkProv f ++ concatMap (collectArgTokens checkProv) (toList args)
+  Let p bound bodyBinder bodyExpr -> checkProv p $ collectTokens checkProv bound ++ collectBinderTokens checkProv bodyBinder ++ collectTokens checkProv bodyExpr
+  Lam p binder body -> checkProv p $ collectBinderTokens checkProv binder ++ collectTokens checkProv body
+  Record p typ fields -> checkProv p $ collectTokens checkProv typ ++ collectFieldsTokens checkProv fields
+  RecordProj p typ body _fieldName -> checkProv p $ collectTokens checkProv typ ++ collectTokens checkProv body
 
 -- Stubbed functions for the datatypes not included in your snippet:
-collectArgTokens :: Arg Builtin -> [Lsp.SemanticTokenAbsolute]
-collectArgTokens = collectTokens . argExpr
+collectArgTokens ::
+  (Provenance -> [Lsp.SemanticTokenAbsolute] -> [Lsp.SemanticTokenAbsolute]) ->
+  Arg Builtin ->
+  [Lsp.SemanticTokenAbsolute]
+collectArgTokens checkProv = collectTokens checkProv . argExpr
 
-collectBinderTokens :: Binder Builtin -> [Lsp.SemanticTokenAbsolute]
-collectBinderTokens = collectTokens . binderValue
+collectBinderTokens ::
+  (Provenance -> [Lsp.SemanticTokenAbsolute] -> [Lsp.SemanticTokenAbsolute]) ->
+  Binder Builtin ->
+  [Lsp.SemanticTokenAbsolute]
+collectBinderTokens checkProv = collectTokens checkProv . binderValue
 
-collectFieldsTokens :: RecordFields Builtin -> [Lsp.SemanticTokenAbsolute]
-collectFieldsTokens = concatMap $ \(field, fieldValue) ->
-  makeToken (provenanceOf field) SemanticTokenTypes_Method [] : collectTokens fieldValue
+collectFieldsTokens ::
+  (Provenance -> [Lsp.SemanticTokenAbsolute] -> [Lsp.SemanticTokenAbsolute]) ->
+  RecordFields Builtin ->
+  [Lsp.SemanticTokenAbsolute]
+collectFieldsTokens checkProv = concatMap $ \(field, fieldValue) ->
+  makeToken (provenanceOf field) SemanticTokenTypes_Method [] : collectTokens checkProv fieldValue
