@@ -125,21 +125,26 @@ handlers logger server clientCapabilities =
           -- produce semantic tokens for it, which sucks. We should just do scope checking
           -- here instead.
           (errorOrResult, _warnings) <- runSilentLoggerT $ logCompileError $ loadUserSpecification filePath
+
+          let respondWithTokens exprs =
+                case exprsToSemanticTokens filePath exprs of
+                  Left errorMessage ->
+                    responder $
+                      Left $
+                        TResponseError
+                          { _code = InL LSPErrorCodes_RequestFailed,
+                            _message = errorMessage,
+                            _xdata = Nothing
+                          }
+                  Right tokens ->
+                    responder $ Right $ InL tokens
+
           case errorOrResult of
-            Left err ->
+            Left err -> do
               logger <& (layoutAsText $ pretty $ formatCompileError err) `WithSeverity` Warning
+              respondWithTokens []
             Right (prog, _, _) ->
-              case exprsToSemanticTokens filePath $ toList prog of
-                Left errorMessage ->
-                  responder $
-                    Left $
-                      TResponseError
-                        { _code = InL LSPErrorCodes_RequestFailed,
-                          _message = errorMessage,
-                          _xdata = Nothing
-                        }
-                Right tokens ->
-                  responder $ Right $ InL tokens
+              respondWithTokens $ toList prog
 
 exprsToSemanticTokens :: FilePath -> [Expr Builtin] -> Either Text Lsp.SemanticTokens
 exprsToSemanticTokens filePath exprs = do
