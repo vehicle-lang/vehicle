@@ -8,8 +8,8 @@ where
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Lens ((^.))
 import Data.Aeson.Text (encodeToLazyText)
-import Data.Foldable (toList)
 import Data.List
+import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -32,12 +32,17 @@ import Language.LSP.Server (MonadLsp)
 import Language.LSP.Server qualified as Lsp
 import Vehicle.Compile.Print.Error (formatCompileError, logCompileError)
 import Vehicle.Data.AST.Expr.Scoped
+import Vehicle.Data.AST.Prog (GenericProg (..), Prog)
 import Vehicle.Data.Builtin.Standard (Builtin (..))
 import Vehicle.LSP.Config (Config)
 import Vehicle.LSP.State (Server, fileUpdated)
 import Vehicle.Prelude
-  ( GenericArg (..),
+  ( BinderDisplayForm (..),
+    BinderNamingForm (..),
+    GenericArg (..),
     GenericBinder (..),
+    GenericDecl (..),
+    GenericRecordField,
     HasProvenance (..),
     Position (..),
     Provenance (Provenance),
@@ -126,8 +131,8 @@ handlers logger server clientCapabilities =
           -- here instead.
           (errorOrResult, _warnings) <- runSilentLoggerT $ logCompileError $ loadUserSpecification filePath
 
-          let respondWithTokens exprs =
-                case exprsToSemanticTokens filePath exprs of
+          let respondWithTokens toks =
+                case makeLspSemanticTokens toks of
                   Left errorMessage ->
                     responder $
                       Left $
@@ -144,13 +149,40 @@ handlers logger server clientCapabilities =
               logger <& (layoutAsText $ pretty $ formatCompileError err) `WithSeverity` Warning
               respondWithTokens []
             Right (prog, _, _) ->
-              respondWithTokens $ toList prog
+              respondWithTokens $ progToSemanticTokens filePath prog
 
-exprsToSemanticTokens :: FilePath -> [Expr Builtin] -> Either Text Lsp.SemanticTokens
-exprsToSemanticTokens filePath exprs = do
-  let unsortedTokens = foldMap (collectTokens $ onlyFile filePath) exprs
-  let sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) unsortedTokens
+makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either Text Lsp.SemanticTokens
+makeLspSemanticTokens tokens =
   makeSemanticTokens defaultSemanticTokensLegend sortedTokens
+  where
+    sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) tokens
+
+progToSemanticTokens :: FilePath -> Prog Builtin -> [Lsp.SemanticTokenAbsolute]
+progToSemanticTokens filePath (Main decls) =
+  concatMap (declToSemanticTokens filePath) decls
+
+declToSemanticTokens :: FilePath -> GenericDecl (Expr Builtin) -> [Lsp.SemanticTokenAbsolute]
+declToSemanticTokens filePath = \case
+  DefAbstract p _ _ t -> [makeToken p SemanticTokenTypes_Variable []] ++ exprsToSemanticTokens filePath [t]
+  DefFunction p _ _ t e -> [makeToken p SemanticTokenTypes_Function []] ++ exprsToSemanticTokens filePath [t, e]
+  DefRecord p _ _ t e _ -> [makeToken p SemanticTokenTypes_Function []] ++ concatMap (binderToSemanticTokens filePath) t ++ concatMap (genericRecordFieldToSemanticTokens filePath) e
+
+genericRecordFieldToSemanticTokens :: FilePath -> GenericRecordField (Expr Builtin) -> [Lsp.SemanticTokenAbsolute]
+genericRecordFieldToSemanticTokens filePath (fname, fexpr) =
+  [makeToken (provenanceOf fname) SemanticTokenTypes_Variable []]
+    ++ exprsToSemanticTokens filePath [fexpr]
+
+binderToSemanticTokens :: FilePath -> GenericBinder (Expr Builtin) -> [Lsp.SemanticTokenAbsolute]
+binderToSemanticTokens filePath (Binder (BinderDisplayForm namingForm _) _ _ v) =
+  case namingForm of
+    NameAndType _ p -> [makeToken p SemanticTokenTypes_Variable []] -- TODO: probably want to highlight name and type separately
+    OnlyName _ p -> [makeToken p SemanticTokenTypes_Variable []]
+    OnlyType -> []
+    ++ exprsToSemanticTokens filePath [v]
+
+exprsToSemanticTokens :: FilePath -> [Expr Builtin] -> [Lsp.SemanticTokenAbsolute]
+exprsToSemanticTokens filePath exprs =
+  foldMap (collectTokens $ onlyFile filePath) exprs
 
 -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
 makeToken :: Provenance -> Lsp.SemanticTokenTypes -> [Lsp.SemanticTokenModifiers] -> Lsp.SemanticTokenAbsolute
@@ -181,11 +213,11 @@ collectTokens checkProv expr = case expr of
   FreeVar p _ident -> checkProv p [makeToken p SemanticTokenTypes_Variable []]
   Hole p _name -> checkProv p [makeToken p SemanticTokenTypes_Decorator []]
   Meta p _metaId -> checkProv p [makeToken p SemanticTokenTypes_TypeParameter []]
-  App f args -> collectTokens checkProv f ++ concatMap (collectArgTokens checkProv) (toList args)
-  Let p bound bodyBinder bodyExpr -> checkProv p $ collectTokens checkProv bound ++ collectBinderTokens checkProv bodyBinder ++ collectTokens checkProv bodyExpr
-  Lam p binder body -> checkProv p $ collectBinderTokens checkProv binder ++ collectTokens checkProv body
-  Record p typ fields -> checkProv p $ collectTokens checkProv typ ++ collectFieldsTokens checkProv fields
-  RecordProj p typ body _fieldName -> checkProv p $ collectTokens checkProv typ ++ collectTokens checkProv body
+  App f args -> collectTokens checkProv f ++ concatMap (collectArgTokens checkProv) (NonEmpty.toList args)
+  Let p bound bodyBinder bodyExpr -> [makeToken p SemanticTokenTypes_Keyword []] ++ (checkProv p $ collectTokens checkProv bound) ++ collectBinderTokens checkProv bodyBinder ++ collectTokens checkProv bodyExpr
+  Lam p binder body -> [makeToken p SemanticTokenTypes_Macro []] ++ (checkProv p $ collectBinderTokens checkProv binder) ++ collectTokens checkProv body
+  Record p typ fields -> [makeToken p SemanticTokenTypes_Class []] ++ (checkProv p $ collectTokens checkProv typ) ++ collectFieldsTokens checkProv fields
+  RecordProj p typ body _fieldName -> [makeToken p SemanticTokenTypes_Class []] ++ (checkProv p $ collectTokens checkProv typ) ++ collectTokens checkProv body
 
 -- Stubbed functions for the datatypes not included in your snippet:
 collectArgTokens ::
