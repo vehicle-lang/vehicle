@@ -10,6 +10,7 @@ import Control.Lens ((^.))
 import Data.Aeson.Text (encodeToLazyText)
 import Data.List
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -151,90 +152,95 @@ handlers logger server clientCapabilities =
             Right (prog, _, _) ->
               respondWithTokens $ progToSemanticTokens filePath prog
 
-makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either Text Lsp.SemanticTokens
+makeLspSemanticTokens :: [Maybe Lsp.SemanticTokenAbsolute] -> Either Text Lsp.SemanticTokens
 makeLspSemanticTokens tokens =
   makeSemanticTokens defaultSemanticTokensLegend sortedTokens
   where
-    sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) tokens
+    sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) unsortedTokens
+    unsortedTokens = catMaybes tokens
 
-progToSemanticTokens :: FilePath -> Prog Builtin -> [Lsp.SemanticTokenAbsolute]
+progToSemanticTokens :: FilePath -> Prog Builtin -> [Maybe Lsp.SemanticTokenAbsolute]
 progToSemanticTokens filePath (Main decls) =
   concatMap (declToSemanticTokens filePath) decls
 
-declToSemanticTokens :: FilePath -> GenericDecl (Expr Builtin) -> [Lsp.SemanticTokenAbsolute]
+declToSemanticTokens :: FilePath -> GenericDecl (Expr Builtin) -> [Maybe Lsp.SemanticTokenAbsolute]
 declToSemanticTokens filePath = \case
-  DefAbstract p _ _ t -> [makeToken p SemanticTokenTypes_Variable []] ++ exprsToSemanticTokens filePath [t]
-  DefFunction p _ _ t e -> [makeToken p SemanticTokenTypes_Function []] ++ exprsToSemanticTokens filePath [t, e]
-  DefRecord p _ _ t e _ -> [makeToken p SemanticTokenTypes_Function []] ++ concatMap (binderToSemanticTokens filePath) t ++ concatMap (genericRecordFieldToSemanticTokens filePath) e
+  DefAbstract p _ _ t -> [makeToken filePath p SemanticTokenTypes_Variable []] ++ exprsToSemanticTokens filePath [t]
+  DefFunction p _ _ t e -> [makeToken filePath p SemanticTokenTypes_Function []] ++ exprsToSemanticTokens filePath [t, e]
+  DefRecord p _ _ t e _ -> [makeToken filePath p SemanticTokenTypes_Function []] ++ concatMap (binderToSemanticTokens filePath) t ++ concatMap (genericRecordFieldToSemanticTokens filePath) e
 
-genericRecordFieldToSemanticTokens :: FilePath -> GenericRecordField (Expr Builtin) -> [Lsp.SemanticTokenAbsolute]
+genericRecordFieldToSemanticTokens :: FilePath -> GenericRecordField (Expr Builtin) -> [Maybe Lsp.SemanticTokenAbsolute]
 genericRecordFieldToSemanticTokens filePath (fname, fexpr) =
-  [makeToken (provenanceOf fname) SemanticTokenTypes_Variable []]
+  [makeToken filePath (provenanceOf fname) SemanticTokenTypes_Variable []]
     ++ exprsToSemanticTokens filePath [fexpr]
 
-binderToSemanticTokens :: FilePath -> GenericBinder (Expr Builtin) -> [Lsp.SemanticTokenAbsolute]
+binderToSemanticTokens :: FilePath -> GenericBinder (Expr Builtin) -> [Maybe Lsp.SemanticTokenAbsolute]
 binderToSemanticTokens filePath (Binder (BinderDisplayForm namingForm _) _ _ v) =
   case namingForm of
-    NameAndType _ p -> [makeToken p SemanticTokenTypes_Variable []] -- TODO: probably want to highlight name and type separately
-    OnlyName _ p -> [makeToken p SemanticTokenTypes_Variable []]
+    NameAndType _ p -> [makeToken filePath p SemanticTokenTypes_Variable []] -- TODO: probably want to highlight name and type separately
+    OnlyName _ p -> [makeToken filePath p SemanticTokenTypes_Variable []]
     OnlyType -> []
     ++ exprsToSemanticTokens filePath [v]
 
-exprsToSemanticTokens :: FilePath -> [Expr Builtin] -> [Lsp.SemanticTokenAbsolute]
+exprsToSemanticTokens :: FilePath -> [Expr Builtin] -> [Maybe Lsp.SemanticTokenAbsolute]
 exprsToSemanticTokens filePath exprs =
-  foldMap (collectTokens $ onlyFile filePath) exprs
+  foldMap (collectTokens filePath) exprs
 
 -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
-makeToken :: Provenance -> Lsp.SemanticTokenTypes -> [Lsp.SemanticTokenModifiers] -> Lsp.SemanticTokenAbsolute
-makeToken (Provenance (Range (Position sl sc) (Position _el ec)) _) tType modifiers =
-  Lsp.SemanticTokenAbsolute
-    { _line = fromIntegral sl - 1,
-      _startChar = fromIntegral sc - 1,
-      _length = fromIntegral (ec - sc),
-      _tokenType = tType,
-      _tokenModifiers = modifiers
-    }
+makeToken :: FilePath -> Provenance -> Lsp.SemanticTokenTypes -> [Lsp.SemanticTokenModifiers] -> Maybe Lsp.SemanticTokenAbsolute
+makeToken filePath p@(Provenance (Range (Position sl sc) (Position _el ec)) _) tType modifiers =
+  checkFile
+    filePath
+    p
+    ( Lsp.SemanticTokenAbsolute
+        { _line = fromIntegral sl - 1,
+          _startChar = fromIntegral sc - 1,
+          _length = fromIntegral (ec - sc),
+          _tokenType = tType,
+          _tokenModifiers = modifiers
+        }
+    )
 
-onlyFile :: FilePath -> Provenance -> [a] -> [a]
-onlyFile filePath (Provenance _ provFilePath) lst
-  | filePath == provFilePath = lst
-  | otherwise = []
+checkFile :: FilePath -> Provenance -> x -> Maybe x
+checkFile filePath (Provenance _ provFilePath) x
+  | filePath == provFilePath = Just x
+  | otherwise = Nothing
 
 -- | Traverse the Expr AST and collect all leaf tokens.
 collectTokens ::
-  (Provenance -> [Lsp.SemanticTokenAbsolute] -> [Lsp.SemanticTokenAbsolute]) ->
+  FilePath ->
   Expr Builtin ->
-  [Lsp.SemanticTokenAbsolute]
-collectTokens checkProv expr = case expr of
-  Universe p _level -> checkProv p [makeToken p SemanticTokenTypes_Type []]
-  Pi p binder res -> checkProv p $ collectBinderTokens checkProv binder ++ collectTokens checkProv res
-  Builtin p _builtinName -> checkProv p [makeToken p SemanticTokenTypes_Function []]
-  BoundVar p _ix -> checkProv p [makeToken p SemanticTokenTypes_Variable []]
-  FreeVar p _ident -> checkProv p [makeToken p SemanticTokenTypes_Variable []]
-  Hole p _name -> checkProv p [makeToken p SemanticTokenTypes_Decorator []]
-  Meta p _metaId -> checkProv p [makeToken p SemanticTokenTypes_TypeParameter []]
-  App f args -> collectTokens checkProv f ++ concatMap (collectArgTokens checkProv) (NonEmpty.toList args)
-  Let p bound bodyBinder bodyExpr -> [makeToken p SemanticTokenTypes_Keyword []] ++ (checkProv p $ collectTokens checkProv bound) ++ collectBinderTokens checkProv bodyBinder ++ collectTokens checkProv bodyExpr
-  Lam p binder body -> [makeToken p SemanticTokenTypes_Macro []] ++ (checkProv p $ collectBinderTokens checkProv binder) ++ collectTokens checkProv body
-  Record p typ fields -> [makeToken p SemanticTokenTypes_Class []] ++ (checkProv p $ collectTokens checkProv typ) ++ collectFieldsTokens checkProv fields
-  RecordProj p typ body _fieldName -> [makeToken p SemanticTokenTypes_Class []] ++ (checkProv p $ collectTokens checkProv typ) ++ collectTokens checkProv body
+  [Maybe Lsp.SemanticTokenAbsolute]
+collectTokens filePath expr = case expr of
+  Universe p _level -> [makeToken filePath p SemanticTokenTypes_Type []]
+  Pi _p binder res -> collectBinderTokens filePath binder ++ collectTokens filePath res
+  Builtin p _builtinName -> [makeToken filePath p SemanticTokenTypes_Function []]
+  BoundVar p _ix -> [makeToken filePath p SemanticTokenTypes_Variable []]
+  FreeVar p _ident -> [makeToken filePath p SemanticTokenTypes_Variable []]
+  Hole p _name -> [makeToken filePath p SemanticTokenTypes_Decorator []]
+  Meta p _metaId -> [makeToken filePath p SemanticTokenTypes_TypeParameter []]
+  App f args -> collectTokens filePath f ++ concatMap (collectArgTokens filePath) (NonEmpty.toList args)
+  Let p bound bodyBinder bodyExpr -> [makeToken filePath p SemanticTokenTypes_Keyword []] ++ (collectTokens filePath bound) ++ collectBinderTokens filePath bodyBinder ++ collectTokens filePath bodyExpr
+  Lam p binder body -> [makeToken filePath p SemanticTokenTypes_Macro []] ++ (collectBinderTokens filePath binder) ++ collectTokens filePath body
+  Record p typ fields -> [makeToken filePath p SemanticTokenTypes_Class []] ++ (collectTokens filePath typ) ++ collectFieldsTokens filePath fields
+  RecordProj p typ body _fieldName -> [makeToken filePath p SemanticTokenTypes_Class []] ++ (collectTokens filePath typ) ++ collectTokens filePath body
 
 -- Stubbed functions for the datatypes not included in your snippet:
 collectArgTokens ::
-  (Provenance -> [Lsp.SemanticTokenAbsolute] -> [Lsp.SemanticTokenAbsolute]) ->
+  FilePath ->
   Arg Builtin ->
-  [Lsp.SemanticTokenAbsolute]
-collectArgTokens checkProv = collectTokens checkProv . argExpr
+  [Maybe Lsp.SemanticTokenAbsolute]
+collectArgTokens filePath = collectTokens filePath . argExpr
 
 collectBinderTokens ::
-  (Provenance -> [Lsp.SemanticTokenAbsolute] -> [Lsp.SemanticTokenAbsolute]) ->
+  FilePath ->
   Binder Builtin ->
-  [Lsp.SemanticTokenAbsolute]
-collectBinderTokens checkProv = collectTokens checkProv . binderValue
+  [Maybe Lsp.SemanticTokenAbsolute]
+collectBinderTokens filePath = collectTokens filePath . binderValue
 
 collectFieldsTokens ::
-  (Provenance -> [Lsp.SemanticTokenAbsolute] -> [Lsp.SemanticTokenAbsolute]) ->
+  FilePath ->
   RecordFields Builtin ->
-  [Lsp.SemanticTokenAbsolute]
-collectFieldsTokens checkProv = concatMap $ \(field, fieldValue) ->
-  makeToken (provenanceOf field) SemanticTokenTypes_Method [] : collectTokens checkProv fieldValue
+  [Maybe Lsp.SemanticTokenAbsolute]
+collectFieldsTokens filePath = concatMap $ \(field, fieldValue) ->
+  makeToken filePath (provenanceOf field) SemanticTokenTypes_Method [] : collectTokens filePath fieldValue
