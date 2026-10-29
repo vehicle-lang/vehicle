@@ -37,7 +37,8 @@ jobs:
             plat: "macosx"
             test: "test,tensorflow"
           - name: "macOS"
-            type: "macOS-latest"
+            # macos-15 rather than macos-latest until actions/runner-images#14940 is fixed; see https://github.com/haskell/cabal/pull/12468.
+            type: "macOS-15"
             arch: "arm64"
             plat: "macosx"
             test: "test,tensorflow"
