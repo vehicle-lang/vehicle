@@ -17,7 +17,8 @@ jobs:
             type: "ubuntu-latest"
           - name: "macOS"
             isaname: "macos"
-            type: "macos-latest"
+            # macos-15 rather than macos-latest until actions/runner-images#14940 is fixed; see https://github.com/haskell/cabal/pull/12468.
+            type: macos-15
         haskell:
           - ghc:
               version: "9.6.5"
