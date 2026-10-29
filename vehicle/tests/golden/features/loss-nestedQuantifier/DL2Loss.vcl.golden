@@ -1,0 +1,14 @@
+DL2Loss : DifferentiableTensorLogic;
+DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims -> \x -> const 1.0 dims / x, pointwiseConjunction = \dims -> \x -> \y -> x + y, pointwiseDisjunction = \dims -> \x -> \y -> x * y, pointwiseLessThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseLessEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (x - y), pointwiseGreaterThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseGreaterEqualThan = \dims -> \x -> \y -> max (const 0.0 dims) (y - x), pointwiseEqual = \dims -> \x -> \y -> max (x - y) (y - x), pointwiseNotEqual = \dims -> \x -> \y -> const 1.0 dims / max (x - y) (y - x), reduceConjunction = \dims -> \xs -> reduceAdd xs, reduceDisjunction = \dims -> \xs -> reduceMul xs} 
+
+@property;
+direct : (Tensor Real -> Tensor Real) -> Tensor Real;
+direct f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (search nil -infinity infinity (\z -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, z] ! 0) 0.5))))))
+
+@property;
+underConjunction : (Tensor Real -> Tensor Real) -> Tensor Real;
+underConjunction f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseDisjunction nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, x] ! 0) 0.5)) (DL2Loss.pointwiseNegation nil (search nil -infinity infinity (\z -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, z] ! 0) 0.5)))))))
+
+@property;
+underDisjunction : (Tensor Real -> Tensor Real) -> Tensor Real;
+underDisjunction f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, x] ! 0) 0.5)) (DL2Loss.pointwiseNegation nil (search nil -infinity infinity (\z -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, z] ! 0) 0.5)))))))
