@@ -20,16 +20,13 @@ module Vehicle.Compile.Unblock
     unblockTensorOp1,
     unblockRecordAcc,
     noUnblocking,
-    forceEval,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
-import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Error (BlockingReason (..))
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.Normalise.Builtin
-import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
@@ -118,15 +115,15 @@ unblockBoolTensorValue actions value = showEntry value $ do
     -- Recursively unblock
     VBoolConstTensor args -> unblockConstTensor unblock actions args
     VBoolTensorCompareRatTensor (op, args) -> unblockCompareRatTensor actions op args
-    VBoolTensorAnd args -> unblockTensorOp2 unblock (forceEval evalAnd) args
-    VBoolTensorOr args -> unblockTensorOp2 unblock (forceEval evalOr) args
-    VBoolTensorNot args -> unblockTensorOp1 unblock (forceEval evalNot) args
+    VBoolTensorAnd args -> unblockTensorOp2 unblock (forceEvaluation accessAndTensor evalAnd) args
+    VBoolTensorOr args -> unblockTensorOp2 unblock (forceEvaluation accessOrTensor evalOr) args
+    VBoolTensorNot args -> unblockTensorOp1 unblock (forceEvaluation accessNotTensor evalNot) args
     VBoolTensorImplies args -> unblock $ elimImplies args
     VBoolTensorIf args -> unblockIf unblock args
-    VBoolTensorReduceAnd args -> unblockReduceTensor unblock (forceEval evalReduceAndTensor) args
-    VBoolTensorReduceOr args -> unblockReduceTensor unblock (forceEval evalReduceOrTensor) args
-    VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (unblockIndexValue actions) (evalCompareIndex op) args
-    VBoolTensorCompareNat (op, args) -> unblockOp2 (unblockNatValue actions) (evalCompareNat op) args
+    VBoolTensorReduceAnd args -> unblockReduceTensor unblock (forceEvaluation accessReduceAnd evalReduceAndTensor) args
+    VBoolTensorReduceOr args -> unblockReduceTensor unblock (forceEvaluation accessReduceOr evalReduceOrTensor) args
+    VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (unblockIndexValue actions) (forceEvaluation (applyAccessor accessCompareIndex op) (evalCompareIndex op)) args
+    VBoolTensorCompareNat (op, args) -> unblockOp2 (unblockNatValue actions) (forceEvaluation (applyAccessor accessCompareNat op) (evalCompareNat op)) args
     VBoolTensorTensorAt args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
     VBoolTensorVectorAt args -> unblockAtVector unblock (unblockIndexValue actions) args
     VBoolTensorForeach args -> unblockForeachTensor actions args
@@ -149,18 +146,18 @@ unblockRatTensorValue actions@UnblockingActions {..} expr =
       VRatStackTensor {} -> return $ IfLeaf expr
       -- Recursively purify
       VIfRatTensor args -> unblockIf unblock args
-      VNegRatTensor args -> unblockTensorOp1 unblock (forceEval evalNegRatTensor) args
-      VLogRatTensor args -> unblockTensorOp1 unblock (forceEval evalLogRatTensor) args
-      VExpRatTensor args -> unblockTensorOp1 unblock (forceEval evalExpRatTensor) args
-      VAddRatTensor args -> unblockTensorOp2 unblock (forceEval evalAddRatTensor) args
-      VSubRatTensor args -> unblockTensorOp2 unblock (forceEval evalSubRatTensor) args
-      VMulRatTensor args -> unblockTensorOp2 unblock (forceEval evalMulRatTensor) args
-      VDivRatTensor args -> unblockTensorOp2 unblock (forceEval evalDivRatTensor) args
-      VPowRatTensor args -> unblockTensorOp2 unblock (forceEval evalPowRatTensor) args
-      VReduceAddRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceAddRatTensor) args
-      VReduceMulRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMulRatTensor) args
-      VReduceMinRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMinRatTensor) args
-      VReduceMaxRatTensor args -> unblockReduceTensor unblock (forceEval evalReduceMaxRatTensor) args
+      VNegRatTensor args -> unblockTensorOp1 unblock (forceEvaluation accessNegRatTensor evalNegRatTensor) args
+      VLogRatTensor args -> unblockTensorOp1 unblock (forceEvaluation accessLogRatTensor evalLogRatTensor) args
+      VExpRatTensor args -> unblockTensorOp1 unblock (forceEvaluation accessExpRatTensor evalExpRatTensor) args
+      VAddRatTensor args -> unblockTensorOp2 unblock (forceEvaluation accessAddRatTensor evalAddRatTensor) args
+      VSubRatTensor args -> unblockTensorOp2 unblock (forceEvaluation accessSubRatTensor evalSubRatTensor) args
+      VMulRatTensor args -> unblockTensorOp2 unblock (forceEvaluation accessMulRatTensor evalMulRatTensor) args
+      VDivRatTensor args -> unblockTensorOp2 unblock (forceEvaluation accessDivRatTensor evalDivRatTensor) args
+      VPowRatTensor args -> unblockTensorOp2 unblock (forceEvaluation accessPowRatTensor evalPowRatTensor) args
+      VReduceAddRatTensor args -> unblockReduceTensor unblock (forceEvaluation accessReduceAddRat evalReduceAddRatTensor) args
+      VReduceMulRatTensor args -> unblockReduceTensor unblock (forceEvaluation accessReduceMulRat evalReduceMulRatTensor) args
+      VReduceMinRatTensor args -> unblockReduceTensor unblock (forceEvaluation accessReduceMinRat evalReduceMinRatTensor) args
+      VReduceMaxRatTensor args -> unblockReduceTensor unblock (forceEvaluation accessReduceMaxRat evalReduceMaxRatTensor) args
       VMinRatTensor args -> unblockMinRatTensor unblock args
       VMaxRatTensor args -> unblockMaxRatTensor unblock args
       VRatTensorBoundVar v spine -> unblockBoundVar unblock v spine
@@ -212,8 +209,8 @@ unblockNatValue actions value = showEntry value $ do
   case toNatValue forcedValue of
     VNatLiteral {} -> return $ IfLeaf value
     VNatIf ifArgs -> unblockIf (unblockNatValue actions) ifArgs
-    VNatAdd args -> unblockOp2 (unblockNatValue actions) evalAddNat args
-    VNatMul args -> unblockOp2 (unblockNatValue actions) evalMulNat args
+    VNatAdd args -> unblockOp2 (unblockNatValue actions) (forceEvaluation accessAddNat evalAddNat) args
+    VNatMul args -> unblockOp2 (unblockNatValue actions) (forceEvaluation accessMulNat evalMulNat) args
     VNatBoundVar v spine -> unblockBoundVar actions (unblockNatValue actions) v spine
     VNatParameter ident -> unblockDatasetOrParameter actions (unblockNatValue actions) ident
 
@@ -260,7 +257,7 @@ unblockIf unblock (IfArgs _ c x y) = do
 unblockOp2 ::
   (MonadUnblock m) =>
   TypeUnblockingFunction (Thunk Builtin) m ->
-  EvalSimple ForcedValue Thunk Op2Args Builtin m ->
+  (Op2Args (Thunk Builtin) -> m (Thunk Builtin)) ->
   OperationUnblockingFunction Op2Args (Thunk Builtin) m
 unblockOp2 unblock evalFn (Op2Args x y) = do
   x' <- unblock x
@@ -268,12 +265,12 @@ unblockOp2 unblock evalFn (Op2Args x y) = do
   forIfTreeM x' $ \x'' ->
     forIfTreeM y' $ \y'' ->
       IfLeaf <$> do
-        forceEval evalFn $ Op2Args x'' y''
+        evalFn $ Op2Args x'' y''
 
 unblockIndexOp2 ::
   (MonadUnblock m) =>
   TypeUnblockingFunction (Thunk Builtin) m ->
-  EvalSimple ForcedValue Thunk IndexComparisonArgs Builtin m ->
+  (IndexComparisonArgs (Thunk Builtin) -> m (Thunk Builtin)) ->
   OperationUnblockingFunction IndexComparisonArgs (Thunk Builtin) m
 unblockIndexOp2 unblock evalFn (IndexComparisonArgs n1 n2 x y) = do
   x' <- unblock x
@@ -281,7 +278,7 @@ unblockIndexOp2 unblock evalFn (IndexComparisonArgs n1 n2 x y) = do
   forIfTreeM x' $ \x'' ->
     forIfTreeM y' $ \y'' ->
       IfLeaf <$> do
-        forceEval evalFn $ IndexComparisonArgs n1 n2 x'' y''
+        evalFn $ IndexComparisonArgs n1 n2 x'' y''
 
 unblockTensorOp1 ::
   (MonadUnblock m) =>
@@ -318,7 +315,7 @@ unblockCompareRatTensor actions op (TensorComparisonArgs pDims rDims xs ys) = do
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM ys' $ \ys'' -> do
       IfLeaf
-        <$> forceEval (evalCompareRatTensor op) (TensorComparisonArgs pDims rDims xs'' ys'')
+        <$> forceEvaluation (applyAccessor accessCompareRatTensor op) (evalCompareRatTensor op) (TensorComparisonArgs pDims rDims xs'' ys'')
 
 unblockTransposeTensor ::
   (MonadUnblock m) =>
@@ -352,7 +349,7 @@ unblockAtTensor unblock unblockTensor unblockIndex (AtTensorArgs tElem d ds xs i
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->
       unblock
-        =<< forceEval evalAtTensor (AtTensorArgs tElem d ds xs'' i'')
+        =<< forceEvaluation accessAtTensor evalAtTensor (AtTensorArgs tElem d ds xs'' i'')
 
 unblockAtVector ::
   (MonadUnblock m) =>
@@ -365,7 +362,7 @@ unblockAtVector unblockVector unblockIndex (AtVectorArgs tElem d xs i) = do
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->
       IfLeaf <$> do
-        forceEval evalAtVector $ AtVectorArgs tElem d xs'' i''
+        forceEvaluation accessAtVector evalAtVector $ AtVectorArgs tElem d xs'' i''
 
 unblockRecordAcc ::
   (MonadUnblock m) =>
@@ -389,7 +386,7 @@ unblockForeachTensor actions (ForeachTensorArgs tElem d ds fn) = do
   d' <- unblockNatValue actions d
   forIfTreeM d' $ \d'' ->
     IfLeaf <$> do
-      let result = forceEval evalForeachTensor
+      let result = forceEvaluation accessForeachTensor evalForeachTensor
       result $ ForeachTensorArgs tElem d'' ds fn
 
 unblockRatTensorExtrema ::
@@ -423,7 +420,7 @@ unblockForeachVector actions (ForeachVectorArgs tElem d fn) = do
   d' <- unblockNatValue actions d
   forIfTreeM d' $ \d'' ->
     IfLeaf <$> do
-      forceEval evalForeachVector $ ForeachVectorArgs tElem d'' fn
+      forceEvaluation accessForeachVector evalForeachVector $ ForeachVectorArgs tElem d'' fn
 
 unblockMapList ::
   (MonadUnblock m) =>
@@ -433,7 +430,7 @@ unblockMapList actions (MapListArgs t1 t2 f xs) = do
   xs' <- unblockListValue actions xs
   forIfTreeM xs' $ \xs'' ->
     IfLeaf <$> do
-      forceEval evalMapList $ MapListArgs t1 t2 f xs''
+      forceEvaluation accessMapList evalMapList $ MapListArgs t1 t2 f xs''
 
 unblockFoldList ::
   (MonadUnblock m) =>
@@ -443,7 +440,7 @@ unblockFoldList actions (FoldListArgs t1 t2 f e xs) = do
   xs' <- unblockListValue actions xs
   forIfTreeM xs' $ \xs'' ->
     IfLeaf <$> do
-      forceEval evalFoldList $ FoldListArgs t1 t2 f e xs''
+      forceEvaluation accessFoldList evalFoldList $ FoldListArgs t1 t2 f e xs''
 
 unblockConstTensor ::
   (MonadUnblock m) =>
@@ -460,17 +457,6 @@ unblockConstTensor unblockValue actions (ConstTensorArgs t x ds) = do
 
 --------------------------------------------------------------------------------
 -- Unblocking operations
-
-forceEval ::
-  (MonadNorm Builtin m, HasCallStack) =>
-  EvalSimple ForcedValue Thunk args Builtin m ->
-  args (Thunk Builtin) ->
-  m (Thunk Builtin)
-forceEval evalFn args = do
-  evalResult <- evalFn args
-  case evalResult of
-    Evaluated result -> return result
-    Unevaluable {} -> developerError "Unblocking evaluation results in unevaluable result"
 
 currentPass :: Doc a
 currentPass = "unblocking"
