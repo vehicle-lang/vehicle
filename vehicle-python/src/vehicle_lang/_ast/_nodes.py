@@ -5,8 +5,9 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Generic, Literal, Optional, Sequence
 
-from typing_extensions import Self, TypeAlias, override
+from typing_extensions import Self, TypeAlias
 from typing_extensions import TypeVar as TypingTypeVar
+from typing_extensions import override
 
 from ._decode import JsonValue, decode
 
