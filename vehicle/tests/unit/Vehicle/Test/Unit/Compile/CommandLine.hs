@@ -7,6 +7,7 @@ import Data.Map qualified as Map (fromList)
 import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
+import Vehicle.Backend.Prelude (InteractiveTheoremProverID (..))
 import Vehicle.CommandLine
   ( GlobalOptions (..),
     ModeOptions (..),
@@ -14,6 +15,7 @@ import Vehicle.CommandLine
     commandLineOptionsParserInfo,
     defaultGlobalOptions,
   )
+import Vehicle.Export (ExportOptions (..))
 import Vehicle.List (ListOptions (..))
 import Vehicle.Prelude
   ( Pretty (pretty),
@@ -35,7 +37,8 @@ commandLineParserTests =
       checkModeTests,
       verifyTests,
       validateModeTests,
-      listModeTests
+      listModeTests,
+      exportModeTests
     ]
 
 noModeTests :: TestTree
@@ -122,6 +125,63 @@ validateModeTests =
                 Validate $
                   ValidateOptions
                     { verificationCache = "local/outputFolder"
+                    }
+          }
+    ]
+
+exportModeTests :: TestTree
+exportModeTests =
+  testGroup
+    "exportMode"
+    [ parserTest
+        "cache"
+        "vehicle export \
+        \--target Agda \
+        \--cache local/outputFolder"
+        $ Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                Export $
+                  ExportOptions
+                    { target = Agda,
+                      specification = Nothing,
+                      declarationsToCompile = mempty,
+                      networkLocations = mempty,
+                      datasetLocations = mempty,
+                      parameterValues = mempty,
+                      output = Nothing,
+                      moduleName = Nothing,
+                      verificationCache = Just "local/outputFolder",
+                      constructiveReals = False
+                    }
+          },
+      parserTest
+        "specification"
+        "vehicle export \
+        \--target Rocq \
+        \--specification test/spec.vcl \
+        \--declaration property \
+        \--network f:test/network.onnx \
+        \--dataset d:test/dataset.idx \
+        \--parameter p:1 \
+        \--output test/spec.v"
+        $ Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                Export $
+                  ExportOptions
+                    { target = Rocq,
+                      specification = Just "test/spec.vcl",
+                      declarationsToCompile = ["property"],
+                      networkLocations = Map.fromList [("f", "test/network.onnx")],
+                      datasetLocations = Map.fromList [("d", "test/dataset.idx")],
+                      parameterValues = Map.fromList [("p", "1")],
+                      output = Just "test/spec.v",
+                      moduleName = Nothing,
+                      verificationCache = Nothing,
+                      constructiveReals = False
                     }
           }
     ]
