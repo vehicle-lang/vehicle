@@ -237,6 +237,7 @@ compileQueries expr = do
     VBoolFoldList {} -> unblock forcedValue
     VCompareIndex {} -> unblock forcedValue
     VCompareNat {} -> unblock forcedValue
+    VBoolParameter {} -> unblock forcedValue
     -----------------
     -- Mixed cases --
     -----------------

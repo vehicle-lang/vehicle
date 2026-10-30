@@ -15,7 +15,8 @@ jobs:
           - name: "Linux"
             type: ubuntu-latest
           - name: "macOS"
-            type: "macos-latest"
+            # macos-15 rather than macos-latest until actions/runner-images#14940 is fixed; see https://github.com/haskell/cabal/pull/12468.
+            type: macos-15
           - name: "Windows"
             type: "windows-latest"
         haskell:

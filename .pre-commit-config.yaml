@@ -41,16 +41,16 @@ repos:
     hooks:
       - id: flynt
   - repo: https://github.com/pycqa/isort
-    rev: "9.0.1"
+    rev: "10.0.0b1"
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: "26.5.1"
+    rev: "26.10.1"
     hooks:
       - id: black
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v2.3.1"
+    rev: "v2.4.0"
     hooks:
       - id: mypy
         name: mypy (vehicle-python)

@@ -1,9 +1,13 @@
-Usage: vehicle compile loss (-l|--logic LOGIC) (-s|--specification FILE) 
-                            [-e|--declaration NAME] [-o|--output FILE]
+Usage: vehicle compile loss [-m|--lossMode MODE] (-l|--logic LOGIC)
+                            (-s|--specification FILE) [-e|--declaration NAME] 
+                            [-o|--output FILE]
 
   Compile a specification to a loss function.
 
 Available options:
+  -m,--lossMode MODE       Sets the loss function for training or search. Supported options: 
+                             * Training
+                             * Search (default: Training)
   -l,--logic LOGIC         The differentiable logic to export to. Supported options: 
                              * VehicleLoss
                              * DL2Loss

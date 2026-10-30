@@ -98,7 +98,7 @@ Pass a ``samplers`` dictionary if you want to override the default implementatio
 
 .. code-block:: python
 
-   custom = {"images": MySampler().get_loss}
+   custom = {"images": MySampler()}
    context = {"model": model, "epsilon": 0.1}
 
    declarations = loss_pt.load_specification(
