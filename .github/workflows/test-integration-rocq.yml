@@ -84,7 +84,7 @@ jobs:
         if: ${{ !env.ACT }}
         id: cache-opam
         env:
-          key: opam-${{ matrix.os.name }}-ocaml-${{ matrix.ocaml.version }}-rocq-${{ matrix.rocq.version }}
+          key: opam-v2-${{ matrix.os.name }}-ocaml-${{ matrix.ocaml.version }}-rocq-${{ matrix.rocq.version }}
         with:
           path: ~/.opam
           key: ${{ env.key }}-deps-${{ hashFiles('vehicle-rocq/vehicle-rocq.opam') }}
