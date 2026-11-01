@@ -68,6 +68,7 @@ jobs:
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
       - name: 🛠️ Configure
+        if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
         working-directory: vehicle-python
         run: |
           cabal update
