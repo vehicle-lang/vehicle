@@ -52,6 +52,10 @@ jobs:
     runs-on: ${{ matrix.os.type }}
 
     steps:
+      - name: Enable symlinks
+        if: matrix.os.name == 'Windows'
+        run: git config --global core.symlinks true
+
       - name: Get source
         uses: actions/checkout@v7
 
@@ -64,16 +68,17 @@ jobs:
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
       - name: 🛠️ Configure
+        working-directory: vehicle-python
         run: |
-          cabal configure --project-file=./vehicle-python/cabal.project
-          cabal build all --project-file=./vehicle-python/cabal.project --dry-run
+          cabal configure
+          cabal build all --dry-run
 
       - name: 💾 Restore Cabal dependencies
         uses: actions/cache/restore@v6
         if: ${{ !env.ACT && (matrix.os.name == 'macOS' || matrix.os.name == 'Windows') }}
         id: cache-haskell
         env:
-          key: ${{ matrix.os.name }}-${{ matrix.os.arch }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+          key: ${{ matrix.os.name }}-${{ runner.arch }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store }}
           key: ${{ env.key }}-plan-${{ hashFiles('vehicle-python/dist-newstyle/cache/plan.json') }}
