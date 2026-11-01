@@ -148,6 +148,7 @@ jobs:
 
       - name: 🛠️ Configure
         run: |
+          cabal update
           cabal configure --project-file=${{ matrix.haskell.cabal.project-file }}
           cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
 
