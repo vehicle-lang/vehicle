@@ -22,12 +22,10 @@ def check_output(
     """
     Execute a Vehicle command and capture its output.
 
-    Uses PTY-based output capture to handle C-level stdout from the Haskell RTS.
-
     :param args: The command-line arguments to pass to Vehicle.
     :return: A tuple of (exit_code, stdout, stderr, log_file_content).
     """
-    return Session().__enter__().check_output_pty(args)
+    return Session().__enter__().check_output(args)
 
 
 def execute_command(

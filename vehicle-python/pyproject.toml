@@ -110,7 +110,6 @@ disallow_untyped_defs = false
 disable_error_code = ['name-defined']
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.setuptools.dynamic]
