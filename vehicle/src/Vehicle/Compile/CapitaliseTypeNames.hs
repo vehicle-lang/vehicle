@@ -70,6 +70,8 @@ instance CapitaliseTypes (Expr DecidabilityBuiltin) where
       Record p <$> cap recordType <*> traverseRecordFields cap fields
     RecordProj p recordType record field -> do
       RecordProj p <$> cap recordType <*> cap record <*> pure field
+    Differentiate p t e field -> do
+      Differentiate p <$> cap t <*> cap e <*> pure field
 
 instance CapitaliseTypes (Arg DecidabilityBuiltin) where
   cap Arg {..} = do

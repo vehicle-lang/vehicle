@@ -31,6 +31,7 @@ freeNamesIn = \case
   Lam _ binder body -> freeNamesIn (typeOf binder) <> freeNamesIn body
   Record _ _ fields -> concatMap (freeNamesIn . snd) fields
   RecordProj _ t r _ -> freeNamesIn t <> freeNamesIn r
+  Differentiate _ t e _ -> freeNamesIn t <> freeNamesIn e
 
 --------------------------------------------------------------------------------
 -- Destruction functions

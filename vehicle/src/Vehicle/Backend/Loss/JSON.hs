@@ -264,6 +264,7 @@ convertTypeValue expr = do
     S.Builtin _ b -> convertBuiltinType b []
     S.BoundVar _ v -> convertBoundVar convertExpr TypeVar v []
     S.FreeVar _ v -> convertFreeVar convertExpr TypeVar v []
+    S.Differentiate {} -> error "TODO: convert type value of Differentiate in Loss/JSON.hs"
   showExit result
   return result
 
@@ -328,12 +329,14 @@ convertExpr expr = do
         S.FreeVar _ v -> convertFreeVar convertExpr Var v args'
         S.RecordProj _ typ recordVal field -> convertRecordAcc typ recordVal field args'
         S.Lam {} -> convertExpr $ substArgs fun $ NonEmpty.toList args
+        S.Differentiate {} -> unsupportedError ("Differentiate" :: String) -- TODO
         _ -> do
           funDoc <- prettyFriendlyInCtx fun
           developerError $ "Unexpected expr application:" <+> funDoc
     S.Builtin _ b -> convertBuiltin b []
     S.BoundVar _ v -> convertBoundVar convertExpr Var v []
     S.FreeVar _ v -> convertFreeVar convertExpr Var v []
+    S.Differentiate {} -> unsupportedError ("Differentiate" :: String) -- TODO
   showExit result
   return result
 

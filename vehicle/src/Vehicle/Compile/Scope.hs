@@ -114,7 +114,9 @@ scopeExpr e = case e of
     return $ normAppList projFn [explicit record']
   S.Differentiate p expr field -> do
     expr' <- scopeExpr expr
-    return $ Differentiate p expr' field
+    identAndTelescope <- lookupRecordDefinitionByField field
+    let t = calculateConcreteRecordType p identAndTelescope
+    return $ Differentiate p t expr' field
 
 -- Need to: establish what the type of the thing we are differentiating is
 -- work out which record we're trying to differentiate wrt

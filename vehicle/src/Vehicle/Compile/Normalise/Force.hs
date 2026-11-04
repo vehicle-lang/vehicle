@@ -158,6 +158,7 @@ eval env expr = do
       return $ VPi (fmap (Unforced env) binder) (Closure env body)
     Record _p recordType fields ->
       return $ VRecord (Unforced env recordType) $ OMap.fromList $ fmap (second (Unforced env)) fields
+    Differentiate {} -> error "TODO: decide forced evaluation of Differentiate"
 
   showExit result
   return result

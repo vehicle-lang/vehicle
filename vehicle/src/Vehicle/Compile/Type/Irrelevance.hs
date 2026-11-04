@@ -66,6 +66,8 @@ instance RemoveIrrelevantCode builtin m (Expr builtin) where
       Hole {} -> return expr
       Meta {} -> return expr
       Builtin {} -> return expr
+      Differentiate p t e field ->
+        Differentiate p <$> remove t <*> remove e <*> pure field
 
     -- showRemoveExit result
     return result

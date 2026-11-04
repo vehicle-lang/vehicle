@@ -246,6 +246,7 @@ removeImplicitArgs prog =
       Let p bound binder body -> Let p <$> go bound <*> traverse go binder <*> go body
       Record p ident fields -> Record p ident <$> traverseRecordFields go fields
       RecordProj p recordType record field -> RecordProj p <$> go recordType <*> go record <*> pure field
+      Differentiate p t e field -> Differentiate p <$> go t <*> go e <*> pure field
 
 parseModuleText :: (MonadCompile m) => ParseLocation -> Text -> m (S.Module Builtin)
 parseModuleText location txt = do

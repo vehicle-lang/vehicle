@@ -89,6 +89,7 @@ instance HasMetas (Expr builtin) where
     App fun args -> do findMetas s fun; findMetas s args
     Record _ _ fields -> findMetas s $ fmap snd fields
     RecordProj _ recordType record _ -> do findMetas s recordType; findMetas s record
+    Differentiate _ t e _ -> do findMetas s t; findMetas s e
 
 instance HasMetas (ForcedValueWithMetas builtin) where
   findMetas s expr = case expr of
@@ -210,6 +211,7 @@ instance MetaSubstitutable m builtin (Expr builtin) where
       Pi p binder res -> Pi p <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s res
       Let p e1 binder e2 -> Let p <$> substMetasAt ctx s e1 <*> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s e2
       Lam p binder e -> Lam p <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s e
+      Differentiate p t e field -> Differentiate p <$> substMetasAt ctx s t <*> substMetasAt ctx s e <*> pure field
 
 -- | We really don't want un-normalised lambda applications from solved meta-variables
 -- clogging up our program so this function detects meta applications and normalises

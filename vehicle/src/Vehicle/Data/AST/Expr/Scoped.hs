@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Data.AST.Expr.Scoped
-  ( Expr (Universe, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj, App),
+  ( Expr (Universe, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj, App, Differentiate),
     Type,
     Binder,
     Arg,
@@ -131,6 +131,7 @@ data Expr builtin
   | -- | Differentiation
     Differentiate
       Provenance
+      (Type builtin)
       (Expr builtin) --
       FieldName --
       -- scoped will work out the type of the record expr you are trying to match
@@ -198,7 +199,7 @@ instance HasProvenance (Expr builtin) where
     Lam p _ _ -> p
     Record p _ _ -> p
     RecordProj p _ _ _ -> p
-    Differentiate p _ _ -> p
+    Differentiate p _ _ _ -> p
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -254,7 +255,7 @@ traverseBuiltinsM f expr = case expr of
   BoundVar p v -> return $ BoundVar p v
   Hole p n -> return $ Hole p n
   Meta p m -> return $ Meta p m
-  Differentiate p e field -> Differentiate p <$> traverseBuiltinsM f e <*> pure field
+  Differentiate p t e field -> Differentiate p <$> traverseBuiltinsM f t <*> traverseBuiltinsM f e <*> pure field
 
 traverseBuiltinsArg :: (Monad m) => BuiltinUpdate m builtin1 builtin2 -> Arg builtin1 -> m (Arg builtin2)
 traverseBuiltinsArg f = traverse (traverseBuiltinsM f)
@@ -321,9 +322,10 @@ traverseFreeVarsM underBinder processFreeVar = go
         return $ Let p bound' binder' body'
       Record p i fs -> Record p i <$> traverseRecordFields go fs
       RecordProj p t r field -> RecordProj p <$> go t <*> go r <*> pure field
-      Differentiate p e field -> do
+      Differentiate p t e field -> do
+        t' <- go t
         e' <- go e
-        pure (Differentiate p e' field)
+        pure (Differentiate p t' e' field)
 
 -- TODO: ASK
 -- versus return $
@@ -375,7 +377,7 @@ traverseBoundVariables_ f ctxSize = go ctxSize
         go (depth + 1) body
       Record _ i fs -> do go depth i; traverseRecordFields_ (go depth) fs
       RecordProj _ t r _field -> do go depth t; go depth r
-      Differentiate _ e _ -> do go depth e
+      Differentiate _ t e _ -> do go depth t; go depth e
 
 replaceProvenance :: Provenance -> Expr builtin -> Expr builtin
 replaceProvenance p = go
@@ -394,7 +396,7 @@ replaceProvenance p = go
       Lam _ binder e -> Lam p (fmap go binder) (go e)
       Record _ ident fields -> Record p ident (mapRecordFields go fields)
       RecordProj _ recordType record field -> RecordProj p (go recordType) (go record) field
-      Differentiate _ e field -> Differentiate p (go e) field
+      Differentiate _ t e field -> Differentiate p (go t) (go e) field
 
 -- super not certain here, why do we not change provenance of fields, but we do for expr?
 
@@ -492,7 +494,7 @@ instance Substitutable (Expr builtin) (Expr builtin) where
     Lam p binder e -> Lam p <$> traverse subst binder <*> underDBBinder (subst e)
     Record p i fs -> Record p i <$> traverseRecordFields subst fs
     RecordProj p t r field -> RecordProj p <$> subst t <*> subst r <*> pure field
-    Differentiate p e field -> Differentiate p <$> subst e <*> pure field
+    Differentiate p t e field -> Differentiate p <$> subst t <*> subst e <*> pure field
 
 shiftDBIndex :: Ix -> Lv -> Ix
 shiftDBIndex i l = Ix (unIx i + unLv l)

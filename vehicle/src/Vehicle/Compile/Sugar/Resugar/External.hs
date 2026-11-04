@@ -94,6 +94,7 @@ instance Delaborate (V.Expr V.Builtin) B.Expr where
     V.Builtin _ op -> delabBuiltin op []
     V.Record _ fields -> delabRecord fields
     V.RecordAcc _ record field -> delabRecordAccess record field
+    V.Differentiate {} -> error "TODO: external delaboration of Differentiate"
 
 instance Delaborate (V.Arg V.Builtin) B.Arg where
   delabM arg = do

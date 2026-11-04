@@ -109,6 +109,7 @@ processExpr expr = case expr of
   Lam p binder body -> Lam p binder <$> addNonTensorBinderToContext binder (processExpr body)
   Record p t fs -> Record p t <$> traverseRecordFields processExpr fs
   RecordProj p t r field -> RecordProj p t <$> processExpr r <*> pure field
+  Differentiate p t e field -> Differentiate p t <$> processExpr e <*> pure field
 
 compileQuantifier ::
   (MonadDomain m) =>

@@ -112,6 +112,7 @@ createAdjacencyGraph ds = AdjacencyGraph $ Map.fromList $ fmap goDecl ds
       Let _ bound binder body -> do go bound; traverse_ go binder; go body
       Record _ _ fields -> traverse_ (go . snd) fields
       RecordProj _ recordType record _ -> do go recordType; go record
+      Differentiate _ t e _ -> do go t; go e
 
 --------------------------------------------------------------------------------
 -- Completely unused declarations

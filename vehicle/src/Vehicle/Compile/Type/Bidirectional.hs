@@ -259,9 +259,33 @@ inferExpr e = do
       checkedRecord <- checkExpr checkedRecordType uncheckedRecord
       let fieldType = lookupRecordField expectedFieldTypes field
       return (RecordProj p checkedRecordType checkedRecord field, fieldType)
+    -- delta[model]/delta[time] input
+    -- p provenance, t type ('input')
+    Differentiate p t expr field -> do
+      -- step 1:
+      --  check that t has type 'type'
+      checkedT <- checkExpr (TypeUniverse p 0) t
 
+      -- step 2:
+      -- check that expr has type 't -> ?' (? comes from freshMeta)
+      -- build a pi AST node that represents the function type
+      relevance <- ask
+      boundCtx <- getBoundCtx (Proxy @(Type builtin))
+      resultType <- freshMetaExpr p (TypeUniverse p 0) relevance boundCtx -- creates ?R, the unknown result type
+      let inputBinder = mkExplicitBinder checkedT Nothing -- this is the t we know it takes
+      let functionType = Pi p inputBinder (liftDBIndices 1 resultType) -- t -> ?R
+      checkedExpr <- checkExpr functionType expr -- resolves ?R to the actual type
+
+      -- step 3:
+      -- return the updated checked expr and the type
+      pure
+        ( Differentiate p checkedT checkedExpr field,
+          functionType
+        )
   showInferExit res
   return res
+
+-- infer & check are the two main operations
 
 checkRecordTypeAndCalculateRecordFieldTypes ::
   forall builtin m.

@@ -131,6 +131,9 @@ genericDescopeExpr f e = showDescopeExit $ case showDescopeEntry e of
   RecordProj p _recordType record field -> do
     record' <- genericDescopeExpr f record
     return $ S.RecordAcc p record' field
+  Differentiate p _inputType expr field -> do
+    expr' <- genericDescopeExpr f expr
+    return $ S.Differentiate p expr' field
 
 descopeUniverse :: Provenance -> UniverseLevel -> S.Expr Builtin
 descopeUniverse p _u = S.Universe p

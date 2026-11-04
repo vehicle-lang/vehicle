@@ -82,6 +82,7 @@ mapApp f expr = case expr of
   App fun args -> f fun args
   Record p fs -> Record p (mapRecordFields (mapApp f) fs)
   RecordAcc p e field -> RecordAcc p (mapApp f e) field
+  Differentiate p e field -> Differentiate p (mapApp f e) field
 
 removeInsertedCasts :: Expr Builtin -> NonEmpty (Arg Builtin) -> Expr Builtin
 removeInsertedCasts fun args
