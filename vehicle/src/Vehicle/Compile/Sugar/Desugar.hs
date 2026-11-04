@@ -817,7 +817,7 @@ standardLibQuantifier tk name binders body = do
   let mkQuantifier binder newBody =
         V.normAppList
           quant
-          [ mkArg mempty V.Explicit (V.Lam (V.provenanceOf binder) binder newBody)
+          [ mkArg mempty V.Explicit (V.Lam mempty binder newBody)
           ]
   return $ foldr mkQuantifier body' binders'
 
@@ -836,11 +836,10 @@ elabQuantifierIn tk q binder container body = do
   container' <- elabExpr container
   body' <- elabExpr body
 
-  let p' = V.provenanceOf binder'
   return $
     V.normAppList
       (V.Builtin p quantBuiltin)
-      [ mkArg mempty V.Explicit (V.Lam p' binder' body'),
+      [ mkArg mempty V.Explicit (V.Lam mempty binder' body'),
         mkArg mempty V.Explicit container'
       ]
 
@@ -859,7 +858,7 @@ elabForeach tk binders body = do
   let mkForeach binder newBody =
         V.normAppList
           (V.Builtin p $ V.TypeClassOp V.ForeachTC)
-          [ mkArg mempty V.Explicit (V.Lam (V.provenanceOf binder) binder newBody)
+          [ mkArg mempty V.Explicit (V.Lam mempty binder newBody)
           ]
 
   return $ foldr mkForeach body' binders'
