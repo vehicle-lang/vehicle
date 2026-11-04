@@ -8,10 +8,9 @@ where
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Lens ((^.))
 import Data.Aeson.Text (encodeToLazyText)
--- import Data.Maybe (catMaybes)
-import Data.Either (partitionEithers)
 import Data.List
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -32,7 +31,6 @@ import Language.LSP.Protocol.Types as Lsp
   )
 import Language.LSP.Server (MonadLsp)
 import Language.LSP.Server qualified as Lsp
-import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Print.Error (formatCompileError, logCompileError)
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.AST.Prog (GenericProg (..), Prog)
@@ -153,13 +151,7 @@ handlers logger server clientCapabilities =
               logger <& (layoutAsText $ pretty $ formatCompileError err) `WithSeverity` Warning
               respondWithTokens []
             Right (prog, _, _) -> do
-              let badProvOrToks = progToSemanticTokens filePath prog
-              let (badProvs, toks) = partitionEithers badProvOrToks
-              let (Main decls) = prog
-              logger <& (layoutAsText $ prettyVerbose decls) `WithSeverity` Debug
-              logger <& (layoutAsText $ pretty $ badProvs) `WithSeverity` Debug
-              logger <& (layoutAsText $ pretty $ map (\t -> (t ^. line, t ^. startChar, t ^. tokenType)) toks) `WithSeverity` Debug
-              respondWithTokens $ toks
+              respondWithTokens $ catMaybes $ collectProgTokens filePath prog
 
 makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either Text Lsp.SemanticTokens
 makeLspSemanticTokens tokens =
@@ -167,7 +159,7 @@ makeLspSemanticTokens tokens =
   where
     sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) tokens
 
-type IntermediateSemTok = Either (Provenance, Lsp.SemanticTokenTypes) Lsp.SemanticTokenAbsolute
+type IntermediateSemTok = Maybe Lsp.SemanticTokenAbsolute
 
 collectProgTokens :: FilePath -> Prog Builtin -> [IntermediateSemTok]
 collectProgTokens filePath (Main decls) =
@@ -197,9 +189,9 @@ collectBinderTokens filePath (Binder (BinderDisplayForm namingForm _foldingForm)
 
 -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
 makeToken :: FilePath -> Provenance -> Lsp.SemanticTokenTypes -> [Lsp.SemanticTokenModifiers] -> IntermediateSemTok
-makeToken filePath p@(Provenance (Range (Position sl sc) (Position _el ec)) provFilePath) tType modifiers
+makeToken filePath (Provenance (Range (Position sl sc) (Position _el ec)) provFilePath) tType modifiers
   | filePath == provFilePath =
-      Right
+      Just
         ( Lsp.SemanticTokenAbsolute
             { _line = fromIntegral sl - 1,
               _startChar = fromIntegral sc - 1,
@@ -208,7 +200,7 @@ makeToken filePath p@(Provenance (Range (Position sl sc) (Position _el ec)) prov
               _tokenModifiers = modifiers
             }
         )
-  | otherwise = Left (p, tType)
+  | otherwise = Nothing
 
 collectExprTokens ::
   FilePath ->
