@@ -46,11 +46,11 @@ import Vehicle.Prelude
     GenericArg (..),
     GenericBinder (..),
     GenericDecl (..),
-    GenericRecordField,
     HasProvenance (..),
     Position (..),
     Provenance (Provenance),
     Range (..),
+    Visibility (..),
   )
 import Vehicle.Prelude.Logging (runSilentLoggerT)
 import Vehicle.Prelude.Prettyprinter (Pretty (..), layoutAsText)
@@ -169,32 +169,31 @@ makeLspSemanticTokens tokens =
 
 type IntermediateSemTok = Either (Provenance, Lsp.SemanticTokenTypes) Lsp.SemanticTokenAbsolute
 
-progToSemanticTokens :: FilePath -> Prog Builtin -> [IntermediateSemTok]
-progToSemanticTokens filePath (Main decls) =
-  concatMap (declToSemanticTokens filePath) decls
+collectProgTokens :: FilePath -> Prog Builtin -> [IntermediateSemTok]
+collectProgTokens filePath (Main decls) =
+  concatMap (collectDeclTokens filePath) decls
 
-declToSemanticTokens :: FilePath -> GenericDecl (Expr Builtin) -> [IntermediateSemTok]
-declToSemanticTokens filePath = \case
-  DefAbstract p _ _ t -> [makeToken filePath p SemanticTokenTypes_Function []] ++ exprsToSemanticTokens filePath [t]
-  DefFunction p _ _ t e -> [makeToken filePath p SemanticTokenTypes_Function []] ++ exprsToSemanticTokens filePath [t, e]
-  DefRecord p _ _ t e _ -> [makeToken filePath p SemanticTokenTypes_Class []] ++ concatMap (binderToSemanticTokens filePath) t ++ concatMap (genericRecordFieldToSemanticTokens filePath) e
+collectDeclTokens :: FilePath -> GenericDecl (Expr Builtin) -> [IntermediateSemTok]
+collectDeclTokens filePath = \case
+  DefAbstract p _ _ t -> [makeToken filePath p SemanticTokenTypes_Function []] ++ collectExprTokens filePath t
+  DefFunction p _ _ t e -> [makeToken filePath p SemanticTokenTypes_Function []] ++ concatMap (collectExprTokens filePath) (t, e)
+  DefRecord p _ _ t e _ -> [makeToken filePath p SemanticTokenTypes_Class []] ++ concatMap (collectBinderTokens filePath) t ++ collectFieldsTokens filePath e
 
-genericRecordFieldToSemanticTokens :: FilePath -> GenericRecordField (Expr Builtin) -> [IntermediateSemTok]
-genericRecordFieldToSemanticTokens filePath (fname, fexpr) =
-  [makeToken filePath (provenanceOf fname) SemanticTokenTypes_Variable []]
-    ++ exprsToSemanticTokens filePath [fexpr]
+collectBinderTokens :: FilePath -> GenericBinder (Expr Builtin) -> [IntermediateSemTok]
+collectBinderTokens filePath (Binder (BinderDisplayForm namingForm _foldingForm) vis _r val) =
+  (collectExprTokens filePath val) ++ nameToks
+  where
+    nameToks = case vis of
+      Explicit -> nameToksFromNF
+      Implicit insertedByCompiler -> if not insertedByCompiler then nameToksFromNF else []
+      Instance insertedByCompiler -> if not insertedByCompiler then nameToksFromNF else []
 
-binderToSemanticTokens :: FilePath -> GenericBinder (Expr Builtin) -> [IntermediateSemTok]
-binderToSemanticTokens filePath (Binder (BinderDisplayForm namingForm _) _ _ v) =
-  case namingForm of
-    NameAndType _ p -> [makeToken filePath p SemanticTokenTypes_Variable []] -- TODO: probably want to highlight name and type separately
-    OnlyName _ p -> [makeToken filePath p SemanticTokenTypes_Variable []]
-    OnlyType -> []
-    ++ exprsToSemanticTokens filePath [v]
+    nameToksFromNF = case namingForm of
+      NameAndType _n p -> nameToksFromProv p -- TODO: probably want to highlight name and type separately
+      OnlyName _n p -> nameToksFromProv p
+      OnlyType -> []
 
-exprsToSemanticTokens :: FilePath -> [Expr Builtin] -> [IntermediateSemTok]
-exprsToSemanticTokens filePath exprs =
-  foldMap (collectTokens filePath) exprs
+    nameToksFromProv p = [makeToken filePath p SemanticTokenTypes_Variable []]
 
 -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
 makeToken :: FilePath -> Provenance -> Lsp.SemanticTokenTypes -> [Lsp.SemanticTokenModifiers] -> IntermediateSemTok
@@ -211,24 +210,23 @@ makeToken filePath p@(Provenance (Range (Position sl sc) (Position _el ec)) prov
         )
   | otherwise = Left (p, tType)
 
--- | Traverse the Expr AST and collect all leaf tokens.
-collectTokens ::
+collectExprTokens ::
   FilePath ->
   Expr Builtin ->
   [IntermediateSemTok]
-collectTokens filePath expr = case expr of
+collectExprTokens filePath expr = case expr of
   Universe p _level -> [makeToken filePath p SemanticTokenTypes_Type []]
-  Pi _p binder res -> collectBinderTokens filePath binder ++ collectTokens filePath res
+  Pi _p binder res -> collectBinderTokens filePath binder ++ collectExprTokens filePath res
   Builtin p builtin -> collectBuiltinTokens filePath p builtin
   BoundVar p _ix -> [makeToken filePath p SemanticTokenTypes_Variable []]
   FreeVar p _ident -> [makeToken filePath p SemanticTokenTypes_Variable []]
   Hole p _name -> [makeToken filePath p SemanticTokenTypes_Decorator []]
   Meta p _metaId -> [makeToken filePath p SemanticTokenTypes_TypeParameter []]
-  App f args -> collectTokens filePath f ++ concatMap (collectArgTokens filePath) (NonEmpty.toList args)
-  Let p bound bodyBinder bodyExpr -> [makeToken filePath p SemanticTokenTypes_Keyword []] ++ (collectTokens filePath bound) ++ collectBinderTokens filePath bodyBinder ++ collectTokens filePath bodyExpr
-  Lam p binder body -> [makeToken filePath p SemanticTokenTypes_Macro []] ++ (collectBinderTokens filePath binder) ++ collectTokens filePath body
-  Record p typ fields -> [makeToken filePath p SemanticTokenTypes_Class []] ++ (collectTokens filePath typ) ++ collectFieldsTokens filePath fields
-  RecordProj p typ body _fieldName -> [makeToken filePath p SemanticTokenTypes_Class []] ++ (collectTokens filePath typ) ++ collectTokens filePath body
+  App f args -> collectExprTokens filePath f ++ concatMap (collectArgTokens filePath) (NonEmpty.toList args)
+  Let p bound bodyBinder bodyExpr -> [makeToken filePath p SemanticTokenTypes_Keyword []] ++ (collectExprTokens filePath bound) ++ collectBinderTokens filePath bodyBinder ++ collectExprTokens filePath bodyExpr
+  Lam p binder body -> [makeToken filePath p SemanticTokenTypes_Macro []] ++ (collectBinderTokens filePath binder) ++ collectExprTokens filePath body
+  Record p typ fields -> [makeToken filePath p SemanticTokenTypes_Class []] ++ (collectExprTokens filePath typ) ++ collectFieldsTokens filePath fields
+  RecordProj p typ body _fieldName -> [makeToken filePath p SemanticTokenTypes_Class []] ++ (collectExprTokens filePath typ) ++ collectExprTokens filePath body
 
 collectBuiltinTokens ::
   FilePath ->
@@ -271,17 +269,11 @@ collectArgTokens ::
   FilePath ->
   Arg Builtin ->
   [IntermediateSemTok]
-collectArgTokens filePath = collectTokens filePath . argExpr
-
-collectBinderTokens ::
-  FilePath ->
-  Binder Builtin ->
-  [IntermediateSemTok]
-collectBinderTokens filePath = collectTokens filePath . binderValue
+collectArgTokens filePath = collectExprTokens filePath . argExpr
 
 collectFieldsTokens ::
   FilePath ->
   RecordFields Builtin ->
   [IntermediateSemTok]
 collectFieldsTokens filePath = concatMap $ \(field, fieldValue) ->
-  makeToken filePath (provenanceOf field) SemanticTokenTypes_Method [] : collectTokens filePath fieldValue
+  makeToken filePath (provenanceOf field) SemanticTokenTypes_Method [] : collectExprTokens filePath fieldValue
