@@ -168,7 +168,7 @@ collectProgTokens filePath (Main decls) =
 collectDeclTokens :: FilePath -> GenericDecl (Expr Builtin) -> [IntermediateSemTok]
 collectDeclTokens filePath = \case
   DefAbstract p _ _ t -> [makeToken filePath p SemanticTokenTypes_Function []] ++ collectExprTokens filePath t
-  DefFunction p _ _ t e -> [makeToken filePath p SemanticTokenTypes_Function []] ++ concatMap (collectExprTokens filePath) (t, e)
+  DefFunction p _ _ t e -> [makeToken filePath p SemanticTokenTypes_Function []] ++ concatMap (collectExprTokens filePath) ([t, e] :: [Expr Builtin])
   DefRecord p _ _ t e _ -> [makeToken filePath p SemanticTokenTypes_Class []] ++ concatMap (collectBinderTokens filePath) t ++ collectFieldsTokens filePath e
 
 collectBinderTokens :: FilePath -> GenericBinder (Expr Builtin) -> [IntermediateSemTok]
