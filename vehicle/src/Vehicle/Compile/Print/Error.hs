@@ -12,7 +12,7 @@ import Control.Monad.Identity (Identity)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Proxy (Proxy (..))
-import Data.These (mergeTheseWith)
+import Data.These (These (..), mergeTheseWith)
 import Prettyprinter (surround)
 import System.FilePath
 import Vehicle.Compile.Error
@@ -23,16 +23,18 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error.Property (propertyTraversalErrorDetails)
 import Vehicle.Compile.Print.Error.Typing
-import Vehicle.Compile.Resource (NetworkModality (..), NetworkTensorModality (RecordModality))
+import Vehicle.Compile.Resource (AbstractNetworkModality (..), NetworkModality, NetworkTensorModality (RecordModality), dimensions, mapNetworkModality)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Standard.Normalise ()
-import Vehicle.Data.Code.ForcedValue (Thunk, UnforcedType)
+import Vehicle.Data.Code.ForcedValue (ForcedValue, GenericThunk (..), Thunk, UnforcedType)
 import Vehicle.Data.Code.ForcedValue qualified as Forced
+import Vehicle.Data.Code.Interface (mkIndexInto, pattern IRatType)
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Bound.Level (SlicePath)
 import Vehicle.Data.Variable.Free.Context (FreeContextT, runFreshFreeContextT)
 import Vehicle.Prelude.Logging (SilentLoggerT, runSilentLogger)
 
@@ -872,7 +874,7 @@ formatCompileError = \case
             <> ".",
         fix = Just "change the specification so that all quantified variables have unique names"
       }
-  NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables -> do
+  NoQuantifierDomainFound (ident, _p) binder _maybeUnboundedVariables -> do
     let (name, p) = getNamedBinderInfo binder
     VehicleUserError
       { provenance = Just p,
@@ -881,8 +883,9 @@ formatCompileError = \case
             <+> quotePretty ident
             <+> "cannot be compiled to tensor code as the variable"
             <+> quotePretty name
-            <+> "is not properly bounded. In particular,"
-            <+> missingBounds maybeUnboundedVariables,
+            <+> "is not properly bounded. In particular,",
+        -- TODO: fix this
+        -- <+> missingBounds maybeUnboundedVariables,
         fix = Just "Add inequalities that restrict the value of the variable both below and above."
       }
   UnableToLiftLogicFieldToTensors logicID _tensorField (boolField, value) ctx problematicValue ->
@@ -926,7 +929,8 @@ formatCompileError = \case
             <+> quotePretty ident
             <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
             <+> lineIndent (pretty networkName)
-            <+> unboundedVarInfo,
+            <+> "In particular, missing the following bounds:"
+            <> lineIndent (vsep $ fmap missingSliceDoc unboundedInputs),
         fix =
           Just
             "add additional inequalities that restrict the variables in the value above."
@@ -937,25 +941,14 @@ formatCompileError = \case
       }
     where
       -- prettyVar v = prettyFriendly (WithContext (VBoundVar @NoMeta @Builtin v mempty) ctx)
-      unboundedVarInfo =
-        case inputType of
-          UniModal (RecordModality recordTypeIdent fieldNames _) -> do
-            let varName = "x" :: Name
-            pretty varName
-              <> line
-              <> "In particular,"
-                <+> missingBoundsRecord varName fieldNames unboundedInputs
-                <+> "for"
-                <+> pretty (nameOf recordTypeIdent)
-                <+> squotes (pretty varName)
-          UniModal _ ->
-            lineIndent (prettyFriendly (WithContext (Forced.VFreeVar (Identifier userModulePath networkName) [explicit inputValue]) ctx))
-              <> line
-              <> "In particular,"
-                <+> missingBounds unboundedInputs
-                <+> "for tensor"
-                <+> squotes (prettyFriendly (WithContext inputValue ctx))
-          MultiModal _ _ -> developerError "MultiModal IO is not implmeneted yet"
+      missingSliceDoc :: (SlicePath, These () ()) -> Doc a
+      missingSliceDoc (path, missingBounds) = do
+        let expr = mkIndexInto (Forced IRatType) inputValue (mapNetworkModality dimensions inputType) path
+        let missing = case missingBounds of
+              This () -> "lower bound"
+              That () -> "upper bound"
+              These () () -> "lower and upper bounds"
+        prettyFriendly (WithContext expr ctx) <+> parens ("no" <+> missing)
   UnknownDifferentiableLogic name possibleNames ->
     VehicleUserError
       { provenance = Nothing,
@@ -1145,41 +1138,3 @@ multipleNetworkErrorMessages verifier ctx networkNames = do
     <> "This property involves the following network applications:"
     <> line
     <> indent 2 (vsep $ fmap prettyApp networkNames)
-
-missingBounds :: UnboundedIndices -> Doc a
-missingBounds = mergeTheseWith (missingOneSidedBounds True) (missingOneSidedBounds False) (\u v -> u <+> "and" <+> v)
-
-missingOneSidedBounds :: Bool -> NonEmpty TensorIndices -> Doc a
-missingOneSidedBounds isLowerBound missingIndices =
-  "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <> case missingIndices of
-    [[]] -> ""
-    _ -> " for indices" <+> vsep (fmap pretty missingIndices)
-
-missingBoundsRecord :: Name -> [Name] -> UnboundedIndices -> Doc a
-missingBoundsRecord varName fieldNames =
-  mergeTheseWith
-    (missingOneSidedBoundsRecord varName fieldNames True)
-    (missingOneSidedBoundsRecord varName fieldNames False)
-    (\u v -> u <+> "and" <+> v)
-
-missingOneSidedBoundsRecord :: Name -> [Name] -> Bool -> NonEmpty TensorIndices -> Doc a
-missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
-  "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <+> case missingFields of
-    [] :| [] -> ""
-    _ ->
-      "for fields"
-        <+> concatWith
-          (surround ", ")
-          (fmap prettyRecordIndices missingFields)
-  where
-    prettyRecordIndices :: TensorIndices -> Doc a
-    prettyRecordIndices = \case
-      [] -> developerError "only time empty indices can occur is when whole record is bounded"
-      i : is ->
-        pretty varName
-          <> "."
-          <> pretty (fieldNames !! i)
-          <> ( case is of
-                 [] -> ""
-                 _ -> pretty is
-             )

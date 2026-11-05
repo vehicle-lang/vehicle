@@ -5,16 +5,18 @@ module Vehicle.Data.Variable.Bound.Level
     TensorVariableLike (..),
     TensorVariable (..),
     UserTensorVariable (..),
-    NetworkInputTensorVariable (..),
-    NetworkOutputTensorVariable (..),
+    NetworkInputVariable (..),
+    NetworkOutputVariable (..),
     SliceVariable (..),
     UserSliceVariable (..),
     NetworkIOVariable (..),
     NetworkIOElementVariable (..),
     SliceVariableLike (..),
+    SlicePath (..),
     -- Nested variables
     NestedSliceVariable (..),
     childVariablesOf,
+    equivalentShapeOf,
     elementVariablesOf,
     numberOfSliceVariablesIn,
     findSliceShape,
@@ -25,9 +27,10 @@ where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Coerce
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import GHC.Generics (Generic)
-import Vehicle.Compile.Resource (NetworkModality (..))
+import Vehicle.Compile.Resource (AbstractNetworkModality (..), NetworkModality, NetworkTensorModality (..))
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Level.Core as Core
 import Vehicle.Prelude
@@ -123,37 +126,37 @@ instance TensorVariableLike UserTensorVariable where
   toTensorVar = coerce
 
 --------------------------------------------------------------------------------
--- NetworkInputTensorVariable
+-- NetworkInputVariable
 
--- | Variables introduced by the compiler that represent a tensor which is used
--- to represent the input to a neural network.
-newtype NetworkInputTensorVariable = NetworkInputTensorVariable TensorVariable
+-- | Variables introduced by the compiler that represent a tensor or record which
+-- is used to represent the input to a neural network.
+newtype NetworkInputVariable = NetworkInputVariable TensorVariable
   deriving (Eq, Ord, Show)
 
-instance VariableLike NetworkInputTensorVariable where
+instance VariableLike NetworkInputVariable where
   toLv = coerce
 
-instance TensorVariableLike NetworkInputTensorVariable where
+instance TensorVariableLike NetworkInputVariable where
   toTensorVar = coerce
 
-instance SliceVariableLike NetworkInputTensorVariable where
+instance SliceVariableLike NetworkInputVariable where
   toSliceVar = coerce
 
---------------------------------------------------------------------------------
--- NetworkOutputTensorVariable
+---------------------------------------------------------------------------------
+-- NetworkOutputVariable
 
--- | Variables introduced by the compiler that represent a tensor which is used
--- to represent the output of a neural network.
-newtype NetworkOutputTensorVariable = NetworkOutputTensorVariable Lv
+-- | Variables introduced by the compiler that represent a tensor or record which
+-- is used to represent the output of a neural network.
+newtype NetworkOutputVariable = NetworkOutputVariable Lv
   deriving (Eq, Ord)
 
-instance VariableLike NetworkOutputTensorVariable where
+instance VariableLike NetworkOutputVariable where
   toLv = coerce
 
-instance TensorVariableLike NetworkOutputTensorVariable where
+instance TensorVariableLike NetworkOutputVariable where
   toTensorVar = coerce
 
-instance SliceVariableLike NetworkOutputTensorVariable where
+instance SliceVariableLike NetworkOutputVariable where
   toSliceVar = coerce
 
 -- | Tensor variables that represent quantities used as the direct
@@ -228,11 +231,6 @@ instance FromJSON NestedSliceVariable
 instance Pretty NestedSliceVariable where
   pretty (NestedSliceVariable shape l) = pretty (toLv l) <> ":" <+> pretty shape
 
-instance HasShape NestedSliceVariable where
-  shapeOf (NestedSliceVariable shapeOrShapes _) = case shapeOrShapes of
-    UniModal shape -> shape
-    MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
-
 instance VariableLike NestedSliceVariable where
   toLv = toLv . nestedStartingVariable
 
@@ -242,18 +240,34 @@ instance SliceVariableLike NestedSliceVariable where
 numberOfSliceVariablesIn :: TensorShape -> Int
 numberOfSliceVariablesIn shape = sum $ NonEmpty.scanl (*) 1 shape
 
+equivalentShapeOf :: NetworkTensorModality TensorShape -> TensorShape
+equivalentShapeOf (TensorModality ds) = ds
+equivalentShapeOf (RecordModality _ fields@(a :| _)) = length fields : equivalentShapeOf (snd a)
+
 childVariablesOf :: NestedSliceVariable -> Maybe [NestedSliceVariable]
 childVariablesOf (NestedSliceVariable shapeOrShapes startingVar) = case shapeOrShapes of
-  UniModal shape -> getChildrenOf shape
-  MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
+  UniModal tensorOrRecord -> getUniModalChildren (toLv startingVar) tensorOrRecord
+  MultiModal _typ shapes -> Just $ getMultiModalChildren (toLv startingVar) shapes
   where
-    getChildrenOf :: TensorShape -> Maybe [NestedSliceVariable]
-    getChildrenOf s = case s of
-      [] -> Nothing
-      d : ds -> Just $ do
+    getUniModalChildren :: Lv -> NetworkTensorModality TensorShape -> Maybe [NestedSliceVariable]
+    getUniModalChildren start shape = case shape of
+      TensorModality [] -> Nothing
+      TensorModality (d : ds) -> Just $ do
         let subSize = numberOfSliceVariablesIn ds
-        let calculateChildStartingVar i = SliceVariable $ toLv startingVar + Lv (1 + subSize * i)
-        fmap (NestedSliceVariable (UniModal ds) . calculateChildStartingVar) [0 .. d - 1]
+        let calculateChildStartingVar i = SliceVariable $ toLv start + Lv (1 + subSize * i)
+        fmap (NestedSliceVariable (UniModal . TensorModality $ ds) . calculateChildStartingVar) [0 .. d - 1]
+      RecordModality _ fields -> Just $ do
+        let numberedFields = NonEmpty.zip [0 .. (length fields - 1)] fields
+        let subSize = numberOfSliceVariablesIn (equivalentShapeOf $ snd $ NonEmpty.head fields)
+        let calculateChildStartingVar i = SliceVariable $ toLv start + Lv (1 + subSize * i)
+        fmap (\(i, (_, fieldShape)) -> NestedSliceVariable (UniModal fieldShape) (calculateChildStartingVar i)) (NonEmpty.toList numberedFields)
+
+    getMultiModalChildren :: Lv -> [(Name, NetworkTensorModality TensorShape)] -> [NestedSliceVariable]
+    getMultiModalChildren _ [] = []
+    getMultiModalChildren start ((_, shape) : rest) = do
+      let first = NestedSliceVariable (UniModal shape) (SliceVariable start)
+      let next = start + Lv (numberOfSliceVariablesIn $ equivalentShapeOf shape)
+      first : getMultiModalChildren next rest
 
 elementVariablesOf :: NestedSliceVariable -> [(NetworkIOElementVariable, TensorIndices)]
 elementVariablesOf = go mempty
@@ -263,35 +277,70 @@ elementVariablesOf = go mempty
       Nothing -> [(coerce (nestedStartingVariable var), reverse indices)]
       Just childVars -> concatMap (\(v, index) -> go (index : indices) v) $ zip childVars [0 ..]
 
--- | Returns the shape of the provided slice variable
+-- | Returns the shape of the provided slice variable given its parent variable
 findSliceShape :: NestedSliceVariable -> SliceVariable -> NetworkModality TensorShape
-findSliceShape (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
-  UniModal shape -> UniModal (go startIndex shape)
-  MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
+findSliceShape (NestedSliceVariable shapeOrShapes lv) var =
+  if startIndex == 0
+    then shapeOrShapes
+    else case shapeOrShapes of
+      UniModal shape -> goUniModal startIndex shape
+      MultiModal _ shapes -> goMultiModal startIndex (map snd shapes)
   where
     startIndex :: Int
     startIndex = unLv $ toLv var - toLv lv
 
-    go :: Int -> TensorShape -> TensorShape
-    go 0 ds = ds
-    go _flatIndex [] = developerError "Malformed shape and index"
-    go flatIndex (_d : ds) = do
+    goUniModal :: Int -> NetworkTensorModality TensorShape -> NetworkModality TensorShape
+    goUniModal 0 shape = UniModal shape
+    goUniModal flatIndex (TensorModality shape) = UniModal (TensorModality $ goTensor flatIndex shape)
+    goUniModal flatIndex (RecordModality _ ((_, shape) :| _)) = do
+      let newFlatIndex = (flatIndex - 1) `rem` numberOfSliceVariablesIn (equivalentShapeOf shape)
+      goUniModal newFlatIndex shape
+
+    goTensor :: Int -> TensorShape -> TensorShape
+    goTensor 0 ds = ds
+    goTensor _flatIndex [] = developerError "Malformed shape and index"
+    goTensor flatIndex (_d : ds) = do
       let newFlatIndex = (flatIndex - 1) `rem` numberOfSliceVariablesIn ds
-      go newFlatIndex ds
+      goTensor newFlatIndex ds
+
+    goMultiModal :: Int -> [NetworkTensorModality TensorShape] -> NetworkModality TensorShape
+    goMultiModal _ [] = developerError "Malformed shape and index"
+    goMultiModal index (shape : shapes)
+      | index < numberOfSliceVariablesIn (equivalentShapeOf shape) = goUniModal index shape
+      | otherwise = goMultiModal (index - numberOfSliceVariablesIn (equivalentShapeOf shape)) shapes
+
+-- | The correct representation of an empty path is NoPath, rather than
+-- a tensor path with no indices
+data SlicePath
+  = TensorPath Int SlicePath
+  | RecordPath Name SlicePath
+  | EndPath
+  deriving (Show)
 
 -- | Returns the indices into the provided parent variable of the provided slice variable
-findSliceIndices :: (SliceVariableLike variable) => NestedSliceVariable -> variable -> TensorIndices
+findSliceIndices :: (SliceVariableLike variable) => NestedSliceVariable -> variable -> SlicePath
 findSliceIndices (NestedSliceVariable shapeOrShapes lv) var = case shapeOrShapes of
-  UniModal shape -> go mempty startIndex shape
-  MultiModal _typ _shapes -> error "MultiModal IO is not implemented yet"
+  UniModal shape -> findSliceInTensor startIndex shape
+  MultiModal _ shapes -> findSliceInRecord startIndex shapes
   where
     startIndex :: Int
     startIndex = unLv $ toLv var - toLv lv
 
-    go :: TensorIndices -> Int -> TensorShape -> TensorIndices
-    go indices 0 _ = reverse indices
-    go _indices _flatIndex [] = developerError "Malformed shape and index"
-    go indices flatIndex (_d : ds) = do
+    findSliceInTensor :: Int -> NetworkTensorModality TensorShape -> SlicePath
+    findSliceInTensor index = \case
+      TensorModality shape -> goTensor index shape
+      RecordModality _ fields -> findSliceInRecord index (NonEmpty.toList fields)
+
+    findSliceInRecord :: Int -> [(Name, NetworkTensorModality TensorShape)] -> SlicePath
+    findSliceInRecord _ [] = developerError "Malformed shape and index"
+    findSliceInRecord index ((name, shape) : rest)
+      | index < numberOfSliceVariablesIn (equivalentShapeOf shape) = RecordPath name (findSliceInTensor index shape)
+      | otherwise = findSliceInRecord (index - numberOfSliceVariablesIn (equivalentShapeOf shape)) rest
+
+    goTensor :: Int -> TensorShape -> SlicePath
+    goTensor 0 _ = EndPath
+    goTensor _flatIndex [] = developerError "Malformed shape and index"
+    goTensor flatIndex (_d : ds) = do
       let newIndex = (flatIndex - 1) `div` numberOfSliceVariablesIn ds
       let newFlatIndex = (flatIndex - 1) `rem` numberOfSliceVariablesIn ds
-      go (newIndex : indices) newFlatIndex ds
+      TensorPath newIndex (goTensor newFlatIndex ds)

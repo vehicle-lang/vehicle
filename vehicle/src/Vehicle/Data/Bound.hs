@@ -6,11 +6,13 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.These (These (..))
 import GHC.Generics
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (AbstractNetworkModality (..), NetworkModality, NetworkTensorModality (..))
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
@@ -36,10 +38,16 @@ instance Functor (BoundedValue value) where
 instance Bifunctor BoundedValue where
   bimap f g (BoundedValue var bounds) = BoundedValue (f var) (g bounds)
 
-type UnboundedIndices = These (NonEmpty TensorIndices) (NonEmpty TensorIndices)
+-- | Either or both a missing lower bound or missing upper bound
+type UnboundedSlices = NonEmpty (SlicePath, These () ())
 
-wholeTensorUnbounded :: UnboundedIndices
+type UnboundedTensorSlices = These (NonEmpty TensorIndices) (NonEmpty TensorIndices)
+
+wholeTensorUnbounded :: UnboundedTensorSlices
 wholeTensorUnbounded = These [[]] [[]]
+
+-- wholeRecordUnbounded :: Identifier -> [Name] -> UnboundedSlices
+-- wholeRecordUnbounded recordName names = MultiModal recordName $ fmap (,wholeTensorUnbounded) names
 
 --------------------------------------------------------------------------------
 -- IsBound
@@ -220,13 +228,55 @@ instance IsBounds TensorBounds expr where
       { tensorSliceBounds = andBounds bounds1 bounds2
       }
 
+-- newtype RecordBounds expr = RecordBounds
+--   { recordSliceBounds :: Map.Map Name (TensorBounds expr)
+--   }
+--   deriving (Eq, Ord)
+--
+-- instance IsBounds RecordBounds expr where
+--   emptyBounds =
+--     RecordBounds
+--       { recordSliceBounds = Map.empty
+--       }
+--
+--   andBounds (RecordBounds bounds1) (RecordBounds bounds2) =
+--     RecordBounds
+--       { recordSliceBounds = Map.unionWith andBounds bounds1 bounds2
+--       }
+--
+-- emptyBoundsForFields :: [Name] -> RecordBounds constant
+-- emptyBoundsForFields [] = emptyBounds
+-- emptyBoundsForFields (n : ns) = do
+--   let RecordBounds rest = emptyBoundsForFields ns
+--   RecordBounds (Map.insert n emptyBounds rest)
+--
+-- data NetworkIOBounds expr
+--   = TensorIOBounds (TensorBounds expr)
+--   | RecordIOBounds (RecordBounds expr)
+--   deriving (Eq, Ord)
+
+andTensorModalityBounds :: NetworkTensorModality (TensorBounds expr) -> NetworkTensorModality (TensorBounds expr) -> NetworkTensorModality (TensorBounds expr)
+andTensorModalityBounds (TensorModality bounds1) (TensorModality bounds2) = TensorModality (andBounds bounds1 bounds2)
+andTensorModalityBounds (RecordModality n fields1) (RecordModality _ fields2) = RecordModality n (mergeNonEmptyAssocListWith andTensorModalityBounds fields1 fields2)
+andTensorModalityBounds _ _ = developerError "Cannot and together tensor and tensor-like record bounds"
+
+type NetworkIOBounds expr = NetworkModality (TensorBounds expr)
+
+andNetworkIOBOunds :: NetworkIOBounds expr -> NetworkIOBounds expr -> NetworkIOBounds expr
+andNetworkIOBOunds (UniModal bounds1) (UniModal bounds2) = UniModal (andTensorModalityBounds bounds1 bounds2)
+andNetworkIOBOunds (MultiModal n bounds1) (MultiModal _ bounds2) = do
+  let bounds1Map = Map.fromList bounds1
+  let bounds2Map = Map.fromList bounds2
+  MultiModal n (Map.toList $ Map.unionWith andTensorModalityBounds bounds1Map bounds2Map)
+andNetworkIOBOunds _ _ = developerError "Cannot and together multimodal and unimodal bounds"
+
 --------------------------------------------------------------------------------
 -- Instantiating bounds
 
 data VariableInfo = VariableInfo
   { parentVariable :: TensorVariable,
-    parentShape :: KnownPrefixOfTensorShape,
-    indices :: TensorIndices
+    parentShape :: NetworkModality TensorShape, -- KnownPrefixOfTensorShape,
+    indices :: SlicePath -- TensorIndices
   }
 
 type MaybeBounds expr =
@@ -262,22 +312,57 @@ tryConvertAssertionToBound targetVariable (NormalisedRelation rel expr)
 
       return $ Just $ bimap (`LowerBound` valueExpr) (`UpperBound` valueExpr) strictness
 
+-- TODO: Rename toConvertToNetworkIOBounds
 tryToConvertToTensorBounds ::
+  forall m constant.
   (Monad m, MonadReadableNameContext m, ConstantLike constant m, Show constant) =>
   (SliceVariable -> m (Maybe VariableInfo)) ->
   Assertion (LinearExpr SliceVariable constant) ->
-  m (Maybe (TensorVariable, TensorBounds constant))
+  m (Maybe (TensorVariable, NetworkIOBounds constant))
 tryToConvertToTensorBounds lookupTensorVar (NormalisedRelation rel expr) = do
   case Map.toList (coefficients expr) of
     [(var, coef)] -> do
       maybeVar <- lookupTensorVar var
       case maybeVar of
-        Just VariableInfo {..} -> do
-          scaledBound <- scaleConstant (-(1 / coef)) (constantValue expr)
-          bounds <- convertToTensorBounds parentShape indices rel coef scaledBound
-          return $ Just (parentVariable, bounds)
-        _ -> return Nothing
+        Nothing -> return Nothing
+        Just (VariableInfo parentVariable parentShape childPath) -> do
+          resultingBounds <- createBoundWithPath coef parentShape childPath
+          return $ Just (parentVariable, resultingBounds)
     _ -> return Nothing
+  where
+    createBoundWithPath :: Coefficient -> NetworkModality TensorShape -> SlicePath -> m (NetworkIOBounds constant)
+    createBoundWithPath coef shape path = case (shape, path) of
+      (UniModal parentShape, tensorPath) -> UniModal <$> createUnimodalBound coef parentShape tensorPath
+      (MultiModal ident shapes, RecordPath name rest) -> MultiModal ident <$> createMultimodalBound coef shapes name rest
+      _ -> developerError "Mismatched shape and path"
+
+    pathToIndices :: SlicePath -> TensorIndices
+    pathToIndices RecordPath {} = developerError "Not A Valid Tensor Path"
+    pathToIndices (TensorPath i is) = i : pathToIndices is
+    pathToIndices EndPath {} = []
+
+    createUnimodalBound :: Coefficient -> NetworkTensorModality TensorShape -> SlicePath -> m (NetworkTensorModality (TensorBounds constant))
+    createUnimodalBound coef shape path = do
+      scaledBound <- scaleConstant (-(1 / coef)) (constantValue expr)
+      case (shape, path) of
+        (TensorModality tensorShape, TensorPath {}) -> do
+          let indices = pathToIndices path
+          bounds <- convertToTensorBounds tensorShape indices rel coef scaledBound
+          return (TensorModality bounds)
+        (RecordModality ident fields, RecordPath n ns) -> do
+          case lookup n $ NonEmpty.toList fields of
+            Just fieldShape -> do
+              fieldBounds <- createUnimodalBound coef fieldShape ns
+              return $ RecordModality ident [(n, fieldBounds)]
+            Nothing -> developerError "No such field exists in record"
+        _ -> developerError "Path and Shape do not match"
+
+    createMultimodalBound :: Coefficient -> [(Name, NetworkTensorModality TensorShape)] -> Name -> SlicePath -> m [(Name, NetworkTensorModality (TensorBounds constant))]
+    createMultimodalBound coef shapes fieldName indices = case lookup fieldName shapes of
+      Nothing -> developerError "Field does not exist in record"
+      Just childShape -> do
+        childBounds <- createUnimodalBound coef childShape indices
+        return [(fieldName, childBounds)]
 
 convertToTensorBounds ::
   (ConstantLike constant m, Show constant) =>
@@ -323,3 +408,5 @@ isEquality (Domain LowerBound {..} UpperBound {..}) = do
   case relation of
     Strict -> False
     NonStrict -> allTensor id $ zipWithTensor (==) lowerBoundValue upperBoundValue
+
+type NetworkIODomain expr = AbstractNetworkModality (Domain expr)

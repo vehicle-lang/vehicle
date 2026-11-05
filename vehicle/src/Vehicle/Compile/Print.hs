@@ -35,6 +35,7 @@ import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Core (MetaLike)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (NetworkModality)
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Sugar.Resugar.External as External (delab)
 import Vehicle.Compile.Sugar.Resugar.Internal as Internal (delab)
@@ -290,6 +291,10 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     'Branch
       (StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx))
       (StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx))
+  StrategyFor tags (BoundedValue value (NetworkModality (TensorBounds expr)) `In` ctx) =
+    'Branch
+      (StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx))
+      (StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx))
   StrategyFor tags (BoundedValue value (Domain expr) `In` ctx) =
     'Branch
       (StrategyFor tags (value `In` ctx))
@@ -318,9 +323,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     StrategyFor tags (SliceVariable `In` ctx)
   StrategyFor tags (UserTensorVariable `In` ctx) =
     StrategyFor tags (SliceVariable `In` ctx)
-  StrategyFor tags (NetworkInputTensorVariable `In` ctx) =
+  StrategyFor tags (NetworkInputVariable `In` ctx) =
     StrategyFor tags (SliceVariable `In` ctx)
-  StrategyFor tags (NetworkOutputTensorVariable `In` ctx) =
+  StrategyFor tags (NetworkOutputVariable `In` ctx) =
     StrategyFor tags (SliceVariable `In` ctx)
   --------------------
   -- Simplification --
@@ -600,13 +605,13 @@ instance
 
 instance
   (PrettyUsing rest (ForcedValue Builtin `In` ctx)) =>
-  PrettyUsing rest (NetworkInputTensorVariable `In` ctx)
+  PrettyUsing rest (NetworkInputVariable `In` ctx)
   where
   prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   (PrettyUsing rest (ForcedValue Builtin `In` ctx)) =>
-  PrettyUsing rest (NetworkOutputTensorVariable `In` ctx)
+  PrettyUsing rest (NetworkOutputVariable `In` ctx)
   where
   prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 

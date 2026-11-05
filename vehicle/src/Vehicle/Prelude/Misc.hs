@@ -304,6 +304,14 @@ mergeNonEmptyKeyValues f xs = do
     [] -> developerError "impossible"
     u : us -> fmap (second f) (u :| us)
 
+mergeNonEmptyAssocListWith :: (Ord a) => (b -> b -> b) -> NonEmpty (a, b) -> NonEmpty (a, b) -> NonEmpty (a, b)
+mergeNonEmptyAssocListWith f xs ys = do
+  let xsMap = Map.fromList (NonEmpty.toList xs)
+  let ysMap = Map.fromList (NonEmpty.toList ys)
+  case Map.toList (Map.unionWith f xsMap ysMap) of
+    [] -> developerError "impossible"
+    (e : es) -> e :| es
+
 firstJust :: (a -> Maybe b) -> [a] -> Maybe b
 firstJust f = listToMaybe . mapMaybe f
 
@@ -311,6 +319,9 @@ eitherM :: (a -> m c) -> (b -> m c) -> Either a b -> m c
 eitherM f g = \case
   Left x -> f x
   Right y -> g y
+
+secondM :: (Functor m) => (b -> m c) -> (a, b) -> m (a, c)
+secondM f (a, b) = (a,) <$> f b
 
 theseErrors :: (a -> b -> c) -> Either e1 a -> Either e2 b -> Either (These e1 e2) c
 theseErrors f v1 v2 = case (v1, v2) of

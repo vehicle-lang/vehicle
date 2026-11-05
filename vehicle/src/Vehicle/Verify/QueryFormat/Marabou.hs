@@ -7,9 +7,11 @@ where
 import Control.Monad (forM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (AbstractNetworkModality (..))
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Code.BooleanExpr (conjunctsToList)
 import Vehicle.Data.Tensor (flattenIndices)
+import Vehicle.Data.Variable.Bound.Level (equivalentShapeOf)
 import Vehicle.Prelude.Warning
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
@@ -43,7 +45,11 @@ outputFormat =
 compileMarabouVar :: CompileQueryVariable
 compileMarabouVar QueryVariableInfo {..} = do
   let name = if inputOrOutput == Input then "x" else "y"
-  let index = flattenIndices parentVariableShape parentVariableIndices
+  let shape = equivalentShapeOf $ case parentVariableShape of
+        UniModal tensorShape -> tensorShape
+        MultiModal {} -> developerError "Marabou's lack of support for Multi-modal networks should have already been detected."
+
+  let index = flattenIndices shape parentVariableIndices
   layoutAsText $ name <> pretty index
 
 -- | Compiles an expression representing a single Marabou query.

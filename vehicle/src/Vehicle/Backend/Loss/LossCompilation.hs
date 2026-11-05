@@ -201,7 +201,7 @@ convertThunk quantifiers = go
           Nothing -> return $ Forced var
           Just (parentVar, sliceVar) -> do
             let indices = findSliceIndices parentVar sliceVar
-            return $ Forced $ mkIndexInto (Forced IRatType) var (nestedTensorShape parentVar) indices
+            return $ mkIndexInto (Forced IRatType) (Forced var) (nestedTensorShape parentVar) indices
 
     convertFreeVar ::
       Identifier ->

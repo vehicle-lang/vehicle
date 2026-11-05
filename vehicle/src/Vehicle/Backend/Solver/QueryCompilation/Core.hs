@@ -18,8 +18,8 @@ type MonadQueryCompilation m =
 
 lookupCorrespondingOutputVar ::
   (MonadQueryCompilation m) =>
-  NetworkInputTensorVariable ->
-  m NetworkOutputTensorVariable
+  NetworkInputVariable ->
+  m NetworkOutputVariable
 lookupCorrespondingOutputVar inputVar = do
   (_, GlobalCtx {..}) <- ask
   case Map.lookup inputVar networkTensorVariables of

@@ -12,7 +12,8 @@ import Data.Void (Void)
 import GHC.Generics
 import Vehicle.Data.AST.Expr.Scoped (Expr (..), traverseBoundVariables_)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Interface.Args
+import Vehicle.Data.Code.Interface.Operations
 import Vehicle.Data.Universe (UniverseLevel)
 import Vehicle.Data.Variable.Bound.Context.Core
 import Vehicle.Data.Variable.Bound.Context.Generic.Core

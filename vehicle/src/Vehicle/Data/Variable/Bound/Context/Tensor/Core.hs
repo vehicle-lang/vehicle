@@ -6,7 +6,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
-import Vehicle.Compile.Resource (NetworkModality (..), NetworkTensorModality (..))
+import Vehicle.Compile.Resource (AbstractNetworkModality (..), NetworkModality, NetworkTensorModality (..))
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Context.Core (GenericBoundCtx, boundCtxLv)
 import Vehicle.Data.Variable.Bound.Context.Generic.Core (BoundCtx)
@@ -66,7 +66,7 @@ findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx _) vars
       MultiModal _ shapes -> sum . map (numberOfSliceVariablesInUniModalShape . snd) $ shapes
 
     numberOfSliceVariablesInUniModalShape :: NetworkTensorModality TensorShape -> Int
-    numberOfSliceVariablesInUniModalShape = numberOfSliceVariablesIn . equivalentShape
+    numberOfSliceVariablesInUniModalShape = numberOfSliceVariablesIn . equivalentShapeOf
 
 appendNonTensorVariableToNestedCtx :: GenericBinder () -> NestedTensorVariableCtx -> NestedTensorVariableCtx
 appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx) = do
@@ -95,7 +95,7 @@ variableNamesForAllSlices parentName = \case
     goTensor baseName indices = baseName <> Text.pack (showTensorIndices indices)
 
     goUniModal :: Name -> NetworkTensorModality TensorShape -> [Name]
-    goUniModal baseName = reverse . map (goTensor baseName) . allIndicesForShape . equivalentShape
+    goUniModal baseName = reverse . map (goTensor baseName) . allIndicesForShape . equivalentShapeOf
 
     goMultiModal :: Name -> [(Name, NetworkTensorModality TensorShape)] -> [Name]
     goMultiModal baseName = concatMap $ \(field, shape) ->

@@ -15,7 +15,7 @@ module Vehicle.Compile.Error
     FailedUnificationConstraintsError (..),
     MissingResource,
     UninferableParameter,
-    UnboundedIndices,
+    UnboundedTensorSlices,
     ParseLocation,
     MonadCompile,
     compilerDeveloperError,
@@ -39,7 +39,7 @@ import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkIOType, NetworkName)
 import Vehicle.Compile.Type.Core
-import Vehicle.Data.Bound (UnboundedIndices)
+import Vehicle.Data.Bound (UnboundedSlices, UnboundedTensorSlices)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
@@ -223,7 +223,7 @@ data CompileError
   | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Thunk Builtin)]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (UnforcedBinder Builtin) (UnforcedType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
-  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, NetworkIOType, Thunk Builtin, [Lv], UnboundedIndices))
+  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, NetworkIOType, Thunk Builtin, [Lv], UnboundedSlices))
   | -- Loss backend errors
     UnknownDifferentiableLogic Name [Name]
   | UnreducableDifferentiableLogic DeclProvenance

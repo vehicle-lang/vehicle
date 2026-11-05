@@ -13,7 +13,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), MonadTrans (..), StateT (..), evalStateT, gets, mapStateT, modify)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkModality (..), NetworkTensorModality (TensorModality))
+import Vehicle.Compile.Resource (AbstractNetworkModality (..), NetworkTensorModality (TensorModality))
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadNameContext (..), MonadReadableNameContext (..), getBinderDepth)
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class
 import Vehicle.Data.Variable.Bound.Context.Tensor.Core

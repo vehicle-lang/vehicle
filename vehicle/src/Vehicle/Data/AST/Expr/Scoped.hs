@@ -49,7 +49,7 @@ import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Vehicle.Compile.Sugar.Binders (HasBasicBinders (..), HasBuiltinBinders (..))
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Code.Interface (HasBuiltinConstructor (..))
+import Vehicle.Data.Code.Interface.Operations (HasBuiltinConstructor (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
 import Vehicle.Data.Variable.Bound.Level.Core (Lv, dbIndexToLevel, unLv)

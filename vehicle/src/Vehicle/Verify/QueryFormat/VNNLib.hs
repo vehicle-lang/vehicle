@@ -4,10 +4,10 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkIOBase (dimensions), NetworkModality (..), NetworkTensorModality (..), NetworkType (networkInputType), networkOutputType)
+import Vehicle.Compile.Resource (AbstractNetworkModality (..), NetworkIOBase (dimensions), NetworkModality, NetworkTensorModality, NetworkType (networkInputType), mapNetworkModality, networkOutputType)
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
-import Vehicle.Data.Variable.Bound.Level (equivalentShape)
+import Vehicle.Data.Variable.Bound.Level (equivalentShapeOf)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
@@ -86,12 +86,12 @@ compileNetworkApp networkName networkType appIndex = do
         | otherwise = ""
   let networkVarName = compileNetworkName networkName appIndex
   let networkInputDocs = case networkTensor networkName networkType appIndex Input of
-        (name, UniModal shape) -> compileNetworkInput name (equivalentShape shape)
-        (_name, MultiModal _ident _shapes) -> error "MultiModal IO is unimplemented"
+        (name, UniModal shape) -> compileNetworkInput name (equivalentShapeOf shape)
+        (name, MultiModal _ shapes) -> compileManyNetworkInputs name shapes
 
   let networkOutputDocs = case networkTensor networkName networkType appIndex Output of
-        (name, UniModal shape) -> compileNetworkOutput name (equivalentShape shape)
-        (_name, MultiModal _ident _shapes) -> error "MultiModal IO is unimplemented"
+        (name, UniModal shape) -> compileNetworkOutput name (equivalentShapeOf shape)
+        (name, MultiModal _ shapes) -> compileManyNetworkOutputs name shapes
 
   "(declare-network" <+> networkVarName
     <> line
@@ -109,9 +109,10 @@ compileNetworkApp networkName networkType appIndex = do
 networkTensor :: Name -> NetworkType -> Int -> InputOrOutput -> (Name, NetworkModality TensorShape)
 networkTensor networkName networkType appIndex inputOrOutput = do
   let name = layoutAsText $ compileNetworkVariableName networkName appIndex inputOrOutput
-  case inputOrOutput of
-    Input -> (name, dimensions <$> networkInputType networkType)
-    Output -> (name, dimensions <$> networkOutputType networkType)
+  let ioType = case inputOrOutput of
+        Input -> networkInputType networkType
+        Output -> networkOutputType networkType
+  (name, mapNetworkModality dimensions ioType)
 
 -- | Compile network name. Prefixes an index to all subsequent network applications
 compileNetworkName :: Name -> Int -> Doc a
@@ -128,9 +129,19 @@ compileNetworkVariableName networkName appIndex inputOrOutput =
 compileNetworkInput :: Name -> TensorShape -> Doc a
 compileNetworkInput name shape = parens ("declare-input" <+> pretty name <+> "Real" <+> pretty shape)
 
+-- | Compiles a list of network inputs
+compileManyNetworkInputs :: Name -> [(Name, NetworkTensorModality TensorShape)] -> Doc a
+compileManyNetworkInputs name shapes = vsep . flip map shapes $ \(field, shape) ->
+  compileNetworkInput (name <> "_" <> field) (equivalentShapeOf shape)
+
 -- | Compile a network output
 compileNetworkOutput :: Name -> TensorShape -> Doc a
 compileNetworkOutput name shape = parens ("declare-output" <+> pretty name <+> "Real" <+> pretty shape)
+
+-- | Compiles a list of network outputs
+compileManyNetworkOutputs :: Name -> [(Name, NetworkTensorModality TensorShape)] -> Doc a
+compileManyNetworkOutputs name shapes = vsep . flip map shapes $ \(field, shape) ->
+  compileNetworkOutput (name <> "_" <> field) (equivalentShapeOf shape)
 
 -- | Compiles an individual variable
 compileVNNLibVar :: CompileQueryVariable

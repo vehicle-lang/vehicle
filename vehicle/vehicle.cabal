@@ -76,6 +76,7 @@ common common-language
     MultiParamTypeClasses
     OverloadedLists
     OverloadedStrings
+    PartialTypeSignatures
     PatternSynonyms
     PolyKinds
     RankNTypes

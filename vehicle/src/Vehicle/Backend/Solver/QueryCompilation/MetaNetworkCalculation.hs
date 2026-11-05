@@ -57,7 +57,7 @@ calculateMetaNetworkApplications assertions = do
 -- | A mapping from the current variable at some position in the tensor back
 -- to the original variable that represents the whole tensor
 --   e.g. { (x_00 -> x), (y_00 -> y), (z_00 -> z) }
-type TensorVariableMapping = Map NestedSliceVariable NetworkInputTensorVariable
+type TensorVariableMapping = Map NestedSliceVariable NetworkInputVariable
 
 childTensorVariableMappings :: TensorVariableMapping -> Maybe [TensorVariableMapping]
 childTensorVariableMappings mapping = do
@@ -69,7 +69,7 @@ childTensorVariableMappings mapping = do
       let xs = transpose $ fmap (\(u, v) -> fmap (,v) u) zs
       fmap Map.fromList xs
 
-type EquivalenceClasses = DisjointSet (Either NetworkInputTensorVariable RatTensor)
+type EquivalenceClasses = DisjointSet (Either NetworkInputVariable RatTensor)
 
 prettyEquivalenceClasses :: (MonadQueryCompilation m) => EquivalenceClasses -> m (Doc a)
 prettyEquivalenceClasses classes = do
@@ -166,12 +166,12 @@ calculateNetworkTensorInputEquivalenceClasses networkName equalities application
 expandEquivalenceClasses ::
   (MonadLogger m) =>
   [SimpleEquality] ->
-  Map NestedSliceVariable NetworkInputTensorVariable ->
+  Map NestedSliceVariable NetworkInputVariable ->
   EquivalenceClasses ->
   m EquivalenceClasses
 expandEquivalenceClasses equalities variables equivalenceClasses = return $ foldr processEquality equivalenceClasses equalities
   where
-    tensorVariableMap :: Map SliceVariable NetworkInputTensorVariable
+    tensorVariableMap :: Map SliceVariable NetworkInputVariable
     tensorVariableMap = Map.mapKeys toSliceVar variables
 
     processEquality ::
@@ -208,14 +208,14 @@ createSubstitutionFromEquivalenceClasses equivalenceClasses = do
   substitutions <- traverse reduceInputVariableEquality tensorLevelEqualities
   return $ Map.unions substitutions
   where
-    go :: Set (Either NetworkInputTensorVariable RatTensor) -> [(NetworkInputTensorVariable, NetworkInputTensorVariable)]
+    go :: Set (Either NetworkInputVariable RatTensor) -> [(NetworkInputVariable, NetworkInputVariable)]
     go xs = case sort (lefts $ Set.toList xs) of
       v : vs -> fmap (,v) vs
       [] -> developerError "Disjoint sets should not contain empty equivalence classes"
 
 reduceInputVariableEquality ::
   (MonadQueryCompilation m, MonadWriter [CompilationStep] m) =>
-  (NetworkInputTensorVariable, NetworkInputTensorVariable) ->
+  (NetworkInputVariable, NetworkInputVariable) ->
   m (LinearSubstitution SliceVariable)
 reduceInputVariableEquality (eqInputVar, inputVar) = do
   -- Construct the input variable substitution
@@ -240,7 +240,7 @@ reduceInputVariableEquality (eqInputVar, inputVar) = do
       variable ->
       m LinearEquality
     createEq v1 v2 = do
-      tensorShape <- shapeOf <$> lookupNestedTensorVariable v1
+      tensorShape <- nestedTensorShape <$> lookupNestedTensorVariable v1
       let constant = ConstantTensor tensorShape 0
       let coefficients = Map.fromList [(toSliceVar v1, -1), (toSliceVar v2, 1)]
       return $ NormalisedRelation () $ Sparse coefficients constant

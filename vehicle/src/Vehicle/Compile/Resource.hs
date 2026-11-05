@@ -3,7 +3,9 @@ module Vehicle.Compile.Resource where
 import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
-import Data.Bifunctor (second)
+import Data.Bifunctor (Bifunctor (..))
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import GHC.Generics
 import Prettyprinter
 import Vehicle.Data.Builtin.Core (BuiltinType (..))
@@ -64,43 +66,58 @@ data NetworkIOBase = NetworkIOBase
   }
   deriving (Eq, Ord, Show, Generic)
 
+data AbstractNetworkModality a
+  = UniModal a
+  | MultiModal Identifier [(Name, a)]
+  deriving (Eq, Ord, Show, Generic, Functor, Foldable, Traversable)
+
 data NetworkTensorModality a
   = TensorModality a
-  | RecordModality Identifier [Name] (NetworkTensorModality a)
-  deriving (Eq, Ord, Show, Generic)
+  | RecordModality Identifier (NonEmpty (Name, NetworkTensorModality a))
+  deriving (Eq, Ord, Show, Generic, Functor, Foldable, Traversable)
 
-data NetworkModality a
-  = UniModal (NetworkTensorModality a)
-  | MultiModal Identifier [(Name, NetworkTensorModality a)]
-  deriving (Eq, Ord, Show, Generic)
+tensorModalityDepth :: NetworkTensorModality TensorShape -> Int
+tensorModalityDepth = \case
+  TensorModality dims -> length dims
+  RecordModality _ ((_, shape) :| _) -> 1 + tensorModalityDepth shape
 
-instance (NFData a) => NFData (NetworkModality a)
+type NetworkModality a = AbstractNetworkModality (NetworkTensorModality a)
 
-instance (ToJSON a) => ToJSON (NetworkModality a)
+networkModalityDepth :: NetworkModality TensorShape -> Int
+networkModalityDepth = \case
+  UniModal a -> tensorModalityDepth a
+  MultiModal _ as -> maximum (fmap (tensorModalityDepth . snd) as)
 
-instance (FromJSON a) => FromJSON (NetworkModality a)
+mapNetworkModality :: (a -> b) -> NetworkModality a -> NetworkModality b
+mapNetworkModality f = fmap (fmap f)
 
-instance (Pretty a) => Pretty (NetworkModality a) where
+traverseNetworkModality :: (Monad t) => (a -> t b) -> NetworkModality a -> t (NetworkModality b)
+traverseNetworkModality f = traverse (traverse f)
+
+concatNetworkModality :: AbstractNetworkModality a -> [a]
+concatNetworkModality = \case
+  UniModal x -> [x]
+  MultiModal _ fields -> fmap snd fields
+
+instance (NFData a) => NFData (AbstractNetworkModality a)
+
+instance (ToJSON a) => ToJSON (AbstractNetworkModality a)
+
+instance (FromJSON a) => FromJSON (AbstractNetworkModality a)
+
+instance (Pretty a) => Pretty (AbstractNetworkModality a) where
   pretty (UniModal e) = "UniModal" <+> pretty e
   pretty (MultiModal _ es) = "MultiModal" <+> pretty es
 
 instance (Pretty a) => Pretty (NetworkTensorModality a) where
   pretty (TensorModality e) = pretty e
-  pretty (RecordModality _name _fields e) = pretty e
+  pretty (RecordModality _name fields) = prettyMapEntries (fmap (bimap pretty pretty) (NonEmpty.toList fields))
 
 instance (NFData a) => NFData (NetworkTensorModality a)
 
 instance (ToJSON a) => ToJSON (NetworkTensorModality a)
 
 instance (FromJSON a) => FromJSON (NetworkTensorModality a)
-
-instance Functor NetworkTensorModality where
-  fmap f (TensorModality a) = TensorModality (f a)
-  fmap f (RecordModality i n a) = RecordModality i n (f <$> a)
-
-instance Functor NetworkModality where
-  fmap f (UniModal a) = UniModal (f <$> a)
-  fmap f (MultiModal ty as) = MultiModal ty (second (fmap f) <$> as)
 
 instance NFData NetworkIOBase
 

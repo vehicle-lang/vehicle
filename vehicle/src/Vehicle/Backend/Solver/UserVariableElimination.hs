@@ -14,12 +14,12 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
-import Data.Map qualified as Map
 {- constructTensorisableDims, constructToTensorFreeVar -}
 
 {- replaceTensorVariableWithStackedChildren, -}
 
-import Data.Map.Ordered qualified as OMap
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map qualified as Map
 import Data.Text qualified as Text
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
@@ -48,9 +48,8 @@ import Vehicle.Data.Code.BooleanExpr (elimIfTree)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.MaybeTrivial
-import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name (getFreshTensorBinderName, getNameContext, prettyFriendlyInCtx)
-import Vehicle.Data.Variable.Bound.Context.Tensor (lookupNestedSliceVariable)
+import Vehicle.Data.Variable.Bound.Context.Tensor (unfoldVariableIntoChildren)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields, getRecordProvenance)
 import Vehicle.Libraries.StandardLibrary (standardLibIdent)
@@ -287,48 +286,7 @@ unblockQuantifiedBoundVar ::
   Lv ->
   m (Thunk Builtin)
 unblockQuantifiedBoundVar lv = do
-  sliceVar <- lookupNestedSliceVariable (SliceVariable lv)
-  return $ case nestedTensorShape sliceVar of
-    UniModal (TensorModality shape) -> replaceWithStackedChildren shape
-    UniModal (RecordModality recordId fields shape) -> replaceWithRecordOfChildren recordId (map (,shape) fields)
-    MultiModal recordId shapes -> replaceWithRecordOfChildren recordId shapes
-  where
-    replaceWithStackedChildren :: TensorShape -> Thunk Builtin
-    replaceWithStackedChildren shape = Forced $ case (getChildrenOfTensor lv shape, shape) of
-      (Nothing, []) -> VBoundVar lv []
-      (Just childVars, d : ds) ->
-        mkExpr accessStackTensor $
-          StackTensorArgs
-            { stackType = Forced IRatType,
-              stackFirstDim = Forced (INatLiteral d),
-              stackRemainingDims = Forced (mkDims ds),
-              stackElements = flip map childVars $ \v -> Forced $ VBoundVar (toLv v) []
-            }
-      _ -> developerError "mismatched children and shape"
-
-    replaceWithRecordOfChildren :: Identifier -> [(Name, NetworkTensorModality TensorShape)] -> Thunk Builtin
-    replaceWithRecordOfChildren recordId shapes = do
-      let recordType = Forced (VFreeVar recordId [])
-      let childShapes = getChildrenOfRecord lv shapes
-      let childFields = OMap.fromList . flip map childShapes $ \(name, var) ->
-            ( FieldName mempty name,
-              Forced (flip VBoundVar [] $ toLv var)
-            )
-      Forced (VRecord recordType childFields)
-
-    getChildrenOfTensor :: Lv -> TensorShape -> Maybe [NestedSliceVariable]
-    getChildrenOfTensor _ [] = Nothing
-    getChildrenOfTensor start (d : ds) = Just $ do
-      let subSize = numberOfSliceVariablesIn ds
-      let calculateChildStartingVar i = SliceVariable $ start + Lv (1 + subSize * i)
-      fmap (NestedSliceVariable (UniModal (TensorModality ds)) . calculateChildStartingVar) [0 .. d - 1]
-
-    getChildrenOfRecord :: Lv -> [(Name, NetworkTensorModality TensorShape)] -> [(Name, NestedSliceVariable)]
-    getChildrenOfRecord _ [] = []
-    getChildrenOfRecord start ((field, shape) : rest) = do
-      let first = (field, NestedSliceVariable (UniModal shape) $ SliceVariable start)
-      let nextStart = start + Lv (numberOfSliceVariablesIn . equivalentShape $ shape)
-      first : getChildrenOfRecord nextStart rest
+  unfoldVariableIntoChildren (SliceVariable lv)
 
 unblockNetworkApplication ::
   forall m.
@@ -379,9 +337,9 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
                 tensorOp2Arg2 = r
               }
           )
-      RecordModality recordId fields shape -> do
+      RecordModality recordId fields -> do
         let comparisonTy = Forced (VFreeVar recordId [])
-        let comparisonFn = makeUniModalEqualityFn (RecordModality recordId fields shape)
+        let comparisonFn = makeUniModalEqualityFn (RecordModality recordId fields)
         let comparison = VRecordAcc comparisonTy (Unforced env comparisonFn) (FieldName mempty "eq") (map explicit [l, r])
         pure (Forced comparison)
 
@@ -390,7 +348,7 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
       TensorModality {} -> do
         let comparisonName = Text.pack "realTensorHasComparison"
         FreeVar mempty (standardLibIdent comparisonName)
-      RecordModality recordId fields shape -> do
+      RecordModality recordId fields@((_, shape) :| _) -> do
         let comparisonName = Text.pack "record" <> nameOf recordId <> "HasComparison"
         let comparisonIdent = Identifier (modulePath recordId) comparisonName
         let comparisonArgs = replicate (length fields) (makeUniModalEqualityFn shape)

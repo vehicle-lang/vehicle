@@ -17,7 +17,7 @@ import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkIOType, NetworkModality, NetworkName, networkInputType)
+import Vehicle.Compile.Resource (AbstractNetworkModality, NetworkIOType, NetworkModality, NetworkName, networkInputType)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound (BoundedValue, Domain)
 import Vehicle.Data.Builtin.Standard
@@ -52,8 +52,8 @@ data PropertyMetaData = PropertyMetaData
 -- the variables and corresponding expressions that replace a given
 -- NetworkApplication.
 data NetworkApplicationInfo = NetworkApplicationInfo
-  { inputVariable :: NetworkInputTensorVariable,
-    outputVariable :: NetworkOutputTensorVariable,
+  { inputVariable :: NetworkInputVariable,
+    outputVariable :: NetworkOutputVariable,
     inputType :: NetworkIOType,
     inputValue :: Thunk Builtin
   }
@@ -67,7 +67,7 @@ toListOfApplications metaNetworkApps = do
 
 data GlobalCtx = GlobalCtx
   { userTensorVariables :: !(Set UserSliceVariable),
-    networkTensorVariables :: !(Map NetworkInputTensorVariable NetworkOutputTensorVariable),
+    networkTensorVariables :: !(Map NetworkInputVariable NetworkOutputVariable),
     networkApplications :: !NetworkApplications
   }
 
@@ -196,6 +196,11 @@ createSubstitutionForVariable varToSolveFor (NormalisedRelation () linearExpr) =
       return $ (toSliceVar var, rearrangedExpr) : childSubsts
 
 data BoundedAssertions inputVariable variable constant = BoundedAssertions
+  { variableBounds :: [BoundedValue inputVariable (AbstractNetworkModality (Domain constant))],
+    assertions :: ConjunctAll (Assertion (LinearExpr variable constant))
+  }
+
+data BoundedElementAssertions inputVariable variable constant = BoundedElementAssertions
   { variableBounds :: [BoundedValue inputVariable (Domain constant)],
     assertions :: ConjunctAll (Assertion (LinearExpr variable constant))
   }

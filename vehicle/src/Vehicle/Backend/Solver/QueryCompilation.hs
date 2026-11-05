@@ -26,7 +26,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (NetworkContext)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Resource (NetworkModality)
+import Vehicle.Compile.Resource (AbstractNetworkModality, NetworkModality, concatNetworkModality, mapNetworkModality, traverseNetworkModality)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), unstackBounds)
 import Vehicle.Data.Code.BooleanExpr
@@ -72,9 +72,9 @@ compilePartitionToQuery ::
   (MonadQueryCompilation m, MonadStdIO m, MonadSupply QueryID m) =>
   NetworkApplications ->
   [CompilationStep] ->
-  BoundedAssertions NetworkIOElementVariable NetworkIOElementVariable Rational ->
+  BoundedElementAssertions NetworkIOElementVariable NetworkIOElementVariable Rational ->
   m QueryMetaData
-compilePartitionToQuery metaNetworkApps compilationSteps (BoundedAssertions bounds assertions) = do
+compilePartitionToQuery metaNetworkApps compilationSteps (BoundedElementAssertions bounds assertions) = do
   (PropertyMetaData {..}, _) <- ask
 
   -- Calculate query address
@@ -121,8 +121,8 @@ reduceAllRemainingNetworkTensorVariables ::
   forall m.
   (MonadQueryCompilation m, MonadMaybeTrivial m) =>
   NetworkApplications ->
-  BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor ->
-  m (BoundedAssertions NetworkIOElementVariable NetworkIOElementVariable Rational, [CompilationStep])
+  BoundedAssertions NetworkInputVariable SliceVariable RatTensor ->
+  m (BoundedElementAssertions NetworkIOElementVariable NetworkIOElementVariable Rational, [CompilationStep])
 reduceAllRemainingNetworkTensorVariables metaNetwork (BoundedAssertions bounds assertions) = do
   logCompilerSection2 MaxDetail "eliminating remaining tensor assertions" $ do
     -- Create the assertions
@@ -141,15 +141,17 @@ reduceAllRemainingNetworkTensorVariables metaNetwork (BoundedAssertions bounds a
       [] -> trivial True
       a : as -> nonTrivial $ do
         let newAssertions = ConjunctAll (a :| as)
-        let newBoundedAssertions = BoundedAssertions newBounds newAssertions
+        let newBoundedAssertions = BoundedElementAssertions newBounds newAssertions
         (newBoundedAssertions, newSteps)
 
 reduceDomain ::
   forall m.
   (MonadQueryCompilation m) =>
-  BoundedValue NetworkInputTensorVariable (Domain RatTensor) ->
+  BoundedValue NetworkInputVariable (AbstractNetworkModality (Domain RatTensor)) ->
   m [BoundedValue NetworkIOElementVariable (Domain Rational)]
-reduceDomain (BoundedValue inputTensorVar bounds) = go (toSliceVar inputTensorVar, bounds)
+reduceDomain (BoundedValue inputTensorVar bounds) = do
+  let tensorDomains = concatNetworkModality bounds
+  concat <$> traverse (\b -> go (toSliceVar inputTensorVar, b)) tensorDomains
   where
     go ::
       (SliceVariable, Domain RatTensor) ->

@@ -16,11 +16,16 @@ module Vehicle.Data.Code.Interface
   )
 where
 
+import Vehicle.Compile.Resource (AbstractNetworkModality (..), NetworkModality)
+import Vehicle.Data.AST.Name (Name)
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface.Args as Args
 import Vehicle.Data.Code.Interface.Operations as Operations
 import Vehicle.Data.Code.Interface.Patterns as Patterns
 import Vehicle.Data.Tensor
+import Vehicle.Data.Variable.Bound.Level (SlicePath (..), equivalentShapeOf)
+import Vehicle.Prelude.Error (developerError)
 
 mkListExpr ::
   (HasListExpr expr thunk builtin) =>
@@ -34,26 +39,39 @@ mkDims ds = mkListExpr (exprToThunk @expr INatType) (fmap (exprToThunk @expr . I
 
 -- | Takes a `X` and [i_1, ... i_n] and returns `X ! i_1 ! i_n`
 mkIndexInto ::
-  forall expr thunk builtin.
-  (HasTensorExpr expr thunk builtin) =>
-  thunk builtin ->
-  expr builtin ->
-  TensorShape ->
-  TensorIndices ->
-  expr builtin
-mkIndexInto elementType value shape indices = go value (zip shape indices)
+  forall builtin.
+  (HasTensorExpr ForcedValue Thunk builtin) =>
+  Thunk builtin ->
+  Thunk builtin ->
+  NetworkModality TensorShape ->
+  SlicePath ->
+  Thunk builtin
+mkIndexInto elementType value shapeOrShapes path = case shapeOrShapes of
+  UniModal shape -> goUniModal value (equivalentShapeOf shape) path
+  MultiModal _ shapes -> goMultiModal value (map (fmap equivalentShapeOf) shapes) path
   where
-    go :: expr builtin -> [(TensorDimension, TensorIndex)] -> expr builtin
-    go tensor = \case
-      [] -> tensor
-      (d, i) : xs -> do
+    goUniModal :: Thunk builtin -> TensorShape -> SlicePath -> Thunk builtin
+    goUniModal tensor shape slice = case (shape, slice) of
+      (d : ds, TensorPath i is) -> do
         let result =
-              mkExpr accessAtTensor $
-                AtTensorArgs
-                  { atType = elementType,
-                    atFirstDim = exprToThunk @expr $ INatLiteral d,
-                    atRemainingDims = exprToThunk @expr $ mkDims $ fmap fst xs,
-                    atTensor = exprToThunk tensor,
-                    atIndex = exprToThunk @expr $ IIndexLiteral i (exprToThunk @expr $ INatLiteral d)
-                  }
-        go result xs
+              exprToThunk $
+                mkExpr accessAtTensor $
+                  AtTensorArgs
+                    { atType = elementType,
+                      atFirstDim = exprToThunk @ForcedValue $ INatLiteral d,
+                      atRemainingDims = exprToThunk @ForcedValue (mkDims ds),
+                      atTensor = tensor,
+                      atIndex = exprToThunk @ForcedValue $ IIndexLiteral i (exprToThunk @ForcedValue $ INatLiteral d)
+                    }
+        goUniModal result ds is
+      ([], EndPath) -> tensor
+      _ -> developerError "Path does not match shape"
+
+    goMultiModal :: Thunk builtin -> [(Name, TensorShape)] -> SlicePath -> Thunk builtin
+    goMultiModal record fields slice = case (fields, slice) of
+      ((currentField, currentShape) : rest, RecordPath fieldName indices)
+        | currentField /= fieldName -> goMultiModal record rest slice
+        | otherwise -> do
+            let result = undefined
+            goUniModal result currentShape indices
+      _ -> developerError "Path does not match shape"

@@ -19,10 +19,11 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Resource (AbstractNetworkModality (..), NetworkModality, NetworkTensorModality (..), networkModalityDepth)
 import Vehicle.Data.Assertion (InequalityRelation (..))
 import Vehicle.Data.Bound
 import Vehicle.Data.Code.LinearExpr (LinearExpr, evaluateExpr)
-import Vehicle.Data.Tensor (RatTensor, at, mapTensor, shapeOf, stack, unstack, zipWithTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (RatTensor, TensorShape, at, mapTensor, shapeOf, stack, unstack, zipWithTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Verify.Core
@@ -78,7 +79,7 @@ reconstructRecords existingAssignment steps = do
 --------------------------------------------------------------------------------
 -- Mixed variable assignments
 
-type MixedVariableAssignment = Map SliceVariable RatTensor
+type MixedVariableAssignment = Map SliceVariable (NetworkModality RatTensor)
 
 prettyAssignment :: CompleteNamedBoundCtx -> MixedVariableAssignment -> Doc a
 prettyAssignment ctx assignment = do
@@ -144,30 +145,51 @@ reconstructTensorFromConstituents ::
   NestedSliceVariable ->
   ReconstructionDepth ->
   MixedVariableAssignment ->
-  m (NonEmpty (SliceVariable, RatTensor))
+  m (NonEmpty (SliceVariable, NetworkModality RatTensor))
 reconstructTensorFromConstituents _ctx variable reconstructionDepth assignment =
-  snd <$> go depthToReconstruct variable
+  snd <$> goNetworkModality 0 variable
   where
-    depthToReconstruct :: Int
-    depthToReconstruct = case reconstructionDepth of
-      OneDimension -> 1
-      AllDimensions -> length (shapeOf variable)
-
-    go :: Int -> NestedSliceVariable -> m (RatTensor, NonEmpty (SliceVariable, RatTensor))
-    go depth var
-      | depth == 0 =
-          case Map.lookup sliceVar assignment of
-            Nothing -> throwError (toSliceVar variable, MissingVariable sliceVar)
-            Just result -> return (result, [(sliceVar, result)])
-      | otherwise =
-          case (shapeOf var, childVariablesOf var) of
-            (_ : dims, Just childVars) -> do
-              (elements, assignments) <- unzipF <$> traverse (go (depth - 1)) childVars
-              let result = stack dims elements
-              return (result, (sliceVar, result) :| concatMap NonEmpty.toList assignments)
-            _ -> throwError (toSliceVar variable, MismatchedDimensions depthToReconstruct (length (shapeOf variable)))
+    go ::
+      Int ->
+      (NetworkModality RatTensor -> value) ->
+      (value -> NetworkModality RatTensor) ->
+      NestedSliceVariable ->
+      ([NestedSliceVariable] -> m (value, [NonEmpty (SliceVariable, NetworkModality RatTensor)])) ->
+      m (value, NonEmpty (SliceVariable, NetworkModality RatTensor))
+    go steps mkBaseCase mkValue var mkRecCase = case childVariablesOf var of
+      Just childVars | not (steps == 1 && reconstructionDepth == OneDimension) -> do
+        (result, assignments) <- mkRecCase childVars
+        return (result, (sliceVar, mkValue result) :| concatMap NonEmpty.toList assignments)
+      _ -> case Map.lookup sliceVar assignment of
+        Nothing -> throwError (toSliceVar variable, MissingVariable sliceVar)
+        Just result -> return (mkBaseCase result, [(sliceVar, result)])
       where
         sliceVar = toSliceVar var
+
+    goNetworkModality :: Int -> NestedSliceVariable -> m (NetworkModality RatTensor, NonEmpty (SliceVariable, NetworkModality RatTensor))
+    goNetworkModality steps var = case nestedTensorShape var of
+      UniModal shape -> first UniModal <$> goTensorModality steps shape var
+      MultiModal recordIdent fields -> go steps id id var $ \childVars -> do
+        let (fieldNames, fieldShapes) = unzipF fields
+        (values, assignments) <- unzipF <$> traverse (uncurry $ goTensorModality (steps + 1)) (zip fieldShapes childVars)
+        return (MultiModal recordIdent (zip fieldNames values), assignments)
+
+    goTensorModality :: Int -> NetworkTensorModality TensorShape -> NestedSliceVariable -> m (NetworkTensorModality RatTensor, NonEmpty (SliceVariable, NetworkModality RatTensor))
+    goTensorModality steps shape var = case shape of
+      TensorModality tensorShape -> first TensorModality <$> goTensor steps tensorShape var
+      RecordModality recordIdent fields -> go steps _ UniModal var $ \case
+        [] -> developerError "Cannot have an empty record"
+        v : vs -> do
+          let (fieldNames, fieldShapes) = unzipF fields
+          (values, assignments) <- unzipF <$> traverse (uncurry $ goTensorModality (steps + 1)) (NonEmpty.zip fieldShapes (v :| vs))
+          return (RecordModality recordIdent (NonEmpty.zip fieldNames values), NonEmpty.toList assignments)
+
+    goTensor :: Int -> TensorShape -> NestedSliceVariable -> m (RatTensor, NonEmpty (SliceVariable, NetworkModality RatTensor))
+    goTensor steps shape var = go steps _ (UniModal . TensorModality) var $ \childVars -> case shape of
+      [] -> developerError "Tensor should not be empty"
+      (_ : ds) -> do
+        (values, assignments) <- unzipF <$> traverse (goTensor (steps + 1) ds) childVars
+        return (stack ds values, assignments)
 
 reconstructTensorViaEquality ::
   (MonadReconstruct m) =>

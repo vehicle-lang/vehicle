@@ -25,6 +25,7 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (AbstractNetworkModality (..))
 import Vehicle.Compile.Unblock (unblockBoolExpr)
 import Vehicle.Data.Assertion (Assertion, NormalisedRelation (..), Relation (..))
 import Vehicle.Data.Bound
@@ -233,7 +234,7 @@ findTensorBounds ::
   KnownPrefixOfTensorShape ->
   UserVariableConstraintTree ->
   m (DisjunctAll (TensorBounds (DimensionedTensorValue LossBuiltin), Maybe UserVariableConstraintTree))
-findTensorBounds parentVar parentVarShape constraints =
+findTensorBounds parentVar _parentVarShape constraints =
   go (DisjunctAll [(emptyBounds, Just constraints)]) parentVar
   where
     go ::
@@ -246,9 +247,9 @@ findTensorBounds parentVar parentVarShape constraints =
           Nothing ->
             return $ DisjunctAll [(bounds, maybeTree)]
           Just tree -> do
-            let tensorVar = TensorVariable $ toSliceVar parentVar
-            let indices = findSliceIndices parentVar var
-            let varInfo = VariableInfo tensorVar parentVarShape indices
+            let _tensorVar = TensorVariable $ toSliceVar parentVar
+            let _indices = findSliceIndices parentVar var
+            let varInfo = developerError "TODO: support multi modal networks" -- VariableInfo tensorVar parentVarShape indices
             disjunctedBoundsAndRemainders <- findAllBounds (findVarBound var varInfo) tree
             let finalBoundsAndRemainders = fmap (first (andBounds bounds)) disjunctedBoundsAndRemainders
             case childVariablesOf var of
@@ -262,18 +263,18 @@ findVarBound ::
   VariableInfo ->
   UserVariableConstraint LossBuiltin ->
   m (Maybe (TensorBounds (DimensionedTensorValue LossBuiltin)))
-findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
+findVarBound var VariableInfo {} (NormalisedRelation _rel expr)
   | not (expr `containsVariable` toSliceVar var) = return Nothing
   | otherwise = do
-      (coef, expr') <- rearrangeExprToSolveFor (toSliceVar var) expr
-      boundExpr <- tensorValueLinearExprToValue expr'
-      bounds <- convertToTensorBounds parentShape indices rel coef boundExpr
+      (_coef, expr') <- rearrangeExprToSolveFor (toSliceVar var) expr
+      _boundExpr <- tensorValueLinearExprToValue expr'
+      bounds <- developerError "TODO: support multimodal networks" -- convertToTensorBounds parentShape indices rel coef boundExpr
       return $ Just bounds
 
 noQuantifierDomainError ::
   (MonadLogic m) =>
   UnforcedBinder Builtin ->
-  UnboundedIndices ->
+  UnboundedTensorSlices ->
   m a
 noQuantifierDomainError binder missingIndices = do
   propertyProv <- getDeclProvenance

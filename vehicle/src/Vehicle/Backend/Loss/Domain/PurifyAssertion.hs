@@ -304,7 +304,7 @@ purifyBoundVar lv = do
   (_, maybeChildVars) <- lookupVariableInNestedCtx lv
   case maybeChildVars of
     Nothing -> return $ Forced $ VBoundVar lv []
-    Just (_tensorVar, sliceVar) -> replaceTensorVariableWithStackedChildren sliceVar
+    Just (_tensorVar, sliceVar) -> unfoldVariableIntoChildren sliceVar
 
 --------------------------------------------------------------------------------
 -- Utility functions

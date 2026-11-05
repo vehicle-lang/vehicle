@@ -13,6 +13,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set qualified as Set
+import Data.These (These (..))
 import Vehicle.Backend.Solver.QueryCompilation.Core (MonadQueryCompilation)
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Compile.Constants.Rational
@@ -20,15 +21,15 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkModality (..), NetworkName)
+import Vehicle.Compile.Resource (AbstractNetworkModality (..), NetworkModality, NetworkName, NetworkTensorModality)
 import Vehicle.Data.Bound
-import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
+import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinNetworkIOBoundsElimination)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.MaybeTrivial (MonadMaybeTrivial (..))
 import Vehicle.Data.Tensor (RatTensor, TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadReadableTensorBoundContext, getCompleteNamedCtx, lookupParentTensorVariable)
+import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadReadableTensorBoundContext, getCompleteNamedCtx, lookupChildVariablesCertain, lookupParentTensorVariable)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core (inputShape)
@@ -43,7 +44,7 @@ findInputVariableBounds ::
   (MonadQueryCompilation m, MonadMaybeTrivial m) =>
   NetworkApplications ->
   ConjunctAll LinearAssertion ->
-  m (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor)
+  m (BoundedAssertions NetworkInputVariable SliceVariable RatTensor)
 findInputVariableBounds metaNetworkApps constraints = do
   logCompilerSection2 MaxDetail "network variable bounds checks" $
     runMonadBoundsT metaNetworkApps $ do
@@ -65,10 +66,10 @@ findInputVariableBounds metaNetworkApps constraints = do
 type BoundsState =
   ( PropertyMetaData,
     GlobalCtx,
-    Map NetworkInputTensorVariable (NetworkName, NetworkApplicationInfo, NetworkModality TensorShape)
+    Map NetworkInputVariable (NetworkName, NetworkApplicationInfo, NetworkModality TensorShape)
   )
 
-isNetworkTensorInputVar :: BoundsState -> SliceVariable -> Maybe NetworkInputTensorVariable
+isNetworkTensorInputVar :: BoundsState -> SliceVariable -> Maybe NetworkInputVariable
 isNetworkTensorInputVar (_, _, networkNames) var = do
   let tentativeInputVar = coerce var
   if tentativeInputVar `Map.member` networkNames
@@ -99,7 +100,7 @@ runMonadBoundsT networkApps action = do
 -- Bounds
 
 data PartiallyBoundedAssertions = Partial
-  { variableBounds :: Map NetworkInputTensorVariable (TensorBounds RatTensor),
+  { variableBounds :: Map NetworkInputVariable (NetworkIOBounds RatTensor),
     remainingAssertions :: [LinearAssertion]
   }
 
@@ -109,22 +110,33 @@ andPartiallyBoundedAssertions ::
   PartiallyBoundedAssertions ->
   m PartiallyBoundedAssertions
 andPartiallyBoundedAssertions (Partial bounds1 assertions1) (Partial bounds2 assertions2) = do
-  let newVariableBounds = Map.unionWith andBounds bounds1 bounds2
+  let newVariableBounds = Map.unionWith andNetworkIOBOunds bounds1 bounds2
   let newAssertions = assertions1 <> assertions2
   return $ Partial newVariableBounds newAssertions
 
 prettyBounds ::
   forall m a.
-  (MonadReadableNameContext m) =>
-  Map NetworkInputTensorVariable (TensorBounds RatTensor) ->
+  (MonadReadableTensorBoundContext m, MonadLogger m) =>
+  Map NetworkInputVariable (NetworkIOBounds RatTensor) ->
   m (Doc a)
 prettyBounds bounds = vsep <$> traverse boundToDoc (Map.toList bounds)
   where
-    boundToDoc :: (NetworkInputTensorVariable, TensorBounds RatTensor) -> m (Doc a)
+    boundToDoc :: (NetworkInputVariable, NetworkIOBounds RatTensor) -> m (Doc a)
     boundToDoc (var, partialBounds) = do
       varDoc <- prettyFriendlyInCtx var
-      boundDoc <- prettyFriendlyInCtx (BoundedValue var partialBounds)
+      boundDoc <- case partialBounds of
+        UniModal _b -> developerError "printing doesnt work" -- prettyFriendlyInCtx (BoundedValue var b)
+        MultiModal _ bs -> do
+          children <- lookupChildVariablesCertain var
+          prettyMapEntries <$> traverse fieldBoundToDoc (zip children bs)
+
       return $ varDoc <> ":" <> lineIndent boundDoc
+
+    fieldBoundToDoc :: (SliceVariable, (Name, NetworkTensorModality (TensorBounds RatTensor))) -> m (Doc a, Doc a)
+    fieldBoundToDoc (_var, (name, _tensorBounds)) = do
+      let fieldName = pretty name
+      boundDoc <- developerError "printing doesn't work" -- prettyFriendlyInCtx $ BoundedValue var tensorBounds
+      return (fieldName, boundDoc)
 
 --------------------------------------------------------------------------------
 -- Bound search
@@ -180,22 +192,21 @@ lookupCorrespondingInputVar var = do
 checkAllBoundsPresent ::
   (MonadBounds m, MonadMaybeTrivial m) =>
   PartiallyBoundedAssertions ->
-  m (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor)
+  m (BoundedAssertions NetworkInputVariable SliceVariable RatTensor)
 checkAllBoundsPresent (Partial allPartialbounds assertions) = do
   (PropertyMetaData {..}, _, inputVariableMapping) <- ask
   lv <- getBinderDepth
 
-  errorsAndFinalBounds <- forM (Map.toList inputVariableMapping) $ \(var, (networkName, appInfo, varShape)) -> do
+  errorsAndFinalBounds <- forM (Map.toList inputVariableMapping) $ \(var, (networkName, appInfo, _varShape)) -> do
     let errorCase indices = return $ Left (networkName, inputType appInfo, inputValue appInfo, findUnboundedVariables lv appInfo, indices)
+
     case Map.lookup var allPartialbounds of
-      Nothing -> errorCase wholeTensorUnbounded
+      Nothing -> errorCase [(EndPath, These () ())]
       Just partialBounds -> do
-        missingIndicesOrFlattenedBounds <- case varShape of
-          UniModal {} -> fourierMotzkinTensorBoundsElimination partialBounds
-          MultiModal _typ _partialShapes -> error "MultiModal IO is not implmeneted yet"
-        case missingIndicesOrFlattenedBounds of
-          Right bounds -> return $ Right (BoundedValue var bounds)
-          Left missingIndices -> errorCase missingIndices
+        result <- fourierMotzkinNetworkIOBoundsElimination partialBounds
+        case result of
+          Left missingSlice -> errorCase missingSlice
+          Right completeBounds -> return $ Right (BoundedValue var completeBounds)
 
   let (missingBounds, boundedVariables) = partitionEithers errorsAndFinalBounds
   case missingBounds of
@@ -208,11 +219,11 @@ checkAllBoundsPresent (Partial allPartialbounds assertions) = do
   -- See https://github.com/NeuralNetworkVerification/Marabou/issues/670
   let domains = fmap valueBounds boundedVariables
   let formatID = queryFormatID queryFormat
-  when (queryFormatID queryFormat == MarabouQueries && all isEquality domains) $
+  when (queryFormatID queryFormat == MarabouQueries && all (all isEquality) domains) $
     logWarning $
       AllConstantNetworkInputVars formatID propertyAddress
 
-  let boundsUnsatisfiable = not (all isSatisfiable domains)
+  let boundsUnsatisfiable = not (all (all isSatisfiable) domains)
   if boundsUnsatisfiable
     then trivial False
     else case assertions of
