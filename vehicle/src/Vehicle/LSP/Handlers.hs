@@ -173,19 +173,20 @@ collectDeclTokens filePath = \case
 
 collectBinderTokens :: FilePath -> GenericBinder (Expr Builtin) -> [IntermediateSemTok]
 collectBinderTokens filePath (Binder (BinderDisplayForm namingForm _foldingForm) vis _r val) =
-  (collectExprTokens filePath val) ++ nameToks
+  collectExprTokens filePath val ++ nameToks
   where
-    nameToks = case vis of
-      Explicit -> nameToksFromNF
-      Implicit insertedByCompiler -> if not insertedByCompiler then nameToksFromNF else []
-      Instance insertedByCompiler -> if not insertedByCompiler then nameToksFromNF else []
+    nameToks
+      | insertedByCompiler vis = []
+      | otherwise = case namingForm of
+          NameAndType _n p -> mkNameToks p -- TODO: probably want to highlight name and type separately
+          OnlyName _n p -> mkNameToks p
+          OnlyType -> []
 
-    nameToksFromNF = case namingForm of
-      NameAndType _n p -> nameToksFromProv p -- TODO: probably want to highlight name and type separately
-      OnlyName _n p -> nameToksFromProv p
-      OnlyType -> []
+    insertedByCompiler Explicit = False
+    insertedByCompiler (Implicit b) = b
+    insertedByCompiler (Instance b) = b
 
-    nameToksFromProv p = [makeToken filePath p SemanticTokenTypes_Variable []]
+    mkNameToks p = [makeToken filePath p SemanticTokenTypes_Variable []]
 
 -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
 makeToken :: FilePath -> Provenance -> Lsp.SemanticTokenTypes -> [Lsp.SemanticTokenModifiers] -> IntermediateSemTok
