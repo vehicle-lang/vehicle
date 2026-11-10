@@ -1,13 +1,53 @@
 module
 
+public import Mathlib.Analysis.SpecialFunctions.Log.Basic
 public import Mathlib.Data.Holor
 public import Mathlib.Order.CompleteLattice.Defs
+public import Mathlib.Order.MinMax
 
 public section
 
+namespace HolorIndex
+
+variable {ds : List ℕ} {d : ℕ}
+
+instance : DecidableEq (HolorIndex ds) := Subtype.instDecidableEq
+
+/-- Prepend a new dimension to a `HolorIndex`. -/
+def cons (i : Fin d) (is : HolorIndex ds) : HolorIndex (d :: ds) :=
+  ⟨i :: is.1, List.Forall₂.cons i.isLt is.2⟩
+
+/-- The finite set of all `HolorIndex`s for a given list of dimensions. -/
+def all_elems : (ds : List ℕ) → Finset (HolorIndex ds)
+  | [] => {⟨[], .nil⟩}
+  | d :: ds => Finset.image₂ cons (.univ : Finset (Fin d)) (all_elems ds)
+
+instance : Fintype (HolorIndex ds) where
+  elems := all_elems ds
+  complete := by
+    induction ds with
+    | nil =>
+      rintro ⟨is, ⟨h⟩⟩
+      exact Finset.insert_eq_self.mp rfl
+    | cons d ds ih =>
+      rintro ⟨is, (h)⟩
+      cases h with
+      | @cons a _ l _ ha hl =>
+        dsimp [all_elems]
+        rw [Finset.image₂]
+        let a' : Fin d := ⟨a, ha⟩
+        have ha' : a' ∈ Finset.univ := Finset.mem_univ a'
+        let l' : HolorIndex ds := ⟨l, hl⟩
+        have hl' : l' ∈ all_elems ds := Finset.mem_coe.mp (ih l')
+        exact Finset.mem_image.mpr ⟨⟨a', l'⟩, ⟨Finset.mk_mem_product ha' (ih l'), rfl⟩⟩
+
+instance : Finite (HolorIndex ds) := by infer_instance
+
+end HolorIndex
+
 namespace Holor
 
-variable {α : Type} {ds : List ℕ}
+variable {α β γ : Type} {ds : List ℕ}
 
 section order
 
@@ -138,5 +178,63 @@ theorem hadamard_mul_hadamard_comm [CommSemigroup α] :
   funext fun _ ↦ mul_mul_mul_comm _ _ _ _
 
 end HadamardMul
+
+section PointwiseOps
+
+def pointwise (x : Holor α ds) (y : Holor β ds) (f : α → β → γ) : Holor γ ds :=
+  fun t ↦ f (x t) (y t)
+
+def pointwiseLE [LE α] [DecidableLE α] (x y : Holor α ds) : Holor Bool ds :=
+  x.pointwise y (fun a b ↦ decide (a ≤ b))
+
+def pointwiseLT [LT α] [DecidableLT α] (x y : Holor α ds) : Holor Bool ds :=
+  x.pointwise y (fun a b ↦ decide (a < b))
+
+def pointwiseEq [DecidableEq α] (x y : Holor α ds) : Holor Bool ds :=
+  x.pointwise y BEq.beq
+
+def pointwiseNe [DecidableEq α] (x y : Holor α ds) : Holor Bool ds :=
+  x.pointwise y bne
+
+def pointwiseAnd (x y : Holor Bool ds) : Holor Bool ds :=
+  x.pointwise y and
+
+def pointwiseOr (x y : Holor Bool ds) : Holor Bool ds :=
+  x.pointwise y or
+
+def pointwiseDiv [Div α] (x y : Holor α ds) : Holor α ds :=
+  x.pointwise y Div.div
+
+def pointwisePow [Pow α β] (x : Holor α ds) (y : Holor β ds) : Holor α ds :=
+  x.pointwise y Pow.pow
+
+noncomputable def pointwiseLog (x : Holor ℝ ds) : Holor ℝ ds :=
+  fun t ↦ (x t).log
+
+noncomputable def pointwiseExp (x : Holor ℝ ds) : Holor ℝ ds :=
+  fun t ↦ (x t).exp
+
+end PointwiseOps
+
+section ReduceOps
+
+def fold (op : α → α → α) [Std.Commutative op] [Std.Associative op] (init : α) {ds : List ℕ}
+    (x : Holor α ds) : α :=
+  Finset.univ.fold op init x
+
+def reduceAnd (x : Holor Bool ds) : Bool := x.fold and true
+
+def reduceOr (x : Holor Bool ds) : Bool := x.fold or false
+
+def reduceAdd [AddCommMonoid α] (x : Holor α ds) : α :=
+  ∑ t, x t
+
+def reduceMin [LinearOrder α] [BoundedOrder α] (x : Holor α ds) : α :=
+  x.fold min ⊤
+
+def reduceMax [LinearOrder α] [BoundedOrder α] (x : Holor α ds) : α :=
+  x.fold max ⊥
+
+end ReduceOps
 
 end Holor
