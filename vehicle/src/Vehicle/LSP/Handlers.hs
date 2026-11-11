@@ -236,7 +236,7 @@ getTokenOfType makeToken p = \case
   Universe {} -> pure $ makeToken p (SemanticTokenTypes_Type, [])
   Pi _ binder res ->
     if wasInsertedByCompiler binder
-      then getTokenOfType makeToken p res
+      then addBinderToContext binder $ getTokenOfType makeToken p res
       else pure $ makeToken p (SemanticTokenTypes_Function, [])
   Builtin _ _builtin -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
   -- TODO: This is not quite right. If our type is bound to a bound var, we are an instance of that bound var.
@@ -253,8 +253,8 @@ getTokenOfType makeToken p = \case
   Hole _ _name -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
   Meta _ _metaId -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
   App _f _args -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
-  Let _ _bound _bodyBinder bodyExpr -> getTokenOfType makeToken p bodyExpr
-  Lam _ _binder body -> getTokenOfType makeToken p body
+  Let _ _bound bodyBinder bodyExpr -> addBinderToContext bodyBinder $ getTokenOfType makeToken p bodyExpr
+  Lam _ binder body -> addBinderToContext binder $ getTokenOfType makeToken p body
   Record _ typ _fields -> getTokenOfType makeToken p typ
   RecordProj _ _typ _body _fieldName -> pure $ makeToken p (SemanticTokenTypes_Method, [])
 
