@@ -250,9 +250,7 @@ collectBinderTokens makeToken binder@(Binder _ _ _ val) = do
 type TokenMaker = Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
 
 getBinderNameToken :: (MonadCollectTokens m) => TokenMaker -> GenericBinder (Expr Builtin) -> m IntermediateSemTok
-getBinderNameToken makeToken b
-  | wasInsertedByCompiler b = pure Nothing
-  | otherwise = getTokenOfType makeToken nameProvenance (typeOf b)
+getBinderNameToken makeToken b = getTokenOfType makeToken nameProvenance (typeOf b)
   where
     -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
     -- we just want the provenance of the name.
