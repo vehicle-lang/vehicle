@@ -8,6 +8,7 @@ where
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Lens ((^.))
 import Data.Aeson.Text (encodeToLazyText)
+import Data.Functor ((<&>))
 import Data.List
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Map (elems)
@@ -46,6 +47,7 @@ import Vehicle.LSP.Config (Config)
 import Vehicle.LSP.State (Server, fileUpdated)
 import Vehicle.Prelude
   ( BinderNamingForm (..),
+    DefFunctionSort (..),
     GenericArg (..),
     GenericBinder (..),
     GenericDecl (..),
@@ -196,8 +198,8 @@ collectProgTokens makeToken (Main decls) =
 
 collectDeclTokens :: (MonadCollectTokens m) => TokenMaker -> GenericDecl (Expr Builtin) -> m [IntermediateSemTok]
 collectDeclTokens makeToken decl = do
-  bodyToks <- getBodyToks
   headTok <- getHeadTok
+  bodyToks <- getBodyToks
   return $ headTok : bodyToks
   where
     getHeadTok = getDeclHeadToken makeToken (provenanceOf decl) decl
@@ -213,7 +215,12 @@ collectDeclTokens makeToken decl = do
 getDeclHeadToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> GenericDecl (Expr Builtin) -> m IntermediateSemTok
 getDeclHeadToken makeToken p = \case
   DefAbstract _ _ _ t -> getTokenOfType makeToken p t
-  DefFunction _ _ _ t _ -> getTokenOfType makeToken p t
+  DefFunction _ _ s t _ -> do
+    -- Record accesses (e.g. `pair.left`) should render the `.left` part as a Method, not a Function
+    let fixProjectionTokenType tok = case s of
+          ProjectionDecl {} -> tok {_tokenType = Lsp.SemanticTokenTypes_Method}
+          _ -> tok
+    getTokenOfType makeToken p t <&> fmap fixProjectionTokenType
   DefRecord {} -> pure $ makeToken p (SemanticTokenTypes_Class, [])
 
 type SemanticTokenTypeComplete = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModifiers])
@@ -328,16 +335,10 @@ collectExprTokens makeToken = \case
     binderToks <- collectBinderTokens makeToken binder
     bodyToks <- addBinderToContext binder $ collectExprTokens makeToken body
     return $ lamToks ++ binderToks ++ bodyToks
-  Record p typ fields -> do
-    let recordToks = [makeToken p (SemanticTokenTypes_Class, [])]
-    typToks <- collectExprTokens makeToken typ
+  Record _p _typ fields -> do
     fieldsToks <- collectFieldsTokens makeToken fields
-    return $ recordToks ++ typToks ++ fieldsToks
-  RecordProj p typ body _fieldName -> do
-    let recordProjToks = [makeToken p (SemanticTokenTypes_Class, [])]
-    typToks <- collectExprTokens makeToken typ
-    bodyToks <- collectExprTokens makeToken body
-    return $ recordProjToks ++ typToks ++ bodyToks
+    return fieldsToks
+  RecordProj p _typ _body _fieldName -> pure [makeToken p (SemanticTokenTypes_Method, [])]
 
 collectBuiltinTokens ::
   (MonadCollectTokens m) =>
