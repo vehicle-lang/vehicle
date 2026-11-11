@@ -259,10 +259,12 @@ getTokenOfType makeToken p = \case
   RecordProj _ _typ _body _fieldName -> pure $ makeToken p (SemanticTokenTypes_Method, [])
 
 collectBinderTokens :: (MonadCollectTokens m) => TokenMaker -> GenericBinder (Expr Builtin) -> m [IntermediateSemTok]
-collectBinderTokens makeToken binder@(Binder _ _ _ val) = do
-  exprToks <- collectExprTokens makeToken val
-  nameTok <- getBinderNameToken makeToken binder
-  return $ nameTok : exprToks
+collectBinderTokens makeToken binder@(Binder _ _ _ val)
+  | wasInsertedByCompiler binder = pure []
+  | otherwise = do
+      exprToks <- collectExprTokens makeToken val
+      nameTok <- getBinderNameToken makeToken binder
+      return $ nameTok : exprToks
 
 type TokenMaker = Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
 
