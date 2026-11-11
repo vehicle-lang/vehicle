@@ -792,13 +792,18 @@ standardLibComparison op tk e1 e2 = do
     Just (prevOp, e)
       | not (V.chainable prevOp op) -> do
           throwError $ UnchainableComparisons p prevOp op
-      | otherwise -> elabExpr $ B.And e1 (B.TokAnd (tkPos, "and")) $ case op of
-          V.Le -> B.Le e (B.TokLe tkDetails) e2
-          V.Lt -> B.Lt e (B.TokLt tkDetails) e2
-          V.Ge -> B.Ge e (B.TokGe tkDetails) e2
-          V.Gt -> B.Gt e (B.TokGt tkDetails) e2
-          V.Eq -> B.Eq e (B.TokEq tkDetails) e2
-          V.Ne -> B.Ne e (B.TokNe tkDetails) e2
+      | otherwise -> do
+          andExpr <- elabExpr $ B.And e1 (B.TokAnd (tkPos, "and")) $ case op of
+            V.Le -> B.Le e (B.TokLe tkDetails) e2
+            V.Lt -> B.Lt e (B.TokLt tkDetails) e2
+            V.Ge -> B.Ge e (B.TokGe tkDetails) e2
+            V.Gt -> B.Gt e (B.TokGt tkDetails) e2
+            V.Eq -> B.Eq e (B.TokEq tkDetails) e2
+            V.Ne -> B.Ne e (B.TokNe tkDetails) e2
+          -- remove provenance of the `and` token since it doesn't actually exist in the source
+          case andExpr of
+            V.App (V.Builtin _p b) args -> return $ V.App (V.Builtin mempty b) args
+            _ -> return andExpr -- unreachable
 
 standardLibQuantifier ::
   (MonadElab m, IsToken token) =>
