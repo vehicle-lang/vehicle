@@ -263,6 +263,7 @@ searchValue value = do
       addNameToContext binder $ searchValue body
     VRecord _ fields -> traverse_ searchValue fields
     VRecordAcc _ record _ spine -> do searchValue record; searchSpine spine
+    VDifferentiate _ e _ spine -> do searchValue e; searchSpine spine
     -- Never traverse into types so the following cases shouldn't happen!
     VUniverse {} -> unexpectedExprError "list" "VUniverse"
     VPi {} -> unexpectedExprError "list" "VPi"

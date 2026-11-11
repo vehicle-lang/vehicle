@@ -387,6 +387,7 @@ pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies attemptedSolutio
       -- rather than a `Val`?
       VPi binder body -> VPi <$> traverse goThunk binder <*> pure body
       VLam binder body -> VLam <$> traverse goThunk binder <*> pure body
+      VDifferentiate recordType e field spine -> VDifferentiate <$> goThunk recordType <*> goThunk e <*> pure field <*> traverse (traverse goThunk) spine
 
     pruneMeta ::
       MetaID ->

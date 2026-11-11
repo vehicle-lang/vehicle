@@ -40,6 +40,8 @@ toRecordValue = \case
   VPi {} -> illTyped "VPi"
   VLam {} -> illTyped "VLam"
   VUniverse {} -> illTyped "VUniverse"
+  VDifferentiate {} ->
+    developerError "TypeValue: Unevaluated differentiation is not supported in this typed value view"
   where
     illTyped e = developerError $ "ill-typed function" <+> e
 
@@ -82,6 +84,8 @@ toTypeValue = \case
   VRecord {} -> illTyped "VRecord"
   VLam {} -> illTyped "VLam"
   VUniverse {} -> illTyped "VUniverse"
+  VDifferentiate {} ->
+    developerError "TypeValue: Unevaluated differentiation is not supported in this typed value view"
   where
     illTyped e = developerError $ "ill-typed type" <+> e
 
@@ -188,6 +192,8 @@ toBoolTensorValue = \case
   VLam {} -> illTyped "VLam"
   VRecord {} -> illTyped "VRecord"
   VUniverse {} -> illTyped "VUniverse"
+  VDifferentiate {} ->
+    developerError "TypeValue: Unevaluated differentiation is not supported in this typed value view"
   where
     illTyped e = developerError $ "ill-typed BoolTensor expression:" <+> e
 
@@ -223,6 +229,8 @@ toNatValue = \case
   VLam {} -> illTyped "VLam"
   VRecord {} -> illTyped "VRecord"
   VUniverse {} -> illTyped "VUniverse"
+  VDifferentiate {} ->
+    developerError "TypeValue: Unevaluated differentiation is not supported in this typed value view"
   where
     illTyped e = developerError $ "ill-typed Nat expression:" <+> e
 
@@ -257,6 +265,8 @@ toIndexValue = \case
   VLam {} -> illTyped "VLam"
   VRecord {} -> illTyped "VRecord"
   VUniverse {} -> illTyped "VUniverse"
+  VDifferentiate {} ->
+    developerError "TypeValue: Unevaluated differentiation is not supported in this typed value view"
   where
     illTyped e = developerError $ "ill-typed Index expression:" <+> e
 
@@ -293,6 +303,8 @@ toListValue = \case
   VLam {} -> illTyped "VLam"
   VRecord {} -> illTyped "VRecord"
   VUniverse {} -> illTyped "VUniverse"
+  VDifferentiate {} ->
+    developerError "TypeValue: Unevaluated differentiation is not supported in this typed value view"
   where
     illTyped e = developerError $ "ill-typed List expression:" <+> e
 
@@ -324,6 +336,8 @@ toDimensionsValue = \case
   VLam {} -> illTyped "VLam"
   VRecord {} -> illTyped "VRecord"
   VUniverse {} -> illTyped "VUniverse"
+  VDifferentiate {} ->
+    developerError "TypeValue: Unevaluated differentiation is not supported in this typed value view"
   where
     illTyped e = developerError $ "ill-typed Dimensions expression:" <+> e
 
@@ -432,6 +446,8 @@ toRatTensorValue = \case
   VLam {} -> illTyped "VLam"
   VRecord {} -> illTyped "VRecord"
   VUniverse {} -> illTyped "VUniverse"
+  VDifferentiate {} ->
+    developerError "TypeValue: Unevaluated differentiation is not supported in this typed value view"
   where
     illTyped e = developerError $ "ill-typed RatTensor expression:" <+> e
 

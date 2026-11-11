@@ -107,6 +107,10 @@ instance HasMetas (ForcedValueWithMetas builtin) where
       findMetas s recordType
       findMetas s record
       findMetas s spine
+    VDifferentiate recordType e _field spine -> do
+      findMetas s recordType
+      findMetas s e
+      findMetas s spine
 
 instance HasMetas (ThunkWithMetas builtin) where
   findMetas s = \case
@@ -258,6 +262,11 @@ instance MetaSubstitutable m builtin (ForcedValueWithMetas builtin) where
     VBuiltin b spine -> do
       spine' <- traverse (substMetasAt ctx s) spine
       return $ VBuiltin b spine'
+    VDifferentiate recordType e field spine -> do
+      recordType' <- substMetasAt ctx s recordType
+      e' <- substMetasAt ctx s e
+      spine' <- traverse (substMetasAt ctx s) spine
+      return $ VDifferentiate recordType' e' field spine'
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.

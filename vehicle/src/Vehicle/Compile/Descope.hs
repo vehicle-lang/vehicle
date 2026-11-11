@@ -211,6 +211,10 @@ genericDescopeForcedValue f e = case e of
     let recordAcc = S.RecordAcc p record' field
     args <- traverseArgs (descopeThunk f) spine
     return $ S.normAppList recordAcc args
+  F.VDifferentiate _inputRecordType expr field spine -> do
+    expr' <- descopeThunk f expr
+    args <- traverseArgs (descopeThunk f) spine
+    return $ S.normAppList (S.Differentiate p expr' field) args
   where
     p = mempty
 
