@@ -250,13 +250,13 @@ getTokenOfType makeToken p = \case
       DefAbstract _ _ _ t -> getTokenOfType makeToken p t
       DefFunction _ _ _ _ e -> getTokenOfType makeToken p e
       DefRecord {} -> pure $ makeToken p (SemanticTokenTypes_Class, [])
-  Hole _ _name -> pure $ makeToken p (SemanticTokenTypes_Macro, []) -- ??
-  Meta _ _metaId -> pure $ makeToken p (SemanticTokenTypes_Macro, []) -- ??
+  Hole _ _name -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
+  Meta _ _metaId -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
   App _f _args -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
-  Let _ _bound _bodyBinder _bodyExpr -> pure $ makeToken p (SemanticTokenTypes_Macro, []) -- ??
-  Lam _ _binder _body -> pure $ makeToken p (SemanticTokenTypes_Function, [])
-  Record _ _typ _fields -> pure $ makeToken p (SemanticTokenTypes_Macro, []) -- ??
-  RecordProj _ _typ _body _fieldName -> pure $ makeToken p (SemanticTokenTypes_Macro, []) -- ??
+  Let _ _bound _bodyBinder bodyExpr -> getTokenOfType makeToken p bodyExpr
+  Lam _ _binder body -> getTokenOfType makeToken p body
+  Record _ typ _fields -> getTokenOfType makeToken p typ
+  RecordProj _ _typ _body _fieldName -> pure $ makeToken p (SemanticTokenTypes_Method, [])
 
 collectBinderTokens :: (MonadCollectTokens m) => TokenMaker -> GenericBinder (Expr Builtin) -> m [IntermediateSemTok]
 collectBinderTokens makeToken binder@(Binder _ _ _ val) = do
