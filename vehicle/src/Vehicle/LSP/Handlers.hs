@@ -37,7 +37,13 @@ import Language.LSP.Server qualified as Lsp
 import Vehicle.Compile.Print.Error (formatCompileError, logCompileError)
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.AST.Prog (GenericProg (..), Prog)
-import Vehicle.Data.Builtin.Standard (Builtin (..), BuiltinConstructor (..))
+import Vehicle.Data.Builtin.Standard
+  ( Builtin (..),
+    BuiltinConstructor (..),
+    BuiltinFunction (..),
+    DerivedFunction (..),
+    TypeClassOp (..),
+  )
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Data.Variable.Bound.Context.Core (lookupIx)
 import Vehicle.Data.Variable.Bound.Context.Generic (MonadBoundContext (..), runFreshBoundContextT)
@@ -233,6 +239,10 @@ getTokenOfType makeToken p = \case
       then getTokenOfType makeToken p res
       else pure $ makeToken p (SemanticTokenTypes_Function, [])
   Builtin _ _builtin -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
+  -- TODO: This is not quite right. If our type is bound to a bound var, we are an instance of that bound var.
+  --   identity (T : Type) (x : T) = x
+  -- T is a Type, x is a T; x is not a Type.
+  -- However currently, x will resolve to T which will resolve to Type (Universe), so x will be highlighted the same as T.
   BoundVar _ ix -> getBoundVarToken makeToken p ix
   FreeVar _ ident -> do
     decl <- getDeclEntry (Proxy @Builtin) ident
@@ -353,17 +363,75 @@ collectBuiltinTokens makeToken p = \case
     UnitLiteral -> tok SemanticTokenTypes_Keyword
     IndexLiteral _ -> tok SemanticTokenTypes_Number
     NatLiteral _ -> tok SemanticTokenTypes_Number
-    VectorLiteral -> tok SemanticTokenTypes_Keyword -- TODO: what is this?
+    VectorLiteral -> tok SemanticTokenTypes_Keyword
     BoolTensorLiteral tensor -> collectTensorLiteralTokens makeToken p SemanticTokenTypes_Keyword tensor
     NatTensorLiteral tensor -> collectTensorLiteralTokens makeToken p SemanticTokenTypes_Number tensor
     RatTensorLiteral tensor -> collectTensorLiteralTokens makeToken p SemanticTokenTypes_Number tensor
-  BuiltinFunction _fn -> tok SemanticTokenTypes_Operator -- TODO: may want to highlight different builtin funcs differently, e.g. as Function
+  -- TODO: It would be nice to be able to access the external syntax here. We want to say
+  -- "if the external token is alphanumeric, use Keyword, otherwise use Operator".
+  BuiltinFunction fn -> case fn of
+    Not -> tok SemanticTokenTypes_Operator
+    And -> tok SemanticTokenTypes_Operator
+    Or -> tok SemanticTokenTypes_Operator
+    Implies -> tok SemanticTokenTypes_Operator
+    QuantifyRatTensor {} -> tok SemanticTokenTypes_Keyword
+    QuantifyRecord {} -> tok SemanticTokenTypes_Keyword
+    If -> tok SemanticTokenTypes_Keyword
+    CompareIndex {} -> tok SemanticTokenTypes_Operator
+    CompareNat {} -> tok SemanticTokenTypes_Operator
+    CompareRatTensor {} -> tok SemanticTokenTypes_Operator
+    ReduceAndTensor -> tok SemanticTokenTypes_Keyword
+    ReduceOrTensor -> tok SemanticTokenTypes_Keyword
+    -- Rat operations
+    Add {} -> tok SemanticTokenTypes_Operator
+    Mul {} -> tok SemanticTokenTypes_Operator
+    Neg {} -> tok SemanticTokenTypes_Operator
+    Sub {} -> tok SemanticTokenTypes_Operator
+    Div {} -> tok SemanticTokenTypes_Operator
+    Min {} -> tok SemanticTokenTypes_Operator
+    Max {} -> tok SemanticTokenTypes_Operator
+    Pow {} -> tok SemanticTokenTypes_Operator
+    Log {} -> tok SemanticTokenTypes_Operator
+    Exp {} -> tok SemanticTokenTypes_Operator
+    ReduceAddRatTensor -> tok SemanticTokenTypes_Keyword
+    ReduceMulRatTensor -> tok SemanticTokenTypes_Keyword
+    ReduceMinRatTensor -> tok SemanticTokenTypes_Keyword
+    ReduceMaxRatTensor -> tok SemanticTokenTypes_Keyword
+    -- Tensor operations
+    AtTensor -> tok SemanticTokenTypes_Operator
+    StackTensor -> tok SemanticTokenTypes_Keyword
+    ConstTensor -> tok SemanticTokenTypes_Keyword
+    Iterate -> tok SemanticTokenTypes_Keyword
+    ForeachTensor -> tok SemanticTokenTypes_Keyword
+    Transpose -> tok SemanticTokenTypes_Keyword
+    WhereTensor -> tok SemanticTokenTypes_Keyword
+    SearchRatTensor -> tok SemanticTokenTypes_Keyword
+    -- Vector operations
+    AtVector -> tok SemanticTokenTypes_Operator
+    ForeachVector -> tok SemanticTokenTypes_Keyword
+    -- List operations
+    FoldList -> tok SemanticTokenTypes_Keyword
+    MapList -> tok SemanticTokenTypes_Keyword
+    ReverseList -> tok SemanticTokenTypes_Keyword
+    AppendList -> tok SemanticTokenTypes_Keyword
   BuiltinType _typ -> tok SemanticTokenTypes_Type
   BuiltinCast _cast -> tok SemanticTokenTypes_Function
-  DerivedFunction _fn -> tok SemanticTokenTypes_Function -- TODO: better parity with BuiltinFunction
+  DerivedFunction fn -> case fn of
+    TypeAnn -> tok SemanticTokenTypes_Operator
+    QuantifyIndex {} -> tok SemanticTokenTypes_Keyword
+    QuantifyInList {} -> tok SemanticTokenTypes_Keyword
   TypeClass _tc -> tok SemanticTokenTypes_Class
-  TypeClassOp _tcOp -> tok SemanticTokenTypes_Operator -- TODO: may want to highlight different typeclass ops differently, e.g. as function (e.g. FoldTC) or type (e.g. TensorTypeTC)
-  NatInDomainConstraint -> pure [] -- TODO: ??
+  TypeClassOp tcOp -> case tcOp of
+    FromNatTC -> pure []
+    FromRatTC -> pure []
+    VecLiteralTC -> tok SemanticTokenTypes_Keyword
+    NegTC -> tok SemanticTokenTypes_Operator
+    AtTC -> tok SemanticTokenTypes_Operator
+    MapTC -> tok SemanticTokenTypes_Keyword
+    FoldTC -> tok SemanticTokenTypes_Keyword
+    ForeachTC -> tok SemanticTokenTypes_Keyword
+    TensorTypeTC -> tok SemanticTokenTypes_Type
+  NatInDomainConstraint -> pure []
   where
     tok typ = pure [makeToken p (typ, [])]
 
@@ -374,10 +442,9 @@ collectTensorLiteralTokens ::
   SemanticTokenTypes ->
   Tensor a ->
   m [IntermediateSemTok]
-collectTensorLiteralTokens makeToken p _valueTokType = \case
-  -- TODO: We need the provenences of the literal values, not just the whole literal
-  DenseTensor _shape _vec -> pure [makeToken p (SemanticTokenTypes_Operator, [])]
-  ConstantTensor _shape _a -> pure [makeToken p (SemanticTokenTypes_Operator, [])]
+collectTensorLiteralTokens makeToken p valueTokType = \case
+  DenseTensor _shape _vec -> pure [makeToken p (valueTokType, [])]
+  ConstantTensor _shape _a -> pure [makeToken p (valueTokType, [])]
 
 collectArgTokens ::
   (MonadCollectTokens m) =>
