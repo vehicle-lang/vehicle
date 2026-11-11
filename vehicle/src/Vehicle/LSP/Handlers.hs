@@ -221,7 +221,10 @@ type SemanticTokenTypeComplete = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModi
 getTokenOfType :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Expr Builtin -> m IntermediateSemTok
 getTokenOfType makeToken p = \case
   Universe {} -> pure $ makeToken p (SemanticTokenTypes_Type, [])
-  Pi _ _binder _res -> pure $ makeToken p (SemanticTokenTypes_Function, [])
+  Pi _ binder res ->
+    if wasInsertedByCompiler binder
+      then getTokenOfType makeToken p res
+      else pure $ makeToken p (SemanticTokenTypes_Function, [])
   Builtin _ _builtin -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
   BoundVar _ ix -> getBoundVarToken makeToken p ix
   FreeVar _ ident -> do
