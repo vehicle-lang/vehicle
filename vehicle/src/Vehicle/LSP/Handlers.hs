@@ -220,42 +220,59 @@ collectDeclTokens makeToken decl = do
 
 getDeclHeadToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> GenericDecl (Expr Builtin) -> m IntermediateSemTok
 getDeclHeadToken makeToken p = \case
-  DefAbstract _ _ _ t -> getTokenOfType makeToken p t
+  DefAbstract _ _ _ t -> getTokenOfType makeToken p 0 t
   DefFunction _ _ s t _ -> do
     -- Record accesses (e.g. `pair.left`) should render the `.left` part as a Method, not a Function
     let fixProjectionTokenType tok = case s of
           ProjectionDecl {} -> tok {_tokenType = Lsp.SemanticTokenTypes_Method}
           _ -> tok
-    getTokenOfType makeToken p t <&> fmap fixProjectionTokenType
+    getTokenOfType makeToken p 0 t <&> fmap fixProjectionTokenType
   DefRecord {} -> pure $ makeToken p (SemanticTokenTypes_Class, [])
 
 type SemanticTokenTypeComplete = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModifiers])
 
-getTokenOfType :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Expr Builtin -> m IntermediateSemTok
-getTokenOfType makeToken p = \case
-  Universe {} -> pure $ makeToken p (SemanticTokenTypes_Type, [])
+type BinderDepth = Int
+
+getTokenOfType :: (MonadCollectTokens m) => TokenMaker -> Provenance -> BinderDepth -> Expr Builtin -> m IntermediateSemTok
+getTokenOfType makeToken p depth = \case
+  Universe {}
+    | depth > 0 -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
+    | otherwise -> pure $ makeToken p (SemanticTokenTypes_Type, [])
   Pi _ binder res ->
     if wasInsertedByCompiler binder
-      then addBinderToContext binder $ getTokenOfType makeToken p res
+      then addBinderToContext binder $ getTokenOfType makeToken p depth res
       else pure $ makeToken p (SemanticTokenTypes_Function, [])
   Builtin _ _builtin -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
-  -- TODO: This is not quite right. If our type is bound to a bound var, we are an instance of that bound var.
+  -- We need to keep track of how many "binders deep" we are, so we can determine if a BoundVar is an
+  -- element of Type, or merely an element of something which is an element of Type.
+  --
+  -- For example, consider the following:
+  --
   --   identity (T : Type) (x : T) = x
+  --
   -- T is a Type, x is a T; x is not a Type.
-  -- However currently, x will resolve to T which will resolve to Type (Universe), so x will be highlighted the same as T.
-  BoundVar _ ix -> getBoundVarToken makeToken p ix
+  --
+  -- Without tracking BinderDepth, x would resolve to T which would resolve to Type (Universe), so x
+  -- would be highlighted the same as T. Instead, when x resolves to T, it does so with an incremented
+  -- BinderDepth, so when T resolves to Type, it knows it is not the first one in the binder chain.
+  -- I'm sure there is a more elegant solution to this, and there are probably edge cases I haven't
+  -- considered, but this will do for now.
+  BoundVar _ ix -> getBoundVarToken makeToken p ix True (depth + 1)
   FreeVar _ ident -> do
     decl <- getDeclEntry (Proxy @Builtin) ident
     case decl of
-      DefAbstract _ _ _ t -> getTokenOfType makeToken p t
-      DefFunction _ _ _ _ e -> getTokenOfType makeToken p e
+      DefAbstract _ _ _ t -> getTokenOfType makeToken p depth t
+      DefFunction _ _ _ _ e -> getTokenOfType makeToken p depth e
       DefRecord {} -> pure $ makeToken p (SemanticTokenTypes_Class, [])
   Hole _ _name -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
   Meta _ _metaId -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
   App _f _args -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
-  Let _ _bound bodyBinder bodyExpr -> addBinderToContext bodyBinder $ getTokenOfType makeToken p bodyExpr
-  Lam _ binder body -> addBinderToContext binder $ getTokenOfType makeToken p body
-  Record _ typ _fields -> getTokenOfType makeToken p typ
+  Let _ _bound bodyBinder bodyExpr -> addBinderToContext bodyBinder $ getTokenOfType makeToken p depth bodyExpr
+  Lam _ binder body ->
+    if wasInsertedByCompiler binder
+      then addBinderToContext binder $ getTokenOfType makeToken p depth body
+      else getTokenOfType makeToken p depth (typeOf binder)
+  Record _ typ _fields -> getTokenOfType makeToken p depth typ
   RecordProj _ _typ _body _fieldName -> pure $ makeToken p (SemanticTokenTypes_Method, [])
 
 collectBinderTokens :: (MonadCollectTokens m) => TokenMaker -> GenericBinder (Expr Builtin) -> m [IntermediateSemTok]
@@ -263,13 +280,13 @@ collectBinderTokens makeToken binder@(Binder _ _ _ val)
   | wasInsertedByCompiler binder = pure []
   | otherwise = do
       exprToks <- collectExprTokens makeToken val
-      nameTok <- getBinderNameToken makeToken binder
+      nameTok <- getBinderNameToken makeToken 0 binder
       return $ nameTok : exprToks
 
 type TokenMaker = Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
 
-getBinderNameToken :: (MonadCollectTokens m) => TokenMaker -> GenericBinder (Expr Builtin) -> m IntermediateSemTok
-getBinderNameToken makeToken b = getTokenOfType makeToken nameProvenance (typeOf b)
+getBinderNameToken :: (MonadCollectTokens m) => TokenMaker -> BinderDepth -> GenericBinder (Expr Builtin) -> m IntermediateSemTok
+getBinderNameToken makeToken depth b = getTokenOfType makeToken nameProvenance depth (typeOf b)
   where
     -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
     -- we just want the provenance of the name.
@@ -300,16 +317,22 @@ makeTokenAnyFile (Provenance (Range (Position sl sc) (Position _el ec)) _) (tTyp
 inBinderContext :: (MonadBoundContext (Expr Builtin) m) => Ix -> m a -> m a
 inBinderContext ix = dropBindersFromContext (Proxy @(Expr Builtin)) (unIx ix + 1)
 
-getBoundVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Ix -> m IntermediateSemTok
-getBoundVarToken makeToken p ix = do
+getBoundVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Ix -> Bool -> BinderDepth -> m IntermediateSemTok
+getBoundVarToken makeToken p ix allowInsertedByCompiler depth = do
   ctx <- getBoundCtx (Proxy @(Expr Builtin))
   case lookupIx ctx ix of
     Nothing -> return Nothing
     Just binder -> do
-      binderNameToken <- inBinderContext ix $ getBinderNameToken makeTokenAnyFile binder
-      case binderNameToken of
-        Nothing -> return Nothing
-        Just tok -> return $ makeToken p ((tok ^. tokenType), (tok ^. tokenModifiers))
+      if not allowInsertedByCompiler && wasInsertedByCompiler binder
+        then return Nothing
+        else do
+          binderNameToken <-
+            Debug.Trace.trace (show $ "resolved " <+> pretty ix <+> " to " <+> prettyVerbose binder <+> " at " <+> pretty (provenanceOf binder) <+> " aka " <+> pretty (show binder)) $
+              inBinderContext ix $
+                getBinderNameToken makeTokenAnyFile depth binder
+          case binderNameToken of
+            Nothing -> return Nothing
+            Just tok -> return $ makeToken p ((tok ^. tokenType), (tok ^. tokenModifiers))
 
 getFreeVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Identifier -> m IntermediateSemTok
 getFreeVarToken makeToken p ident = do
@@ -328,13 +351,13 @@ collectExprTokens makeToken = \case
     exprToks <- addBinderToContext binder $ collectExprTokens makeToken res
     return $ binderToks ++ exprToks
   Builtin p builtin -> collectBuiltinTokens makeToken p builtin
-  BoundVar p ix -> singleton <$> getBoundVarToken makeToken p ix
+  BoundVar p ix -> singleton <$> getBoundVarToken makeToken p ix False 1
   FreeVar p ident -> singleton <$> getFreeVarToken makeToken p ident
   Hole p _name -> pure [makeToken p (SemanticTokenTypes_Decorator, [])]
   Meta p _metaId -> pure [makeToken p (SemanticTokenTypes_TypeParameter, [])]
   App f args -> do
     fnToks <- collectExprTokens makeToken f
-    argsToks <- concat <$> traverse (collectArgTokens makeToken) (NonEmpty.toList args)
+    argsToks <- concat <$> traverse (collectArgTokens makeToken) (filter (not . wasInsertedByCompiler) (NonEmpty.toList args))
     return $ fnToks ++ argsToks
   Let p bound bodyBinder bodyExpr -> do
     let letToks = [makeToken p (SemanticTokenTypes_Keyword, [])]
