@@ -244,7 +244,7 @@ typeOfStackRatTensorWithGradients =
   forAll "n" tNat $ \n ->
     forAllDim Relevant $ \d ->
       forAllDims $ \ds ->
-        iterate (tGradient ~> type0) (accumulateGradient (\g -> tTensor (tRat .@@ [g]) ds)) n (finalTensor d ds)
+        iterate (tGradient ~> type0) (accumulateGradient ds) n (finalTensor d ds)
           @@ [withoutGradients]
   where
     finalTensor d ds =
@@ -252,16 +252,18 @@ typeOfStackRatTensorWithGradients =
         tTensor (tRat .@@ [g]) (dimCons d ds)
 
 accumulateGradient ::
-  (DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)) ->
+  DSLExpr (LossBuiltin mode) ->
   DSLExpr (LossBuiltin mode) ->
   DSLExpr (LossBuiltin mode) ->
   DSLExpr (LossBuiltin mode)
-accumulateGradient elementType recurse base =
-  explLam "g" tGradient $ \accSoFar ->
-    forAllGradients $ \element ->
-      forAllGradients $ \accNext ->
-        maxGradients accSoFar element accNext
-          .~~~> (elementType element ~> (recurse @@ [base]) @@ [accNext])
+accumulateGradient ds recurse base =
+  explLam "g" tGradient $ \maxGradientSoFar ->
+    forAllGradients $ \elementGradient ->
+      forAllGradients $ \newMaxGradient ->
+        maxGradients maxGradientSoFar elementGradient newMaxGradient
+          .~~~> tTensor (tRat .@@ [elementGradient]) ds
+          ~> (recurse @@ [base])
+          @@ [newMaxGradient]
 
 typeOp1 :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOp1 t = t ~> t
