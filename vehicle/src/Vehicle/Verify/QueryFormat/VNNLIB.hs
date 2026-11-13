@@ -81,7 +81,7 @@ compileNetwork (name, info, apps) = do
 compileNetworkApp :: Name -> NetworkType -> Int -> Doc a
 compileNetworkApp networkName networkType appIndex = do
   let equalToDoc
-        | appIndex > 1 = "(equalTo" <+> compileNetworkName networkName 1 <> ")" <> line
+        | appIndex > 1 = "(equal-to" <+> compileNetworkName networkName 1 <> ")" <> line
         | otherwise = ""
   let networkVarName = compileNetworkName networkName appIndex
   let networkInputDocs = case networkTensor networkName networkType appIndex Input of

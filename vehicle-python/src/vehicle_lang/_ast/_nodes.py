@@ -5,9 +5,8 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Generic, Literal, Optional, Sequence
 
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, override
 from typing_extensions import TypeVar as TypingTypeVar
-from typing_extensions import override
 
 from ._decode import JsonValue, decode
 
@@ -189,7 +188,7 @@ class TypeVar(BuiltinType):
 @dataclass(frozen=True)
 class Binder(AST):
     provenance: Provenance = field(repr=False)
-    name: Optional[Name]
+    name: Name
     type: BuiltinType
 
 
@@ -206,15 +205,27 @@ class Lam(Expression):
 
 
 @dataclass(frozen=True)
-class App(Expression):
-    provenance: Provenance = field(repr=False)
-    function: Expression
+class Var(Expression):
+    name: str
     arguments: Sequence[Expression]
 
 
 @dataclass(frozen=True)
-class Var(Expression):
-    name: str
+class Let(Expression):
+    bound: Expression
+    binder: Binder
+    body: Expression
+
+
+@dataclass(frozen=True)
+class Record(Expression):
+    fields: Sequence[tuple[Name, Expression]]
+
+
+@dataclass(frozen=True)
+class RecordAcc(Expression):
+    record: Expression
+    field: Name
     arguments: Sequence[Expression]
 
 
@@ -390,7 +401,15 @@ class SearchRatTensor(Expression):
     dims: Expression
     lower_bound: Expression
     upper_bound: Expression
-    search_lambda: Expression
+    search_lambda: Lam
+
+
+@dataclass(frozen=True)
+class WhereTensor(Expression):
+
+    input_tensor: Expression
+    condition: Expression
+    false_value: Expression
 
 
 @dataclass(frozen=True)
@@ -488,14 +507,65 @@ class Declaration(AST, metaclass=ABCMeta):
 
 @dataclass(frozen=True)
 class DefFunction(Declaration):
-    provenance: Provenance = field(repr=False)
     name: Name
+    lhsBinderCount: int
+    isProperty: bool
     type: BuiltinType
     body: Expression
 
     @override
     def get_name(self) -> Name:
         return self.name
+
+
+@dataclass(frozen=True)
+class DefAbstract(Declaration):
+    name: Name
+    sort: str
+    type: BuiltinType
+
+    @override
+    def get_name(self) -> Name:
+        return self.name
+
+
+################################################################################
+# Boolean Tree
+################################################################################
+
+
+@dataclass(frozen=True)
+class BooleanExpression(AST):
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class BooleanExpression")
+
+
+@dataclass(frozen=True)
+class Conjunct(BooleanExpression):
+    conjunct_all: Sequence[BooleanExpression]
+
+
+@dataclass(frozen=True)
+class Disjunct(BooleanExpression):
+    disjunct_all: Sequence[BooleanExpression]
+
+
+@dataclass(frozen=True)
+class NonTrivialQuery(BooleanExpression):
+    negated: bool
+    disjunct_all: Sequence[Name]
+
+
+@dataclass(frozen=True)
+class TrivialQuery(BooleanExpression):
+    boolean_value: bool
+
+
+@dataclass(frozen=True)
+class BooleanTree(AST):
+    provenance: Provenance = field(repr=False)
+    name: Name
+    boolean_expression: BooleanExpression
 
 
 ################################################################################
@@ -517,3 +587,15 @@ class Program(AST):
 @dataclass(frozen=True)
 class Main(Program):
     declarations: Sequence[Declaration]
+
+
+@dataclass(frozen=True)
+class SearchMain(Program):
+    """
+    Stores properties in a specification in the form of boolean trees which are
+    traversed for counter-example search, and a program including leaves of the
+    trees as boolean expressions and loss.
+    """
+
+    trees: Sequence[BooleanTree]
+    program: Main

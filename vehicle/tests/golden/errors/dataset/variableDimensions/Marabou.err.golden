@@ -1,6 +1,6 @@
 Error in file 'variableDimensions.vcl' at Line 5, Columns 1-16: The type of @parameter 'trainingDataset':
-  Tensor Real [if ( {leTC = <=, ltTC = <, geTC = >=, gtTC = >, eqTC = ==, neTC = !=} ) .gtTC (f (const 0.0 [1]) ! 0) 0.0 then 2 else 3]
+  Tensor Real [if ( {leTC = <=, ltTC = <, geTC = >=, gtTC = >, eqTC = ==, neTC = !=} ).gtTC (f (const 0.0 [1]) ! 0) 0.0 then 2 else 3]
 is not supported as the dimension size
-  if ( {leTC = <=, ltTC = <, geTC = >=, gtTC = >, eqTC = ==, neTC = !=} ) .gtTC (f (const 0.0 [1]) ! 0) 0.0 then 2 else 3
+  if ( {leTC = <=, ltTC = <, geTC = >=, gtTC = >, eqTC = ==, neTC = !=} ).gtTC (f (const 0.0 [1]) ! 0) 0.0 then 2 else 3
 is not a constant.
 Fix: make sure the dimensions of the dataset are all constants.

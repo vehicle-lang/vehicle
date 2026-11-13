@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Rocq",
+    "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "Rocq.v"
+    ]
+  }
+]

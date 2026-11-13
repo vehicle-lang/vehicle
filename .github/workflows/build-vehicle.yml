@@ -15,7 +15,8 @@ jobs:
           - name: "Linux"
             type: ubuntu-latest
           - name: "macOS"
-            type: "macos-latest"
+            # macos-15 rather than macos-latest until actions/runner-images#14940 is fixed; see https://github.com/haskell/cabal/pull/12468.
+            type: macos-15
           - name: "Windows"
             type: "windows-latest"
         haskell:
@@ -147,6 +148,7 @@ jobs:
 
       - name: 🛠️ Configure
         run: |
+          cabal update
           cabal configure --project-file=${{ matrix.haskell.cabal.project-file }}
           cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
 
@@ -155,7 +157,7 @@ jobs:
         if: ${{ !env.ACT }}
         id: cache-haskell
         env:
-          key: ${{ matrix.os.name }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+          key: ${{ matrix.os.name }}-${{ runner.arch }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store }}
           key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
@@ -191,13 +193,9 @@ jobs:
             ${{ matrix.haskell.cabal.extra-args-test-golden }}
         shell: sh
 
-      - name: 🏗️ Install Vehicle
+      - name: 🏗️ Build the Vehicle .exe
         run: |
-          mkdir -p bin
-          cabal install                                             \
-            vehicle:exe:vehicle                                     \
-            --overwrite-policy=always                               \
-            --install-method=copy                                   \
-            --installdir=bin                                        \
-            --project-file=${{ matrix.haskell.cabal.project-file }} \
+          cabal build                                                \
+            vehicle:exe:vehicle                                      \
+            --project-file=${{ matrix.haskell.cabal.project-file }}  \
             ${{ matrix.haskell.cabal.extra-args }}

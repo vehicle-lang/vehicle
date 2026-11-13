@@ -227,6 +227,12 @@ class TensorFlowBuiltins(
         return tf.reduce_max(x)
 
     @override
+    def WhereTensor(
+        self, input: tf.Tensor, condition: tf.Tensor, false_value: tf.Tensor
+    ) -> tf.Tensor:
+        return tf.where(condition=condition, x=input, y=false_value)
+
+    @override
     def Transpose(self, xs: tf.Tensor) -> tf.Tensor:
         return tf.transpose(xs)
 

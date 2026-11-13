@@ -12,7 +12,7 @@ import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Core
-import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
@@ -453,7 +453,7 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
         (VPi binder (Closure env body), args) -> do
           let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
           let recType = Unforced (alterEnv env) body
-          let unnormBinder = quote mempty (boundCtxLv ctx) binder
+          let unnormBinder = unnormalise (boundCtxLv ctx) binder
           instantiateTelescope (unnormBinder : ctx) recType remainingArgs
         (_, []) -> prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
         _ -> "Malformed type-class operation type" <+> prettyVerbose typ <+> "and args" <+> prettyVerbose (fmap fst arguments)

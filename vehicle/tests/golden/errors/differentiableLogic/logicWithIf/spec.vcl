@@ -4,9 +4,9 @@ f : Real -> Real
 -- Cannot compile as it contains an `if` statement.
 CustomLoss : DifferentiableTensorLogic
 CustomLoss =
-  { trueElement                = if f 0 > 0 then 0 else 1
+  { trueElement                = 1
   , falseElement               = 30
-  , pointwiseNegation          = \x -> -x
+  , pointwiseNegation          = \x -> if f 0 > 0 then x else -x
   , pointwiseConjunction       = \x y -> max x y
   , pointwiseDisjunction       = \x y -> min x y
   , pointwiseLessThan          = \x y -> x - y
@@ -18,3 +18,7 @@ CustomLoss =
   , reduceConjunction          = \xs -> reduceMax xs
   , reduceDisjunction          = \xs -> reduceMin xs
   }
+
+@property
+p : Bool
+p = forall x. not (f x > 0)

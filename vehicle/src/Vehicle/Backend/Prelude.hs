@@ -10,6 +10,17 @@ import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Prelude.Logging
 
 --------------------------------------------------------------------------------
+-- Loss Function Mode
+
+data LossFunctionMode
+  = Training
+  | Search
+  deriving (Eq, Show, Read, Bounded, Enum)
+
+instance Pretty LossFunctionMode where
+  pretty = pretty . show
+
+--------------------------------------------------------------------------------
 -- Builtin Differentiable Logics
 
 data BuiltinDifferentiableLogicID
@@ -63,6 +74,7 @@ data SecondaryTypeSystem
   = PolarityTypes
   | LinearityTypes
   | DecidabilityTypes
+  | GradientCarryingTypes
   deriving (Eq, Show, Bounded, Enum)
 
 instance Pretty SecondaryTypeSystem where
@@ -70,12 +82,14 @@ instance Pretty SecondaryTypeSystem where
     PolarityTypes -> "Polarity"
     LinearityTypes -> "Linearity"
     DecidabilityTypes -> "Decidability"
+    GradientCarryingTypes -> "GradientCarryingTypes"
 
 instance Read SecondaryTypeSystem where
   readsPrec _d x = case x of
     "Linearity" -> [(LinearityTypes, [])]
     "Polarity" -> [(PolarityTypes, [])]
     "Decidability" -> [(DecidabilityTypes, [])]
+    "GradientCarryingTypes" -> [(GradientCarryingTypes, [])]
     _ -> []
 
 --------------------------------------------------------------------------------

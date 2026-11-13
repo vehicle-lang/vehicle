@@ -1,1 +1,4 @@
-Error in file 'spec.vcl' at Line 15, Columns 1-20: Loss functions do not yet support compilation of 'CompareIndex' .
+[93m
+Warning: In some cases in @property 'indexOnlyQuantifier' the constraints on quantified variable 'x' consist only of direct bounds, and 'x' is not related to a @network declaration in any way.
+[m
+Error in file 'spec.vcl' at Line 16, Columns 21-29: The body of the quantification over variable 'x' has no constraints that will generate useful gradients.

@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Train",
+    "run": "vehicle typecheck -s spec.vcl",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+
+    ]
+  }
+]

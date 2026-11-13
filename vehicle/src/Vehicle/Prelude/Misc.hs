@@ -235,6 +235,16 @@ instance Pretty InputOrOutput where
 xor :: Bool -> Bool -> Bool
 xor p q = p /= q
 
+dropIndices :: [Int] -> [a] -> [a]
+dropIndices = go 0
+  where
+    go :: Int -> [Int] -> [a] -> [a]
+    go _ [] xs = xs
+    go _ _ [] = []
+    go ci (i : is) (x : xs)
+      | ci == i = go (ci + 1) is xs
+      | otherwise = x : go (ci + 1) (i : is) xs
+
 enumerate :: (Bounded a, Enum a) => [a]
 enumerate = [minBound .. maxBound]
 

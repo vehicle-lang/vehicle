@@ -15,6 +15,8 @@ import Vehicle.Prelude
 
 -- | A monad that is used to store the current context at a given point in a
 -- program, i.e. what declarations and bound variables are in scope.
+--
+-- TODO: can probably parameterise this just by `builtin`
 class (Monad m, MonadReadableNameContext m) => MonadBoundContext expr m where
   addBinderToContext :: GenericBinder expr -> m a -> m a
   getBoundCtx :: Proxy expr -> m (BoundCtx expr)

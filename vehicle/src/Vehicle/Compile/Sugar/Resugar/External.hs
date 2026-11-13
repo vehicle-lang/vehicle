@@ -8,6 +8,7 @@ module Vehicle.Compile.Sugar.Resugar.External
 where
 
 import Control.Monad.Identity (Identity (runIdentity))
+import Data.Bifunctor (Bifunctor (..))
 import Data.Bitraversable (Bitraversable (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe, maybeToList)
@@ -281,6 +282,7 @@ delabBuiltinFunction fun args = case fun of
   V.Iterate -> rawDelab
   V.Transpose -> delabApp (B.Transpose tokTranspose) args
   V.SearchRatTensor {} -> rawDelab
+  V.WhereTensor {} -> rawDelab
   V.ReverseList -> rawDelab
   where
     rawDelab = cheatDelabPretty fun args
@@ -317,10 +319,13 @@ delabConstructor fun args = case fun of
   V.BoolTensorLiteral t -> return $ delabTensor t
 
 delabTensor :: (Pretty a) => Tensor a -> B.Expr
-delabTensor t = cheatDelab $ layoutAsText $ case t of
-  ConstantTensor [] value -> pretty value
-  ConstantTensor shape value -> parens ("const" <+> pretty value <+> pretty shape)
-  denseTensor -> pretty denseTensor
+delabTensor t = case t of
+  ConstantTensor [] value -> cheat value
+  ConstantTensor shape value -> B.App (B.App (cheatDelab "const") (B.ExplicitArg $ cheat value)) (B.ExplicitArg $ cheat shape)
+  denseTensor -> cheat denseTensor
+  where
+    cheat :: (Pretty b) => b -> B.Expr
+    cheat = cheatDelab . layoutAsText . pretty
 
 delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClassOp op args = case op of
@@ -450,14 +455,23 @@ delabSupportedOperations = \case
 
 delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Builtin] -> m B.Expr
 delabQuantifier q args = case reverse args of
-  V.RelevantExplicitArg (V.Lam _ binder body) : _ -> do
-    let (foldedBinders, foldedBody) = foldQuantifierBinders q binder body
-    binders' <- traverse delabNameBinder (binder : foldedBinders)
-    body' <- delabM foldedBody
+  V.RelevantExplicitArg (V.Lam _ binder body) : _rArgs -> do
+    (binders', body') <- case _rArgs of
+      [upperBound, lowerBound] | q == V.Exists -> do
+        -- Special case rendering for when we have just added the domain to the quantifiers in the loss backend.
+        -- Should probably handle this better by adding special syntax for this in the grammar...
+        let bounds = V.normAppList (V.Var mempty "boundedBy") [lowerBound, upperBound]
+        let andExpr = V.normAppList (V.Builtin mempty (V.BuiltinFunction V.And)) [explicit bounds, explicit body]
+        return ([binder], andExpr)
+      _ -> return $ first (binder :) $ foldQuantifierBinders q binder body
+
     let mkTk = case q of
           V.Forall -> B.Forall tokForall
           V.Exists -> B.Exists tokExists
-    return $ mkTk binders' body'
+
+    binders'' <- traverse delabNameBinder binders'
+    body'' <- delabM body'
+    return $ mkTk binders'' body''
   _ -> cheatDelabPretty q args
 
 delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Builtin] -> m B.Expr

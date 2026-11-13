@@ -152,7 +152,7 @@ compilePropertyDecl settings prov typ body = do
     Left err -> throwError $ MultiPropertyTraveralError prov err
     Right result -> return result
 
--- Compiles an individual property of type `Bool`
+-- | Compiles an individual property of type `Bool`
 compileSingleProperty ::
   (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
   CompilationSettings ->
@@ -237,6 +237,7 @@ compileQueries expr = do
     VBoolFoldList {} -> unblock forcedValue
     VCompareIndex {} -> unblock forcedValue
     VCompareNat {} -> unblock forcedValue
+    VBoolParameter {} -> unblock forcedValue
     -----------------
     -- Mixed cases --
     -----------------
@@ -318,8 +319,7 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
 topLevelUnblockingActions :: (Monad m) => UnblockingActions m
 topLevelUnblockingActions =
   UnblockingActions
-    { unblockRatTensorBoundVar = \_ _ -> developerError "No bound variables should exist at top-level",
-      unblockRecordBoundVar = \_ _ -> developerError "No bound variables should exist at top-level",
+    { unblockBoundVar = \_ _ -> developerError "No bound variables should exist at top-level",
       unblockNetworkApp = \_ _ ident args -> return $ IfLeaf $ Forced $ VFreeVar ident (mkExpr accessSpine args),
       unblockDatasetOrParameter = \_ _ -> developerError "Should not be unblocking datasets or parameters"
     }

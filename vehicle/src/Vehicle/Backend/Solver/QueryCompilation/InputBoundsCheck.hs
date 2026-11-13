@@ -18,11 +18,11 @@ import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkModality (..), NetworkName)
 import Vehicle.Data.Bound
-import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
+import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsEliminationWithErrors)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.MaybeTrivial (MonadMaybeTrivial (..))
@@ -191,7 +191,7 @@ checkAllBoundsPresent (Partial allPartialbounds assertions) = do
       Nothing -> errorCase wholeTensorUnbounded
       Just partialBounds -> do
         missingIndicesOrFlattenedBounds <- case varShape of
-          UniModal {} -> fourierMotzkinTensorBoundsElimination partialBounds
+          UniModal {} -> fourierMotzkinTensorBoundsEliminationWithErrors partialBounds
           MultiModal _partialShapes -> error "MultiModal IO is not implmeneted yet"
         case missingIndicesOrFlattenedBounds of
           Right bounds -> return $ Right (BoundedValue var bounds)
@@ -226,7 +226,7 @@ checkAllBoundsPresent (Partial allPartialbounds assertions) = do
 
 findUnboundedVariables :: Lv -> NetworkApplicationInfo -> [Lv]
 findUnboundedVariables ctxSize appInfo = do
-  let inputExpr = (quote mempty ctxSize $ inputValue appInfo :: Expr Builtin)
+  let inputExpr = (unnormalise ctxSize $ inputValue appInfo :: Expr Builtin)
   -- TODO we actually need to do this recursively on any network variables that
   -- live in this set.
   Set.toList $ boundVariablesIn ctxSize inputExpr

@@ -225,6 +225,12 @@ class PyTorchBuiltins(
         return torch.max(x)
 
     @override
+    def WhereTensor(
+        self, input: torch.Tensor, condition: torch.Tensor, false_value: torch.Tensor
+    ) -> torch.Tensor:
+        return torch.where(condition=condition, input=input, other=false_value)
+
+    @override
     def DimensionCons(self, head: int, tail: Sequence[int]) -> tuple[int, ...]:
         return (head, *tail)
 

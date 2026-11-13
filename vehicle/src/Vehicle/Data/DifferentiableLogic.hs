@@ -40,15 +40,10 @@ data TensorDifferentiableLogicField
   | PointwiseNegation
   | PointwiseConjunction
   | PointwiseDisjunction
-  | PointwiseLe
-  | PointwiseLt
-  | PointwiseGe
-  | PointwiseGt
-  | PointwiseEq
-  | PointwiseNe
+  | PointwiseComparison ComparisonOp
   | ReduceConjunction
   | ReduceDisjunction
-  deriving (Eq, Ord, Show, Generic, Enum, Bounded)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Pretty TensorDifferentiableLogicField where
   pretty = pretty . show
@@ -60,28 +55,20 @@ instance HasName TensorDifferentiableLogicField Name where
     PointwiseNegation -> "pointwiseNegation"
     PointwiseConjunction -> "pointwiseConjunction"
     PointwiseDisjunction -> "pointwiseDisjunction"
-    PointwiseLe -> "pointwiseLessEqualThan"
-    PointwiseLt -> "pointwiseLessThan"
-    PointwiseGe -> "pointwiseGreaterEqualThan"
-    PointwiseGt -> "pointwiseGreaterThan"
-    PointwiseEq -> "pointwiseEqual"
-    PointwiseNe -> "pointwiseNotEqual"
+    PointwiseComparison Lt -> "pointwiseLessThan"
+    PointwiseComparison Le -> "pointwiseLessEqualThan"
+    PointwiseComparison Gt -> "pointwiseGreaterThan"
+    PointwiseComparison Ge -> "pointwiseGreaterEqualThan"
+    PointwiseComparison Eq -> "pointwiseEqual"
+    PointwiseComparison Ne -> "pointwiseNotEqual"
     ReduceConjunction -> "reduceConjunction"
     ReduceDisjunction -> "reduceDisjunction"
-
-comparisonOpToField :: ComparisonOp -> TensorDifferentiableLogicField
-comparisonOpToField = \case
-  Le -> PointwiseLe
-  Lt -> PointwiseLt
-  Ge -> PointwiseGe
-  Gt -> PointwiseGt
-  Eq -> PointwiseEq
-  Ne -> PointwiseNe
 
 --------------------------------------------------------------------------------
 -- Tensor implementation
 
-type DifferentiableLogicImplementation = Map TensorDifferentiableLogicField (Expr LossBuiltin)
+type DifferentiableLogicImplementation mode =
+  Map TensorDifferentiableLogicField (Expr (LossBuiltin mode))
 
 elementLogicName :: Name
 elementLogicName = "DifferentiableElementLogic"

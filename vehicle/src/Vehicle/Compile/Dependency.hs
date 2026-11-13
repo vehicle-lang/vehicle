@@ -6,6 +6,7 @@ module Vehicle.Compile.Dependency
     topologicalSort,
     DependencyGraph,
     createDependencyGraph,
+    createAdjacencyGraph,
     pruneUnusedDeclarations,
     completelyUnusedDeclarations,
   )
@@ -16,13 +17,13 @@ import Data.Foldable (traverse_)
 import Data.Graph (Graph, Vertex, dfs, graphFromEdges, indegree, vertices)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set (difference, fromList, notMember, toList)
 import Data.Tree qualified as Tree
 import GHC.Arr ((!))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Builtin.Standard
 
 --------------------------------------------------------------------------------
 -- Adjacency graph
@@ -48,7 +49,7 @@ topologicalSort :: (Ord value, Pretty value) => value -> AdjacencyGraph value ->
 topologicalSort key adjGraph = do
   let DependencyGraph {..} = fromEdges adjGraph
   case dfs graph [vertexFromIdent key] of
-    [e] -> identFromVertex <$> Tree.flatten e
+    [e] -> reverse (identFromVertex <$> Tree.flatten e)
     _ -> developerError "unexpected result from Graph.dfs"
 
 --------------------------------------------------------------------------------
@@ -83,19 +84,25 @@ fromEdges (AdjacencyGraph outEdges) = do
 --------------------------------------------------------------------------------
 -- Constructing the dependency graph
 
-createDependencyGraph :: [Decl builtin] -> DependencyGraph Identifier
-createDependencyGraph ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDecl ds
+createDependencyGraph :: [Decl Builtin] -> DependencyGraph Identifier
+createDependencyGraph ds = fromEdges $ createAdjacencyGraph ds
+
+createAdjacencyGraph :: [Decl Builtin] -> AdjacencyGraph Identifier
+createAdjacencyGraph ds = AdjacencyGraph $ Map.fromList $ fmap goDecl ds
   where
-    goDecl :: Decl builtin -> (Identifier, Set Identifier)
+    goDecl :: Decl Builtin -> (Identifier, Set Identifier)
     goDecl d = (identifierOf d, execWriter (traverse_ go d))
 
-    go :: (MonadWriter (Set Identifier) m) => Expr builtin -> m ()
+    go :: (MonadWriter (Set Identifier) m) => Expr Builtin -> m ()
     go = \case
       BoundVar {} -> return ()
       Universe {} -> return ()
       Meta {} -> return ()
       Hole {} -> return ()
-      Builtin {} -> return ()
+      Builtin _ b -> case b of
+        DerivedFunction f -> do
+          tell [identifierOf f]
+        _ -> return ()
       FreeVar _ v -> do
         tell [v]
         return ()
@@ -109,7 +116,7 @@ createDependencyGraph ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDe
 --------------------------------------------------------------------------------
 -- Completely unused declarations
 
-completelyUnusedDeclarations :: [Decl builtin] -> Set Identifier
+completelyUnusedDeclarations :: [Decl Builtin] -> Set Identifier
 completelyUnusedDeclarations decls = do
   let DependencyGraph {..} = createDependencyGraph decls
   let indegrees = indegree graph
@@ -121,35 +128,31 @@ completelyUnusedDeclarations decls = do
 
 pruneUnusedDeclarations ::
   (MonadCompile m) =>
-  Prog builtin ->
-  m (Prog builtin)
-pruneUnusedDeclarations prog@(Main decls) = do
+  (Decl Builtin -> Bool) ->
+  Prog Builtin ->
+  m (Prog Builtin)
+pruneUnusedDeclarations isRootDecl prog@(Main decls) = do
   logCompilerSection2 MinDetail "pruning unused declarations" $ do
     -- Prune all standard-library declarations that aren't used.
-    let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) decls
+    let declsToCompile = filter isRootDecl decls
     if null declsToCompile
       then return prog
       else do
         let dependencyGraph = createDependencyGraph decls
-
-        let startingVertices = flip fmap declsToCompile $ \name -> do
-              let ident = Identifier userModulePath name
-              vertexFromIdent dependencyGraph ident
-
-        let declsToPrune = notReachableFrom dependencyGraph startingVertices
-        logDebug MaxDetail $ "Pruning:" <+> indent 2 (prettySet pretty declsToPrune)
-
+        let startingVertices = fmap identifierOf declsToCompile
+        declsToPrune <- notReachableFrom dependencyGraph startingVertices
+        logDebug MidDetail $ "Pruning:" <+> lineIndent (prettySet pretty declsToPrune)
         return $ pruneProg prog declsToPrune
 
-pruneProg :: Prog builtin -> Set Identifier -> Prog builtin
+pruneProg :: Prog Builtin -> Set Identifier -> Prog Builtin
 pruneProg (Main ds) declsToPrune = Main $ filter keepDecl ds
   where
     keepDecl :: Decl expr -> Bool
     keepDecl d = identifierOf d `Set.notMember` declsToPrune
 
-notReachableFrom :: DependencyGraph Identifier -> [Vertex] -> Set Identifier
+notReachableFrom :: (MonadLogger m) => DependencyGraph Identifier -> [Identifier] -> m (Set Identifier)
 notReachableFrom DependencyGraph {..} origin = do
-  let forest = dfs graph origin
+  let forest = dfs graph $ fmap vertexFromIdent origin
   let reachableIdents = Set.fromList $ concatMap (fmap identFromVertex . Tree.flatten) forest
   let allIdents = Set.fromList $ fmap identFromVertex (vertices graph)
-  Set.difference allIdents reachableIdents
+  return $ Set.difference allIdents reachableIdents

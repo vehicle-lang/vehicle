@@ -9,7 +9,7 @@ import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (getDeclType)
+import Vehicle.Compile.Type.Monad.Class (prependMissingFreeVarImplicitArgs)
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface.Type
@@ -186,7 +186,7 @@ typeOp2 t = t ~> t ~> t
 --------------------------------------------------------------------------------
 
 instance HasTypeSystem DecidabilityBuiltin where
-  convertFromStandardBuiltins x = traverseFreeVarsM (const id) convertToDecidabilityFreeVars =<< traverseBuiltinsM convertToDecidabilityBuiltins x
+  convertFromStandardBuiltins decl = prependMissingFreeVarImplicitArgs =<< traverse (traverseBuiltinsM convertToDecidabilityBuiltins) decl
   restrictDeclType = restrictDecidabilityDeclType
   restrictRecordAnnotatedAsTensor = restrictDecidabilityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = False
@@ -194,26 +194,6 @@ instance HasTypeSystem DecidabilityBuiltin where
   solveAuxiliaryInstanceConstraint _ = return ()
   addAuxiliaryInputOutputConstraints = return
   generateDefaultAuxiliaryConstraint _ = return False
-
-convertToDecidabilityFreeVars ::
-  forall m.
-  (MonadTypeChecker DecidabilityBuiltin m) =>
-  FreeVarUpdate m DecidabilityBuiltin
-convertToDecidabilityFreeVars f p ident args = do
-  declType <- getDeclType (Proxy @DecidabilityBuiltin) ident
-  args' <- traverseArgs f args
-  finalArgs <- insertNewArgs args' declType
-  return $ normAppList (FreeVar p ident) finalArgs
-  where
-    -- For each leading auto-generalised implicit Pi binder, consume the
-    -- matching implicit from the spine.
-    insertNewArgs :: [Arg DecidabilityBuiltin] -> Type DecidabilityBuiltin -> m [Arg DecidabilityBuiltin]
-    insertNewArgs as = \case
-      Pi _ binder result | wasInsertedByCompiler binder && isImplicit binder ->
-        case as of
-          a : rest -> (a :) <$> insertNewArgs rest result
-          [] -> return as
-      _ -> return as
 
 convertToDecidabilityBuiltins ::
   forall m.
@@ -263,7 +243,8 @@ convertToDecidabilityBuiltins p b args = return $
         Transpose -> sameFunction f
         StackTensor -> sameFunction f
         ConstTensor -> sameFunction f
-        SearchRatTensor {} -> sameFunction f
+        SearchRatTensor {} -> developerError "Should not encounter SearchRatTensor as only created internally"
+        WhereTensor {} -> developerError "Should not encounter WhereTensor as only created internally"
     BuiltinConstructor c -> do
       let original = normAppList (Builtin p (StandardBuiltinConstructor c)) args
       case c of

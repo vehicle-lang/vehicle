@@ -9,13 +9,9 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "f₁[output]!0",
                   "f₁[output]",
-                  "f₁[input]!0",
                   "f₁[input]",
-                  "f₀[output]!0",
                   "f₀[output]",
-                  "f₀[input]!0",
                   "f₀[input]",
                   "x"
                 ],
@@ -23,8 +19,8 @@
                   0
                 ],
                 "queryVariableMapping": {
-                  "y0": 4,
-                  "x0": 2
+                  "y0": 2,
+                  "x0": 1
                 }
               },
               "variableCompilationTrace": {
@@ -35,9 +31,7 @@
                       {
                         "nestedTensorShape": {
                           "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
+                          "contents": []
                         },
                         "nestedStartingVariable": 1
                       },
@@ -50,11 +44,9 @@
                       {
                         "nestedTensorShape": {
                           "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
+                          "contents": []
                         },
-                        "nestedStartingVariable": 3
+                        "nestedStartingVariable": 2
                       },
                       "AllDimensions"
                     ]
@@ -65,19 +57,15 @@
                       {
                         "nestedTensorShape": {
                           "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
+                          "contents": []
                         },
-                        "nestedStartingVariable": 7
+                        "nestedStartingVariable": 4
                       },
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
                           "contents": [
-                            [
-                              1
-                            ],
+                            [],
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -86,7 +74,7 @@
                         },
                         "coefficients": [
                           [
-                            3,
+                            2,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -102,19 +90,15 @@
                       {
                         "nestedTensorShape": {
                           "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
+                          "contents": []
                         },
-                        "nestedStartingVariable": 5
+                        "nestedStartingVariable": 3
                       },
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
                           "contents": [
-                            [
-                              1
-                            ],
+                            [],
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -156,7 +140,7 @@
                         },
                         "coefficients": [
                           [
-                            2,
+                            1,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -187,9 +171,7 @@
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
-                            "dimensions": [
-                              1
-                            ],
+                            "dimensions": [],
                             "baseType": []
                           }
                         }
@@ -199,9 +181,7 @@
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
-                            "dimensions": [
-                              1
-                            ],
+                            "dimensions": [],
                             "baseType": []
                           }
                         }
@@ -216,13 +196,9 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "f₁[output]!0",
                   "f₁[output]",
-                  "f₁[input]!0",
                   "f₁[input]",
-                  "f₀[output]!0",
                   "f₀[output]",
-                  "f₀[input]!0",
                   "f₀[input]",
                   "x"
                 ],
@@ -230,8 +206,8 @@
                   0
                 ],
                 "queryVariableMapping": {
-                  "y0": 4,
-                  "x0": 2
+                  "y0": 2,
+                  "x0": 1
                 }
               },
               "variableCompilationTrace": {
@@ -242,9 +218,7 @@
                       {
                         "nestedTensorShape": {
                           "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
+                          "contents": []
                         },
                         "nestedStartingVariable": 1
                       },
@@ -257,11 +231,9 @@
                       {
                         "nestedTensorShape": {
                           "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
+                          "contents": []
                         },
-                        "nestedStartingVariable": 3
+                        "nestedStartingVariable": 2
                       },
                       "AllDimensions"
                     ]
@@ -272,19 +244,15 @@
                       {
                         "nestedTensorShape": {
                           "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
+                          "contents": []
                         },
-                        "nestedStartingVariable": 7
+                        "nestedStartingVariable": 4
                       },
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
                           "contents": [
-                            [
-                              1
-                            ],
+                            [],
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -293,7 +261,7 @@
                         },
                         "coefficients": [
                           [
-                            3,
+                            2,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -309,19 +277,15 @@
                       {
                         "nestedTensorShape": {
                           "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
+                          "contents": []
                         },
-                        "nestedStartingVariable": 5
+                        "nestedStartingVariable": 3
                       },
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
                           "contents": [
-                            [
-                              1
-                            ],
+                            [],
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -363,7 +327,7 @@
                         },
                         "coefficients": [
                           [
-                            2,
+                            1,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -394,9 +358,7 @@
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
-                            "dimensions": [
-                              1
-                            ],
+                            "dimensions": [],
                             "baseType": []
                           }
                         }
@@ -406,9 +368,7 @@
                         "contents": {
                           "tag": "TensorIOType",
                           "contents": {
-                            "dimensions": [
-                              1
-                            ],
+                            "dimensions": [],
                             "baseType": []
                           }
                         }

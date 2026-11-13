@@ -65,10 +65,10 @@ typeCheckDecl uncheckedDecl isUnused =
   logCompileDecl "typing" uncheckedDecl $ do
     logDebug MidDetail $ prettyExternal uncheckedDecl <> line
 
-    convertedDecl <- logCompilerSection MaxDetail "Converting builtins" $ do
-      traverse convertFromStandardBuiltins uncheckedDecl
-
-    logDebug MidDetail $ prettyExternal convertedDecl
+    convertedDecl <- logCompilerSection2 MidDetail "conversion of builtins" $ do
+      result <- convertFromStandardBuiltins uncheckedDecl
+      logDebug MidDetail $ "Result:" <> lineIndent (prettyExternal result)
+      return result
 
     setCurrentDecl $ Just (convertedDecl, isUnused)
 
@@ -123,14 +123,14 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
   checkedType <- checkDeclType ident typ
   finalCheckedType <-
     if isAnnotatedAsProperty anns
-      then logCompilerSection2 MidDetail "checking suitability of type as @property" $ do
+      then logCompilerSection2 MaxDetail "checking suitability of type as @property" $ do
         restrictDeclType RestrictedProperty (ident, p) checkedType
       else return checkedType
 
   -- Type check the body.
   let pass = bidirectionalPassDoc <+> "body of" <+> quotePretty ident
   checkedBody <-
-    logCompilerSection2 MidDetail pass $
+    logCompilerSection2 MaxDetail pass $
       checkExprType mempty Relevant finalCheckedType body
 
   -- Reconstruct the function.
@@ -172,11 +172,11 @@ typeCheckRecordDef p ident anns uncheckedTelescope uncheckedFields operations is
   -- Type check the body.
   let pass = bidirectionalPassDoc <+> "fields of" <+> quotePretty ident
   (checkedTelescope, checkedFields) <-
-    logCompilerSection2 MidDetail pass $
+    logCompilerSection2 MaxDetail pass $
       checkRecordDefinition uncheckedTelescope uncheckedFields
 
   when (isAnnotatedAsTensor anns) $
-    logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
+    logCompilerSection2 MaxDetail "checking suitability of type as @tensor" $ do
       restrictRecordAnnotatedAsTensor (ident, p) checkedFields
 
   -- Reconstruct the function.
@@ -190,7 +190,8 @@ typeCheckRecordDef p ident anns uncheckedTelescope uncheckedFields operations is
 checkDeclType :: (TCM builtin m, HasName name Name) => name -> Type builtin -> m (Type builtin)
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty (nameOf ident)
-  logCompilerSection2 MidDetail pass $ do
+  logDebug MaxDetail ""
+  logCompilerSection2 MaxDetail pass $ do
     checkExprType mempty Relevant (TypeUniverse mempty 0) declType
 
 restrictAbstractDefType ::
@@ -201,7 +202,7 @@ restrictAbstractDefType ::
   m (Type builtin)
 restrictAbstractDefType resource decl@(ident, _) defType = do
   let resourceName = pretty resource <+> quotePretty ident
-  logCompilerSection2 MidDetail ("checking suitability of the type of" <+> resourceName) $ do
+  logCompilerSection2 MaxDetail ("checking suitability of the type of" <+> resourceName) $ do
     case resource of
       ParameterDef sort -> restrictDeclType (RestrictedParameter sort) decl defType
       DatasetDef -> restrictDeclType RestrictedDataset decl defType
@@ -215,7 +216,7 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
 solveConstraints :: forall builtin m. (TCM builtin m) => Proxy builtin -> m ()
-solveConstraints proxy = logCompilerSection2 MidDetail "constraint solving" $ do
+solveConstraints proxy = logCompilerSection2 MaxDetail "constraint solving" $ do
   sortConstraints
   loopOverConstraints 1
   where
@@ -259,19 +260,19 @@ solveConstraints proxy = logCompilerSection2 MidDetail "constraint solving" $ do
     tryToUnstick :: (TCM builtin m) => m Bool
     tryToUnstick = do
       -- First try to increase the depth limit for instance search
-      solvedMetas <- logCompilerSection2 MidDetail "trying to increase the depth for instance search" $ do
+      solvedMetas <- logCompilerSection2 MaxDetail "trying to increase the depth for instance search" $ do
         trackSolvedMetas proxy $ runInstanceSolver proxy 1
 
       if not (MetaSet.null solvedMetas)
         then return True
         else do
           -- Then if that fails try to use default instances
-          success <- logCompilerSection2 MidDetail "trying to generate a new constraint using instance defaults" $ do
+          success <- logCompilerSection2 MaxDetail "trying to generate a new constraint using instance defaults" $ do
             addNewInstanceConstraintUsingDefaults proxy
 
           if success
             then return True
-            else logCompilerSection2 MidDetail "trying to generate a new constraint using instance defaults" $ do
+            else logCompilerSection2 MaxDetail "trying to generate a new constraint using instance defaults" $ do
               -- Then if that fails try to use default auxiliary instances
               generateDefaultAuxiliaryConstraint proxy
 

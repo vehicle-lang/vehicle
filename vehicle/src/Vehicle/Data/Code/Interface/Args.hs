@@ -4,9 +4,9 @@
 module Vehicle.Data.Code.Interface.Args where
 
 import Data.Hashable (Hashable)
+import Data.Vector.Internal.Check (HasCallStack)
 import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Variable.Bound.Level (Lv)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -18,7 +18,6 @@ class IsArgs args where
 
 class HasLambdaConstructor expr thunk closure | expr -> thunk, thunk -> expr, thunk -> closure where
   accessForcedLamC :: Accessor (thunk builtin) (GenericBinder (thunk builtin), closure builtin)
-  accessBoundVarC :: Accessor (expr builtin) (Lv, [GenericArg (thunk builtin)])
 
 --------------------------------------------------------------------------------
 -- Op1Args
@@ -617,9 +616,9 @@ accessQuantifyRatTensorSpine ::
 accessQuantifyRatTensorSpine =
   Access
     { getExpr = \case
-        (fmap argExpr -> [pDims, bDims, fn]) -> case getExpr accessForcedLamC fn of
-          Just (binder, body) -> Just (QuantifyRatTensorArgs pDims bDims binder body)
-          _ -> Nothing
+        (fmap argExpr -> [pDims, bDims, fn]) -> do
+          let (binder, body) = accessLambda fn
+          Just (QuantifyRatTensorArgs pDims bDims binder body)
         _ -> Nothing,
       mkExpr = \(QuantifyRatTensorArgs pDims bDims binder body) ->
         [ implicit pDims,
@@ -627,6 +626,11 @@ accessQuantifyRatTensorSpine =
           explicit (mkExpr accessForcedLamC (binder, body))
         ]
     }
+
+accessLambda :: (HasCallStack, HasLambdaConstructor expr thunk closure) => thunk builtin -> (GenericBinder (thunk builtin), closure builtin)
+accessLambda fn = case getExpr accessForcedLamC fn of
+  Just (binder, body) -> (binder, body)
+  Nothing -> developerError "expected search/quantifier function to be a lambda"
 
 -- | Arguments for `QuantifyRecord`
 data QuantifyRecordArgs expr body = QuantifyRecordArgs
@@ -749,5 +753,67 @@ instance IsArgs SearchRatTensorArgs where
             explicit lower,
             explicit upper,
             explicit predicate
+          ]
+      }
+
+--------------------------------------------------------------------------------
+-- WhereArgs
+
+data WhereTensorArgs expr = WhereTensorArgs
+  { whereDims :: expr,
+    whereInput :: expr,
+    whereCondition :: expr,
+    whereValue :: expr
+  }
+
+instance IsArgs WhereTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [dims, input, cond, value]) ->
+            Just $
+              WhereTensorArgs
+                { whereDims = dims,
+                  whereInput = input,
+                  whereCondition = cond,
+                  whereValue = value
+                }
+          _ -> Nothing,
+        mkExpr = \(WhereTensorArgs dims input cond value) ->
+          [ implicitIrrelevant dims,
+            explicit input,
+            explicit cond,
+            explicit value
+          ]
+      }
+
+--------------------------------------------------------------------------------
+-- FromBoolTensorToRatTensor (loss builtins)
+
+data FromBoolTensorToRatTensorArgs expr = FromBoolTensorToRatTensorArgs
+  { fromBoolTensorToRatTensorDims :: expr,
+    fromBoolTensorToRatTensorTrue :: expr,
+    fromBoolTensorToRatTensorFalse :: expr,
+    fromBoolTensorToRatTensorTensor :: expr
+  }
+
+instance IsArgs FromBoolTensorToRatTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [dims, trueValue, falseValue, tensor]) ->
+            Just $
+              FromBoolTensorToRatTensorArgs
+                { fromBoolTensorToRatTensorDims = dims,
+                  fromBoolTensorToRatTensorTrue = trueValue,
+                  fromBoolTensorToRatTensorFalse = falseValue,
+                  fromBoolTensorToRatTensorTensor = tensor
+                }
+          _ -> Nothing,
+        mkExpr = \(FromBoolTensorToRatTensorArgs dims trueValue falseValue tensor) ->
+          [ implicitIrrelevant dims,
+            explicit trueValue,
+            explicit falseValue,
+            explicit tensor
           ]
       }

@@ -13,7 +13,7 @@ This folder contains the following files:
 
 - `rocqProof/SafetyProof.v` - the Rocq proof the car never leaves the road.
 
-- `isabelleProof/SafetyProof.v` - the Isabelle proof the car never leaves the road.
+- `isabelleProof/SafetyProof.thy` - the Isabelle proof the car never leaves the road.
 
 ## Verifying using Marabou
 
@@ -32,7 +32,7 @@ which can then be used by Agda in the next step.
 
 The intermediate Marabou queries can be found in `examples/windController/verificationResult`.
 
-## Compiling to specification to an ITP backend
+## Compiling the specification to an ITP backend
 
 ### Rocq
 

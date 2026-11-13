@@ -1,20 +1,21 @@
 [
   {
-    "name": "DefaultOnlyProperty",
-    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DefaultOnlyProperty.vcl",
+    "name": "DL2Loss",
+    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl --declaration belowOne",
     "needs": ["spec.vcl"],
-    "produces": ["DefaultOnlyProperty.vcl"]
+    "produces": ["DL2Loss.vcl"]
   },
   {
-    "name": "NonPropertyOnly",
-    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o NonPropertyOnly.vcl --declaration predicted",
+    "name": "Agda",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
-    "produces": ["NonPropertyOnly.vcl"]
+    "produces": ["Agda.agda"]
   },
   {
-    "name": "PropertyAndNonProperty",
-    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o PropertyAndNonProperty.vcl --declaration predicted --declaration belowOne",
+    "name": "AgdaVerify",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda && agda -v0 -WnoUnsupportedIndexedMatch -i . -l vehicle-0.1.0 Agda.agda",
     "needs": ["spec.vcl"],
-    "produces": ["PropertyAndNonProperty.vcl"]
+    "external": ["agda"],
+    "ignore": {"files": ["Agda.agda", "Agda.agdai"]}
   }
 ]

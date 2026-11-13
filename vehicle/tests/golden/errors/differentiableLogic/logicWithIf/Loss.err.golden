@@ -1,1 +1,2 @@
-Error in file 'spec.vcl' at Line 5, Columns 1-11: Loss functions do not yet support compilation of 'if' .
+Error in file 'spec.vcl' at Line 9, Columns 40-42: Cannot compile `if` statements whose condition contains useful gradient information
+Fix: rewrite the specification to avoid using an `if` or move it to a location where it can be be lifted automatically to the Boolean level and eliminated.

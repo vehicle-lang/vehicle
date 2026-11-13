@@ -1,3 +1,0 @@
-@property;
-numSteps : Nat;
-numSteps = 10

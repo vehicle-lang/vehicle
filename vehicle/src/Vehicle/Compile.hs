@@ -9,24 +9,24 @@ where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
-import Data.Set qualified as Set
 import System.Directory (makeAbsolute)
 import Vehicle.Backend.ITP.Agda
 import Vehicle.Backend.ITP.Imandra
 import Vehicle.Backend.ITP.Isabelle
 import Vehicle.Backend.ITP.Rocq
-import Vehicle.Backend.Loss (convertToLossTensors)
 import Vehicle.Backend.Loss.JSON
+import Vehicle.Backend.LossSearch (convertToSearchTree)
+import Vehicle.Backend.LossTraining (convertToLossTensors)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Solver
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
-import Vehicle.Compile.Prelude as CompilePrelude
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
-import Vehicle.Data.Builtin.Interface.Print (ConvertableBuiltin (..), PrintableBuiltin)
+import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
@@ -42,7 +42,8 @@ data CompileOptions
   deriving (Show, Eq)
 
 data LossOptions = LossOptions
-  { differentiableLogicID :: DifferentiableLogicID,
+  { lossFunctionMode :: LossFunctionMode,
+    differentiableLogicID :: DifferentiableLogicID,
     specification :: FilePath,
     declarationsToCompile :: DeclarationNames,
     outputFile :: Maybe FilePath
@@ -159,20 +160,47 @@ compileToLossFunction ::
   Prog Builtin ->
   OutputAsJSON ->
   m ()
-compileToLossFunction LossOptions {..} typedProg outputAsJSON = do
-  let requestedDecls = Set.fromList declarationsToCompile
-  lossTensorProg <- convertToLossTensors differentiableLogicID requestedDecls typedProg
+compileToLossFunction LossOptions {..} typedProg outputAsJSON =
+  if lossFunctionMode == Training
+    then compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON
+    else compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON
+
+compileToTrainingLoss ::
+  forall m.
+  (MonadCompile m, MonadStdIO m) =>
+  DifferentiableLogicID ->
+  Maybe FilePath ->
+  Prog Builtin ->
+  OutputAsJSON ->
+  m ()
+compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON = do
+  lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
   hoistedProg <- hoistInferableParameters lossTensorProg
   functionalisedProg <- functionaliseResources hoistedProg
-  builtinProg <- traverse (traverseBuiltinsM toStandardBuiltins) functionalisedProg
-  jsonProg <- convertToJSONProg builtinProg
+  jsonProg <- convertToJSONProg functionalisedProg
   let outputText
         | outputAsJSON = prettyAsJSON jsonProg
         | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
   writeResultToFile Nothing outputFile outputText
-  where
-    toStandardBuiltins p b args =
-      return $ normAppList (convertBuiltin p b :: Expr Builtin) args
+
+compileToSearchLoss ::
+  forall m.
+  (MonadCompile m, MonadStdIO m) =>
+  DifferentiableLogicID ->
+  Maybe FilePath ->
+  Prog Builtin ->
+  OutputAsJSON ->
+  m ()
+compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON = do
+  (booleanTrees, boolDecls, domainExtractedProg) <- convertToSearchTree typedProg
+  -- boolDecls are not converted into loss
+  lossTensorProg <- convertToLossTensors differentiableLogicID domainExtractedProg
+  let searchProg = Main (programDeclarations lossTensorProg ++ boolDecls)
+  jsonSearchProg <- convertToJSONSearchProg (booleanTrees, searchProg)
+  let outputText
+        | outputAsJSON = prettyAsJSON jsonSearchProg
+        | otherwise = prettyFriendly (snd (convertFromJSONSearchProg jsonSearchProg))
+  writeResultToFile Nothing outputFile outputText
 
 hoistInferableParameters ::
   (MonadCompile m, PrintableBuiltin builtin) =>
@@ -181,7 +209,7 @@ hoistInferableParameters ::
 hoistInferableParameters (Main ds) =
   logCompilerSection2 MinDetail "hoisting inferable parameters" $ do
     (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
-    logDebug MaxDetail $ "Hoisted parameters:" <> lineIndent (vsep $ fmap prettyFriendly inferableParameters)
+    logDebug MidDetail $ "Hoisted parameters:" <+> if null inferableParameters then "none" else lineIndent (vsep $ fmap prettyFriendly inferableParameters)
     return $ Main (inferableParameters <> otherDecls)
   where
     goDecls :: (MonadWriter [Decl builtin] m) => [Decl builtin] -> m [Decl builtin]

@@ -107,6 +107,12 @@ typeOfBuiltinFunction = \case
         ~> tRatTensor dims
         ~> (tRatTensor dims ~> tRatTensor dimNil)
         ~> tRatTensor dims
+  WhereTensor ->
+    forAllDims $ \dims ->
+      tRatTensor dims
+        ~> tBoolTensor dims
+        ~> tRatTensor dimNil
+        ~> tRatTensor dims
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case

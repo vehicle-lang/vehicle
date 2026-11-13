@@ -10,9 +10,6 @@ typeAnn t a = a
 -- Bool
 --------------------------------------------------------------------------------
 
-implies : Tensor Bool dims -> Tensor Bool dims -> Tensor Bool dims
-implies x y = (not x) or y
-
 forallInList : (A -> Bool) -> List A -> Bool
 forallInList f xs = fold (\x y -> x and y) True (map f xs)
 
@@ -299,8 +296,8 @@ DL2Loss =
   , pointwiseLessEqualThan     = \{dims} x y -> max (const 0 dims) (x - y)
   , pointwiseGreaterThan       = \{dims} x y -> max (const 0 dims) (y - x)
   , pointwiseGreaterEqualThan  = \{dims} x y -> max (const 0 dims) (y - x)
-  , pointwiseEqual             = \{dims} x y -> - (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
-  , pointwiseNotEqual          = \{dims} x y -> (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
+  , pointwiseEqual             = \x y -> max (x - y) (y - x)
+  , pointwiseNotEqual          = \{dims} x y -> (const 1 dims) / max (x - y) (y - x)
   , reduceConjunction          = \xs -> reduceAdd xs
   , reduceDisjunction          = \xs -> reduceMul xs
   }

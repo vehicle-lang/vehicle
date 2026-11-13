@@ -83,12 +83,7 @@ The following operations over tensors are currently supported:
      - ``foreach i . e``
      - | ``(Index d → Tensor A ds) →``
        | ``Tensor A [d, ds]``
-     - | |backendloss_part|
-       | |backendverification_full|
-       | |backendagda_full|
-       | |backendrocq_full|
-       | |backendimandra_full|
-       | |backendisabelle_full|
+     - |backendall_full|
    * - Comparisons
      - | ``x < y``
        | ``x > y``
@@ -235,7 +230,7 @@ The following operations over tensors are currently supported:
        | ``Tensor A (reverse ds)``
      - | |backendloss_full|
        | |backendverification_full|
-       | |backendagda_full|
+       | |backendagda_easy|
        | |backendrocq_part| (:ref:`⤴ <exporting-rocq-transpose-limitation>`)
        | |backendimandra_full|
        | |backendisabelle_full|

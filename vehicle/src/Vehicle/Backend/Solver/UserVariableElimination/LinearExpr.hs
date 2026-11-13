@@ -69,8 +69,9 @@ compile toVar shape = go
         VRatTensorLiteral tensor -> case toFiniteRatTensor tensor of
           Nothing -> developerError "Infinite values not supported in query backend"
           Just finiteTensor -> return $ constantExpr finiteTensor
-        VRatTensorBoundVar lv -> do
-          singletonVarExpr (ConstantTensor shape 0) <$> toVar lv
+        VRatTensorBoundVar lv spine -> case spine of
+          [] -> singletonVarExpr (ConstantTensor shape 0) <$> toVar lv
+          _ : _ -> unexpectedExprError "purification" "BoundVar with spine"
         ---------------------
         -- Inductive cases --
         ---------------------

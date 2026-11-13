@@ -335,16 +335,17 @@ freshMeta ::
   (MonadTypeChecker builtin m) =>
   Provenance ->
   Type builtin ->
+  Relevance ->
   BoundCtx (Type builtin) ->
   m (MetaID, Expr builtin)
-freshMeta p metaType boundCtx = do
+freshMeta p metaType relevance boundCtx = do
   -- Create a fresh id for the meta
   TypeCheckerDeclState {..} <- getTypeCheckerDeclState
   let nextMetaID = length metaVariableCtx
   let metaID = MetaID nextMetaID
 
   -- Construct the information about the meta-variable
-  let info = MetaInfo p metaType boundCtx Nothing
+  let info = MetaInfo p metaType relevance boundCtx Nothing
 
   -- Update the meta context
   modifyTypeCheckerDeclState $
@@ -356,7 +357,6 @@ freshMeta p metaType boundCtx = do
 
   -- Create the expression
   metaExpr <- makeMetaExpr p metaID boundCtx
-
   logDebug MaxDetail $
     "fresh-meta"
       <+> prettyFriendly (WithContext metaExpr (toNamedBoundCtx boundCtx))
@@ -384,9 +384,6 @@ getMetaType m = metaType <$> getMetaInfo m
 -- | Get the bound context the meta-variable was created in.
 getMetaCtx :: (MonadTypeChecker builtin m) => Proxy builtin -> MetaID -> m (BoundCtx (Type builtin))
 getMetaCtx _ m = metaCtx <$> getMetaInfo m
-
-getSubstMetaTypes :: (MonadTypeChecker builtin m, NormalisableBuiltin builtin) => MetaSet -> m [(MetaID, Type builtin)]
-getSubstMetaTypes metas = traverse (\m -> (m,) <$> getSubstMetaType m) (MetaSet.toList metas)
 
 getDecl ::
   forall builtin m.
@@ -496,9 +493,9 @@ abstractOverCtx ctx body = do
   let lam binder = Lam p (Binder (lamBinderForm (nameOf binder)) Explicit (relevanceOf binder) (TypeUniverse p 0))
   foldr lam body (reverse ctx)
 
-prettyMetas :: forall builtin m a. (MonadTypeChecker builtin m, NormalisableBuiltin builtin) => Proxy builtin -> MetaSet -> m (Doc a)
+prettyMetas :: forall builtin m a. (MonadTypeChecker builtin m, NormalisableBuiltin builtin, PrintableBuiltin builtin) => Proxy builtin -> MetaSet -> m (Doc a)
 prettyMetas _ metas = do
-  typedMetaList <- getSubstMetaTypes @builtin metas
+  typedMetaList <- traverse (\m -> (m,) <$> getSubstMetaType @builtin m) (MetaSet.toList metas)
   let docs = fmap (uncurry prettyMetaInternal) typedMetaList
   return $ prettySetLike docs
 
@@ -675,3 +672,33 @@ getCurrentDeclAndUnused = do
 
 getCurrentDecl :: forall builtin m. (MonadTypeChecker builtin m, NormalisableBuiltin builtin) => m (Maybe (Decl builtin))
 getCurrentDecl = (fst <$>) <$> getCurrentDeclAndUnused @builtin
+
+--------------------------------------------------------------------------------
+-- Other
+--------------------------------------------------------------------------------
+
+-- | Every free variable in the expression which is missing implicit arguments
+-- gets them inserted automatically.
+prependMissingFreeVarImplicitArgs ::
+  forall m builtin.
+  (MonadTypeChecker builtin m) =>
+  Decl builtin ->
+  m (Decl builtin)
+prependMissingFreeVarImplicitArgs = traverse (traverseFreeVarsM (const id) processFreeVar)
+  where
+    processFreeVar :: FreeVarUpdate m builtin
+    processFreeVar f p ident args = do
+      declType <- getDeclType (Proxy @builtin) ident
+      args' <- traverseArgs f args
+      finalArgs <- insertNewArgs args' declType
+      return $ normAppList (FreeVar p ident) finalArgs
+
+    -- For each leading auto-generalised implicit Pi binder, consume the
+    -- matching implicit from the spine.
+    insertNewArgs :: [Arg builtin] -> Type builtin -> m [Arg builtin]
+    insertNewArgs as = \case
+      Pi _ binder result | wasInsertedByCompiler binder && isImplicit binder ->
+        case as of
+          a : rest -> (a :) <$> insertNewArgs rest result
+          [] -> return as
+      _ -> return as

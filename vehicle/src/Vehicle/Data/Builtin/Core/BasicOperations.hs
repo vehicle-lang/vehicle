@@ -110,7 +110,7 @@ chainable e1 e2 = (e1 == e2 || e1 == flipStrictness e2) && e1 /= Ne
 data Quantifier
   = Forall
   | Exists
-  deriving (Show, Eq, Ord, Generic)
+  deriving (Show, Eq, Ord, Enum, Bounded, Generic)
 
 instance NFData Quantifier
 

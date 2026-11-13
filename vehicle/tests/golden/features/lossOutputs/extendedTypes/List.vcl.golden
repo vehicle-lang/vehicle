@@ -1,3 +1,0 @@
-@property;
-someList : List Nat;
-someList = [1, 2, 3]

@@ -81,9 +81,9 @@ instance Pretty SummarisedCompileWarning where
         <+> "declaration in any way."
 
 prettyObjects :: (Ord a, Pretty a) => Bool -> Doc b -> Doc b -> NonEmpty a -> Doc b
-prettyObjects quote single plural ids =
+prettyObjects shouldQuote single plural ids =
   (if length ids == 1 then single else plural)
-    <+> prettyNonEmptyList (fmap (if quote then quotePretty else pretty) (sort ids))
+    <+> prettyNonEmptyList (fmap (if shouldQuote then quotePretty else pretty) (sort ids))
 
 prettyQueryIDs :: NonEmpty QueryID -> Doc b
 prettyQueryIDs = prettyObjects False "query" "queries"

@@ -26,6 +26,7 @@ module Vehicle.Libraries.StandardLibrary
     standardLibraryCompareRatTensorReduced,
     validDatasetTypeIdent,
     validDatasetListElementTypeIdent,
+    differentiableTensorLogicIdent,
   )
 where
 
@@ -74,6 +75,7 @@ standardLibraryBuiltinModulePath typeSystem = ModulePath $ case typeSystem of
   Just PolarityTypes -> ["Builtins", "Polarity"]
   Just LinearityTypes -> ["Builtins", "Linearity"]
   Just DecidabilityTypes -> ["Builtins", "Decidability"]
+  Just GradientCarryingTypes -> ["Builtins", "GradientCarrying"]
 
 validNetworkTypeIdent :: Identifier
 validNetworkTypeIdent = standardLibIdent "HasValidNetworkType"
@@ -116,6 +118,9 @@ hasDivIdent = standardLibIdent "HasDiv"
 
 divTCProj :: Identifier
 divTCProj = standardLibIdent "divTC"
+
+differentiableTensorLogicIdent :: Identifier
+differentiableTensorLogicIdent = standardLibIdent "DifferentiableTensorLogic"
 
 hasComparisonIdent :: Identifier
 hasComparisonIdent = standardLibIdent "HasComparison"
