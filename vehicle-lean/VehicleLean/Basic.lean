@@ -49,6 +49,9 @@ namespace Holor
 
 variable {α β γ : Type} {ds : List ℕ}
 
+instance [DecidableEq α] : DecidableEq (Holor α ds) :=
+  Fintype.decidablePiFintype
+
 section order
 
 instance [LE α] : LE (Holor α ds) :=
@@ -56,6 +59,16 @@ instance [LE α] : LE (Holor α ds) :=
 
 instance [LT α] : LT (Holor α ds) :=
   ⟨fun x y ↦ ∀ t, x t < y t⟩
+
+instance [LE α] [DecidableLE α] : DecidableLE (Holor α ds) :=
+  fun x y ↦ by
+    letI : DecidablePred (fun t : HolorIndex ds ↦ x t ≤ y t) := fun _ ↦ inferInstance
+    exact Fintype.decidableForallFintype
+
+instance [LT α] [DecidableLT α] : DecidableLT (Holor α ds) :=
+  fun x y ↦ by
+    let : DecidablePred (fun t : HolorIndex ds ↦ x t < y t) := fun _ ↦ inferInstance
+    exact Fintype.decidableForallFintype
 
 instance [Preorder α] : Preorder (Holor α ds) :=
   inferInstanceAs <| Preorder (HolorIndex ds → α)
