@@ -14,7 +14,6 @@ where
 
 import Control.Exception (IOException, catch)
 import Control.Monad.Trans (MonadIO (..))
-import Data.ByteString qualified as BIO
 import Data.Serialize (Serialize, decode, encode)
 import Data.Version (showVersion)
 #ifdef releaseBuild
@@ -23,6 +22,7 @@ import Development.GitRev
 #endif
 import GHC.Generics (Generic)
 import Paths_vehicle qualified as Cabal (version)
+import Vehicle.Prelude.IO (lockedReadFile, lockedWriteFile)
 
 --------------------------------------------------------------------------------
 -- Current versions
@@ -81,13 +81,13 @@ encodeAndWriteVersioned filepath payload = do
   let encodedPayload = encode payload
   let versionedPayload = Versioned preciseVehicleVersion encodedPayload
   let encodedVersionedPayload = encode versionedPayload
-  liftIO $ BIO.writeFile filepath encodedVersionedPayload
+  liftIO $ lockedWriteFile filepath encodedVersionedPayload
 
 -- | Attempts to deserialise a file that was encoded with `encodeAndWriteVersioned`.
 readAndDecodeVersioned :: (MonadIO m, Serialize a) => FilePath -> m (DecodeResult a)
 readAndDecodeVersioned filepath = do
   errorOrContents <- liftIO $ do
-    (Right <$> BIO.readFile filepath) `catch` \(e :: IOException) -> return (Left e)
+    (Right <$> lockedReadFile filepath) `catch` \(e :: IOException) -> return (Left e)
 
   case errorOrContents of
     Left err -> return $ IOError err

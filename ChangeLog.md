@@ -7,6 +7,10 @@
 * Fixed an bug in the translation when constructing tensors whose elements are quantified
   variables, e.g. `[1.0, x]`.
 
+### Other
+
+* Vehicle now correctly locks files when reading and writing from the standard library avoiding race conditions if multiple instances of the Vehicle compiler are called concurrently.
+
 ## v0.29.0
 
 ### Language
