@@ -714,24 +714,14 @@ evalIterate ::
   forall m expr thunk builtin.
   (MonadLogger m, NormalisableExpr expr thunk builtin m, HasNatExpr expr thunk builtin, BuiltinHasIterate builtin) =>
   EvalSimple expr thunk IterateArgs builtin m
-evalIterate (IterateArgs t f n e) = do
-  fn <- force @expr n
-  case fn of
-    INatLiteral 0 -> return $ Evaluated e
+evalIterate (IterateArgs t f n e remainingArgs) = do
+  iterateCount <- force @expr n
+  case iterateCount of
+    INatLiteral 0 -> Evaluated . exprToThunk <$> forceApp e remainingArgs
     INatLiteral v -> do
       let recFn = exprToThunk $ mkBuiltin accessIterateBuiltin () [t, explicit f, explicit (exprToThunk $ INatLiteral (v - 1))]
-      Evaluated . exprToThunk <$> forceApp f [explicit recFn, explicit e]
-    _ -> return $ Unevaluable [fn]
-
-evalSeededIterate ::
-  forall m expr thunk builtin.
-  (MonadLogger m, NormalisableExpr expr thunk builtin m, HasNatExpr expr thunk builtin, BuiltinHasIterate builtin) =>
-  EvalSimple expr thunk SeededIterateArgs builtin m
-evalSeededIterate (SeededIterateArgs args seed) = do
-  result <- evalIterate args
-  case result of
-    Evaluated value | not (null seed) -> Evaluated . exprToThunk <$> forceApp value seed
-    _ -> return result
+      Evaluated . exprToThunk <$> forceApp f (explicit recFn : explicit e : remainingArgs)
+    _ -> return $ Unevaluable [iterateCount]
 
 evalCompareRatTensor ::
   forall expr thunk builtin m.
