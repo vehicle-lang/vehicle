@@ -33,11 +33,12 @@ import Data.Hashable (hash)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Version (Version)
-import System.Directory (canonicalizePath, createDirectoryIfMissing, getTemporaryDirectory, removeFile)
+import System.Directory (canonicalizePath, createDirectoryIfMissing, getTemporaryDirectory, makeAbsolute, removeFile)
+import Language.LSP.Server (LspT)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
 import System.FileLock (SharedExclusive (..), withFileLock)
-import System.FilePath ((</>))
+import System.FilePath (splitFileName, (</>))
 import System.IO (Handle, IOMode (..), hFileSize, withBinaryFile)
 import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
@@ -92,6 +93,12 @@ instance (MonadStdIO m) => MonadStdIO (ExceptT e m) where
   writeStdout :: (MonadStdIO m) => Text -> ExceptT e m ()
   writeStdout = lift . writeStdout
   writeStderr :: (MonadStdIO m) => Text -> ExceptT e m ()
+  writeStderr = lift . writeStderr
+
+instance (MonadStdIO m) => MonadStdIO (LspT cfg m) where
+  writeStdout :: (MonadStdIO m) => Text -> LspT cfg m ()
+  writeStdout = lift . writeStdout
+  writeStderr :: (MonadStdIO m) => Text -> LspT cfg m ()
   writeStderr = lift . writeStderr
 
 --------------------------------------------------------------------------------
@@ -154,8 +161,21 @@ getLockFilePath filepath = do
   tmpDir <- getTemporaryDirectory
   let locksDir = tmpDir </> "vehicle-locks"
   createDirectoryIfMissing True locksDir
-  canonicalPath <- canonicalizePath filepath `catch` \(_ :: IOException) -> return filepath
+  -- Need to canonicalise it to get agreement as some paths may be relative
+  -- and others absolute.
+  canonicalPath <- canonicaliseLockTargetPath filepath
   return $ locksDir </> show (abs (hash canonicalPath)) <> ".lock"
+
+canonicaliseLockTargetPath :: FilePath -> IO FilePath
+canonicaliseLockTargetPath filepath = do
+  absolutePath <- makeAbsolute filepath
+  let (parentDirectory, fileName) = splitFileName absolutePath
+  canonicalParentDirectory <- safeCanonicalizePath parentDirectory
+  return $ canonicalParentDirectory </> fileName
+
+safeCanonicalizePath :: FilePath -> IO FilePath
+safeCanonicalizePath path =
+  canonicalizePath path `catch` \(_ :: IOException) -> return path
 
 -- | Reads a file while holding a shared OS-level file lock, so that it can't
 -- be read while another instance of the compiler is mid-write to the same

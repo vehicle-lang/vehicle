@@ -30,10 +30,8 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Sugar.Binders
 import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Decidability
-import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
-import Vehicle.Data.Code.Interface (IsArgs (..), VectorLitArgs (..))
 import Vehicle.Data.Real
 import Vehicle.Data.Tensor (Tensor, TensorShape, foldMapTensor)
 import Vehicle.Data.Universe (UniverseLevel (..))
@@ -138,6 +136,7 @@ data Dependency
   | DataBool
   | DataBoolInstances
   | DataFin
+  | DataFinBase
   | DataFinAll
   | DataFinAny
   | DataList
@@ -176,6 +175,7 @@ instance Pretty Dependency where
     DataBool -> "Data.Bool as" <+> boolQualifier <+> "using" <+> parens "Bool; true; false; if_then_else_"
     DataBoolInstances -> "Data.Bool.Instances"
     DataFin -> "Data.Fin as" <+> finQualifier <+> "using" <+> parens "Fin; #_"
+    DataFinBase -> "Data.Fin.Base as" <+> finBaseQualifier <+> "using" <+> parens "toℕ"
     DataFinAll -> "Data.Vec.Functional.Relation.Unary.All as" <+> finQualifier
     DataFinAny -> "Data.Vec.Functional.Relation.Unary.Any as" <+> finQualifier
     DataList -> "Data.List.Base"
@@ -213,6 +213,9 @@ boolQualifier = "𝔹"
 finQualifier :: Doc a
 finQualifier = "Fin"
 
+finBaseQualifier :: Doc a
+finBaseQualifier = "FinBase"
+
 natQualifier :: Doc a
 natQualifier = "ℕ"
 
@@ -241,6 +244,14 @@ type Precedence = Int
 
 type Code = Doc (Set Dependency, Precedence)
 
+data PropComparisonDomain
+  = NatPropComparison
+  | RatTensorPropComparison
+
+data AgdaComparison
+  = DirectComparison [Dependency] (Maybe Code) Text
+  | NegatedComparison AgdaComparison
+
 minPrecedence :: Precedence
 minPrecedence = -1000
 
@@ -262,8 +273,11 @@ annotateApp dependencies qualifier fun args = do
       then return (getPrecedence fun, funDoc)
       else do
         let precedence = 20
+        let bracketedFun
+              | getPrecedence fun > precedence = funDoc
+              | otherwise = parens funDoc
         bracketedArgs <- compileArgs precedence args
-        return (20, hsep (funDoc : bracketedArgs))
+        return (precedence, hsep (bracketedFun : bracketedArgs))
 
   return $ annotate (Set.fromList dependencies, precedence) annDoc
 
@@ -275,12 +289,24 @@ annotateInfixApp ::
   Text ->
   [Arg DecidabilityBuiltin] ->
   m Code
-annotateInfixApp dependencies precedence qualifier op args
+annotateInfixApp dependencies precedence =
+  annotateInfixAppWithResultPrecedence dependencies precedence precedence
+
+annotateInfixAppWithResultPrecedence ::
+  (MonadAgdaCompile m) =>
+  [Dependency] ->
+  Precedence ->
+  Precedence ->
+  Maybe Code ->
+  Text ->
+  [Arg DecidabilityBuiltin] ->
+  m Code
+annotateInfixAppWithResultPrecedence dependencies argumentPrecedence resultPrecedence qualifier op args
   | not (all isExplicit args) = annotateApp dependencies qualifier (pretty op) args
   | otherwise = do
-      bracketedArgs <- compileArgs precedence args
+      bracketedArgs <- compileArgs argumentPrecedence args
       doc <- insertInfixArgs qualifier op bracketedArgs
-      return $ annotate (Set.fromList dependencies, precedence) doc
+      return $ annotate (Set.fromList dependencies, resultPrecedence) doc
 
 -- | Inserts infix args into the correct positions
 --
@@ -416,7 +442,10 @@ compileExpr expr = do
     Let _ bound binder body -> do
       cBoundExpr <- compileLetBinder (binder, bound)
       cBody <- addNameToContext binder $ compileExpr body
-      return $ "let" <+> cBoundExpr <+> "in" <+> cBody
+      return $
+        annotate
+          (mempty, minPrecedence)
+          ("let" <+> cBoundExpr <+> "in" <+> cBody)
     Lam _ binder body -> compileLam binder body
     Builtin p b -> compileBuiltin p b []
     App fun args -> compileApp fun args
@@ -490,7 +519,7 @@ compileBinder binder = do
     OnlyName name _ -> return (pretty name, True)
     OnlyType -> return (binderType, True)
     NameAndType name _ -> do
-      let annName = "(" <> pretty name <+> ":" <+> binderType <> ")"
+      let annName = pretty name <+> ":" <+> binderType
       return (annName, False)
 
   return $ binderBrackets noExplicitBrackets (visibilityOf binder) binderDoc
@@ -589,12 +618,12 @@ compileBuiltinFunction p f args = case f of
   Neg NegRatTensor -> annotateInfixApp [DataTensor] 8 (Just tensorQualifier) "-_" args
   Min MinRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊓_" args
   Max MaxRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_⊔_" args
-  CompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator True op) args
-  CompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator True op) args
+  CompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (boolComparisonOperator op) args
+  CompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (boolComparisonOperator op) args
   CompareRatTensor op -> do
     case decideIfPointwiseOrReductionComparison args of
-      Pointwise as -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") as
-      Reduced as -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") as
+      Pointwise as -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> boolComparisonOperatorBase op <> "∙_") as
+      Reduced as -> annotateInfixApp [DataTensor] 4 Nothing ("_" <> boolComparisonOperatorBase op <> "_") as
   FoldList -> annotateApp [DataList] (Just listQualifier) "foldr" args
   MapList -> annotateApp [DataList] (Just listQualifier) "map" args
   ReverseList -> annotateApp [DataList] (Just listQualifier) "reverse" args
@@ -608,12 +637,13 @@ compileBuiltinFunction p f args = case f of
   ConstTensor -> annotateApp [DataTensor] Nothing "constTensor" args
   QuantifyRatTensor q -> compileQuantifierFunction q args
   QuantifyRecord q -> compileQuantifierFunction q args
-  AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
+  AtTensor ->
+    annotateInfixAppWithResultPrecedence [DataTensor] 6 (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
   ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args
   ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
-  StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
+  StackTensor {} -> compileStack args
   Transpose -> unsupportedError "transpose"
   SearchRatTensor {} -> unsupportedError "search"
   WhereTensor {} -> unsupportedError "where"
@@ -640,9 +670,9 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropAnd -> annotateInfixApp [DataProduct] 2 Nothing "_×_" args
   PropOr -> annotateInfixApp [DataSum] 1 Nothing "_⊎_" args
   PropImplies -> annotateInfixApp [] minPrecedence Nothing "_→_" args
-  PropCompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator False op) args
-  PropCompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator False op) args
-  PropCompareRatTensor op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
+  PropCompareIndex op -> compileIndexPropComparison op args
+  PropCompareNat op -> compilePropComparison NatPropComparison op args
+  PropCompareRatTensor op -> compilePropComparison RatTensorPropComparison op args
   PropQuantifyIndex q -> compileQuantifierFunction q args
   PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args
@@ -668,6 +698,56 @@ compileQuantifierFunction q args = case reverse args of
           <+> "with args"
           <+> prettyVerbose args
           <+> "to Agda unsupported"
+
+compileStack :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
+compileStack stackArgs = do
+  elements <- compileArgs 5 stackArgs
+  let vector = toVec elements
+  return $ annotate (Set.fromList [DataTensor, DataVector], 20) ("stack" <+> parens vector)
+
+compileIndexPropComparison :: (MonadAgdaCompile m) => ComparisonOp -> [Arg DecidabilityBuiltin] -> m Code
+compileIndexPropComparison op args =
+  compileComparison (propComparison NatPropComparison op) =<< traverse compileIndexAsNat args
+
+compileIndexAsNat :: (MonadAgdaCompile m) => Arg DecidabilityBuiltin -> m Code
+compileIndexAsNat arg =
+  annotateApp [DataFinBase] (Just finBaseQualifier) "toℕ" [arg]
+
+compilePropComparison ::
+  (MonadAgdaCompile m) =>
+  PropComparisonDomain ->
+  ComparisonOp ->
+  [Arg DecidabilityBuiltin] ->
+  m Code
+compilePropComparison domain op args =
+  compileComparison (propComparison domain op) =<< compileArgs 4 args
+
+compileComparison :: (MonadAgdaCompile m) => AgdaComparison -> [Code] -> m Code
+compileComparison comparison args = case comparison of
+  DirectComparison dependencies qualifier operator -> do
+    body <- insertInfixArgs qualifier operator args
+    return $ annotate (Set.fromList dependencies, 4) body
+  NegatedComparison inner -> do
+    body <- compileComparison inner args
+    return $ annotate (Set.singleton RelNullary, 3) ("¬" <+> parens body)
+
+propComparison :: PropComparisonDomain -> ComparisonOp -> AgdaComparison
+propComparison domain op = case (domain, op) of
+  (NatPropComparison, Eq) -> direct [PropEquality] Nothing "_≡_"
+  (NatPropComparison, Ne) -> direct [PropEquality] Nothing "_≢_"
+  (NatPropComparison, Le) -> direct [DataNat] (Just natQualifier) "_≤_"
+  (NatPropComparison, Lt) -> direct [DataNat] (Just natQualifier) "_<_"
+  (NatPropComparison, Ge) -> direct [DataNat] (Just natQualifier) "_≥_"
+  (NatPropComparison, Gt) -> direct [DataNat] (Just natQualifier) "_>_"
+  (RatTensorPropComparison, Eq) -> direct [DataTensor] Nothing "_≋_"
+  (RatTensorPropComparison, Ne) ->
+    NegatedComparison $ direct [DataTensor] Nothing "_≋_"
+  (RatTensorPropComparison, Le) -> direct [DataTensor] Nothing "_≤_"
+  (RatTensorPropComparison, Lt) -> direct [DataTensor] Nothing "_<_"
+  (RatTensorPropComparison, Ge) -> direct [DataTensor] Nothing "_≥_"
+  (RatTensorPropComparison, Gt) -> direct [DataTensor] Nothing "_>_"
+  where
+    direct = DirectComparison
 
 compileTypeLevelQuantifier ::
   (MonadAgdaCompile m) =>
@@ -706,38 +786,37 @@ compileRealLiteral = \case
 
 -- | Compiling vector literals. No literals in Agda so have to go via cons.
 toVec :: [Code] -> Code
-toVec = foldr (\v vs -> annotate ([], 5) (v <> "∷ᵥ" <> vs)) "[]ᵥ"
+toVec = foldr (\v vs -> annotate (Set.singleton DataVector, 5) (v <+> "∷ᵥ" <+> vs)) (annotateConstant [DataVector] "[]ᵥ")
 
 compileVecLiteral :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
-compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VectorLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
-  Nothing -> developerError "Malformed type-checked vector literal"
+compileVecLiteral = fmap toVec . compileArgs 5
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement =
   foldMapTensor compileElement compileTensorLayer
   where
     compileTensorLayer :: TensorShape -> [Code] -> Code
-    compileTensorLayer _shape = toVec
+    compileTensorLayer _shape elements =
+      annotate
+        (Set.fromList [DataTensor, DataVector], 20)
+        ("stack" <+> parens (toVec elements))
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case
   True -> annotateConstant [DataBool] "true"
   False -> annotateConstant [DataBool] "false"
 
-comparisonOperatorBase :: Bool -> ComparisonOp -> Text
-comparisonOperatorBase decidable order = case order of
-  Le -> if decidable then "≤ᵇ" else "≤"
-  Lt -> if decidable then "<ᵇ" else "<"
-  Ge -> if decidable then "≥ᵇ" else "≥"
-  Gt -> if decidable then ">ᵇ" else ">"
-  Eq -> if decidable then "≡ᵇ" else "≈"
-  Ne -> if decidable then "≢ᵇ" else "≉"
+boolComparisonOperatorBase :: ComparisonOp -> Text
+boolComparisonOperatorBase = \case
+  Le -> "≤ᵇ"
+  Lt -> "<ᵇ"
+  Ge -> "≥ᵇ"
+  Gt -> ">ᵇ"
+  Eq -> "≡ᵇ"
+  Ne -> "≢ᵇ"
 
-comparisonOperator :: Bool -> ComparisonOp -> Text
-comparisonOperator decidable order = do
-  let orderDoc = comparisonOperatorBase decidable order
-  "_" <> orderDoc <> "_"
+boolComparisonOperator :: ComparisonOp -> Text
+boolComparisonOperator op = "_" <> boolComparisonOperatorBase op <> "_"
 
 compileFunDef :: Code -> Code -> [Code] -> Code -> Code
 compileFunDef n t ns e =

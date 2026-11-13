@@ -37,7 +37,8 @@ jobs:
             plat: "macosx"
             test: "test,tensorflow"
           - name: "macOS"
-            type: "macOS-latest"
+            # macos-15 rather than macos-latest until actions/runner-images#14940 is fixed; see https://github.com/haskell/cabal/pull/12468.
+            type: "macOS-15"
             arch: "arm64"
             plat: "macosx"
             test: "test,tensorflow"
@@ -51,18 +52,43 @@ jobs:
     runs-on: ${{ matrix.os.type }}
 
     steps:
+      - name: Enable symlinks
+        if: matrix.os.name == 'Windows'
+        run: git config --global core.symlinks true
+
       - name: Get source
         uses: actions/checkout@v7
 
-      - name: Setup GHC ${{ env.DEFAULT_GHC_VERSION }}
+      - name: 🛠️ Install Haskell
+        # Linux distributions already come with a builtin Haskell installation
         if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
         uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
 
+      - name: 🛠️ Configure
+        if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
+        working-directory: vehicle-python
+        run: |
+          cabal update
+          cabal configure
+          cabal build all --dry-run
+
+      - name: 💾 Restore Cabal dependencies
+        uses: actions/cache/restore@v6
+        if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
+        id: cache-haskell
+        env:
+          key: ${{ matrix.os.name }}-${{ runner.arch }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.key }}-plan-${{ hashFiles('vehicle-python/dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ env.key }}-
+
       - name: Build wheel
-        uses: pypa/cibuildwheel@v4.2.1
+        uses: pypa/cibuildwheel@v4.3.5
         with:
           package-dir: "./vehicle-python"
           output-dir: "./vehicle-python/wheelhouse"
@@ -73,6 +99,13 @@ jobs:
           CIBW_TEST_EXTRAS: "${{ matrix.os.test }}"
           CIBW_BEFORE_ALL_LINUX: "cabal update"
           MACOSX_DEPLOYMENT_TARGET: "${{ matrix.os.arch == 'x86_64' && '10.10' || '11.0' }}"
+
+      - name: 💾 Save Cabal dependencies
+        uses: actions/cache/save@v6
+        if: (matrix.os.name == 'macOS' || matrix.os.name == 'Windows') && steps.cache-haskell.outputs.cache-hit != 'true'
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
 
       - name: Upload wheels
         uses: actions/upload-artifact@v7

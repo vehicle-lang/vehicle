@@ -21,10 +21,10 @@ existsInList f xs = fold (\x y -> x or y) False (map f xs)
 --------------------------------------------------------------------------------
 
 existsIndex : forallT {n} . (Index n -> Bool) -> Bool
-existsIndex f = reduceOr (foreach k . f k)
+existsIndex f = reduceOr (foreach i . f i)
 
 forallIndex : forallT {n} . (Index n -> Bool) -> Bool
-forallIndex f = reduceAnd (foreach k . f k)
+forallIndex f = reduceAnd (foreach i . f i)
 
 --------------------------------------------------------------------------------
 -- Type classes

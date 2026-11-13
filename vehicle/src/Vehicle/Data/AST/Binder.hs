@@ -46,7 +46,7 @@ instance HasName BinderNamingForm (Maybe Name) where
 mapBindingNamingFormName :: (Name -> Name) -> BinderNamingForm -> BinderNamingForm
 mapBindingNamingFormName f = \case
   NameAndType name p -> NameAndType (f name) p
-  OnlyName name p -> OnlyName name p
+  OnlyName name p -> OnlyName (f name) p
   OnlyType -> OnlyType
 
 --------------------------------------------------------------------------------
