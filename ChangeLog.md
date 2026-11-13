@@ -6,6 +6,11 @@
 
 * The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
 
+### Loss backend
+
+* Fixed an bug in the translation when constructing tensors whose elements are quantified
+  variables, e.g. `[1.0, x]`.
+
 ## v0.29.0
 
 ### Language
@@ -48,7 +53,6 @@
 * Fixed bug where default `Sampler` implementations were returning `nan` when a quantified variable was
   unbounded, e.g. `forall x . p x`. Starting points are now drawn from a finite region around the
   bound that is finite, or around the origin when neither is.
-
 
 ### Solver backend
 
