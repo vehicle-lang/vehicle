@@ -29,7 +29,7 @@ data GenericDecl expr
       DefFunctionSort -- List of annotations.
       expr -- Type of the definition.
       expr -- Body of the definition.
-  | -- | Function definitions with a body
+  | -- | A declaration of a new type of record
     DefRecord
       Provenance -- Location in source file.
       Identifier -- Name of definition.

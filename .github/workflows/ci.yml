@@ -36,6 +36,9 @@ jobs:
   test-integration-rocq:
     uses: ./.github/workflows/test-integration-rocq.yml
 
+  test-integration-agda:
+    uses: ./.github/workflows/test-integration-agda.yml
+
   test-integration-bumpver:
     runs-on: ubuntu-latest
     steps:

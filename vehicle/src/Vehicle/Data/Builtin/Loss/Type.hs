@@ -12,6 +12,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (getDeclType, prependMissingFreeVarImplicitArgs)
 import Vehicle.Compile.Type.System
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
@@ -22,6 +23,7 @@ import Vehicle.Data.Builtin.Standard
     DerivedFunction (..),
   )
 import Vehicle.Data.Code.DSL
+import Vehicle.Data.Code.Interface.Args (IsArgs (..), StackTensorArgs (..))
 import Vehicle.Data.DSL
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
@@ -82,6 +84,7 @@ typeLossCast = \case
 typeLossFunction :: LossBuiltinFunction -> DSLExpr (LossBuiltin mode)
 typeLossFunction = \case
   IfRatTensorWithGradients -> typeIf tRatWithGradients
+  StackRatTensorWithGradients -> typeOfStackRatTensorWithGradients
 
 typeStandardBuiltinType :: BuiltinType -> DSLExpr (LossBuiltin mode)
 typeStandardBuiltinType = \case
@@ -211,7 +214,6 @@ typeStandardFunction f = case f of
           ~> tBoolTensor dims
           ~> tRatTensorWithoutGradients dimNil
           ~> tTensor (tRat .@@ [g]) dims
-  -- TODO: known bug. Have to separate out stack into a specialised rat type that takes the max over gradients
   StackTensor -> typeOfBuiltinFunction f
   CompareIndex {} -> typeOfBuiltinFunction f
   CompareNat {} -> typeOfBuiltinFunction f
@@ -237,6 +239,32 @@ typeStandardFunction f = case f of
   AppendList -> typeOfBuiltinFunction f
   where
     removed = developerError $ pretty f <+> "should have been removed prior to loss type-checking"
+
+typeOfStackRatTensorWithGradients :: DSLExpr (LossBuiltin mode)
+typeOfStackRatTensorWithGradients =
+  forAll "n" tNat $ \n ->
+    forAllDim Relevant $ \d ->
+      forAllDims $ \ds ->
+        iterate (tGradient ~> type0) (accumulateGradient ds) n (finalTensor d ds)
+          @@ [withoutGradients]
+  where
+    finalTensor d ds =
+      explLam "g" tGradient $ \g ->
+        tTensor (tRat .@@ [g]) (dimCons d ds)
+
+accumulateGradient ::
+  DSLExpr (LossBuiltin mode) ->
+  DSLExpr (LossBuiltin mode) ->
+  DSLExpr (LossBuiltin mode) ->
+  DSLExpr (LossBuiltin mode)
+accumulateGradient ds recurse base =
+  explLam "g" tGradient $ \maxGradientSoFar ->
+    forAllGradients $ \elementGradient ->
+      forAllGradients $ \newMaxGradient ->
+        maxGradients maxGradientSoFar elementGradient newMaxGradient
+          .~~~> tTensor (tRat .@@ [elementGradient]) ds
+          ~> (recurse @@ [base])
+          @@ [newMaxGradient]
 
 typeOp1 :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOp1 t = t ~> t
@@ -351,6 +379,10 @@ convertToLossBuiltins decl = do
   -- for the gradient information to be inferred.
   let mkRealTypeArg = (`Hole` "_")
 
+  -- A `Bool` is a proposition, which is translated either to a `Bool` or to a loss value
+  -- depending on whether it has gradients, so the type is left to be inferred.
+  let mkPropositionType = (`Hole` "_")
+
   case decl of
     -- The exception is the record declaration of a DifferentiableLogic whose operations we know
     -- will only be applied to places with gradient information and therefore `Real` is
@@ -358,25 +390,35 @@ convertToLossBuiltins decl = do
     DefRecord p ident sort telescope fields ops | identifierOf decl == differentiableTensorLogicIdent -> do
       let mkRealTypeArgWithGradients p' = Builtin p' (LossBuiltinConstructor WithGradients)
       let mkRealTypeArgWithoutGradients p' = Builtin p' (LossBuiltinConstructor WithoutGradients)
-      telescope' <- traverse (traverse (updateBuiltins mkRealTypeArg)) telescope
+      telescope' <- traverse (traverse (updateBuiltins mkRealTypeArg mkPropositionType)) telescope
 
       let updateField (fieldName, fieldType) = do
             let isElement = nameOf fieldName `elem` ([nameOf TruthityElement, nameOf FalsityElement] :: [Name])
             let mkArgFn = if isElement then mkRealTypeArgWithoutGradients else mkRealTypeArgWithGradients
-            fieldType' <- updateBuiltins mkArgFn fieldType
+            fieldType' <- updateBuiltins mkArgFn mkPropositionType fieldType
             return (fieldName, fieldType')
 
       fields' <- traverse updateField fields
       return $ DefRecord p ident sort telescope' fields' ops
-    _ -> traverse (updateBuiltins mkRealTypeArg) decl
+    -- In a resource a `Bool` is data supplied from outside rather than a proposition, so it stays
+    -- a `Bool`.
+    DefAbstract _ _ sort _ | isAnnotatedAsExternalResource sort -> do
+      let mkBoolType p' = Builtin p' (StandardBuiltinType BoolType)
+      traverse (updateBuiltins mkRealTypeArg mkBoolType) decl
+    _ -> traverse (updateBuiltins mkRealTypeArg mkPropositionType) decl
   where
-    updateBuiltins :: (Provenance -> Expr (LossBuiltin mode)) -> Expr Builtin -> m (Expr (LossBuiltin mode))
-    updateBuiltins mkRealTypeArg = traverseBuiltinsM (updateBuiltin mkRealTypeArg)
+    updateBuiltins ::
+      (Provenance -> Expr (LossBuiltin mode)) ->
+      (Provenance -> Expr (LossBuiltin mode)) ->
+      Expr Builtin ->
+      m (Expr (LossBuiltin mode))
+    updateBuiltins mkRealTypeArg mkBoolTypeExpr = traverseBuiltinsM (updateBuiltin mkRealTypeArg mkBoolTypeExpr)
 
     updateBuiltin ::
       (Provenance -> Expr (LossBuiltin mode)) ->
+      (Provenance -> Expr (LossBuiltin mode)) ->
       BuiltinUpdate m Builtin (LossBuiltin mode)
-    updateBuiltin mkRatTypeArg p b args =
+    updateBuiltin mkRatTypeArg mkBoolTypeExpr p b args =
       case b of
         BuiltinFunction f -> do
           case f of
@@ -420,7 +462,14 @@ convertToLossBuiltins decl = do
             AppendList -> sameFunction f
             Iterate -> sameFunction f
             Transpose -> sameFunction f
-            StackTensor -> sameFunction f
+            StackTensor -> case getExpr accessSpine args of
+              -- Only rational stacks carry gradients, and the arity replaces the element type.
+              Just (StackTensorArgs elementType d ds xs)
+                | isRatType elementType ->
+                    return $
+                      normAppList (Builtin p (LossBuiltinFunction StackRatTensorWithGradients)) $
+                        implicit (arityOf xs) : implicit d : implicit ds : fmap explicit xs
+              _ -> sameFunction f
             AtTensor -> sameFunction f
             ConstTensor -> sameFunction f
             ForeachTensor -> sameFunction f
@@ -436,7 +485,7 @@ convertToLossBuiltins decl = do
           _ -> sameConstructor c
         BuiltinType t -> case t of
           RatType -> return $ normAppList (Builtin p $ StandardBuiltinType t) [explicitIrrelevant (mkRatTypeArg p)]
-          BoolType -> return $ Hole p "_"
+          BoolType -> return $ mkBoolTypeExpr p
           _ -> return $ normAppList (Builtin p $ StandardBuiltinType t) args
         DerivedFunction f -> case f of
           TypeAnn -> convertTo 0 (StandardDerivedFunction f)
@@ -447,6 +496,14 @@ convertToLossBuiltins decl = do
         -- Nothing changes
         sameFunction f = return $ normAppList (Builtin p (StandardBuiltinFunction f)) args
         sameConstructor c = normAppList (Builtin p $ StandardBuiltinConstructor c) args
+
+        arityOf elements = Builtin p (StandardBuiltinConstructor (NatLiteral (length elements)))
+
+        -- `Real` has already been given its gradient argument by the time the stack is reached.
+        isRatType = \case
+          Builtin _ (StandardBuiltinType RatType) -> True
+          App (Builtin _ (StandardBuiltinType RatType)) _ -> True
+          _ -> False
 
         -- Apply a cast
         prependHoles n xs = replicate n (implicit $ Hole p "_") <> xs
