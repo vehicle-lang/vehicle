@@ -1,16 +1,10 @@
 -- A comparison relating slices of two separately quantified tensors.
-
-type In = Tensor Real [4]
-type Out = Tensor Real [2]
-
 @network
-classifier : In -> Out
+classifier : Tensor Real [2] -> Tensor Real [1]
 
 @property
 p : Bool
-p =
-  forall (x : In) . forall (y : In) .
-    (forall i . 0.0 <= x ! i <= 1.0) and
-    (forall i . 0.0 <= y ! i <= 1.0) and
-    x ! 0 >= y ! 1 =>
-      classifier x ! 0 >= classifier y ! 1
+p = forall x y.
+  0.0 <= x ! 0 <= 1.0 and
+  0.0 <= y ! 0 <= 1.0 and
+  x ! 0 >= y ! 0 => classifier x ! 0 >= classifier y ! 0
