@@ -2,6 +2,10 @@
 
 ## Next release
 
+### ITP backend
+
+* The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
+
 ### Loss backend
 
 * Fixed an bug in the translation when constructing tensors whose elements are quantified
