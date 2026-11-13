@@ -205,8 +205,8 @@ def pointwiseOr (x y : Holor Bool ds) : Holor Bool ds :=
 def pointwiseDiv [Div α] (x y : Holor α ds) : Holor α ds :=
   x.pointwise y Div.div
 
-def pointwisePow [Pow α β] (x : Holor α ds) (y : Holor β ds) : Holor α ds :=
-  x.pointwise y Pow.pow
+def pointwisePow [Pow α β] (x : Holor α ds) (y : β) : Holor α ds :=
+  fun t ↦ x t ^ y
 
 noncomputable def pointwiseLog (x : Holor ℝ ds) : Holor ℝ ds :=
   fun t ↦ (x t).log
