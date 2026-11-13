@@ -19,8 +19,6 @@ module Vehicle.Prelude.IO
 where
 
 import Control.Exception (IOException, catch, throwIO)
--- import Control.Monad (forM_)
-
 import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Identity (IdentityT)
@@ -33,8 +31,8 @@ import Data.Hashable (hash)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Data.Version (Version)
-import System.Directory (canonicalizePath, createDirectoryIfMissing, getTemporaryDirectory, makeAbsolute, removeFile)
 import Language.LSP.Server (LspT)
+import System.Directory (canonicalizePath, createDirectoryIfMissing, getTemporaryDirectory, makeAbsolute, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
 import System.FileLock (SharedExclusive (..), withFileLock)
