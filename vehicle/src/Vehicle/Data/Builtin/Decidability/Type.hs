@@ -23,7 +23,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
-import Prelude hiding (iterate, pi)
+import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
 -- Typing

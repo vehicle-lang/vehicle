@@ -571,16 +571,17 @@ data IterateArgs expr = IterateArgs
   { iterateElementType :: GenericArg expr,
     iterateFn :: expr,
     iterateTimes :: expr,
-    iterateStart :: expr
+    iterateStart :: expr,
+    remainingArgs :: [GenericArg expr]
   }
 
 instance IsArgs IterateArgs where
   accessSpine =
     Access
       { getExpr = \case
-          [t, fn, n, e] -> Just $ IterateArgs t (argExpr fn) (argExpr n) (argExpr e)
+          t : fn : n : e : args -> Just $ IterateArgs t (argExpr fn) (argExpr n) (argExpr e) args
           _ -> Nothing,
-        mkExpr = \(IterateArgs t fn n e) -> [t, explicit fn, explicit n, explicit e]
+        mkExpr = \(IterateArgs t fn n e args) -> t : explicit fn : explicit n : explicit e : args
       }
 
 -- | Arguments for binary tensor operations (e.g. +, -)
