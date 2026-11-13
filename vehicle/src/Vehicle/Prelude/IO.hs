@@ -27,6 +27,7 @@ import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Writer.Strict (WriterT)
 import Data.Text (Text)
 import Data.Version (Version)
+import Language.LSP.Server (LspT)
 import System.Directory (createDirectoryIfMissing, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
@@ -84,6 +85,12 @@ instance (MonadStdIO m) => MonadStdIO (ExceptT e m) where
   writeStdout :: (MonadStdIO m) => Text -> ExceptT e m ()
   writeStdout = lift . writeStdout
   writeStderr :: (MonadStdIO m) => Text -> ExceptT e m ()
+  writeStderr = lift . writeStderr
+
+instance (MonadStdIO m) => MonadStdIO (LspT cfg m) where
+  writeStdout :: (MonadStdIO m) => Text -> LspT cfg m ()
+  writeStdout = lift . writeStdout
+  writeStderr :: (MonadStdIO m) => Text -> LspT cfg m ()
   writeStderr = lift . writeStderr
 
 --------------------------------------------------------------------------------

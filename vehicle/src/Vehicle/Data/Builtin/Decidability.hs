@@ -103,9 +103,9 @@ instance Hashable DecidabilityBuiltinConstructor
 -- | The builtin types after translation to loss functions (missing all builtins
 -- that involve the Bool type).
 data DecidabilityBuiltin
-  = StandardBuiltinType BuiltinType
+  = StandardBuiltinConstructor BuiltinConstructor
   | StandardBuiltinFunction BuiltinFunction
-  | StandardBuiltinConstructor BuiltinConstructor
+  | StandardBuiltinType BuiltinType
   | StandardBuiltinDerivedFunction DerivedFunction
   | DecidabilityBuiltinTypeClass DecidabilityBuiltinTypeClass
   | DecidabilityBuiltinTypeClassOp DecidabilityBuiltinTypeClassOp

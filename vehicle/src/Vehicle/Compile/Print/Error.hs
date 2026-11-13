@@ -879,6 +879,15 @@ formatCompileError = \case
             <> ".",
         fix = Just "change the specification so that all quantified variables have unique names"
       }
+  UnableToLiftQuantifiersInProperty (ident, p) ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "Unable to lift quantifiers in property"
+            <+> quotePretty ident
+            <> ".",
+        fix = Nothing
+      }
   UnsupportedMultipleNetworkApplications queryFormat (_, p) ctx apps ->
     VehicleUserError
       { provenance = Just p,
@@ -970,7 +979,8 @@ formatCompileError = \case
                 ":"
                   <+> lineIndent (prettyFriendlyEmptyCtx value)
               Left (BlockingDatasetOrParameter blockingIdent) -> quotePretty (nameOf blockingIdent)
-              Left (BlockingNetwork blockingIdent) -> quotePretty (nameOf blockingIdent),
+              Left (BlockingNetwork blockingIdent) -> quotePretty (nameOf blockingIdent)
+              Left (BlockingVar lv) -> quotePretty lv,
         fix =
           Just $
             "ensure that the expression" <+> squotes comp <+> "evaluates to either `true` or `false`."

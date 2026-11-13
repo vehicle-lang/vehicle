@@ -106,6 +106,7 @@ data BoolValue
   | VBoolTensorAt (AtTensorArgs (Thunk Builtin))
   | VBoolVectorAt (AtVectorArgs (Thunk Builtin))
   | VBoolFoldList (FoldListArgs (Thunk Builtin))
+  | VBoolParameter Identifier
 
 builtinToBoolValue :: Builtin -> UnforcedSpine Builtin -> BoolValue
 builtinToBoolValue b spine = case VBuiltin b spine of
@@ -129,6 +130,7 @@ builtinToBoolValue b spine = case VBuiltin b spine of
 toBoolValue :: (HasCallStack) => ForcedValue Builtin -> BoolValue
 toBoolValue expr = case expr of
   VBuiltin b spine -> builtinToBoolValue b spine
+  VFreeVar ident [] -> VBoolParameter ident
   _ -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose expr
 
 -------------------------------------------------------------------------------
@@ -155,6 +157,7 @@ data BoolTensorValue
   | VBoolTensorForeach (ForeachTensorArgs (Thunk Builtin))
   | VBoolTensorIf (IfArgs (Thunk Builtin))
   | VBoolTensorFoldList (FoldListArgs (Thunk Builtin))
+  | VBoolTensorParameter Identifier
 
 builtinToBoolTensorValue :: Builtin -> UnforcedSpine Builtin -> BoolTensorValue
 builtinToBoolTensorValue b spine = case VBuiltin b spine of
@@ -182,6 +185,7 @@ toBoolTensorValue :: ForcedValue Builtin -> BoolTensorValue
 toBoolTensorValue = \case
   VBuiltin b spine -> builtinToBoolTensorValue b spine
   VBoundVar {} -> illTyped "VBoundVar"
+  VFreeVar ident [] -> VBoolTensorParameter ident
   VFreeVar {} -> illTyped "VFreeVar"
   VRecordAcc {} -> illTyped "VRecordAcc"
   VPi {} -> illTyped "VPi"
