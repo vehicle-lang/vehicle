@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### ITP backend
+
+* The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
+
 ## v0.29.0
 
 ### Language
