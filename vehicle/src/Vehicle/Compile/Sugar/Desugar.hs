@@ -772,7 +772,7 @@ elabLam tk binders body = do
 
 standardLibComparison :: (MonadElab m, IsToken token, DesugarableBuiltin Builtin) => V.ComparisonOp -> token -> B.Expr -> B.Expr -> m (V.Expr Builtin)
 standardLibComparison op tk e1 e2 = do
-  let Tk tkDetails@(tkPos, _) = toToken tk
+  let Tk tkDetails = toToken tk
   let chainedOrder = case e1 of
         B.Le _ _ e -> Just (V.Le, e)
         B.Lt _ _ e -> Just (V.Lt, e)
@@ -792,7 +792,7 @@ standardLibComparison op tk e1 e2 = do
     Just (prevOp, e)
       | not (V.chainable prevOp op) -> do
           throwError $ UnchainableComparisons p prevOp op
-      | otherwise -> elabExpr $ B.And e1 (B.TokAnd (tkPos, "and")) $ case op of
+      | otherwise -> elabExpr $ B.And e1 (B.TokAnd ((0, 0), mempty)) $ case op of
           V.Le -> B.Le e (B.TokLe tkDetails) e2
           V.Lt -> B.Lt e (B.TokLt tkDetails) e2
           V.Ge -> B.Ge e (B.TokGe tkDetails) e2
