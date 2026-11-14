@@ -41,7 +41,8 @@ repos:
     hooks:
       - id: flynt
   - repo: https://github.com/pycqa/isort
-    rev: "10.0.0b1"
+    # Can't update to 10.0 until we drop Python 3.10 support:
+    rev: "9.0.2"
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
