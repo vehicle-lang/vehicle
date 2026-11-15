@@ -530,9 +530,6 @@ compileExprUnfoldings expr = case expr of
   Hole _ _ -> []
   Differentiate {} -> developerError "Differentiation compilation to Isabelle is not implemented"
 
--- Differentiate {} ->
---   developerError "Differentiation compilation to Rocq is not implemented"
-
 compileExpr :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> Expr DecidabilityBuiltin -> m Code
 compileExpr isOutType localeAssms expr = do
   logEntry expr

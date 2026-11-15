@@ -228,17 +228,6 @@ App.       Expr14 ::= Expr14 Arg;
 Record.    Expr11 ::= "{" [RecordFieldAssign] "}";
 RecordAcc. Expr16 ::= Expr16 FieldAccess;
 
--- This was from type checking simple.vcl
--- Configuring executable 'vehicle' for vehicle-0.28.0...
--- Preprocessing executable 'vehicle' for vehicle-0.28.0...
--- Building executable 'vehicle' for vehicle-0.28.0...
---  [1 of 1] Compiling Main             ( app/Main.hs, /Users/alech/Development/vehicle/dist-newstyle/build/aarch64-osx/ghc-9.4.8/vehicle-0.28.0/x/vehicle/build/vehicle/vehicle-tmp/Main.o )
---  [2 of 2] Linking /Users/alech/Development/vehicle/dist-newstyle/build/aarch64-osx/ghc-9.4.8/vehicle-0.28.0/x/vehicle/build/vehicle/vehicle
---  Error: syntax error at line 160, column 63 before `['%
-
--- realTensorEmptyDimsHasComparison : HasComparison (Tensor Real []) (Tensor Real [])
--- Redoing it with the below had 2 shift-reduce conflicts (can't remember if that's fine)
-
 Differentiate. Expr16 ::=
   TokDelta TokSeqOpen Expr1 TokSeqClose
   TokDiv TokDelta TokSeqOpen Name TokSeqClose;
