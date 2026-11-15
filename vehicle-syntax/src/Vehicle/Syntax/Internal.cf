@@ -68,6 +68,7 @@ LVec.          Expr1 ::= "[" [Expr1] "]";
 Hole.          Expr1 ::= HoleToken;
 Record.        Expr1 ::= "{" [RecordField] "}";
 RecordAcc.     Expr1 ::= Expr1 "." NameToken;
+Differentiate. Expr1 ::= "(" "differentiate" Expr NameToken ")";
 
 coercions Expr 1;
 separator Expr1 ",";
