@@ -94,7 +94,7 @@ instance Delaborate (V.Expr V.Builtin) B.Expr where
     V.Builtin _ op -> delabBuiltin op []
     V.Record _ fields -> delabRecord fields
     V.RecordAcc _ record field -> delabRecordAccess record field
-    V.Differentiate {} -> error "TODO: external delaboration of Differentiate"
+    V.Differentiate _ e field -> delabDifferentiate e field
 
 instance Delaborate (V.Arg V.Builtin) B.Arg where
   delabM arg = do
@@ -153,6 +153,13 @@ delabRecordAccess :: (MonadDelab m) => V.Expr V.Builtin -> V.FieldName -> m B.Ex
 delabRecordAccess expr fieldName = do
   let tok = mkToken B.FieldAccess ("." <> V.nameOf fieldName)
   B.RecordAcc <$> delabM expr <*> pure tok
+
+delabDifferentiate :: (MonadDelab m) => V.Expr V.Builtin -> V.FieldName -> m B.Expr
+delabDifferentiate expr fieldName = do
+  expr' <- delabM expr
+  field' <- delabM fieldName
+  let tokDelta = mkToken B.TokDelta "delta"
+  return $ B.Differentiate tokDelta tokSeqOpen expr' tokSeqClose tokDiv tokDelta tokSeqOpen field' tokSeqClose
 
 delabNameBinder :: (MonadDelab m) => V.Binder V.Builtin -> m B.NameBinder
 delabNameBinder b = case V.binderNamingForm b of
