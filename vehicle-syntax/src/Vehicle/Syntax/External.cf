@@ -218,22 +218,19 @@ InfLiteral.   Lit ::= Infinity;
 Type.    Expr17 ::= TokType;
 
 -- Core structure.
-Ann.       Expr   ::= Expr2 TokElemOf Expr1;
-ForallT.   Expr1  ::= TokForallT [NameBinder] "." Expr1;
-Let.       Expr2  ::= TokLet [LetDecl] "in" Expr2;
-Lam.       Expr2  ::= TokLambda [NameBinder] TokArrow Expr2;
-Fun.       Expr12 ::= TypeBinder TokArrow Expr12;
-App.       Expr14 ::= Expr14 Arg;
+Ann.           Expr   ::= Expr2 TokElemOf Expr1;
+ForallT.       Expr1  ::= TokForallT [NameBinder] "." Expr1;
+Let.           Expr2  ::= TokLet [LetDecl] "in" Expr2;
+Lam.           Expr2  ::= TokLambda [NameBinder] TokArrow Expr2;
+Fun.           Expr12 ::= TypeBinder TokArrow Expr12;
+App.           Expr14 ::= Expr14 Arg;
 -- This record declaration causes a shift-reduce conflict.
-Record.    Expr11 ::= "{" [RecordFieldAssign] "}";
-RecordAcc. Expr16 ::= Expr16 FieldAccess;
-
-Differentiate. Expr16 ::=
-  TokDelta TokSeqOpen Expr1 TokSeqClose
-  TokDiv TokDelta TokSeqOpen Name TokSeqClose;
-Var.       Expr17 ::= Name;
-Literal.   Expr17 ::= Lit;
-Hole.      Expr17 ::= HoleToken;
+Record.        Expr11 ::= "{" [RecordFieldAssign] "}";
+RecordAcc.     Expr16 ::= Expr16 FieldAccess;
+Differentiate. Expr16 ::= TokDelta TokSeqOpen Expr1 TokSeqClose TokDiv TokDelta TokSeqOpen Name TokSeqClose;
+Var.           Expr17 ::= Name;
+Literal.       Expr17 ::= Lit;
+Hole.          Expr17 ::= HoleToken;
 
 -- Quantification
 Foreach.   Expr2 ::= TokForeach [NameBinder] "." Expr2;
