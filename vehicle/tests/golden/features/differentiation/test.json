@@ -1,12 +1,7 @@
 [
   {
-    "name": "FirstOrder",
-    "run": "vehicle typecheck -s firstOrder.vcl",
-    "needs": ["firstOrder.vcl"]
-  },
-  {
-    "name": "Exponential",
-    "run": "vehicle typecheck -s exponential.vcl",
-    "needs": ["exponential.vcl"]
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s spec.vcl",
+    "needs": ["spec.vcl"]
   }
 ]
