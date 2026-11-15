@@ -257,7 +257,7 @@ getTokenOfType makeToken p depth = \case
   -- BinderDepth, so when T resolves to Type, it knows it is not the first one in the binder chain.
   -- I'm sure there is a more elegant solution to this, and there are probably edge cases I haven't
   -- considered, but this will do for now.
-  BoundVar _ ix -> getBoundVarToken makeToken p ix True (depth + 1)
+  BoundVar _ ix -> getBoundVarToken makeToken p ix (depth + 1)
   FreeVar _ ident -> do
     decl <- getDeclEntry (Proxy @Builtin) ident
     case decl of
@@ -314,19 +314,16 @@ makeTokenAnyFile (Provenance (Range (Position sl sc) (Position _el ec)) _) (tTyp
 inBinderContext :: (MonadBoundContext (Expr Builtin) m) => Ix -> m a -> m a
 inBinderContext ix = dropBindersFromContext (Proxy @(Expr Builtin)) (unIx ix + 1)
 
-getBoundVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Ix -> Bool -> BinderDepth -> m IntermediateSemTok
-getBoundVarToken makeToken p ix allowInsertedByCompiler depth = do
+getBoundVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Ix -> BinderDepth -> m IntermediateSemTok
+getBoundVarToken makeToken p ix depth = do
   ctx <- getBoundCtx (Proxy @(Expr Builtin))
   case lookupIx ctx ix of
     Nothing -> return Nothing
     Just binder -> do
-      if not allowInsertedByCompiler && wasInsertedByCompiler binder
-        then return Nothing
-        else do
-          binderNameToken <- inBinderContext ix $ getBinderNameToken makeTokenAnyFile depth binder
-          case binderNameToken of
-            Nothing -> return Nothing
-            Just tok -> return $ makeToken p ((tok ^. tokenType), (tok ^. tokenModifiers))
+      binderNameToken <- inBinderContext ix $ getBinderNameToken makeTokenAnyFile depth binder
+      case binderNameToken of
+        Nothing -> return Nothing
+        Just tok -> return $ makeToken p ((tok ^. tokenType), (tok ^. tokenModifiers))
 
 getFreeVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Identifier -> m IntermediateSemTok
 getFreeVarToken makeToken p ident = do
@@ -345,7 +342,7 @@ collectExprTokens makeToken = \case
     exprToks <- addBinderToContext binder $ collectExprTokens makeToken res
     return $ binderToks ++ exprToks
   Builtin p builtin -> collectBuiltinTokens makeToken p builtin
-  BoundVar p ix -> singleton <$> getBoundVarToken makeToken p ix False 0
+  BoundVar p ix -> singleton <$> getBoundVarToken makeToken p ix 0
   FreeVar p ident -> singleton <$> getFreeVarToken makeToken p ident
   Hole p _name -> pure [makeToken p (SemanticTokenTypes_Decorator, [])]
   Meta p _metaId -> pure [makeToken p (SemanticTokenTypes_TypeParameter, [])]
