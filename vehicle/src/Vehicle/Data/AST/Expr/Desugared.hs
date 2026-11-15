@@ -102,10 +102,11 @@ data Expr builtin
       Provenance
       (Expr builtin) -- The record
       FieldName -- The field to access
-  | Differentiate
+  | -- | Partial derivate of a function with respect to a field of its input record
+    Differentiate
       Provenance
-      (Expr builtin)
-      FieldName
+      (Expr builtin) -- The function being differentiated
+      FieldName -- The field to differentiate with respect to
   deriving (Show, Generic)
 
 --------------------------------------------------------------------------------
