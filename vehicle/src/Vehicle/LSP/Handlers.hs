@@ -261,17 +261,14 @@ getTokenOfType makeToken p depth = \case
   FreeVar _ ident -> do
     decl <- getDeclEntry (Proxy @Builtin) ident
     case decl of
-      DefAbstract _ _ _ t -> getTokenOfType makeToken p depth t
+      DefAbstract {} -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
       DefFunction _ _ _ _ e -> getTokenOfType makeToken p depth e
       DefRecord {} -> pure $ makeToken p (SemanticTokenTypes_Class, [])
   Hole _ _name -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
   Meta _ _metaId -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
-  App _f _args -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
+  App f _args -> getTokenOfType makeToken p depth f
   Let _ _bound bodyBinder bodyExpr -> addBinderToContext bodyBinder $ getTokenOfType makeToken p depth bodyExpr
-  Lam _ binder body ->
-    if wasInsertedByCompiler binder
-      then addBinderToContext binder $ getTokenOfType makeToken p depth body
-      else getTokenOfType makeToken p depth (typeOf binder)
+  Lam _ binder body -> addBinderToContext binder $ getTokenOfType makeToken p depth body
   Record _ typ _fields -> getTokenOfType makeToken p depth typ
   RecordProj _ _typ _body _fieldName -> pure $ makeToken p (SemanticTokenTypes_Method, [])
 
