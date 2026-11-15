@@ -351,7 +351,7 @@ collectExprTokens makeToken = \case
     exprToks <- addBinderToContext binder $ collectExprTokens makeToken res
     return $ binderToks ++ exprToks
   Builtin p builtin -> collectBuiltinTokens makeToken p builtin
-  BoundVar p ix -> singleton <$> getBoundVarToken makeToken p ix False 1
+  BoundVar p ix -> singleton <$> getBoundVarToken makeToken p ix False 0
   FreeVar p ident -> singleton <$> getFreeVarToken makeToken p ident
   Hole p _name -> pure [makeToken p (SemanticTokenTypes_Decorator, [])]
   Meta p _metaId -> pure [makeToken p (SemanticTokenTypes_TypeParameter, [])]
