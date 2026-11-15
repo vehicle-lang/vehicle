@@ -31,7 +31,8 @@ position token TokElse      {"else"};
 position token TokElemOf    {":"};
 position token TokLambda    {"\\"};
 position token TokLet       {"let"};
-position token TokDelta     {"delta"};
+-- Currently colliding with other golden tests (One of these will have to change)
+position token TokDelta     {"delt"};
 
 position token TokType      {"Type"};
 position token TokUnit      {"Unit"};

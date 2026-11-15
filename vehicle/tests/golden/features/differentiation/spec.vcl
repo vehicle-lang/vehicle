@@ -10,13 +10,13 @@ type Model = Input -> Output
 model : Model
 
 firstOrderDerivative : Model
-firstOrderDerivative = delta[model]/delta[time]
+firstOrderDerivative = delt[model]/delt[time]
 
 secondOrderDerivative : Model
-secondOrderDerivative = delta[firstOrderDerivative]/delta[time]
+secondOrderDerivative = delt[firstOrderDerivative]/delt[time]
 
 firstOrderDerivativeAt : Output
-firstOrderDerivativeAt = delta[model]/delta[time] ({position = 1, time = 0})
+firstOrderDerivativeAt = delt[model]/delt[time] ({position = 1, time = 0})
 
 secondOrderDerivativeAt : Output
 secondOrderDerivativeAt = secondOrderDerivative ({position = 1, time = 0})
