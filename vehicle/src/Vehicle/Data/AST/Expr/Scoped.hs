@@ -131,11 +131,9 @@ data Expr builtin
   | -- | Differentiation
     Differentiate
       Provenance
-      (Type builtin)
-      (Expr builtin) --
-      FieldName --
-      -- scoped will work out the type of the record expr you are trying to match
-      -- should be adding more type information here
+      (Type builtin) -- Type of the record, e.g. `{ position : Real, time : Real}`
+      (Expr builtin) -- The function being differentiated
+      FieldName -- The field which the expression is differentiated with respect to, e.g. `time`
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 --------------------------------------------------------------------------------
@@ -325,12 +323,7 @@ traverseFreeVarsM underBinder processFreeVar = go
       Differentiate p t e field -> do
         t' <- go t
         e' <- go e
-        pure (Differentiate p t' e' field)
-
--- TODO: ASK
--- versus return $
--- versus
--- Differentiate p e field -> Differentiate p <$> go e <*> pure field
+        return $ Differentiate p t' e' field
 
 freeVarsIn :: Expr builtin -> Set Identifier
 freeVarsIn =
@@ -397,8 +390,6 @@ replaceProvenance p = go
       Record _ ident fields -> Record p ident (mapRecordFields go fields)
       RecordProj _ recordType record field -> RecordProj p (go recordType) (go record) field
       Differentiate _ t e field -> Differentiate p (go t) (go e) field
-
--- super not certain here, why do we not change provenance of fields, but we do for expr?
 
 -----------------------------------------------------------------------------
 -- Instances

@@ -118,12 +118,6 @@ scopeExpr e = case e of
     let t = calculateConcreteRecordType p identAndTelescope
     return $ Differentiate p t expr' field
 
--- Need to: establish what the type of the thing we are differentiating is
--- work out which record we're trying to differentiate wrt
-
--- create free var of the indentifier
--- lookup the type of the record that that field belongs to
-
 scopeBuiltin ::
   (MonadScopeExpr builtin m) =>
   Provenance ->

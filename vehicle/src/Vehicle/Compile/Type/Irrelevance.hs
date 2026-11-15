@@ -60,14 +60,13 @@ instance RemoveIrrelevantCode builtin m (Expr builtin) where
       Let p bound binder body -> Let p <$> remove bound <*> remove binder <*> remove body
       Record p ident fields -> Record p ident <$> traverseRecordFields remove fields
       RecordProj p recordType record field -> RecordProj p <$> remove recordType <*> remove record <*> pure field
+      Differentiate p t e field -> Differentiate p <$> remove t <*> remove e <*> pure field
       Universe {} -> return expr
       FreeVar {} -> return expr
       BoundVar {} -> return expr
       Hole {} -> return expr
       Meta {} -> return expr
       Builtin {} -> return expr
-      Differentiate p t e field ->
-        Differentiate p <$> remove t <*> remove e <*> pure field
 
     -- showRemoveExit result
     return result
