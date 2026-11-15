@@ -323,10 +323,7 @@ getBoundVarToken makeToken p ix allowInsertedByCompiler depth = do
       if not allowInsertedByCompiler && wasInsertedByCompiler binder
         then return Nothing
         else do
-          binderNameToken <-
-            Debug.Trace.trace (show $ "resolved " <+> pretty ix <+> " to " <+> prettyVerbose binder <+> " at " <+> pretty (provenanceOf binder) <+> " aka " <+> pretty (show binder)) $
-              inBinderContext ix $
-                getBinderNameToken makeTokenAnyFile depth binder
+          binderNameToken <- inBinderContext ix $ getBinderNameToken makeTokenAnyFile depth binder
           case binderNameToken of
             Nothing -> return Nothing
             Just tok -> return $ makeToken p ((tok ^. tokenType), (tok ^. tokenModifiers))
