@@ -2,6 +2,12 @@
 
 ## Next release
 
+### Language
+
+* Quantifiers and `if` expressions can now be used without brackets as the right-hand operand of `and`, `or` and `=>`,
+  e.g. `1 >= 0 and exists (x : Index 2) . x >= 0` and `x > 0 => if x > 1 then p else q` previously failed to parse.
+  As before, the body of the quantifier (or the `else` branch of the `if`) extends as far to the right as possible.
+
 ### ITP backend
 
 * The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
