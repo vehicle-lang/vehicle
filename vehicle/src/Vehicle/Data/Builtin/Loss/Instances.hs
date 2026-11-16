@@ -46,7 +46,8 @@ allInstances mode dl =
       <> impliesCandidates dl
       <> booleanReductionOpCandidates dl hasReduceAnd ReduceAndTensor ReduceConjunction
       <> booleanReductionOpCandidates dl hasReduceOr ReduceOrTensor ReduceDisjunction
-      <> ifCandidates
+      <> ifRatTensorCandidates
+      <> ifNonRatTensorCandidates
       <> existsCandidates
       ----------------------
       -- CompareRatTensor --
@@ -73,7 +74,6 @@ allInstances mode dl =
       -- Other --
       -----------
       <> maxGradientInstances
-      <> maxGradientTypeInstances
 
 booleanLiteralCandidates :: Identifier -> [TempCandidate mode]
 booleanLiteralCandidates dl =
@@ -276,14 +276,26 @@ pointwiseComparisonCandidates dl op =
     )
   ]
 
-ifCandidates :: [TempCandidate mode]
-ifCandidates =
-  [ ( hasIfRatTensor tBool,
+ifNonRatTensorCandidates :: [TempCandidate mode]
+ifNonRatTensorCandidates =
+  [ ( hasIfNonRatTensor tBool,
       builtinFunction If,
       Nothing
     ),
+    ( hasIfNonRatTensor tRatWithGradients,
+      lossBuiltinFunction IfWhoseConditionHasGradients,
+      Nothing
+    )
+  ]
+
+ifRatTensorCandidates :: [TempCandidate mode]
+ifRatTensorCandidates =
+  [ ( hasIfRatTensor tBool,
+      lossBuiltinFunction IfRatTensor,
+      Nothing
+    ),
     ( hasIfRatTensor tRatWithGradients,
-      lossBuiltinFunction IfRatTensorWithGradients,
+      lossBuiltinFunction IfWhoseConditionHasGradients,
       Nothing
     )
   ]
@@ -432,33 +444,6 @@ maxGradientInstances =
     ( maxGradients withoutGradients withoutGradients withoutGradients,
       unitLit,
       Nothing
-    )
-  ]
-
-maxGradientTypeInstances :: [TempCandidate mode]
-maxGradientTypeInstances =
-  [ -- Rational tensors join the gradients of their elements...
-    ( forAllGradientTriples $ \g1 g2 g3 ->
-        forAllDims $ \dims ->
-          maxGradients g1 g2 g3
-            .~~~> maxGradientTypes
-              (tTensor (tRat .@@ [g1]) dims)
-              (tTensor (tRat .@@ [g2]) dims)
-              (tTensor (tRat .@@ [g3]) dims),
-      implLam "g1" tGradient $ \g1 ->
-        implLam "g2" tGradient $ \g2 ->
-          implLam "g3" tGradient $ \g3 ->
-            lamDims $
-              const $
-                instLam "r" (maxGradients g1 g2 g3) $
-                  const unitLit,
-      Nothing
-    ),
-    -- ...and every other type has to agree. The priority also settles the overlap when both
-    -- branches already carry the same gradient.
-    ( forAllTypes $ \t -> maxGradientTypes t t t,
-      lamType $ const unitLit,
-      Just 0
     )
   ]
 

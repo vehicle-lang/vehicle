@@ -102,8 +102,7 @@ gradientTypeCheck lossMode differentiableLogic prog = do
 
   let isGradientType = \case
         Builtin _ b -> b == LossBuiltinType GradientType
-        App (Builtin _ b) _ ->
-          b == LossBuiltinTypeClass MaxGradients || b == LossBuiltinTypeClass MaxGradientTypes
+        App (Builtin _ b) _ -> b == LossBuiltinTypeClass MaxGradients
         _ -> False
   let isGradientArg = \case
         Builtin _ (LossBuiltinConstructor c) -> c == WithGradients || c == WithoutGradients

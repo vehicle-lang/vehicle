@@ -4,8 +4,9 @@
 
 ### Loss backend
 
-* Fixed an bug in the translation when constructing tensors whose elements are quantified
-  variables, e.g. `[1.0, x]`.
+* Fixed a bug that occured when constructing sequences for which some elements had gradients and others did not, e.g. `[1.0, x]`.
+
+* Fixed a bug that occured when one branch of an `if` had gradients and the other did not, e.g. `if c then x else 0.0`.
 
 ### Other
 
@@ -53,8 +54,6 @@
 * Fixed bug where default `Sampler` implementations were returning `nan` when a quantified variable was
   unbounded, e.g. `forall x . p x`. Starting points are now drawn from a finite region around the
   bound that is finite, or around the origin when neither is.
-
-* The branches of an `if` may now have different gradients, e.g. `if c then x else 0.0`.
 
 ### Solver backend
 
