@@ -85,43 +85,55 @@ collectSemanticTokens logger filePath = do
       return $ makeLspSemanticTokens []
     Right toks ->
       return $ makeLspSemanticTokens toks
+  where
+    makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either Text Lsp.SemanticTokens
+    makeLspSemanticTokens tokens =
+      makeSemanticTokens defaultSemanticTokensLegend sortedTokens
+      where
+        sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) tokens
+
+    populateFreeContext :: (MonadFreeContext Builtin n) => [Decl Builtin] -> n a -> n a
+    populateFreeContext [] f = f
+    populateFreeContext (d : ds) f = addDeclToContext d $ populateFreeContext ds f
+
+--------------------------------------------------------------------------------
 
 type MonadCollectTokens m =
   ( MonadFreeContext Builtin m,
     MonadBoundContext (Expr Builtin) m
   )
 
-makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either Text Lsp.SemanticTokens
-makeLspSemanticTokens tokens =
-  makeSemanticTokens defaultSemanticTokensLegend sortedTokens
-  where
-    sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) tokens
-
 type IntermediateSemTok = Maybe Lsp.SemanticTokenAbsolute
 
-populateFreeContext :: (MonadFreeContext Builtin m) => [Decl Builtin] -> m a -> m a
-populateFreeContext [] f = f
-populateFreeContext (d : ds) f = addDeclToContext d $ populateFreeContext ds f
+type SemanticTokenTypeComplete = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModifiers])
 
-collectProgTokens :: (MonadCollectTokens m) => TokenMaker -> Prog Builtin -> m [IntermediateSemTok]
-collectProgTokens makeToken (Main decls) =
-  concat <$> traverse (collectDeclTokens makeToken) decls
+type BinderDepth = Int
 
-collectDeclTokens :: (MonadCollectTokens m) => TokenMaker -> GenericDecl (Expr Builtin) -> m [IntermediateSemTok]
-collectDeclTokens makeToken decl = do
-  headTok <- getHeadTok
-  bodyToks <- getBodyToks
-  return $ headTok : bodyToks
-  where
-    getHeadTok = getDeclHeadToken makeToken (provenanceOf decl) decl
+type TokenMaker = Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
 
-    getBodyToks = case decl of
-      DefAbstract _ _ _ t -> collectExprTokens makeToken t
-      DefFunction _ _ _ t e -> concat <$> traverse (collectExprTokens makeToken) ([t, e] :: [Expr Builtin])
-      DefRecord _ _ _ t e _ -> do
-        binderToks <- concat <$> traverse (collectBinderTokens makeToken) t
-        fieldsToks <- collectFieldsTokens makeToken e
-        return $ binderToks ++ fieldsToks
+makeTokenThisFile :: FilePath -> Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
+makeTokenThisFile filePath p@(Provenance _ provFilePath) t
+  | filePath == provFilePath = makeTokenAnyFile p t
+  | otherwise = Nothing
+
+-- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
+makeTokenAnyFile :: Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
+makeTokenAnyFile (Provenance (Range (Position sl sc) (Position _el ec)) _) (tType, modifiers) =
+  Just $
+    Lsp.SemanticTokenAbsolute
+      { _line = fromIntegral sl - 1,
+        _startChar = fromIntegral sc - 1,
+        _length = fromIntegral (ec - sc),
+        _tokenType = tType,
+        _tokenModifiers = modifiers
+      }
+
+-- drop `ix + 1` binders because we want to drop all binders up to and including binder `ix`
+-- e.g. if we want to run in the context of before we added i2, we need to drop i0, i1, and i2 (3 total).
+inBinderContext :: (MonadBoundContext (Expr Builtin) m) => Ix -> m a -> m a
+inBinderContext ix = dropBindersFromContext (Proxy @(Expr Builtin)) (unIx ix + 1)
+
+--------------------------------------------------------------------------------
 
 getDeclHeadToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> GenericDecl (Expr Builtin) -> m IntermediateSemTok
 getDeclHeadToken makeToken p = \case
@@ -134,9 +146,31 @@ getDeclHeadToken makeToken p = \case
     getTokenOfType makeToken p 0 t <&> fmap fixProjectionTokenType
   DefRecord {} -> pure $ makeToken p (SemanticTokenTypes_Class, [])
 
-type SemanticTokenTypeComplete = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModifiers])
+getBinderNameToken :: (MonadCollectTokens m) => TokenMaker -> BinderDepth -> GenericBinder (Expr Builtin) -> m IntermediateSemTok
+getBinderNameToken makeToken depth b = getTokenOfType makeToken nameProvenance depth (typeOf b)
+  where
+    -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
+    -- we just want the provenance of the name.
+    nameProvenance = case binderNamingForm b of
+      NameAndType _n p -> p
+      OnlyName _n p -> p
+      OnlyType -> mempty
 
-type BinderDepth = Int
+getBoundVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Ix -> BinderDepth -> m IntermediateSemTok
+getBoundVarToken makeToken p ix depth = do
+  ctx <- getBoundCtx (Proxy @(Expr Builtin))
+  case lookupIx ctx ix of
+    Nothing -> return Nothing
+    Just binder -> do
+      binderNameToken <- inBinderContext ix $ getBinderNameToken makeTokenAnyFile depth binder
+      case binderNameToken of
+        Nothing -> return Nothing
+        Just tok -> return $ makeToken p ((tok ^. tokenType), (tok ^. tokenModifiers))
+
+getFreeVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Identifier -> m IntermediateSemTok
+getFreeVarToken makeToken p ident = do
+  decl <- getDeclEntry (Proxy @Builtin) ident
+  getDeclHeadToken makeToken p decl
 
 getTokenOfType :: (MonadCollectTokens m) => TokenMaker -> Provenance -> BinderDepth -> Expr Builtin -> m IntermediateSemTok
 getTokenOfType makeToken p depth = \case
@@ -177,6 +211,28 @@ getTokenOfType makeToken p depth = \case
   Record _ typ _fields -> getTokenOfType makeToken p depth typ
   RecordProj _ _typ _body _fieldName -> pure $ makeToken p (SemanticTokenTypes_Method, [])
 
+--------------------------------------------------------------------------------
+
+collectProgTokens :: (MonadCollectTokens m) => TokenMaker -> Prog Builtin -> m [IntermediateSemTok]
+collectProgTokens makeToken (Main decls) =
+  concat <$> traverse (collectDeclTokens makeToken) decls
+
+collectDeclTokens :: (MonadCollectTokens m) => TokenMaker -> GenericDecl (Expr Builtin) -> m [IntermediateSemTok]
+collectDeclTokens makeToken decl = do
+  headTok <- getHeadTok
+  bodyToks <- getBodyToks
+  return $ headTok : bodyToks
+  where
+    getHeadTok = getDeclHeadToken makeToken (provenanceOf decl) decl
+
+    getBodyToks = case decl of
+      DefAbstract _ _ _ t -> collectExprTokens makeToken t
+      DefFunction _ _ _ t e -> concat <$> traverse (collectExprTokens makeToken) ([t, e] :: [Expr Builtin])
+      DefRecord _ _ _ t e _ -> do
+        binderToks <- concat <$> traverse (collectBinderTokens makeToken) t
+        fieldsToks <- collectFieldsTokens makeToken e
+        return $ binderToks ++ fieldsToks
+
 collectBinderTokens :: (MonadCollectTokens m) => TokenMaker -> GenericBinder (Expr Builtin) -> m [IntermediateSemTok]
 collectBinderTokens makeToken binder@(Binder _ _ _ val)
   | wasInsertedByCompiler binder = pure []
@@ -184,56 +240,6 @@ collectBinderTokens makeToken binder@(Binder _ _ _ val)
       exprToks <- collectExprTokens makeToken val
       nameTok <- getBinderNameToken makeToken 0 binder
       return $ nameTok : exprToks
-
-type TokenMaker = Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
-
-getBinderNameToken :: (MonadCollectTokens m) => TokenMaker -> BinderDepth -> GenericBinder (Expr Builtin) -> m IntermediateSemTok
-getBinderNameToken makeToken depth b = getTokenOfType makeToken nameProvenance depth (typeOf b)
-  where
-    -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
-    -- we just want the provenance of the name.
-    nameProvenance = case binderNamingForm b of
-      NameAndType _n p -> p
-      OnlyName _n p -> p
-      OnlyType -> mempty
-
-makeTokenThisFile :: FilePath -> Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
-makeTokenThisFile filePath p@(Provenance _ provFilePath) t
-  | filePath == provFilePath = makeTokenAnyFile p t
-  | otherwise = Nothing
-
--- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
-makeTokenAnyFile :: Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
-makeTokenAnyFile (Provenance (Range (Position sl sc) (Position _el ec)) _) (tType, modifiers) =
-  Just $
-    Lsp.SemanticTokenAbsolute
-      { _line = fromIntegral sl - 1,
-        _startChar = fromIntegral sc - 1,
-        _length = fromIntegral (ec - sc),
-        _tokenType = tType,
-        _tokenModifiers = modifiers
-      }
-
--- drop `ix + 1` binders because we want to drop all binders up to and including binder `ix`
--- e.g. if we want to run in the context of before we added i2, we need to drop i0, i1, and i2 (3 total).
-inBinderContext :: (MonadBoundContext (Expr Builtin) m) => Ix -> m a -> m a
-inBinderContext ix = dropBindersFromContext (Proxy @(Expr Builtin)) (unIx ix + 1)
-
-getBoundVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Ix -> BinderDepth -> m IntermediateSemTok
-getBoundVarToken makeToken p ix depth = do
-  ctx <- getBoundCtx (Proxy @(Expr Builtin))
-  case lookupIx ctx ix of
-    Nothing -> return Nothing
-    Just binder -> do
-      binderNameToken <- inBinderContext ix $ getBinderNameToken makeTokenAnyFile depth binder
-      case binderNameToken of
-        Nothing -> return Nothing
-        Just tok -> return $ makeToken p ((tok ^. tokenType), (tok ^. tokenModifiers))
-
-getFreeVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Identifier -> m IntermediateSemTok
-getFreeVarToken makeToken p ident = do
-  decl <- getDeclEntry (Proxy @Builtin) ident
-  getDeclHeadToken makeToken p decl
 
 collectExprTokens ::
   (MonadCollectTokens m) =>
