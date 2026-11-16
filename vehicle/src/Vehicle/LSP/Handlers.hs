@@ -78,7 +78,7 @@ handlers logger server clientCapabilities =
     textDocumentDidSaveHandler _notification = do
       return ()
 
-    textDocumentSemanticTokensFull :: Lsp.Handler m Method_TextDocumentSemanticTokensFull
+    textDocumentSemanticTokensFull :: Lsp.Handler m 'Method_TextDocumentSemanticTokensFull
     textDocumentSemanticTokensFull request responder = do
       let doc = request ^. params . textDocument . uri
       let mFilePath = uriToFilePath doc
