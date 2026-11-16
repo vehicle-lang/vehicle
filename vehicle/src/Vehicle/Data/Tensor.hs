@@ -9,7 +9,7 @@ module Vehicle.Data.Tensor
     flattenIndices,
     HasShape (..),
     isZeroDimensional,
-    Tensor (DenseTensor, ConstantTensor),
+    Tensor (ConstantTensor),
     BoolTensor,
     IndexTensor,
     NatTensor,

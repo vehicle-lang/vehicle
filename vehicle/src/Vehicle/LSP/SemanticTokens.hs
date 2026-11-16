@@ -31,7 +31,6 @@ import Vehicle.Data.Builtin.Standard
     DerivedFunction (..),
     TypeClassOp (..),
   )
-import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Data.Variable.Bound.Context.Core (lookupIx)
 import Vehicle.Data.Variable.Bound.Context.Generic (MonadBoundContext (..), runFreshBoundContextT)
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
@@ -204,86 +203,8 @@ classifyTokenOfType depth = \case
   Record _ typ _fields -> classifyTokenOfType depth typ
   RecordProj _ _typ _body _fieldName -> pure $ Just (SemanticTokenTypes_Method, [])
 
---------------------------------------------------------------------------------
-
-collectProgTokens :: (MonadCollectTokens m) => Prog Builtin -> m [IntermediateSemTok]
-collectProgTokens (Main decls) =
-  concat <$> traverse collectDeclTokens decls
-
-collectDeclTokens :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m [IntermediateSemTok]
-collectDeclTokens decl = do
-  headTok <- getHeadToks
-  bodyToks <- getBodyToks
-  return $ headTok : bodyToks
-  where
-    getHeadToks = emitAt (provenanceOf decl) <$> classifyDeclHead decl
-
-    getBodyToks = case decl of
-      DefAbstract _ _ _ t -> collectExprTokens t
-      DefFunction _ _ _ t e -> concat <$> traverse collectExprTokens ([t, e] :: [Expr Builtin])
-      DefRecord _ _ _ t e _ -> do
-        binderToks <- concat <$> traverse collectBinderTokens t
-        fieldsToks <- collectFieldsTokens e
-        return $ binderToks ++ fieldsToks
-
-collectBinderTokens :: (MonadCollectTokens m) => GenericBinder (Expr Builtin) -> m [IntermediateSemTok]
-collectBinderTokens binder@(Binder _ _ _ val)
-  | wasInsertedByCompiler binder = pure []
-  | otherwise = do
-      exprToks <- collectExprTokens val
-      nameTok <- getNameTok
-      return $ nameTok : exprToks
-  where
-    getNameTok = emitAt nameProvenance <$> classifyBinderName 0 binder
-
-    -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
-    -- we just want the provenance of the name.
-    nameProvenance = case binderNamingForm binder of
-      NameAndType _n p -> p
-      OnlyName _n p -> p
-      OnlyType -> mempty
-
-collectExprTokens ::
-  (MonadCollectTokens m) =>
-  Expr Builtin ->
-  m [IntermediateSemTok]
-collectExprTokens = \case
-  Universe p _level -> pure [mkTok p (SemanticTokenTypes_Type, [])]
-  Pi _p binder res -> do
-    binderToks <- collectBinderTokens binder
-    exprToks <- addBinderToContext binder $ collectExprTokens res
-    return $ binderToks ++ exprToks
-  Builtin p builtin -> collectBuiltinTokens p builtin
-  BoundVar p ix -> singleton <$> emitAt p <$> classifyBoundVar 0 ix
-  FreeVar p ident -> singleton <$> emitAt p <$> classifyFreeVar ident
-  Hole p _name -> pure [mkTok p (SemanticTokenTypes_Decorator, [])]
-  Meta p _metaId -> pure [mkTok p (SemanticTokenTypes_TypeParameter, [])]
-  App f args -> do
-    fnToks <- collectExprTokens f
-    argsToks <- concat <$> traverse collectArgTokens (filter (not . wasInsertedByCompiler) (NonEmpty.toList args))
-    return $ fnToks ++ argsToks
-  Let p bound bodyBinder bodyExpr -> do
-    let letToks = [mkTok p (SemanticTokenTypes_Keyword, [])]
-    boundToks <- collectExprTokens bound
-    binderToks <- collectBinderTokens bodyBinder
-    bodyToks <- addBinderToContext bodyBinder $ collectExprTokens bodyExpr
-    return $ letToks ++ boundToks ++ binderToks ++ bodyToks
-  Lam p binder body -> do
-    let lamToks = [mkTok p (SemanticTokenTypes_Keyword, [])]
-    binderToks <- collectBinderTokens binder
-    bodyToks <- addBinderToContext binder $ collectExprTokens body
-    return $ lamToks ++ binderToks ++ bodyToks
-  Record _p _typ fields -> do
-    fieldsToks <- collectFieldsTokens fields
-    return fieldsToks
-  RecordProj p _typ _body _fieldName -> pure [mkTok p (SemanticTokenTypes_Method, [])]
-
-collectBuiltinTokens ::
-  (MonadCollectTokens m) =>
-  Provenance ->
-  Builtin ->
-  m [IntermediateSemTok]
-collectBuiltinTokens p = \case
+classifyBuiltin :: Builtin -> Maybe TokenClass
+classifyBuiltin = \case
   BuiltinConstructor constructor -> case constructor of
     Nil -> tok SemanticTokenTypes_Keyword
     Cons -> tok SemanticTokenTypes_Operator
@@ -291,9 +212,9 @@ collectBuiltinTokens p = \case
     IndexLiteral _ -> tok SemanticTokenTypes_Number
     NatLiteral _ -> tok SemanticTokenTypes_Number
     VectorLiteral -> tok SemanticTokenTypes_Keyword
-    BoolTensorLiteral tensor -> collectTensorLiteralTokens p SemanticTokenTypes_Keyword tensor
-    NatTensorLiteral tensor -> collectTensorLiteralTokens p SemanticTokenTypes_Number tensor
-    RatTensorLiteral tensor -> collectTensorLiteralTokens p SemanticTokenTypes_Number tensor
+    BoolTensorLiteral _ -> tok SemanticTokenTypes_Keyword
+    NatTensorLiteral _ -> tok SemanticTokenTypes_Number
+    RatTensorLiteral _ -> tok SemanticTokenTypes_Number
   -- TODO: It would be nice to be able to access the external syntax here. We want to say
   -- "if the external token is alphanumeric, use Keyword, otherwise use Operator".
   BuiltinFunction fn -> case fn of
@@ -349,8 +270,8 @@ collectBuiltinTokens p = \case
     QuantifyInList {} -> tok SemanticTokenTypes_Keyword
   TypeClass _tc -> tok SemanticTokenTypes_Class
   TypeClassOp tcOp -> case tcOp of
-    FromNatTC -> pure []
-    FromRatTC -> pure []
+    FromNatTC -> Nothing
+    FromRatTC -> Nothing
     VecLiteralTC -> tok SemanticTokenTypes_Keyword
     NegTC -> tok SemanticTokenTypes_Operator
     AtTC -> tok SemanticTokenTypes_Operator
@@ -358,19 +279,83 @@ collectBuiltinTokens p = \case
     FoldTC -> tok SemanticTokenTypes_Keyword
     ForeachTC -> tok SemanticTokenTypes_Keyword
     TensorTypeTC -> tok SemanticTokenTypes_Type
-  NatInDomainConstraint -> pure []
+  NatInDomainConstraint -> Nothing
   where
-    tok typ = pure [mkTok p (typ, [])]
+    tok typ = Just (typ, [])
 
-collectTensorLiteralTokens ::
+--------------------------------------------------------------------------------
+
+collectProgTokens :: (MonadCollectTokens m) => Prog Builtin -> m [IntermediateSemTok]
+collectProgTokens (Main decls) =
+  concat <$> traverse collectDeclTokens decls
+
+collectDeclTokens :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m [IntermediateSemTok]
+collectDeclTokens decl = do
+  headTok <- getHeadToks
+  bodyToks <- getBodyToks
+  return $ headTok : bodyToks
+  where
+    getHeadToks = emitAt (provenanceOf decl) <$> classifyDeclHead decl
+
+    getBodyToks = case decl of
+      DefAbstract _ _ _ t -> collectExprTokens t
+      DefFunction _ _ _ t e -> concat <$> traverse collectExprTokens ([t, e] :: [Expr Builtin])
+      DefRecord _ _ _ t e _ -> do
+        binderToks <- concat <$> traverse collectBinderTokens t
+        fieldsToks <- collectFieldsTokens e
+        return $ binderToks ++ fieldsToks
+
+collectBinderTokens :: (MonadCollectTokens m) => GenericBinder (Expr Builtin) -> m [IntermediateSemTok]
+collectBinderTokens binder@(Binder _ _ _ val)
+  | wasInsertedByCompiler binder = pure []
+  | otherwise = do
+      exprToks <- collectExprTokens val
+      nameTok <- getNameTok
+      return $ nameTok : exprToks
+  where
+    getNameTok = emitAt nameProvenance <$> classifyBinderName 0 binder
+
+    -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
+    -- we just want the provenance of the name.
+    nameProvenance = case binderNamingForm binder of
+      NameAndType _n p -> p
+      OnlyName _n p -> p
+      OnlyType -> mempty
+
+collectExprTokens ::
   (MonadCollectTokens m) =>
-  Provenance ->
-  SemanticTokenTypes ->
-  Tensor a ->
+  Expr Builtin ->
   m [IntermediateSemTok]
-collectTensorLiteralTokens p valueTokType = \case
-  DenseTensor _shape _vec -> pure [mkTok p (valueTokType, [])]
-  ConstantTensor _shape _a -> pure [mkTok p (valueTokType, [])]
+collectExprTokens = \case
+  Universe p _level -> pure [mkTok p (SemanticTokenTypes_Type, [])]
+  Pi _p binder res -> do
+    binderToks <- collectBinderTokens binder
+    exprToks <- addBinderToContext binder $ collectExprTokens res
+    return $ binderToks ++ exprToks
+  Builtin p builtin -> pure $ [emitAt p (classifyBuiltin builtin)]
+  BoundVar p ix -> singleton <$> emitAt p <$> classifyBoundVar 0 ix
+  FreeVar p ident -> singleton <$> emitAt p <$> classifyFreeVar ident
+  Hole p _name -> pure [mkTok p (SemanticTokenTypes_Decorator, [])]
+  Meta p _metaId -> pure [mkTok p (SemanticTokenTypes_TypeParameter, [])]
+  App f args -> do
+    fnToks <- collectExprTokens f
+    argsToks <- concat <$> traverse collectArgTokens (filter (not . wasInsertedByCompiler) (NonEmpty.toList args))
+    return $ fnToks ++ argsToks
+  Let p bound bodyBinder bodyExpr -> do
+    let letToks = [mkTok p (SemanticTokenTypes_Keyword, [])]
+    boundToks <- collectExprTokens bound
+    binderToks <- collectBinderTokens bodyBinder
+    bodyToks <- addBinderToContext bodyBinder $ collectExprTokens bodyExpr
+    return $ letToks ++ boundToks ++ binderToks ++ bodyToks
+  Lam p binder body -> do
+    let lamToks = [mkTok p (SemanticTokenTypes_Keyword, [])]
+    binderToks <- collectBinderTokens binder
+    bodyToks <- addBinderToContext binder $ collectExprTokens body
+    return $ lamToks ++ binderToks ++ bodyToks
+  Record _p _typ fields -> do
+    fieldsToks <- collectFieldsTokens fields
+    return fieldsToks
+  RecordProj p _typ _body _fieldName -> pure [mkTok p (SemanticTokenTypes_Method, [])]
 
 collectArgTokens ::
   (MonadCollectTokens m) =>
