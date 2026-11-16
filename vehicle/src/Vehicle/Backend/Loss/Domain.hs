@@ -7,11 +7,13 @@ where
 import Control.Monad (foldM, forM)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.Writer.Strict (MonadWriter (..), runWriterT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Monoid (Any (..))
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.PurifyAssertion
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
@@ -417,10 +419,21 @@ andPartitions dims p1 p2 = do
 --------------------------------------------------------------------------------
 -- Search algorithm
 
+-- | Tracks whether the value being searched contained a quantifier in it, and
+-- is used to ensure we keep the compiled version of it, even if no constraints
+-- were found for quantifiers above this point.
+type CompiledQuantifier = Any
+
 compileBool :: (MonadDomain m) => Thunk Builtin -> m (MaybeTrivial Partitions)
-compileBool value = logEntryAndExit value $ do
+compileBool value = fst <$> runWriterT (compileBoolValue value)
+
+compileBoolValue ::
+  (MonadDomain m, MonadWriter CompiledQuantifier m) =>
+  Thunk Builtin ->
+  m (MaybeTrivial Partitions)
+compileBoolValue value = logEntryAndExit value $ do
   forcedValue <- forceAndRewriteTensor value
-  result <- case toBoolValue forcedValue of
+  (result, compiledQuantifier) <- listen $ case toBoolValue forcedValue of
     -----------------------
     -- Useful base cases --
     -----------------------
@@ -434,10 +447,12 @@ compileBool value = logEntryAndExit value $ do
     ---------------------
     -- Recursive cases --
     ---------------------
-    VImplies args -> compileBool $ elimImplies args
+    VImplies args -> compileBoolValue $ elimImplies args
     VAnd args -> compileAnd args
     VOr args -> compileOr args
-    VQuantifyRatTensor args -> compileQuantifierInternal mempty args
+    VQuantifyRatTensor args -> do
+      tell $ Any True
+      compileQuantifierInternal mempty args
     VQuantifyRecord _args -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
     -------------------
     -- Blocked cases --
@@ -448,35 +463,36 @@ compileBool value = logEntryAndExit value $ do
     VBoolVectorAt {} -> unblock forcedValue
     VBoolParameter {} -> unblock forcedValue
     VBoolFoldList {} -> unblock forcedValue
-    VBoolIf args -> compileBool =<< unfoldIf args
+    VBoolIf args -> compileBoolValue =<< unfoldIf args
     VNot (TensorOp1Args dims xs) -> unblockWith (lowerNot unblockingActions $ TensorOp1Args dims xs) (Forced forcedValue)
 
   -- In the case where we only return one partition with no constraints then
   -- we can just return the unnormalised result.
   case result of
-    NonTrivial (Map.toList -> [(Nothing, _)]) -> NonTrivial <$> singletonUnconstrainedPartition value
+    NonTrivial (Map.toList -> [(Nothing, _)])
+      | not (getAny compiledQuantifier) -> NonTrivial <$> singletonUnconstrainedPartition value
     _ -> return result
   where
     unblock forced = unblockWith (unblockBoolExpr unblockingActions (Forced forced)) (Forced forced)
 
 compileAnd ::
-  (MonadDomain m) =>
+  (MonadDomain m, MonadWriter CompiledQuantifier m) =>
   TensorOp2Args (Thunk Builtin) ->
   m (MaybeTrivial Partitions)
 compileAnd (TensorOp2Args dims e1 e2) = do
   dims' <- unnormaliseInTensorCtx dims
-  c1 <- compileBool e1
-  c2 <- compileBool e2
+  c1 <- compileBoolValue e1
+  c2 <- compileBoolValue e2
   andTrivialM (andPartitions dims') c1 c2
 
 compileOr ::
-  (MonadDomain m) =>
+  (MonadDomain m, MonadWriter CompiledQuantifier m) =>
   TensorOp2Args (Thunk Builtin) ->
   m (MaybeTrivial Partitions)
 compileOr (TensorOp2Args dims e1 e2) = do
   dims' <- unnormaliseInTensorCtx dims
-  c1 <- compileBool e1
-  c2 <- compileBool e2
+  c1 <- compileBoolValue e1
+  c2 <- compileBoolValue e2
   orTrivialM (orPartitions dims') c1 c2
 
 -- | A comparison may be compiled to a potential bound as long as:
@@ -529,7 +545,7 @@ compileComparison (op, args) =
 -- | Unblocking a boolean value is a little complicated.
 unblockWith ::
   forall m.
-  (MonadDomain m) =>
+  (MonadDomain m, MonadWriter CompiledQuantifier m) =>
   ExceptT BlockingReason m (Thunk Builtin) ->
   Thunk Builtin ->
   m (MaybeTrivial Partitions)
@@ -543,10 +559,11 @@ unblockWith action defaultValue = do
       NonTrivial <$> singletonUnconstrainedPartition defaultValue
     Right unblockedExpr -> do
       -- If we can unblock it then try to continue compilation
-      maybePartitions <- compileBool unblockedExpr
+      (maybePartitions, compiledQuantifier) <- listen $ compileBoolValue unblockedExpr
       case maybePartitions of
         NonTrivial partitions
-          | not (containsConstraints partitions) ->
+          | not (containsConstraints partitions),
+            not (getAny compiledQuantifier) ->
               NonTrivial <$> singletonUnconstrainedPartition defaultValue
         _ -> return maybePartitions
 

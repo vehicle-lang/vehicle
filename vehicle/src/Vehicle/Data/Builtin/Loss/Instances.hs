@@ -46,7 +46,8 @@ allInstances mode dl =
       <> impliesCandidates dl
       <> booleanReductionOpCandidates dl hasReduceAnd ReduceAndTensor ReduceConjunction
       <> booleanReductionOpCandidates dl hasReduceOr ReduceOrTensor ReduceDisjunction
-      <> ifCandidates
+      <> ifRatTensorCandidates
+      <> ifNonRatTensorCandidates
       <> existsCandidates
       ----------------------
       -- CompareRatTensor --
@@ -275,14 +276,26 @@ pointwiseComparisonCandidates dl op =
     )
   ]
 
-ifCandidates :: [TempCandidate mode]
-ifCandidates =
-  [ ( hasIfRatTensor tBool,
+ifNonRatTensorCandidates :: [TempCandidate mode]
+ifNonRatTensorCandidates =
+  [ ( hasIfNonRatTensor tBool,
       builtinFunction If,
       Nothing
     ),
+    ( hasIfNonRatTensor tRatWithGradients,
+      lossBuiltinFunction IfWhoseConditionHasGradients,
+      Nothing
+    )
+  ]
+
+ifRatTensorCandidates :: [TempCandidate mode]
+ifRatTensorCandidates =
+  [ ( hasIfRatTensor tBool,
+      lossBuiltinFunction IfRatTensor,
+      Nothing
+    ),
     ( hasIfRatTensor tRatWithGradients,
-      lossBuiltinFunction IfRatTensorWithGradients,
+      lossBuiltinFunction IfWhoseConditionHasGradients,
       Nothing
     )
   ]
