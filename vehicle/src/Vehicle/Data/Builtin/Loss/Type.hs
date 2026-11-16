@@ -23,7 +23,8 @@ import Vehicle.Data.Builtin.Standard
     DerivedFunction (..),
   )
 import Vehicle.Data.Code.DSL
-import Vehicle.Data.Code.Interface.Args (IsArgs (..), StackTensorArgs (..))
+import Vehicle.Data.Code.Interface.Args (IfArgs (..), IsArgs (..), StackTensorArgs (..))
+import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.DSL
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
@@ -83,8 +84,9 @@ typeLossCast = \case
 
 typeLossFunction :: LossBuiltinFunction -> DSLExpr (LossBuiltin mode)
 typeLossFunction = \case
-  IfRatTensorWithGradients -> typeIf tRatWithGradients
-  StackRatTensorWithGradients -> typeOfStackRatTensorWithGradients
+  IfWhoseConditionHasGradients -> developerError "should not be typing `IfWhoseConditionHasGradients`"
+  StackRatTensor -> typeOfStackRatTensor
+  IfRatTensor -> typeIfRatTensor tBool
 
 typeStandardBuiltinType :: BuiltinType -> DSLExpr (LossBuiltin mode)
 typeStandardBuiltinType = \case
@@ -128,7 +130,8 @@ typeLossTypeClass = \case
   HasPointwiseRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
   HasReducedRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
   HasExists -> type0 ~> type0
-  HasIfRatTensor -> tGradient ~> tGradient ~> type0
+  HasIfRatTensor -> type0 ~> type0
+  HasIfNonRatTensor -> type0 ~> type0
   MaxGradients {} -> tGradient ~> tGradient ~> tGradient ~> tGradient
   ValidNetworkType -> type0 ~> type0
   ValidNetworkIOType -> tGradient ~> type0 ~> type0
@@ -162,7 +165,11 @@ typeLossTypeClassOp = \case
   IfRatTensorTCOp ->
     forAllTypes $ \t ->
       hasIfRatTensor t
-        ~~~> typeIf t
+        ~~~> typeIfRatTensor t
+  IfNonRatTensorTCOp ->
+    forAllTypes $ \t ->
+      hasIfNonRatTensor t
+        ~~~> typeNonRatTensorIf t
   ExistsTCOp ->
     forAllTypes $ \t ->
       hasExists t
@@ -221,7 +228,7 @@ typeStandardFunction f = case f of
   Not -> typeOfBuiltinFunction f
   And -> typeOfBuiltinFunction f
   Or -> typeOfBuiltinFunction f
-  If -> typeOfBuiltinFunction f
+  If -> typeNonRatTensorIf tBool
   Implies -> typeOfBuiltinFunction f
   ReduceAndTensor -> typeOfBuiltinFunction f
   ReduceOrTensor -> typeOfBuiltinFunction f
@@ -239,8 +246,8 @@ typeStandardFunction f = case f of
   where
     removed = developerError $ pretty f <+> "should have been removed prior to loss type-checking"
 
-typeOfStackRatTensorWithGradients :: DSLExpr (LossBuiltin mode)
-typeOfStackRatTensorWithGradients =
+typeOfStackRatTensor :: DSLExpr (LossBuiltin mode)
+typeOfStackRatTensor =
   forAll "n" tNat $ \n ->
     forAllDim Relevant $ \d ->
       forAllDims $ \ds ->
@@ -325,10 +332,28 @@ typeOfCompareRatTensor t1 t2 t3 =
         ~> tTensor t2 (append tNat pointwiseDims reduceDims)
         ~> tTensor t3 pointwiseDims
 
-typeIf :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
-typeIf inputType =
+typeNonRatTensorIf :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+typeNonRatTensorIf inputType =
   forAllTypes $ \t ->
     tTensor inputType dimNil ~> t ~> t ~> t
+
+-- | The two branches need not have the same gradient, e.g. `if c then x else 0.0`, so the result
+-- takes the join of them.
+typeIfRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+typeIfRatTensor conditionType =
+  forAllGradientTriples $ \g1 g2 g3 ->
+    maxGradients g1 g2 g3
+      .~~~> pi
+        (Just "ds")
+        Explicit
+        Irrelevant
+        tDims
+        ( \dims ->
+            tTensor conditionType dimNil
+              ~> tTensor (tRat .@@ [g1]) dims
+              ~> tTensor (tRat .@@ [g2]) dims
+              ~> tTensor (tRat .@@ [g3]) dims
+        )
 
 typeOfQuantifierOrSearch :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOfQuantifierOrSearch outputType = do
@@ -427,7 +452,6 @@ convertToLossBuiltins decl = do
               Pointwise pArgs -> return $ normAppList (Builtin p (LossBuiltinTypeClassOp $ CompareRatTensorPointwiseTCOp op)) (prependHoles 3 pArgs)
             ReduceAndTensor -> convertTo 1 (LossBuiltinTypeClassOp ReduceAndTCOp)
             ReduceOrTensor -> convertTo 1 (LossBuiltinTypeClassOp ReduceOrTCOp)
-            If -> convertTo 1 (LossBuiltinTypeClassOp IfRatTensorTCOp)
             QuantifyRatTensor Exists -> convertTo 1 (LossBuiltinTypeClassOp ExistsTCOp)
             Neg NegRatTensor -> convertTo 1 (StandardBuiltinFunction f)
             Add AddRatTensor -> convertTo 3 (StandardBuiltinFunction f)
@@ -445,6 +469,22 @@ convertToLossBuiltins decl = do
             ReduceMaxRatTensor -> convertTo 1 (StandardBuiltinFunction f)
             WhereTensor -> convertTo 1 (StandardBuiltinFunction f)
             SearchRatTensor -> convertTo 1 (StandardBuiltinFunction f)
+            -- Polymorphic functions that may need to specialised to Rat
+            If -> case getExpr accessSpine args of
+              Just (IfArgs (ITensorType IRatTypeWithGradients dims) c x y) ->
+                return $
+                  normAppList
+                    (Builtin p (LossBuiltinTypeClassOp IfRatTensorTCOp))
+                    [explicitIrrelevant dims, explicit c, explicit x, explicit y]
+              _ -> convertTo 1 (LossBuiltinTypeClassOp IfNonRatTensorTCOp)
+            StackTensor -> case getExpr accessSpine args of
+              -- Only rational stacks carry gradients, and the arity replaces the element type.
+              Just (StackTensorArgs elementType d ds xs)
+                | isRatType elementType ->
+                    return $
+                      normAppList (Builtin p (LossBuiltinFunction StackRatTensor)) $
+                        implicit (arityOf xs) : implicit d : implicit ds : fmap explicit xs
+              _ -> sameFunction f
             -- Nothing needs to change
             Add AddNat -> sameFunction f
             Mul MulNat -> sameFunction f
@@ -454,14 +494,6 @@ convertToLossBuiltins decl = do
             AppendList -> sameFunction f
             Iterate -> sameFunction f
             Transpose -> sameFunction f
-            StackTensor -> case getExpr accessSpine args of
-              -- Only rational stacks carry gradients, and the arity replaces the element type.
-              Just (StackTensorArgs elementType d ds xs)
-                | isRatType elementType ->
-                    return $
-                      normAppList (Builtin p (LossBuiltinFunction StackRatTensorWithGradients)) $
-                        implicit (arityOf xs) : implicit d : implicit ds : fmap explicit xs
-              _ -> sameFunction f
             AtTensor -> sameFunction f
             ConstTensor -> sameFunction f
             ForeachTensor -> sameFunction f

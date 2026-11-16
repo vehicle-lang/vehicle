@@ -11,8 +11,9 @@
 * Fixed a bug that sometimes occurred when a quantifier appears inside the body of another quantifier,
   e.g. `forall x . 0 <= x <= 1 => (exists z . f [x, z] ! 0 >= 0.5)`.
 
-* Fixed an bug in the translation when constructing tensors whose elements are quantified
-  variables, e.g. `[1.0, x]`.
+* Fixed a bug that occured when constructing sequences for which some elements had gradients and others did not, e.g. `[1.0, x]`.
+
+* Fixed a bug that occured when one branch of an `if` had gradients and the other did not, e.g. `if c then x else 0.0`.
 
 ### Other
 
