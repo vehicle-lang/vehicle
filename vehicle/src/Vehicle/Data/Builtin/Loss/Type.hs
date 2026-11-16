@@ -8,6 +8,7 @@ where
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.ITP.Core (ComparisonType (..), decideIfPointwiseOrReductionComparison)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (getDeclType, prependMissingFreeVarImplicitArgs)
@@ -466,13 +467,16 @@ convertToLossBuiltins decl = do
             WhereTensor -> convertTo 1 (StandardBuiltinFunction f)
             SearchRatTensor -> convertTo 1 (StandardBuiltinFunction f)
             -- Polymorphic functions that may need to specialised to Rat
-            If -> case getExpr accessSpine args of
-              Just (IfArgs (ITensorType IRatType dims) c x y) ->
-                return $
-                  normAppList
-                    (Builtin p (LossBuiltinTypeClassOp IfRatTensorTCOp))
-                    [implicitIrrelevant dims, explicit c, explicit x, explicit y]
-              _ -> convertTo 1 (LossBuiltinTypeClassOp IfNonRatTensorTCOp)
+            If -> do
+              logDebug MaxDetail "Hit"
+              logDebug MaxDetail $ prettyVerbose args
+              case getExpr accessSpine args of
+                Just (IfArgs (ITensorType IRatTypeWithGradients dims) c x y) ->
+                  return $
+                    normAppList
+                      (Builtin p (LossBuiltinTypeClassOp IfRatTensorTCOp))
+                      [implicitIrrelevant dims, explicit c, explicit x, explicit y]
+                _ -> convertTo 1 (LossBuiltinTypeClassOp IfNonRatTensorTCOp)
             StackTensor -> case getExpr accessSpine args of
               -- Only rational stacks carry gradients, and the arity replaces the element type.
               Just (StackTensorArgs elementType d ds xs)

@@ -679,3 +679,6 @@ validNetworkIOType g t = lossTypeClass ValidNetworkIOType @@ [g, t]
 
 maxGradients :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 maxGradients g1 g2 g3 = lossTypeClass MaxGradients @@ [g1, g2, g3]
+
+pattern IRatTypeWithGradients :: Expr (LossBuiltin mode)
+pattern IRatTypeWithGradients <- App (Builtin _ (StandardBuiltinType RatType)) _
