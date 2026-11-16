@@ -13,7 +13,7 @@ import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans.Class (MonadTrans (lift))
-import Data.Text.IO qualified as TIO
+import Data.Text.Encoding qualified as TIO
 import Language.LSP.Logging
 import Language.LSP.Protocol.Types (filePathToUri, toNormalizedUri)
 import Language.LSP.Server (LspT, MonadLsp (..), getVirtualFile)
@@ -47,7 +47,7 @@ instance (MonadReadSpecification m) => MonadReadSpecification (StateT s m) where
 
 readFileFromDiskOrErrMsg :: (MonadUnliftIO m) => FilePath -> m (Either (Doc ann) ModuleText)
 readFileFromDiskOrErrMsg inputFile = do
-  errorOrContents <- liftIO $ try @IOException $ TIO.readFile inputFile
+  errorOrContents <- liftIO $ try @IOException $ lockedReadFile inputFile
 
   case errorOrContents of
     Left err ->
@@ -58,7 +58,16 @@ readFileFromDiskOrErrMsg inputFile = do
             <> ":"
             <> line
             <> indent 2 (pretty (show err))
-    Right contents -> return $ Right contents
+    Right bytes -> case TIO.decodeUtf8' bytes of
+      Left err ->
+        return $
+          Left $
+            "Error occured while decoding specification"
+              <+> quotePretty inputFile
+              <> ":"
+              <> line
+              <> indent 2 (pretty (show err))
+      Right contents -> return $ Right contents
 
 readSpecificationFromDisk :: (MonadStdIO m) => FilePath -> m ModuleText
 readSpecificationFromDisk inputFile

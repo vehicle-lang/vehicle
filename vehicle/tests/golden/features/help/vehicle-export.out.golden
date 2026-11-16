@@ -1,5 +1,8 @@
-Usage: vehicle export (-t|--target TARGET) (-c|--cache FILE) [-o|--output FILE] 
-                      [-m|--module-name MODULENAME] [-r|--constructive-reals]
+Usage: vehicle export (-t|--target TARGET) [-s|--specification FILE] 
+                      [-e|--declaration NAME] [-n|--network NAME:FILE] 
+                      [-d|--dataset NAME:FILE] [-p|--parameter NAME:VALUE] 
+                      [-o|--output FILE] [-m|--module-name MODULENAME] 
+                      [-c|--cache FILE] [-r|--constructive-reals]
 
   Export a.vcl specification file to an interactive theorem prover.
 
@@ -9,10 +12,26 @@ Available options:
                              * Rocq
                              * Isabelle
                              * Imandra
-  -c,--cache FILE          The location of the verification cache that can be
-                           used to check the verification status of the
-                           specification. Should be passed when compiling to an
-                           ITP.
+  -s,--specification FILE  The .vcl file containing the specification.
+  -e,--declaration NAME    Declarations in the specification to include during
+                           compilation. Can be provided multiple times. If not
+                           provided then all declarations in the specification
+                           will be compiled.
+  -n,--network NAME:FILE   Provide the implementation of a network declared in
+                           the specification. Its value should consist of a
+                           colon-separated pair of the name of the network in
+                           the specification and a file path. Can be provided
+                           multiple times.
+  -d,--dataset NAME:FILE   Provide a dataset declared in the specification. Its
+                           value should consist of a colon-separated pair of the
+                           name of the dataset in the specification and a file
+                           path. Can be provided multiple times.
+  -p,--parameter NAME:VALUE
+                           Provide a value for a parameter referenced in the
+                           specification. Its value should consist of a
+                           colon-separated pair of the name of the parameter in
+                           the specification and its value. Can be provided
+                           multiple times.
   -o,--output FILE         Output location for compiled file(s). Defaults to
                            `stdout` if not provided.
   -m,--module-name MODULENAME
@@ -21,5 +40,9 @@ Available options:
                            Agda module with the internal name `Foo.Bar.agda`. If
                            not provided then the name will default to the name
                            of the output file.
+  -c,--cache FILE          The location of the verification cache that can be
+                           used to check the verification status of the
+                           specification. Should be passed when compiling to an
+                           ITP.
   -r,--constructive-reals  Use constructive reals instead of mathcomp reals for Rocq.
   -h,--help                Show this help text

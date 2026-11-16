@@ -22,6 +22,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.ForcedValue (isVTypeUniverse)
 import Vehicle.Data.Code.Interface (IsArgs (..), SearchRatTensorArgs (..), accessLambda)
+import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, getDeclEntry, isFunctionWhoseReturnType, runFreshFreeContextT, traverseProgDecls)
 
 convertToLossTensors ::
@@ -72,7 +73,19 @@ convertBackFromLossBuiltins = traverse $ traverseBuiltinsM $ \p b args -> do
     LossBuiltinConstructor {} -> gradientOpErr
     LossBuiltinCast {} -> gradientOpErr
     LossBuiltinFunction f -> case f of
-      IfRatTensorWithGradients -> throwError $ UnsupportedIfLossOperation p
+      IfWhoseConditionHasGradients -> throwError $ UnsupportedIfLossOperation p
+      StackRatTensor -> case args of
+        _arity : d : ds : xs ->
+          return $
+            normAppList (Builtin p (BuiltinFunction StackTensor)) $
+              implicit IRatType : d : ds : xs
+        _ -> developerError "Malformed type-checked StackRatTensor"
+      IfRatTensor -> case args of
+        dims : c : x : y ->
+          return $
+            normAppList (Builtin p (BuiltinFunction If)) $
+              implicit (ITensorType IRatType (argExpr dims)) : c : x : y
+        _ -> developerError "Malformed type-checked IfRatTensor"
     -- Remaining candidates
     StandardBuiltinConstructor c -> return $ normAppList (Builtin p $ BuiltinConstructor c) args
     StandardBuiltinType t -> return $ normAppList (Builtin p $ BuiltinType t) args
@@ -80,18 +93,18 @@ convertBackFromLossBuiltins = traverse $ traverseBuiltinsM $ \p b args -> do
       QuantifyRatTensor Exists -> handleExistsWithoutGradients p args
       _ -> return $ normAppList (Builtin p $ BuiltinFunction f) args
     StandardDerivedFunction f -> return $ normAppList (Builtin p $ DerivedFunction f) args
-
-handleExistsWithoutGradients ::
-  (MonadCompile m) =>
-  Provenance ->
-  [Arg Builtin] ->
-  m (Expr Builtin)
-handleExistsWithoutGradients p args =
-  case getExpr accessSpine args of
-    Just SearchRatTensorArgs {..} -> do
-      let (binder, _) = accessLambda searchPredicate
-      throwError $ QuantifierWithNoGradients p binder
-    Nothing -> developerError "Malformed quantifier produced by loss backend"
+  where
+    handleExistsWithoutGradients ::
+      (MonadCompile m) =>
+      Provenance ->
+      [Arg Builtin] ->
+      m (Expr Builtin)
+    handleExistsWithoutGradients p args =
+      case getExpr accessSpine args of
+        Just SearchRatTensorArgs {..} -> do
+          let (binder, _) = accessLambda searchPredicate
+          throwError $ QuantifierWithNoGradients p binder
+        Nothing -> developerError "Malformed quantifier produced by loss backend"
 
 missingLogicError :: (MonadCompile m) => Prog Builtin -> DifferentiableLogicID -> m a
 missingLogicError prog = \case
