@@ -17,7 +17,11 @@
 
 ### Other
 
+* **Breaking:** the short form of `--version` is now `-V` rather than `-v`, as `-v` clashed with the `--solver` option of `vehicle verify`.
+
 * Vehicle now correctly locks files when reading and writing from the standard library avoiding race conditions if multiple instances of the Vehicle compiler are called concurrently.
+
+* Global options such as `--no-warnings` can now be placed anywhere on the command line, e.g. `vehicle verify --no-warnings -s spec.vcl ...` previously failed.
 
 ## v0.29.0
 
