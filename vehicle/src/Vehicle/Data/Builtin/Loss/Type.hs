@@ -344,7 +344,11 @@ typeIfRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeIfRatTensor conditionType =
   forAllGradientTriples $ \g1 g2 g3 ->
     maxGradients g1 g2 g3
-      .~~~> forAllDims
+      .~~~> pi
+        (Just "ds")
+        Explicit
+        Irrelevant
+        tDims
         ( \dims ->
             tTensor conditionType dimNil
               ~> tTensor (tRat .@@ [g1]) dims
@@ -475,7 +479,7 @@ convertToLossBuiltins decl = do
                   return $
                     normAppList
                       (Builtin p (LossBuiltinTypeClassOp IfRatTensorTCOp))
-                      [implicitIrrelevant dims, explicit c, explicit x, explicit y]
+                      [explicitIrrelevant dims, explicit c, explicit x, explicit y]
                 _ -> convertTo 1 (LossBuiltinTypeClassOp IfNonRatTensorTCOp)
             StackTensor -> case getExpr accessSpine args of
               -- Only rational stacks carry gradients, and the arity replaces the element type.
