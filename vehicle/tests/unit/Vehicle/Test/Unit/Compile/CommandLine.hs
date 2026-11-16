@@ -4,7 +4,7 @@ module Vehicle.Test.Unit.Compile.CommandLine
 where
 
 import Data.Map qualified as Map (fromList)
-import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
+import Options.Applicative (ParserResult (..), execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
 import Vehicle.Backend.Prelude (InteractiveTheoremProverID (..))
@@ -13,6 +13,7 @@ import Vehicle.CommandLine
     ModeOptions (..),
     Options (..),
     commandLineOptionsParserInfo,
+    commandLineParserPrefs,
     defaultGlobalOptions,
   )
 import Vehicle.Export (ExportOptions (..))
@@ -186,11 +187,43 @@ exportModeTests =
           }
     ]
 
+noWarningsVerifyOptions :: Options
+noWarningsVerifyOptions =
+  Options
+    { globalOptions = defaultGlobalOptions {noWarnings = True},
+      modeOptions =
+        Just $
+          Verify $
+            VerifyOptions
+              { specification = "spec.vcl",
+                properties = mempty,
+                networkLocations = mempty,
+                datasetLocations = mempty,
+                parameterValues = mempty,
+                solverExecutable = "Marabou",
+                verificationCache = Nothing,
+                solverExtraArgs = Nothing,
+                noSatPrint = False
+              }
+    }
+
 verifyTests :: TestTree
 verifyTests =
   testGroup
     "verifyMode"
     [ parserTest
+        "globalOptionBeforeModeOptions"
+        "vehicle verify --no-warnings -s spec.vcl -v Marabou"
+        noWarningsVerifyOptions,
+      parserTest
+        "globalOptionAfterModeOptions"
+        "vehicle verify -s spec.vcl -v Marabou --no-warnings"
+        noWarningsVerifyOptions,
+      parserTest
+        "globalOptionBeforeMode"
+        "vehicle --no-warnings verify -s spec.vcl -v Marabou"
+        noWarningsVerifyOptions,
+      parserTest
         "basic"
         "vehicle verify \
         \--specification queries \
@@ -273,7 +306,7 @@ parserTest name command expected = testCase name $ do
   let args = case words command of
         (_ : as) -> as
         _ -> developerError "Malformed command. Commands must start with 'vehicle'"
-  let result = execParserPure defaultPrefs commandLineOptionsParserInfo args
+  let result = execParserPure commandLineParserPrefs commandLineOptionsParserInfo args
 
   case result of
     Failure failure -> assertFailure (show failure)
