@@ -2,6 +2,10 @@
 
 ## Next release
 
+### Type-checker
+
+* Fixed a rare internal error in the type-checker.
+
 ### ITP backend
 
 * The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
