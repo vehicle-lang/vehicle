@@ -2,6 +2,10 @@
 
 ## Next release
 
+### ITP backend
+
+* The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
+
 ### Loss backend
 
 * Fixed a bug that occured when constructing sequences for which some elements had gradients and others did not, e.g. `[1.0, x]`.
