@@ -55,6 +55,9 @@ import Vehicle.Prelude.Logging (runSilentLoggerT)
 import Vehicle.Prelude.Prettyprinter (Pretty (..), layoutAsText)
 import Vehicle.TypeCheck (loadUserSpecification)
 
+--------------------------------------------------------------------------------
+-- API
+
 collectSemanticTokens ::
   forall m.
   (MonadVehicleLsp m) =>
@@ -96,6 +99,7 @@ collectSemanticTokens logger filePath = do
     populateFreeContext (d : ds) f = addDeclToContext d $ populateFreeContext ds f
 
 --------------------------------------------------------------------------------
+-- types, utils
 
 type MonadCollectTokens m =
   ( MonadFreeContext Builtin m,
@@ -137,153 +141,10 @@ mkTok :: Provenance -> TokenClass -> IntermediateSemTok
 mkTok p tok = Just (p, tok)
 
 --------------------------------------------------------------------------------
-
-classifyDeclHead :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m (Maybe TokenClass)
-classifyDeclHead = \case
-  DefAbstract _ _ _ t -> classifyTokenOfType 0 t
-  DefFunction _ _ s t _ -> do
-    -- Record accesses (e.g. `pair.left`) should render the `.left` part as a Method, not a Function
-    let fixProjectionTokenType tok@(_typ, mods) = case s of
-          ProjectionDecl {} -> (Lsp.SemanticTokenTypes_Method, mods)
-          _ -> tok
-    classifyTokenOfType 0 t <&> fmap fixProjectionTokenType
-  DefRecord {} -> pure $ Just (SemanticTokenTypes_Class, [])
-
-classifyBinderName :: (MonadCollectTokens m) => BinderDepth -> GenericBinder (Expr Builtin) -> m (Maybe TokenClass)
-classifyBinderName depth b = classifyTokenOfType depth (typeOf b)
-
-classifyBoundVar :: (MonadCollectTokens m) => BinderDepth -> Ix -> m (Maybe TokenClass)
-classifyBoundVar depth ix = do
-  ctx <- getBoundCtx (Proxy @(Expr Builtin))
-  case lookupIx ctx ix of
-    Nothing -> return Nothing
-    Just binder -> inBinderContext ix $ classifyBinderName depth binder
-
-classifyFreeVar :: (MonadCollectTokens m) => Identifier -> m (Maybe TokenClass)
-classifyFreeVar ident = do
-  decl <- getDeclEntry (Proxy @Builtin) ident
-  classifyDeclHead decl
-
-classifyTokenOfType :: (MonadCollectTokens m) => BinderDepth -> Expr Builtin -> m (Maybe TokenClass)
-classifyTokenOfType depth = \case
-  Universe {}
-    | depth > 0 -> pure $ Just (SemanticTokenTypes_Variable, [])
-    | otherwise -> pure $ Just (SemanticTokenTypes_Type, [])
-  Pi _ binder res ->
-    if wasInsertedByCompiler binder
-      then addBinderToContext binder $ classifyTokenOfType depth res
-      else pure $ Just (SemanticTokenTypes_Function, [])
-  Builtin _ _builtin -> pure $ Just (SemanticTokenTypes_Variable, [])
-  -- We need to keep track of how many "binders deep" we are, so we can determine if a BoundVar is an
-  -- element of Type, or merely an element of something which is an element of Type.
-  --
-  -- For example, consider the following:
-  --
-  --   identity (T : Type) (x : T) = x
-  --
-  -- T is a Type, x is a T; x is not a Type.
-  --
-  -- Without tracking BinderDepth, x would resolve to T which would resolve to Type (Universe), so x
-  -- would be highlighted the same as T. Instead, when x resolves to T, it does so with an incremented
-  -- BinderDepth, so when T resolves to Type, it knows it is not the first one in the binder chain.
-  -- I'm sure there is a more elegant solution to this, and there are probably edge cases I haven't
-  -- considered, but this will do for now.
-  BoundVar _ ix -> classifyBoundVar (depth + 1) ix
-  FreeVar _ ident -> do
-    decl <- getDeclEntry (Proxy @Builtin) ident
-    case decl of
-      DefAbstract {} -> pure $ Just (SemanticTokenTypes_Variable, [])
-      DefFunction _ _ _ _ e -> classifyTokenOfType depth e
-      DefRecord {} -> pure $ Just (SemanticTokenTypes_Class, [])
-  Hole _ _name -> pure $ Just (SemanticTokenTypes_Macro, [])
-  Meta _ _metaId -> pure $ Just (SemanticTokenTypes_Macro, [])
-  App f _args -> classifyTokenOfType depth f
-  Let _ _bound bodyBinder bodyExpr -> addBinderToContext bodyBinder $ classifyTokenOfType depth bodyExpr
-  Lam _ binder body -> addBinderToContext binder $ classifyTokenOfType depth body
-  Record _ typ _fields -> classifyTokenOfType depth typ
-  RecordProj _ _typ _body _fieldName -> pure $ Just (SemanticTokenTypes_Method, [])
-
-classifyBuiltin :: Builtin -> Maybe TokenClass
-classifyBuiltin = \case
-  BuiltinConstructor constructor -> case constructor of
-    Nil -> tok SemanticTokenTypes_Keyword
-    Cons -> tok SemanticTokenTypes_Operator
-    UnitLiteral -> tok SemanticTokenTypes_Keyword
-    IndexLiteral _ -> tok SemanticTokenTypes_Number
-    NatLiteral _ -> tok SemanticTokenTypes_Number
-    VectorLiteral -> tok SemanticTokenTypes_Keyword
-    BoolTensorLiteral _ -> tok SemanticTokenTypes_Keyword
-    NatTensorLiteral _ -> tok SemanticTokenTypes_Number
-    RatTensorLiteral _ -> tok SemanticTokenTypes_Number
-  -- TODO: It would be nice to be able to access the external syntax here. We want to say
-  -- "if the external token is alphanumeric, use Keyword, otherwise use Operator".
-  BuiltinFunction fn -> case fn of
-    Not -> tok SemanticTokenTypes_Operator
-    And -> tok SemanticTokenTypes_Operator
-    Or -> tok SemanticTokenTypes_Operator
-    Implies -> tok SemanticTokenTypes_Operator
-    QuantifyRatTensor {} -> tok SemanticTokenTypes_Keyword
-    QuantifyRecord {} -> tok SemanticTokenTypes_Keyword
-    If -> tok SemanticTokenTypes_Keyword
-    CompareIndex {} -> tok SemanticTokenTypes_Operator
-    CompareNat {} -> tok SemanticTokenTypes_Operator
-    CompareRatTensor {} -> tok SemanticTokenTypes_Operator
-    ReduceAndTensor -> tok SemanticTokenTypes_Keyword
-    ReduceOrTensor -> tok SemanticTokenTypes_Keyword
-    -- Rat operations
-    Add {} -> tok SemanticTokenTypes_Operator
-    Mul {} -> tok SemanticTokenTypes_Operator
-    Neg {} -> tok SemanticTokenTypes_Operator
-    Sub {} -> tok SemanticTokenTypes_Operator
-    Div {} -> tok SemanticTokenTypes_Operator
-    Min {} -> tok SemanticTokenTypes_Operator
-    Max {} -> tok SemanticTokenTypes_Operator
-    Pow {} -> tok SemanticTokenTypes_Operator
-    Log {} -> tok SemanticTokenTypes_Operator
-    Exp {} -> tok SemanticTokenTypes_Operator
-    ReduceAddRatTensor -> tok SemanticTokenTypes_Keyword
-    ReduceMulRatTensor -> tok SemanticTokenTypes_Keyword
-    ReduceMinRatTensor -> tok SemanticTokenTypes_Keyword
-    ReduceMaxRatTensor -> tok SemanticTokenTypes_Keyword
-    -- Tensor operations
-    AtTensor -> tok SemanticTokenTypes_Operator
-    StackTensor -> tok SemanticTokenTypes_Keyword
-    ConstTensor -> tok SemanticTokenTypes_Keyword
-    Iterate -> tok SemanticTokenTypes_Keyword
-    ForeachTensor -> tok SemanticTokenTypes_Keyword
-    Transpose -> tok SemanticTokenTypes_Keyword
-    WhereTensor -> tok SemanticTokenTypes_Keyword
-    SearchRatTensor -> tok SemanticTokenTypes_Keyword
-    -- Vector operations
-    AtVector -> tok SemanticTokenTypes_Operator
-    ForeachVector -> tok SemanticTokenTypes_Keyword
-    -- List operations
-    FoldList -> tok SemanticTokenTypes_Keyword
-    MapList -> tok SemanticTokenTypes_Keyword
-    ReverseList -> tok SemanticTokenTypes_Keyword
-    AppendList -> tok SemanticTokenTypes_Keyword
-  BuiltinType _typ -> tok SemanticTokenTypes_Type
-  BuiltinCast _cast -> tok SemanticTokenTypes_Function
-  DerivedFunction fn -> case fn of
-    TypeAnn -> tok SemanticTokenTypes_Operator
-    QuantifyIndex {} -> tok SemanticTokenTypes_Keyword
-    QuantifyInList {} -> tok SemanticTokenTypes_Keyword
-  TypeClass _tc -> tok SemanticTokenTypes_Class
-  TypeClassOp tcOp -> case tcOp of
-    FromNatTC -> Nothing
-    FromRatTC -> Nothing
-    VecLiteralTC -> tok SemanticTokenTypes_Keyword
-    NegTC -> tok SemanticTokenTypes_Operator
-    AtTC -> tok SemanticTokenTypes_Operator
-    MapTC -> tok SemanticTokenTypes_Keyword
-    FoldTC -> tok SemanticTokenTypes_Keyword
-    ForeachTC -> tok SemanticTokenTypes_Keyword
-    TensorTypeTC -> tok SemanticTokenTypes_Type
-  NatInDomainConstraint -> Nothing
-  where
-    tok typ = Just (typ, [])
-
---------------------------------------------------------------------------------
+-- collect
+--
+-- We have an arbitrary expression; we need to identify and colour every token
+-- inside of it.
 
 collectProgTokens :: (MonadCollectTokens m) => Prog Builtin -> m [IntermediateSemTok]
 collectProgTokens (Main decls) =
@@ -376,3 +237,154 @@ collectFieldsTokens fields = concat <$> traverse collectFieldTokens fields
     collectFieldTokens (field, fieldValue) = do
       valueToks <- collectExprTokens fieldValue
       return $ mkTok (provenanceOf field) (SemanticTokenTypes_Method, []) : valueToks
+
+--------------------------------------------------------------------------------
+-- classify
+--
+-- We have a single token `foo` of type `bar`, where `bar` is an arbitrary
+-- expression; we need to work out what colour to make `foo`.
+
+classifyTokenOfType :: (MonadCollectTokens m) => BinderDepth -> Expr Builtin -> m (Maybe TokenClass)
+classifyTokenOfType depth = \case
+  Universe {}
+    | depth > 0 -> pure $ Just (SemanticTokenTypes_Variable, [])
+    | otherwise -> pure $ Just (SemanticTokenTypes_Type, [])
+  Pi _ binder res ->
+    if wasInsertedByCompiler binder
+      then addBinderToContext binder $ classifyTokenOfType depth res
+      else pure $ Just (SemanticTokenTypes_Function, [])
+  Builtin _ _builtin -> pure $ Just (SemanticTokenTypes_Variable, [])
+  -- We need to keep track of how many "binders deep" we are, so we can determine if a BoundVar is an
+  -- element of Type, or merely an element of something which is an element of Type.
+  --
+  -- For example, consider the following:
+  --
+  --   identity (T : Type) (x : T) = x
+  --
+  -- T is a Type, x is a T; x is not a Type.
+  --
+  -- Without tracking BinderDepth, x would resolve to T which would resolve to Type (Universe), so x
+  -- would be highlighted the same as T. Instead, when x resolves to T, it does so with an incremented
+  -- BinderDepth, so when T resolves to Type, it knows it is not the first one in the binder chain.
+  -- I'm sure there is a more elegant solution to this, and there are probably edge cases I haven't
+  -- considered, but this will do for now.
+  BoundVar _ ix -> classifyBoundVar (depth + 1) ix
+  FreeVar _ ident -> do
+    decl <- getDeclEntry (Proxy @Builtin) ident
+    case decl of
+      DefAbstract {} -> pure $ Just (SemanticTokenTypes_Variable, [])
+      DefFunction _ _ _ _ e -> classifyTokenOfType depth e
+      DefRecord {} -> pure $ Just (SemanticTokenTypes_Class, [])
+  Hole _ _name -> pure $ Just (SemanticTokenTypes_Macro, [])
+  Meta _ _metaId -> pure $ Just (SemanticTokenTypes_Macro, [])
+  App f _args -> classifyTokenOfType depth f
+  Let _ _bound bodyBinder bodyExpr -> addBinderToContext bodyBinder $ classifyTokenOfType depth bodyExpr
+  Lam _ binder body -> addBinderToContext binder $ classifyTokenOfType depth body
+  Record _ typ _fields -> classifyTokenOfType depth typ
+  RecordProj _ _typ _body _fieldName -> pure $ Just (SemanticTokenTypes_Method, [])
+
+classifyDeclHead :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m (Maybe TokenClass)
+classifyDeclHead = \case
+  DefAbstract _ _ _ t -> classifyTokenOfType 0 t
+  DefFunction _ _ s t _ -> do
+    -- Record accesses (e.g. `pair.left`) should render the `.left` part as a Method, not a Function
+    let fixProjectionTokenType tok@(_typ, mods) = case s of
+          ProjectionDecl {} -> (Lsp.SemanticTokenTypes_Method, mods)
+          _ -> tok
+    classifyTokenOfType 0 t <&> fmap fixProjectionTokenType
+  DefRecord {} -> pure $ Just (SemanticTokenTypes_Class, [])
+
+classifyBinderName :: (MonadCollectTokens m) => BinderDepth -> GenericBinder (Expr Builtin) -> m (Maybe TokenClass)
+classifyBinderName depth b = classifyTokenOfType depth (typeOf b)
+
+classifyBoundVar :: (MonadCollectTokens m) => BinderDepth -> Ix -> m (Maybe TokenClass)
+classifyBoundVar depth ix = do
+  ctx <- getBoundCtx (Proxy @(Expr Builtin))
+  case lookupIx ctx ix of
+    Nothing -> return Nothing
+    Just binder -> inBinderContext ix $ classifyBinderName depth binder
+
+classifyFreeVar :: (MonadCollectTokens m) => Identifier -> m (Maybe TokenClass)
+classifyFreeVar ident = do
+  decl <- getDeclEntry (Proxy @Builtin) ident
+  classifyDeclHead decl
+
+classifyBuiltin :: Builtin -> Maybe TokenClass
+classifyBuiltin = \case
+  BuiltinConstructor constructor -> case constructor of
+    Nil -> tok SemanticTokenTypes_Keyword
+    Cons -> tok SemanticTokenTypes_Operator
+    UnitLiteral -> tok SemanticTokenTypes_Keyword
+    IndexLiteral _ -> tok SemanticTokenTypes_Number
+    NatLiteral _ -> tok SemanticTokenTypes_Number
+    VectorLiteral -> tok SemanticTokenTypes_Keyword
+    BoolTensorLiteral _ -> tok SemanticTokenTypes_Keyword
+    NatTensorLiteral _ -> tok SemanticTokenTypes_Number
+    RatTensorLiteral _ -> tok SemanticTokenTypes_Number
+  -- TODO: It would be nice to be able to access the external syntax here. We want to say
+  -- "if the external token is alphanumeric, use Keyword, otherwise use Operator".
+  BuiltinFunction fn -> case fn of
+    Not -> tok SemanticTokenTypes_Operator
+    And -> tok SemanticTokenTypes_Operator
+    Or -> tok SemanticTokenTypes_Operator
+    Implies -> tok SemanticTokenTypes_Operator
+    QuantifyRatTensor {} -> tok SemanticTokenTypes_Keyword
+    QuantifyRecord {} -> tok SemanticTokenTypes_Keyword
+    If -> tok SemanticTokenTypes_Keyword
+    CompareIndex {} -> tok SemanticTokenTypes_Operator
+    CompareNat {} -> tok SemanticTokenTypes_Operator
+    CompareRatTensor {} -> tok SemanticTokenTypes_Operator
+    ReduceAndTensor -> tok SemanticTokenTypes_Keyword
+    ReduceOrTensor -> tok SemanticTokenTypes_Keyword
+    -- Rat operations
+    Add {} -> tok SemanticTokenTypes_Operator
+    Mul {} -> tok SemanticTokenTypes_Operator
+    Neg {} -> tok SemanticTokenTypes_Operator
+    Sub {} -> tok SemanticTokenTypes_Operator
+    Div {} -> tok SemanticTokenTypes_Operator
+    Min {} -> tok SemanticTokenTypes_Operator
+    Max {} -> tok SemanticTokenTypes_Operator
+    Pow {} -> tok SemanticTokenTypes_Operator
+    Log {} -> tok SemanticTokenTypes_Operator
+    Exp {} -> tok SemanticTokenTypes_Operator
+    ReduceAddRatTensor -> tok SemanticTokenTypes_Keyword
+    ReduceMulRatTensor -> tok SemanticTokenTypes_Keyword
+    ReduceMinRatTensor -> tok SemanticTokenTypes_Keyword
+    ReduceMaxRatTensor -> tok SemanticTokenTypes_Keyword
+    -- Tensor operations
+    AtTensor -> tok SemanticTokenTypes_Operator
+    StackTensor -> tok SemanticTokenTypes_Keyword
+    ConstTensor -> tok SemanticTokenTypes_Keyword
+    Iterate -> tok SemanticTokenTypes_Keyword
+    ForeachTensor -> tok SemanticTokenTypes_Keyword
+    Transpose -> tok SemanticTokenTypes_Keyword
+    WhereTensor -> tok SemanticTokenTypes_Keyword
+    SearchRatTensor -> tok SemanticTokenTypes_Keyword
+    -- Vector operations
+    AtVector -> tok SemanticTokenTypes_Operator
+    ForeachVector -> tok SemanticTokenTypes_Keyword
+    -- List operations
+    FoldList -> tok SemanticTokenTypes_Keyword
+    MapList -> tok SemanticTokenTypes_Keyword
+    ReverseList -> tok SemanticTokenTypes_Keyword
+    AppendList -> tok SemanticTokenTypes_Keyword
+  BuiltinType _typ -> tok SemanticTokenTypes_Type
+  BuiltinCast _cast -> tok SemanticTokenTypes_Function
+  DerivedFunction fn -> case fn of
+    TypeAnn -> tok SemanticTokenTypes_Operator
+    QuantifyIndex {} -> tok SemanticTokenTypes_Keyword
+    QuantifyInList {} -> tok SemanticTokenTypes_Keyword
+  TypeClass _tc -> tok SemanticTokenTypes_Class
+  TypeClassOp tcOp -> case tcOp of
+    FromNatTC -> Nothing
+    FromRatTC -> Nothing
+    VecLiteralTC -> tok SemanticTokenTypes_Keyword
+    NegTC -> tok SemanticTokenTypes_Operator
+    AtTC -> tok SemanticTokenTypes_Operator
+    MapTC -> tok SemanticTokenTypes_Keyword
+    FoldTC -> tok SemanticTokenTypes_Keyword
+    ForeachTC -> tok SemanticTokenTypes_Keyword
+    TensorTypeTC -> tok SemanticTokenTypes_Type
+  NatInDomainConstraint -> Nothing
+  where
+    tok typ = Just (typ, [])
