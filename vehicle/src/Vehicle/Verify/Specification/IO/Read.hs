@@ -35,7 +35,7 @@ class (Monad m) => MonadReadSpecification m where
 instance (MonadStdIO IO) => MonadReadSpecification IO where
   readSpecification = readSpecificationFromDisk
 
-instance (Monad m, MonadLsp Config (LspT cfg m)) => MonadReadSpecification (LspT cfg m) where
+instance (Monad m, MonadLsp Config (LspT Config m)) => MonadReadSpecification (LspT Config m) where
   readSpecification = readSpecificationFromLspVfs
 
 instance MonadReadSpecification LspTc where
