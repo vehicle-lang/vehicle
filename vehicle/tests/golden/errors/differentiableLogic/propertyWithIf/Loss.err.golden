@@ -1,0 +1,2 @@
+Error in file 'spec.vcl' at Line 7, Columns 48-50: Cannot compile `if` statements whose condition contains useful gradient information
+Fix: rewrite the specification to avoid using an `if` or move it to a location where it can be be lifted automatically to the Boolean level and eliminated.

@@ -14,10 +14,9 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Bifunctor (Bifunctor (..))
-import Data.ByteString.Lazy qualified as BIO
+import Data.ByteString (fromStrict, toStrict)
 import Data.Map qualified as Map
 import Data.Text (Text)
-import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory, (</>))
 import Vehicle.Libraries.Core
@@ -52,7 +51,7 @@ getLibraryPath name = do
 readLibraryFile :: (MonadIO m) => FilePath -> m (Either UnAnnDoc Library)
 readLibraryFile libraryFolder = runExceptT $ do
   let libraryFile = calculateLibraryFilePath libraryFolder
-  errorOrByteString <- liftIO $ catch (Right <$> BIO.readFile libraryFile) (\(e :: IOException) -> return $ Left e)
+  errorOrByteString <- liftIO $ catch (Right <$> lockedReadFile libraryFile) (\(e :: IOException) -> return $ Left e)
   case errorOrByteString of
     Left err ->
       throwError $
@@ -60,7 +59,7 @@ readLibraryFile libraryFolder = runExceptT $ do
           <+> quotePretty libraryFile
           <+> ":"
           <> lineIndent (pretty $ show err)
-    Right byteString -> case decode byteString of
+    Right byteString -> case decode $ fromStrict byteString of
       Nothing ->
         throwError $
           "Unabled to decode library file"
@@ -77,8 +76,8 @@ installLibrary library@Library {..} libraryContent = do
 
     -- Write the library info file out
     let libraryInfoFile = calculateLibraryFilePath libraryFolder
-    let libraryInfoFileContent = encodePretty library
-    liftIO $ BIO.writeFile libraryInfoFile libraryInfoFileContent
+    let libraryInfoFileContent = toStrict $ encodePretty library
+    liftIO $ lockedWriteFile libraryInfoFile libraryInfoFileContent
 
     -- Write the modules in the library out
     forM_ (Map.toList libraryContent) $
@@ -89,7 +88,7 @@ installModule libraryFolder (modul, content) = do
   let libraryContentFile = calculateModuleFilePath libraryFolder modul
   logDebug MidDetail $ "Installing" <+> quotePretty modul <+> "to" <+> quotePretty libraryContentFile
   liftIO $ createDirectoryIfMissing True (takeDirectory libraryContentFile)
-  liftIO $ TIO.writeFile libraryContentFile content
+  liftIO $ lockedWriteTextFile libraryContentFile content
 
 -- | Checks that the library is up-to-date and if not, installs the latest one.
 ensureLatestVersionOfLibraryInstalled ::

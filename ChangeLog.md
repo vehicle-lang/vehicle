@@ -1,5 +1,21 @@
 # Changelog for Vehicle
 
+## Next release
+
+### ITP backend
+
+* The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
+
+### Loss backend
+
+* Fixed a bug that occured when constructing sequences for which some elements had gradients and others did not, e.g. `[1.0, x]`.
+
+* Fixed a bug that occured when one branch of an `if` had gradients and the other did not, e.g. `if c then x else 0.0`.
+
+### Other
+
+* Vehicle now correctly locks files when reading and writing from the standard library avoiding race conditions if multiple instances of the Vehicle compiler are called concurrently.
+
 ## v0.29.0
 
 ### Language
@@ -42,7 +58,6 @@
 * Fixed bug where default `Sampler` implementations were returning `nan` when a quantified variable was
   unbounded, e.g. `forall x . p x`. Starting points are now drawn from a finite region around the
   bound that is finite, or around the origin when neither is.
-
 
 ### Solver backend
 
