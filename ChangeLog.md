@@ -8,6 +8,9 @@
 
 ### Loss backend
 
+* Fixed a bug that sometimes occurred when a quantifier appears inside the body of another quantifier,
+  e.g. `forall x . 0 <= x <= 1 => (exists z . f [x, z] ! 0 >= 0.5)`.
+
 * Fixed an bug in the translation when constructing tensors whose elements are quantified
   variables, e.g. `[1.0, x]`.
 
@@ -57,10 +60,6 @@
 * Fixed bug where default `Sampler` implementations were returning `nan` when a quantified variable was
   unbounded, e.g. `forall x . p x`. Starting points are now drawn from a finite region around the
   bound that is finite, or around the origin when neither is.
-
-* Fixed internal error when a quantifier appears inside the body of another quantifier,
-  e.g. `forall x . 0 <= x <= 1 => (exists z . f [x, z] ! 0 >= 0.5)`, including when it is nested
-  under a conjunction or disjunction.
 
 ### Solver backend
 
