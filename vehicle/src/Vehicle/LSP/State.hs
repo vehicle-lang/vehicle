@@ -1,5 +1,6 @@
 module Vehicle.LSP.State
   ( Server (..),
+    MonadVehicleLsp,
     newServer,
     initialiseServer,
     fileUpdated,
@@ -27,6 +28,11 @@ import Vehicle.Prelude.Logging (runSilentLoggerT)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.TypeCheck (TypeCheckOptions (..), typeCheckUserProg)
 import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification)
+
+type MonadVehicleLsp m =
+  ( MonadLsp Config m,
+    MonadReadSpecification m
+  )
 
 data Server = Server
   { stateRef :: TVar ServerState,

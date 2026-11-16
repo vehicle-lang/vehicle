@@ -328,6 +328,7 @@ library
     Vehicle.LSP.Config
     Vehicle.LSP.Handlers
     Vehicle.LSP.Monad
+    Vehicle.LSP.SemanticTokens
     Vehicle.LSP.State
     Vehicle.Prelude.Error
     Vehicle.Prelude.IO
