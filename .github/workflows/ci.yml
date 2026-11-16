@@ -24,20 +24,20 @@ defaults:
     shell: sh
 
 jobs:
-  # build-vehicle:
-  #   uses: ./.github/workflows/build-vehicle.yml
+  build-vehicle:
+    uses: ./.github/workflows/build-vehicle.yml
 
   build-vehicle-python:
     uses: ./.github/workflows/build-vehicle-python.yml
 
-  # test-integration-isabelle:
-  #   uses: ./.github/workflows/test-integration-isabelle.yml
+  test-integration-isabelle:
+    uses: ./.github/workflows/test-integration-isabelle.yml
 
-  # test-integration-rocq:
-  #   uses: ./.github/workflows/test-integration-rocq.yml
+  test-integration-rocq:
+    uses: ./.github/workflows/test-integration-rocq.yml
 
-  # test-integration-agda:
-  #   uses: ./.github/workflows/test-integration-agda.yml
+  test-integration-agda:
+    uses: ./.github/workflows/test-integration-agda.yml
 
   test-integration-bumpver:
     runs-on: ubuntu-latest
@@ -50,11 +50,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dieghernan/cff-validator@v5
-
-  # NOTE: This job is disabled because Marabou reliably runs out of memory.
-  #
-  # test-integration-marabou:
-  #   uses: ./.github/workflows/test-integration-marabou.yml
 
   test-integration-ormolu:
     runs-on: ubuntu-latest
@@ -73,10 +68,10 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs:
-      # -- build-vehicle
+      - build-vehicle
       - build-vehicle-python
       - test-integration-bumpver
-      # - test-integration-marabou
+      - test-integration-marabou
       - test-integration-ormolu
 
     permissions:
@@ -105,10 +100,10 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs:
-      # -- build-vehicle
+      - build-vehicle
       - build-vehicle-python
-      # -- test-integration-isabelle
-      # -- test-integration-rocq
+      - test-integration-isabelle
+      - test-integration-rocq
       - test-integration-bumpver
       - test-integration-citation-cff
       - test-integration-ormolu
