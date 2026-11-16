@@ -2,7 +2,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from vehicle_lang.verify import verify
 
 from ..config import PYTHON_TEST_SPECS_PATH, TEST_VERIFIER_PATH
