@@ -105,19 +105,19 @@ type MonadCollectTokens m =
 
 type IntermediateSemTok = Maybe Lsp.SemanticTokenAbsolute
 
-type SemanticTokenTypeComplete = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModifiers])
+type TokenClass = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModifiers])
 
 type BinderDepth = Int
 
-type TokenMaker = Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
+type TokenMaker = Provenance -> TokenClass -> IntermediateSemTok
 
-makeTokenThisFile :: FilePath -> Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
+makeTokenThisFile :: FilePath -> Provenance -> TokenClass -> IntermediateSemTok
 makeTokenThisFile filePath p@(Provenance _ provFilePath) t
   | filePath == provFilePath = makeTokenAnyFile p t
   | otherwise = Nothing
 
 -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
-makeTokenAnyFile :: Provenance -> SemanticTokenTypeComplete -> IntermediateSemTok
+makeTokenAnyFile :: Provenance -> TokenClass -> IntermediateSemTok
 makeTokenAnyFile (Provenance (Range (Position sl sc) (Position _el ec)) _) (tType, modifiers) =
   Just $
     Lsp.SemanticTokenAbsolute
@@ -133,55 +133,47 @@ makeTokenAnyFile (Provenance (Range (Position sl sc) (Position _el ec)) _) (tTyp
 inBinderContext :: (MonadBoundContext (Expr Builtin) m) => Ix -> m a -> m a
 inBinderContext ix = dropBindersFromContext (Proxy @(Expr Builtin)) (unIx ix + 1)
 
+emitAt :: TokenMaker -> Provenance -> Maybe TokenClass -> IntermediateSemTok
+emitAt makeToken p = (makeToken p =<<)
+
 --------------------------------------------------------------------------------
 
-getDeclHeadToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> GenericDecl (Expr Builtin) -> m IntermediateSemTok
-getDeclHeadToken makeToken p = \case
-  DefAbstract _ _ _ t -> getTokenOfType makeToken p 0 t
+classifyDeclHead :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m (Maybe TokenClass)
+classifyDeclHead = \case
+  DefAbstract _ _ _ t -> classifyTokenOfType 0 t
   DefFunction _ _ s t _ -> do
     -- Record accesses (e.g. `pair.left`) should render the `.left` part as a Method, not a Function
-    let fixProjectionTokenType tok = case s of
-          ProjectionDecl {} -> tok {_tokenType = Lsp.SemanticTokenTypes_Method}
+    let fixProjectionTokenType tok@(_typ, mods) = case s of
+          ProjectionDecl {} -> (Lsp.SemanticTokenTypes_Method, mods)
           _ -> tok
-    getTokenOfType makeToken p 0 t <&> fmap fixProjectionTokenType
-  DefRecord {} -> pure $ makeToken p (SemanticTokenTypes_Class, [])
+    classifyTokenOfType 0 t <&> fmap fixProjectionTokenType
+  DefRecord {} -> pure $ Just (SemanticTokenTypes_Class, [])
 
-getBinderNameToken :: (MonadCollectTokens m) => TokenMaker -> BinderDepth -> GenericBinder (Expr Builtin) -> m IntermediateSemTok
-getBinderNameToken makeToken depth b = getTokenOfType makeToken nameProvenance depth (typeOf b)
-  where
-    -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
-    -- we just want the provenance of the name.
-    nameProvenance = case binderNamingForm b of
-      NameAndType _n p -> p
-      OnlyName _n p -> p
-      OnlyType -> mempty
+classifyBinderName :: (MonadCollectTokens m) => BinderDepth -> GenericBinder (Expr Builtin) -> m (Maybe TokenClass)
+classifyBinderName depth b = classifyTokenOfType depth (typeOf b)
 
-getBoundVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Ix -> BinderDepth -> m IntermediateSemTok
-getBoundVarToken makeToken p ix depth = do
+classifyBoundVar :: (MonadCollectTokens m) => BinderDepth -> Ix -> m (Maybe TokenClass)
+classifyBoundVar depth ix = do
   ctx <- getBoundCtx (Proxy @(Expr Builtin))
   case lookupIx ctx ix of
     Nothing -> return Nothing
-    Just binder -> do
-      binderNameToken <- inBinderContext ix $ getBinderNameToken makeTokenAnyFile depth binder
-      case binderNameToken of
-        Nothing -> return Nothing
-        Just tok -> return $ makeToken p ((tok ^. tokenType), (tok ^. tokenModifiers))
+    Just binder -> inBinderContext ix $ classifyBinderName depth binder
 
-getFreeVarToken :: (MonadCollectTokens m) => TokenMaker -> Provenance -> Identifier -> m IntermediateSemTok
-getFreeVarToken makeToken p ident = do
+classifyFreeVar :: (MonadCollectTokens m) => Identifier -> m (Maybe TokenClass)
+classifyFreeVar ident = do
   decl <- getDeclEntry (Proxy @Builtin) ident
-  getDeclHeadToken makeToken p decl
+  classifyDeclHead decl
 
-getTokenOfType :: (MonadCollectTokens m) => TokenMaker -> Provenance -> BinderDepth -> Expr Builtin -> m IntermediateSemTok
-getTokenOfType makeToken p depth = \case
+classifyTokenOfType :: (MonadCollectTokens m) => BinderDepth -> Expr Builtin -> m (Maybe TokenClass)
+classifyTokenOfType depth = \case
   Universe {}
-    | depth > 0 -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
-    | otherwise -> pure $ makeToken p (SemanticTokenTypes_Type, [])
+    | depth > 0 -> pure $ Just (SemanticTokenTypes_Variable, [])
+    | otherwise -> pure $ Just (SemanticTokenTypes_Type, [])
   Pi _ binder res ->
     if wasInsertedByCompiler binder
-      then addBinderToContext binder $ getTokenOfType makeToken p depth res
-      else pure $ makeToken p (SemanticTokenTypes_Function, [])
-  Builtin _ _builtin -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
+      then addBinderToContext binder $ classifyTokenOfType depth res
+      else pure $ Just (SemanticTokenTypes_Function, [])
+  Builtin _ _builtin -> pure $ Just (SemanticTokenTypes_Variable, [])
   -- We need to keep track of how many "binders deep" we are, so we can determine if a BoundVar is an
   -- element of Type, or merely an element of something which is an element of Type.
   --
@@ -196,20 +188,20 @@ getTokenOfType makeToken p depth = \case
   -- BinderDepth, so when T resolves to Type, it knows it is not the first one in the binder chain.
   -- I'm sure there is a more elegant solution to this, and there are probably edge cases I haven't
   -- considered, but this will do for now.
-  BoundVar _ ix -> getBoundVarToken makeToken p ix (depth + 1)
+  BoundVar _ ix -> classifyBoundVar (depth + 1) ix
   FreeVar _ ident -> do
     decl <- getDeclEntry (Proxy @Builtin) ident
     case decl of
-      DefAbstract {} -> pure $ makeToken p (SemanticTokenTypes_Variable, [])
-      DefFunction _ _ _ _ e -> getTokenOfType makeToken p depth e
-      DefRecord {} -> pure $ makeToken p (SemanticTokenTypes_Class, [])
-  Hole _ _name -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
-  Meta _ _metaId -> pure $ makeToken p (SemanticTokenTypes_Macro, [])
-  App f _args -> getTokenOfType makeToken p depth f
-  Let _ _bound bodyBinder bodyExpr -> addBinderToContext bodyBinder $ getTokenOfType makeToken p depth bodyExpr
-  Lam _ binder body -> addBinderToContext binder $ getTokenOfType makeToken p depth body
-  Record _ typ _fields -> getTokenOfType makeToken p depth typ
-  RecordProj _ _typ _body _fieldName -> pure $ makeToken p (SemanticTokenTypes_Method, [])
+      DefAbstract {} -> pure $ Just (SemanticTokenTypes_Variable, [])
+      DefFunction _ _ _ _ e -> classifyTokenOfType depth e
+      DefRecord {} -> pure $ Just (SemanticTokenTypes_Class, [])
+  Hole _ _name -> pure $ Just (SemanticTokenTypes_Macro, [])
+  Meta _ _metaId -> pure $ Just (SemanticTokenTypes_Macro, [])
+  App f _args -> classifyTokenOfType depth f
+  Let _ _bound bodyBinder bodyExpr -> addBinderToContext bodyBinder $ classifyTokenOfType depth bodyExpr
+  Lam _ binder body -> addBinderToContext binder $ classifyTokenOfType depth body
+  Record _ typ _fields -> classifyTokenOfType depth typ
+  RecordProj _ _typ _body _fieldName -> pure $ Just (SemanticTokenTypes_Method, [])
 
 --------------------------------------------------------------------------------
 
@@ -219,11 +211,11 @@ collectProgTokens makeToken (Main decls) =
 
 collectDeclTokens :: (MonadCollectTokens m) => TokenMaker -> GenericDecl (Expr Builtin) -> m [IntermediateSemTok]
 collectDeclTokens makeToken decl = do
-  headTok <- getHeadTok
+  headTok <- getHeadToks
   bodyToks <- getBodyToks
   return $ headTok : bodyToks
   where
-    getHeadTok = getDeclHeadToken makeToken (provenanceOf decl) decl
+    getHeadToks = emitAt makeToken (provenanceOf decl) <$> classifyDeclHead decl
 
     getBodyToks = case decl of
       DefAbstract _ _ _ t -> collectExprTokens makeToken t
@@ -238,8 +230,17 @@ collectBinderTokens makeToken binder@(Binder _ _ _ val)
   | wasInsertedByCompiler binder = pure []
   | otherwise = do
       exprToks <- collectExprTokens makeToken val
-      nameTok <- getBinderNameToken makeToken 0 binder
+      nameTok <- getNameTok
       return $ nameTok : exprToks
+  where
+    getNameTok = emitAt makeToken nameProvenance <$> classifyBinderName 0 binder
+
+    -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
+    -- we just want the provenance of the name.
+    nameProvenance = case binderNamingForm binder of
+      NameAndType _n p -> p
+      OnlyName _n p -> p
+      OnlyType -> mempty
 
 collectExprTokens ::
   (MonadCollectTokens m) =>
@@ -253,8 +254,8 @@ collectExprTokens makeToken = \case
     exprToks <- addBinderToContext binder $ collectExprTokens makeToken res
     return $ binderToks ++ exprToks
   Builtin p builtin -> collectBuiltinTokens makeToken p builtin
-  BoundVar p ix -> singleton <$> getBoundVarToken makeToken p ix 0
-  FreeVar p ident -> singleton <$> getFreeVarToken makeToken p ident
+  BoundVar p ix -> singleton <$> emitAt makeToken p <$> classifyBoundVar 0 ix
+  FreeVar p ident -> singleton <$> emitAt makeToken p <$> classifyFreeVar ident
   Hole p _name -> pure [makeToken p (SemanticTokenTypes_Decorator, [])]
   Meta p _metaId -> pure [makeToken p (SemanticTokenTypes_TypeParameter, [])]
   App f args -> do
