@@ -8,6 +8,7 @@ module Vehicle.CommandLine
     ModeOptions (..),
     defaultGlobalOptions,
     commandLineOptionsParserInfo,
+    commandLineParserPrefs,
   )
 where
 
@@ -110,6 +111,14 @@ solver            = Opt "v" "solver"
 property          = Opt "y" "property"
 --  - z
 -}
+
+-- | We inline the subparsers for each mode so that global options
+-- (e.g. `--no-warnings`) can be freely interleaved with mode-specific
+-- options. With the default backtracking behaviour, an option belonging to
+-- the parent parser is only accepted after the subcommand's required
+-- options, e.g. `vehicle verify --no-warnings -s f.vcl` would fail.
+commandLineParserPrefs :: ParserPrefs
+commandLineParserPrefs = prefs subparserInline
 
 commandLineOptionsParserInfo :: ParserInfo Options
 commandLineOptionsParserInfo =
@@ -445,7 +454,7 @@ showVersionParser :: Parser Bool
 showVersionParser =
   switch $
     long "version"
-      <> short 'v'
+      <> short 'V'
       <> help "Show version information."
 
 redirectLogsParser :: Parser (Maybe FilePath)

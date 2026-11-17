@@ -2,11 +2,18 @@
 
 ## Next release
 
+### Type-checker
+
+* Fixed a rare internal error in the type-checker.
+
 ### ITP backend
 
 * The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
 
 ### Loss backend
+
+* Fixed a bug that sometimes occurred when a quantifier appears inside the body of another quantifier,
+  e.g. `forall x . 0 <= x <= 1 => (exists z . f [x, z] ! 0 >= 0.5)`.
 
 * Fixed a bug that occured when constructing sequences for which some elements had gradients and others did not, e.g. `[1.0, x]`.
 
@@ -14,9 +21,13 @@
 
 ### Other
 
+* **Breaking:** the short form of `--version` is now `-V` rather than `-v`, as `-v` clashed with the `--solver` option of `vehicle verify`.
+
 * Vehicle now correctly handles Windows file paths that contain additional colons when parsing dataset and network filepaths.
 
 * Vehicle now correctly locks files when reading and writing from the standard library avoiding race conditions if multiple instances of the Vehicle compiler are called concurrently.
+
+* Global options such as `--no-warnings` can now be placed anywhere on the command line, e.g. `vehicle verify --no-warnings -s spec.vcl ...` previously failed.
 
 ## v0.29.0
 

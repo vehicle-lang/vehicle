@@ -10,10 +10,10 @@ typeAnn t a = a
 -- Bool
 --------------------------------------------------------------------------------
 
-forallInList : (A -> Bool) -> List A -> Bool
+forallInList : (a -> Bool) -> List a -> Bool
 forallInList f xs = fold (\x y -> x and y) True (map f xs)
 
-existsInList : (A -> Bool) -> List A -> Bool
+existsInList : (a -> Bool) -> List a -> Bool
 existsInList f xs = fold (\x y -> x or y) False (map f xs)
 
 --------------------------------------------------------------------------------
