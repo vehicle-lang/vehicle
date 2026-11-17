@@ -2,12 +2,14 @@ module Vehicle.Data.AST.Name where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON (..), ToJSON (..), ToJSONKey)
+import Data.Char (isLower)
 import Data.Hashable (Hashable)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
 import Data.Text (Text)
+import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), concatWith, dot, surround)
 
@@ -98,3 +100,8 @@ instance HasName Identifier Name where
 
 instance HasName Name Name where
   nameOf = id
+
+nameStartsWithLowerCase :: Name -> Bool
+nameStartsWithLowerCase name = case Text.uncons name of
+  Just (c, _) -> isLower c
+  Nothing -> False

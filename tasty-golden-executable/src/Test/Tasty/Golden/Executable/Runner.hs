@@ -37,7 +37,7 @@ import Data.Traversable (for)
 import General.Extra.Diff (isBoth, mapDiff)
 import General.Extra.File (createDirectoryRecursive, listFilesRecursive, writeFileChanged)
 import General.Extra.NonEmpty qualified as NonEmpty (appendList, prependList, singleton)
-import System.Directory (copyFile, createDirectoryIfMissing, doesFileExist, removeFile)
+import System.Directory (copyFile, copyFileWithMetadata, createDirectoryIfMissing, doesFileExist, removeFile)
 import System.FilePath (isAbsolute, isExtensionOf, makeRelative, stripExtension, takeDirectory, takeExtension, (<.>), (</>))
 import System.IO (IOMode (..), withFile)
 import System.IO.Error (isDoesNotExistError)
@@ -186,9 +186,11 @@ copyTestNeeds neededFiles = do
       let neededFileSourceAsGolden = neededFileSource <.> "golden"
       neededFileExistsAsGolden <- doesFileExist neededFileSourceAsGolden
       -- If either is successful, copy the file. Otherwise, throw an error.
+      -- We use `copyFileWithMetadata` rather than `copyFile` as it avoids
+      -- race conditions on Windows.
       if
-        | neededFileExists -> copyFile neededFileSource neededFileTargetAbsolute
-        | neededFileExistsAsGolden -> copyFile neededFileSourceAsGolden neededFileTargetAbsolute
+        | neededFileExists -> copyFileWithMetadata neededFileSource neededFileTargetAbsolute
+        | neededFileExistsAsGolden -> copyFileWithMetadata neededFileSourceAsGolden neededFileTargetAbsolute
         | otherwise -> throw $ neededFileNotFound neededFile
 
       return neededFileTarget
