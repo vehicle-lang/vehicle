@@ -330,10 +330,9 @@ classifyTokenOfType depth = \case
   Universe {}
     | depth > 0 -> return $ Just (SemanticTokenTypes_Variable, [])
     | otherwise -> return $ Just (SemanticTokenTypes_Type, [])
-  Pi _ binder res ->
-    if wasInsertedByCompiler binder
-      then addBinderToContext binder $ classifyTokenOfType depth res
-      else return $ Just (SemanticTokenTypes_Function, [])
+  Pi _ binder res
+    | wasInsertedByCompiler binder -> addBinderToContext binder $ classifyTokenOfType depth res
+    | otherwise -> return $ Just (SemanticTokenTypes_Function, [])
   Builtin _ _builtin -> return $ Just (SemanticTokenTypes_Variable, [])
   -- We need to keep track of how many "binders deep" we are, so we can determine if a BoundVar is an
   -- element of Type, or merely an element of something which is an element of Type.
