@@ -102,7 +102,7 @@ collectSemanticTokens logger filePath = do
     populateFreeContext (d : ds) f = addDeclToContext d $ populateFreeContext ds f
 
 --------------------------------------------------------------------------------
--- types, utils
+-- Types and Utilities
 
 type MonadCollectTokens m =
   ( MonadFreeContext Builtin m,
@@ -144,7 +144,7 @@ mkTok :: Provenance -> TokenClass -> IntermediateSemTok
 mkTok p tok = Just (p, tok)
 
 --------------------------------------------------------------------------------
--- collect
+-- Token collection:
 --
 -- We have an arbitrary expression; we need to identify and colour every token
 -- inside of it.
@@ -242,7 +242,7 @@ collectFieldsTokens fields = concat <$> traverse collectFieldTokens fields
       return $ mkTok (provenanceOf field) (SemanticTokenTypes_Method, []) : valueToks
 
 --------------------------------------------------------------------------------
--- classify
+-- Token classification:
 --
 -- We have a single token `foo` of type `bar`, where `bar` is an arbitrary
 -- expression; we need to work out what colour to make `foo`.
