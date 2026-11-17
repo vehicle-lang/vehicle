@@ -517,7 +517,7 @@ liftForeach outputCtx createForeachArgs lv dim = go
           | doesNotReferenceBoundVar body -> do
               let dims = Forced $ IDimCons dim $ Forced IDimNil
               let constArgs = ConstTensorArgs typ body dims
-              forceThunk =<< forceEvaluation accessConstTensor evalConstTensor constArgs
+              forceThunk =<< evalOrReconstructConst constArgs
           | otherwise -> do
               let args = createForeachArgs typ body
               maybeEvalResult <- evalForeachTensor args
