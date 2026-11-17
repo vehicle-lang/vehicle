@@ -8,6 +8,10 @@
   e.g. `1 >= 0 and exists (x : Index 2) . x >= 0` and `x > 0 => if x > 1 then p else q` previously failed to parse.
   As before, the body of the quantifier (or the `else` branch of the `if`) extends as far to the right as possible.
 
+### Type-checker
+
+* Fixed a rare internal error in the type-checker.
+
 ### ITP backend
 
 * The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
@@ -23,7 +27,11 @@
 
 ### Other
 
+* **Breaking:** the short form of `--version` is now `-V` rather than `-v`, as `-v` clashed with the `--solver` option of `vehicle verify`.
+
 * Vehicle now correctly locks files when reading and writing from the standard library avoiding race conditions if multiple instances of the Vehicle compiler are called concurrently.
+
+* Global options such as `--no-warnings` can now be placed anywhere on the command line, e.g. `vehicle verify --no-warnings -s spec.vcl ...` previously failed.
 
 ## v0.29.0
 
