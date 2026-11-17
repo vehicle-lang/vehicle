@@ -2,6 +2,12 @@
 
 ## Next release
 
+### Language
+
+* Quantifiers and `if` expressions can now be used without brackets as the right-hand operand of `and`, `or` and `=>`,
+  e.g. `1 >= 0 and exists (x : Index 2) . x >= 0` and `x > 0 => if x > 1 then p else q` previously failed to parse.
+  As before, the body of the quantifier (or the `else` branch of the `if`) extends as far to the right as possible.
+
 ### Type-checker
 
 * Fixed a rare internal error in the type-checker.
@@ -12,7 +18,7 @@
 
 ### Loss backend
 
-* Fixed a bug that sometimes occurred when a quantifier appears inside the body of another quantifier,
+* Fixed various bugs that sometimes occurred when a quantifier appeared inside the body of another quantifier,
   e.g. `forall x . 0 <= x <= 1 => (exists z . f [x, z] ! 0 >= 0.5)`.
 
 * Fixed a bug that occured when constructing sequences for which some elements had gradients and others did not, e.g. `[1.0, x]`.
