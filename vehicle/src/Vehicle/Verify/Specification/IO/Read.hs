@@ -23,6 +23,8 @@ import Prettyprinter.Render.Text (renderStrict)
 import System.Exit (exitFailure)
 import System.FilePath (takeExtension)
 import Vehicle.Compile.Prelude
+import Vehicle.LSP.Config (Config)
+import Vehicle.LSP.Monad (LspTc (..))
 
 --------------------------------------------------------------------------------
 -- Specification
@@ -33,7 +35,10 @@ class (Monad m) => MonadReadSpecification m where
 instance (MonadStdIO IO) => MonadReadSpecification IO where
   readSpecification = readSpecificationFromDisk
 
-instance (MonadUnliftIO m) => MonadReadSpecification (LspT cfg m) where
+instance (Monad m, MonadLsp Config (LspT Config m)) => MonadReadSpecification (LspT Config m) where
+  readSpecification = readSpecificationFromLspVfs
+
+instance MonadReadSpecification LspTc where
   readSpecification = readSpecificationFromLspVfs
 
 instance (MonadReadSpecification m) => MonadReadSpecification (ExceptT e m) where

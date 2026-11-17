@@ -83,4 +83,7 @@ instance (Monad m) => MonadBoundContext expr (BoundContextT expr m) where
   addBinderToContext binder cont = BoundContextT $ do
     local (binder :) (unBoundContextT cont)
 
+  dropBindersFromContext _ n cont = BoundContextT $ do
+    local (drop n) (unBoundContextT cont)
+
   getBoundCtx _ = BoundContextT ask

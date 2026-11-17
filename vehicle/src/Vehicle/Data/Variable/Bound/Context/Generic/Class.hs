@@ -19,18 +19,22 @@ import Vehicle.Prelude
 -- TODO: can probably parameterise this just by `builtin`
 class (Monad m, MonadReadableNameContext m) => MonadBoundContext expr m where
   addBinderToContext :: GenericBinder expr -> m a -> m a
+  dropBindersFromContext :: Proxy expr -> Int -> m a -> m a
   getBoundCtx :: Proxy expr -> m (BoundCtx expr)
 
 instance (Monoid w, MonadBoundContext expr m) => MonadBoundContext expr (WriterT w m) where
   addBinderToContext = mapWriterT . addBinderToContext
+  dropBindersFromContext p = mapWriterT . dropBindersFromContext p
   getBoundCtx = lift . getBoundCtx
 
 instance (MonadBoundContext expr m) => MonadBoundContext expr (ReaderT w m) where
   addBinderToContext = mapReaderT . addBinderToContext
+  dropBindersFromContext p = mapReaderT . dropBindersFromContext p
   getBoundCtx = lift . getBoundCtx
 
 instance (MonadBoundContext expr m) => MonadBoundContext expr (ExceptT e m) where
   addBinderToContext = mapExceptT . addBinderToContext
+  dropBindersFromContext p = mapExceptT . dropBindersFromContext p
   getBoundCtx = lift . getBoundCtx
 
 --------------------------------------------------------------------------------
