@@ -95,7 +95,7 @@ musllinux-x86_64-image = "wenkokke/musllinux_1_1_ghc965_x86_64"
 # (NumPy only publishes musllinux_1_2 wheels), so constrain NumPy when testing.
 [[tool.cibuildwheel.overrides]]
 select = "*-musllinux*"
-test-requires = ["numpy<2.5"]
+before-test = "pip install 'numpy<2.5'"
 
 [tool.mypy]
 mypy_path = "src"
