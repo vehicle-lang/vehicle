@@ -74,14 +74,17 @@ installLibrary library@Library {..} libraryContent = do
     libraryFolder <- getLibraryPath name
     liftIO $ createDirectoryIfMissing True libraryFolder
 
-    -- Write the library info file out
-    let libraryInfoFile = calculateLibraryFilePath libraryFolder
-    let libraryInfoFileContent = toStrict $ encodePretty library
-    liftIO $ lockedWriteFile libraryInfoFile libraryInfoFileContent
-
     -- Write the modules in the library out
     forM_ (Map.toList libraryContent) $
       installModule libraryFolder
+
+    -- Write the library info file out. This MUST happen after the modules
+    -- have been written, as the presence of an info file is what
+    -- other (possibly concurrent) Vehicle processes use to decide that the
+    -- library is fully installed and its modules can be read.
+    let libraryInfoFile = calculateLibraryFilePath libraryFolder
+    let libraryInfoFileContent = toStrict $ encodePretty library
+    liftIO $ lockedWriteFile libraryInfoFile libraryInfoFileContent
 
 installModule :: (MonadIO m, MonadLogger m) => FilePath -> (ModulePath, Text) -> m ()
 installModule libraryFolder (modul, content) = do
