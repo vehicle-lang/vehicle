@@ -9,7 +9,6 @@ import Control.Lens ((^.))
 import Data.Functor ((<&>))
 import Data.List
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Map (elems)
 import Data.Maybe (catMaybes)
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
@@ -24,7 +23,7 @@ import Language.LSP.Protocol.Types as Lsp
   )
 import Vehicle.Compile.Print.Error (formatCompileError, logCompileError)
 import Vehicle.Data.AST.Expr.Scoped
-import Vehicle.Data.AST.Prog (GenericProg (..), Prog)
+import Vehicle.Data.AST.Prog (GenericProg (..))
 import Vehicle.Data.Builtin.Standard
   ( Builtin (..),
     BuiltinConstructor (..),
@@ -54,7 +53,7 @@ import Vehicle.Prelude
   )
 import Vehicle.Prelude.Logging (runSilentLoggerT)
 import Vehicle.Prelude.Prettyprinter (Pretty (..), layoutAsText)
-import Vehicle.TypeCheck (loadUserSpecification)
+import Vehicle.TypeCheck (flattenProgram, loadUserSpecification)
 
 --------------------------------------------------------------------------------
 -- API
@@ -74,14 +73,13 @@ collectSemanticTokens logger filePath = do
       -- TODO: This means a specification has to successfully type check before we can
       -- produce semantic tokens for it, which sucks. We should just do scope checking
       -- here instead.
-      (prog@(Main userDecls), builtinModules, _) <- loadUserSpecification filePath
-      let allDecls = userDecls ++ concat (elems builtinModules)
+      (userModule, builtinModules, moduleGraph) <- loadUserSpecification filePath
+      (Main allDecls) <- flattenProgram userModule builtinModules moduleGraph
 
       imToks <-
         runFreshFreeContextT (Proxy @Builtin) $
-          populateFreeContext allDecls $
-            runFreshBoundContextT (Proxy @(Expr Builtin)) $
-              collectProgTokens prog
+          runFreshBoundContextT (Proxy @(Expr Builtin)) $
+            collectDeclsTokens allDecls
 
       return $ catMaybes $ map (makeTokenThisFile filePath) imToks
 
@@ -96,10 +94,6 @@ collectSemanticTokens logger filePath = do
     makeLspSemanticTokens tokens = do
       let sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) tokens
       makeSemanticTokens defaultSemanticTokensLegend sortedTokens
-
-    populateFreeContext :: (MonadFreeContext Builtin n) => [Decl Builtin] -> n a -> n a
-    populateFreeContext [] f = f
-    populateFreeContext (d : ds) f = addDeclToContext d $ populateFreeContext ds f
 
 --------------------------------------------------------------------------------
 -- Types and Utilities
@@ -149,9 +143,12 @@ mkTok p tok = Just (p, tok)
 -- We have an arbitrary expression; we need to identify and colour every token
 -- inside of it.
 
-collectProgTokens :: (MonadCollectTokens m) => Prog Builtin -> m [IntermediateSemTok]
-collectProgTokens (Main decls) =
-  concat <$> traverse collectDeclTokens decls
+collectDeclsTokens :: (MonadCollectTokens m) => [GenericDecl (Expr Builtin)] -> m [IntermediateSemTok]
+collectDeclsTokens [] = return []
+collectDeclsTokens (d : ds) = do
+  declToks <- collectDeclTokens d
+  restToks <- addDeclToContext d $ collectDeclsTokens ds
+  return $ declToks ++ restToks
 
 collectDeclTokens :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m [IntermediateSemTok]
 collectDeclTokens decl = do
