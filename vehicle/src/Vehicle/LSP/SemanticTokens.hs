@@ -6,6 +6,7 @@ where
 
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Lens ((^.))
+import Control.Monad.Reader (MonadReader, ask, runReaderT)
 import Data.Functor ((<&>))
 import Data.List
 import Data.List.NonEmpty qualified as NonEmpty (toList)
@@ -76,12 +77,13 @@ collectSemanticTokens logger filePath = do
       (userModule, builtinModules, moduleGraph) <- loadUserSpecification filePath
       (Main allDecls) <- flattenProgram userModule builtinModules moduleGraph
 
-      imToks <-
+      maybeToks <-
         runFreshFreeContextT (Proxy @Builtin) $
           runFreshBoundContextT (Proxy @(Expr Builtin)) $
-            collectDeclsTokens allDecls
+            flip runReaderT filePath $
+              collectDeclsTokens allDecls
 
-      return $ catMaybes $ map (makeTokenThisFile filePath) imToks
+      return $ catMaybes maybeToks
 
   case errorOrToks of
     Left err -> do
@@ -96,24 +98,39 @@ collectSemanticTokens logger filePath = do
       makeSemanticTokens defaultSemanticTokensLegend sortedTokens
 
 --------------------------------------------------------------------------------
--- Types and Utilities
+-- Internal types and utilities
+
+type MonadEmitTokens m = MonadReader FilePath m
 
 type MonadCollectTokens m =
   ( MonadFreeContext Builtin m,
-    MonadBoundContext (Expr Builtin) m
+    MonadBoundContext (Expr Builtin) m,
+    MonadEmitTokens m
   )
 
-type IntermediateSemTok = Maybe (Provenance, TokenClass)
+type IntermediateSemTok = Maybe Lsp.SemanticTokenAbsolute
 
 type TokenClass = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModifiers])
 
 type BinderDepth = Int
 
-makeTokenThisFile :: FilePath -> IntermediateSemTok -> Maybe Lsp.SemanticTokenAbsolute
-makeTokenThisFile filePath = (makeToken =<<)
+-- drop `ix + 1` binders because we want to drop all binders up to and including binder `ix`
+-- e.g. if we want to run in the context of before we added i2, we need to drop i0, i1, and i2 (3 total).
+inBinderContext :: (MonadBoundContext (Expr Builtin) m) => Ix -> m a -> m a
+inBinderContext ix = dropBindersFromContext (Proxy @(Expr Builtin)) (unIx ix + 1)
+
+emitAt :: (MonadEmitTokens m) => Provenance -> Maybe TokenClass -> m IntermediateSemTok
+emitAt p = \case
+  Nothing -> return Nothing
+  Just tok -> mkTok p tok
+
+mkTok :: (MonadEmitTokens m) => Provenance -> TokenClass -> m IntermediateSemTok
+mkTok p tok = do
+  filePath <- ask
+  return $ makeToken filePath p tok
   where
-    makeToken :: (Provenance, TokenClass) -> Maybe Lsp.SemanticTokenAbsolute
-    makeToken ((Provenance (Range (Position sl sc) (Position _el ec)) provFilePath), (tType, modifiers))
+    makeToken :: FilePath -> Provenance -> TokenClass -> IntermediateSemTok
+    makeToken filePath (Provenance (Range (Position sl sc) (Position _el ec)) provFilePath) (tType, modifiers)
       | filePath == provFilePath =
           Just $
             -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
@@ -125,17 +142,6 @@ makeTokenThisFile filePath = (makeToken =<<)
                 _tokenModifiers = modifiers
               }
       | otherwise = Nothing
-
--- drop `ix + 1` binders because we want to drop all binders up to and including binder `ix`
--- e.g. if we want to run in the context of before we added i2, we need to drop i0, i1, and i2 (3 total).
-inBinderContext :: (MonadBoundContext (Expr Builtin) m) => Ix -> m a -> m a
-inBinderContext ix = dropBindersFromContext (Proxy @(Expr Builtin)) (unIx ix + 1)
-
-emitAt :: Provenance -> Maybe TokenClass -> IntermediateSemTok
-emitAt p = (mkTok p =<<)
-
-mkTok :: Provenance -> TokenClass -> IntermediateSemTok
-mkTok p tok = Just (p, tok)
 
 --------------------------------------------------------------------------------
 -- Token collection:
@@ -156,7 +162,7 @@ collectDeclTokens decl = do
   bodyToks <- getBodyToks
   return $ headTok : bodyToks
   where
-    getHeadToks = emitAt (provenanceOf decl) <$> classifyDeclHead decl
+    getHeadToks = emitAt (provenanceOf decl) =<< classifyDeclHead decl
 
     getBodyToks = case decl of
       DefAbstract _ _ _ t -> collectExprTokens t
@@ -174,7 +180,7 @@ collectBinderTokens binder@(Binder _ _ _ val)
       nameTok <- getNameTok
       return $ nameTok : exprToks
   where
-    getNameTok = emitAt nameProvenance <$> classifyBinderName 0 binder
+    getNameTok = emitAt nameProvenance =<< classifyBinderName 0 binder
 
     -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
     -- we just want the provenance of the name.
@@ -188,35 +194,35 @@ collectExprTokens ::
   Expr Builtin ->
   m [IntermediateSemTok]
 collectExprTokens = \case
-  Universe p _level -> return [mkTok p (SemanticTokenTypes_Type, [])]
+  Universe p _level -> singleton <$> mkTok p (SemanticTokenTypes_Type, [])
   Pi _p binder res -> do
     binderToks <- collectBinderTokens binder
     exprToks <- addBinderToContext binder $ collectExprTokens res
     return $ binderToks ++ exprToks
-  Builtin p builtin -> return $ [emitAt p (getBuiltinToken builtin)]
-  BoundVar p ix -> singleton <$> emitAt p <$> classifyBoundVar 0 ix
-  FreeVar p ident -> singleton <$> emitAt p <$> classifyFreeVar ident
-  Hole p _name -> return [mkTok p (SemanticTokenTypes_Decorator, [])]
-  Meta p _metaId -> return [mkTok p (SemanticTokenTypes_TypeParameter, [])]
+  Builtin p builtin -> singleton <$> emitAt p (getBuiltinToken builtin)
+  BoundVar p ix -> singleton <$> (emitAt p =<< classifyBoundVar 0 ix)
+  FreeVar p ident -> singleton <$> (emitAt p =<< classifyFreeVar ident)
+  Hole p _name -> singleton <$> mkTok p (SemanticTokenTypes_Decorator, [])
+  Meta p _metaId -> singleton <$> mkTok p (SemanticTokenTypes_TypeParameter, [])
   App f args -> do
     fnToks <- collectExprTokens f
     argsToks <- concat <$> traverse collectArgTokens (filter (not . wasInsertedByCompiler) (NonEmpty.toList args))
     return $ fnToks ++ argsToks
   Let p bound bodyBinder bodyExpr -> do
-    let letToks = [mkTok p (SemanticTokenTypes_Keyword, [])]
+    letToks <- singleton <$> mkTok p (SemanticTokenTypes_Keyword, [])
     boundToks <- collectExprTokens bound
     binderToks <- collectBinderTokens bodyBinder
     bodyToks <- addBinderToContext bodyBinder $ collectExprTokens bodyExpr
     return $ letToks ++ boundToks ++ binderToks ++ bodyToks
   Lam p binder body -> do
-    let lamToks = [mkTok p (SemanticTokenTypes_Keyword, [])]
+    lamToks <- singleton <$> mkTok p (SemanticTokenTypes_Keyword, [])
     binderToks <- collectBinderTokens binder
     bodyToks <- addBinderToContext binder $ collectExprTokens body
     return $ lamToks ++ binderToks ++ bodyToks
   Record _p _typ fields -> do
     fieldsToks <- collectFieldsTokens fields
     return fieldsToks
-  RecordProj p _typ _body _fieldName -> return [mkTok p (SemanticTokenTypes_Method, [])]
+  RecordProj p _typ _body _fieldName -> singleton <$> mkTok p (SemanticTokenTypes_Method, [])
 
 collectArgTokens ::
   (MonadCollectTokens m) =>
@@ -236,7 +242,8 @@ collectFieldsTokens fields = concat <$> traverse collectFieldTokens fields
       m [IntermediateSemTok]
     collectFieldTokens (field, fieldValue) = do
       valueToks <- collectExprTokens fieldValue
-      return $ mkTok (provenanceOf field) (SemanticTokenTypes_Method, []) : valueToks
+      fieldTok <- mkTok (provenanceOf field) (SemanticTokenTypes_Method, [])
+      return $ fieldTok : valueToks
 
 -- Builtins are always a single token and cannot be free/bound variables, so this function
 -- can be pure.
