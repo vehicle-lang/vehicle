@@ -456,7 +456,7 @@ unblockConstTensor unblockValue actions (ConstTensorArgs t x ds) = do
   forIfTreeM x' $ \x'' ->
     forIfTreeM ds' $ \ds'' ->
       IfLeaf <$> do
-        forceEvaluation accessConstTensor evalConstTensor $ ConstTensorArgs t x'' ds''
+        evalOrReconstructConst $ ConstTensorArgs t x'' ds''
 
 --------------------------------------------------------------------------------
 -- Unblocking operations

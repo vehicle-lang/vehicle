@@ -18,7 +18,7 @@
 
 ### Loss backend
 
-* Fixed a bug that sometimes occurred when a quantifier appears inside the body of another quantifier,
+* Fixed various bugs that sometimes occurred when a quantifier appeared inside the body of another quantifier,
   e.g. `forall x . 0 <= x <= 1 => (exists z . f [x, z] ! 0 >= 0.5)`.
 
 * Fixed a bug that occured when constructing sequences for which some elements had gradients and others did not, e.g. `[1.0, x]`.

@@ -22,7 +22,7 @@ import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
-import Vehicle.Compile.Normalise.Builtin (elimImplies, evalAnd, evalNot, evalOr, forceEvaluation)
+import Vehicle.Compile.Normalise.Builtin (elimImplies, evalOrReconstructAnd, evalOrReconstructNot, evalOrReconstructOr)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (unnormaliseInTensorCtx)
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
@@ -337,7 +337,7 @@ type Partition = (Maybe UserVariableConstraintTree, Maybe (Expr Builtin))
 andPartition :: (MonadDomain m) => Expr Builtin -> Partition -> Partition -> m Partition
 andPartition dims (c1, v1) (c2, v2) = do
   let c = unionMaybeWith andBoolExpr c1 c2
-  v <- unionMaybeWithM (\x y -> forceEvaluation accessAndTensor evalAnd $ TensorOp2Args dims x y) v1 v2
+  v <- unionMaybeWithM (\x y -> evalOrReconstructAnd $ TensorOp2Args dims x y) v1 v2
   return (c, v)
 
 -- | Note that the constraints live in the extended tensor context, where as the remaining value lives
@@ -383,7 +383,7 @@ notPartitions dims partitions = do
     notPartition :: Partition -> m Partition
     notPartition (constraintTree, value) = do
       notConstraintTree <- traverse (traverse notConstraint) constraintTree
-      notValue <- traverse (forceEvaluation accessNotTensor evalNot . TensorOp1Args dims) value
+      notValue <- traverse (evalOrReconstructNot . TensorOp1Args dims) value
       return (fmap flattenBoolExpr notConstraintTree, notValue)
 
     notConstraint :: UserVariableConstraint -> m (BooleanExpr UserVariableConstraint)
@@ -409,7 +409,7 @@ disjunctMaybeTrivialPartitions :: (MonadDomain m) => Expr Builtin -> DisjunctAll
 disjunctMaybeTrivialPartitions dims = traverse (disjunctPartitions dims) . eliminateTrivialDisjunctions
 
 orPartitions :: (MonadDomain m) => Expr Builtin -> Partitions -> Partitions -> m Partitions
-orPartitions dims = unionWithM (unionMaybeWithM (\x y -> forceEvaluation accessOrTensor evalOr $ TensorOp2Args dims x y))
+orPartitions dims = unionWithM (unionMaybeWithM (\x y -> evalOrReconstructOr $ TensorOp2Args dims x y))
 
 andPartitions :: (MonadDomain m) => Expr Builtin -> Partitions -> Partitions -> m Partitions
 andPartitions dims p1 p2 = do
