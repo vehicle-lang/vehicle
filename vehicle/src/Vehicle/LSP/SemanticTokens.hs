@@ -1,5 +1,6 @@
 module Vehicle.LSP.SemanticTokens
   ( collectSemanticTokens,
+    LspErrorMessage,
   )
 where
 
@@ -58,12 +59,15 @@ import Vehicle.TypeCheck (loadUserSpecification)
 --------------------------------------------------------------------------------
 -- API
 
+-- Inherited from `Language.LSP.Protocol.Types.SemanticTokens.makeSemanticTokens`,
+-- type-aliased for readability.
+type LspErrorMessage = Text
+
 collectSemanticTokens ::
-  forall m.
   (MonadVehicleLsp m) =>
   LogAction m (WithSeverity Text) ->
   FilePath ->
-  m (Either Text Lsp.SemanticTokens)
+  m (Either LspErrorMessage Lsp.SemanticTokens)
 collectSemanticTokens logger filePath = do
   (errorOrToks, _warnings) <-
     runSilentLoggerT $ logCompileError $ do
@@ -88,11 +92,10 @@ collectSemanticTokens logger filePath = do
     Right toks ->
       return $ makeLspSemanticTokens toks
   where
-    makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either Text Lsp.SemanticTokens
-    makeLspSemanticTokens tokens =
+    makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either LspErrorMessage Lsp.SemanticTokens
+    makeLspSemanticTokens tokens = do
+      let sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) tokens
       makeSemanticTokens defaultSemanticTokensLegend sortedTokens
-      where
-        sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) tokens
 
     populateFreeContext :: (MonadFreeContext Builtin n) => [Decl Builtin] -> n a -> n a
     populateFreeContext [] f = f
