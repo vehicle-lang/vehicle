@@ -354,7 +354,7 @@ classifyTokenOfType depth = \case
     case decl of
       DefAbstract {} -> return $ Just (SemanticTokenTypes_Variable, [])
       DefFunction _ _ _ _ e -> classifyTokenOfType depth e
-      DefRecord {} -> return $ Just (SemanticTokenTypes_Class, [])
+      DefRecord {} -> return $ Just (SemanticTokenTypes_Type, [])
   Hole _ _name -> return $ Just (SemanticTokenTypes_Macro, [])
   Meta _ _metaId -> return $ Just (SemanticTokenTypes_Macro, [])
   App f _args -> classifyTokenOfType depth f
@@ -372,7 +372,7 @@ classifyDeclHead = \case
           ProjectionDecl {} -> (Lsp.SemanticTokenTypes_Method, mods)
           _ -> tok
     classifyTokenOfType 0 t <&> fmap fixProjectionTokenType
-  DefRecord {} -> return $ Just (SemanticTokenTypes_Class, [])
+  DefRecord {} -> return $ Just (SemanticTokenTypes_Type, [])
 
 classifyBinderName :: (MonadCollectTokens m) => BinderDepth -> GenericBinder (Expr Builtin) -> m (Maybe TokenClass)
 classifyBinderName depth b = classifyTokenOfType depth (typeOf b)
