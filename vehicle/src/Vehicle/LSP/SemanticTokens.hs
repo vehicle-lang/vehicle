@@ -158,12 +158,10 @@ collectDeclsTokens (d : ds) = do
 
 collectDeclTokens :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m [IntermediateSemTok]
 collectDeclTokens decl = do
-  headTok <- getHeadToks
+  headTok <- emitAt (provenanceOf decl) =<< classifyDeclHead decl
   bodyToks <- getBodyToks
   return $ headTok : bodyToks
   where
-    getHeadToks = emitAt (provenanceOf decl) =<< classifyDeclHead decl
-
     getBodyToks = case decl of
       DefAbstract _ _ _ t -> collectExprTokens t
       DefFunction _ _ _ t e -> concat <$> traverse collectExprTokens ([t, e] :: [Expr Builtin])
