@@ -177,10 +177,8 @@ collectBinderTokens binder
   | wasInsertedByCompiler binder = return []
   | otherwise = do
       exprToks <- collectExprTokens (typeOf binder)
-      nameTok <- getNameTok
+      nameTok <- emitAt (provenanceOf $ binderNamingForm binder) =<< classifyBinderName 0 binder
       return $ nameTok : exprToks
-  where
-    getNameTok = emitAt (provenanceOf $ binderNamingForm binder) =<< classifyBinderName 0 binder
 
 collectExprTokens ::
   (MonadCollectTokens m) =>
