@@ -11,6 +11,7 @@ import Control.Monad.Reader (MonadReader, ask, runReaderT)
 import Data.Functor ((<&>))
 import Data.List
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Map (elems)
 import Data.Maybe (catMaybes)
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
@@ -54,7 +55,7 @@ import Vehicle.Prelude
   )
 import Vehicle.Prelude.Logging (runSilentLoggerT)
 import Vehicle.Prelude.Prettyprinter (Pretty (..), layoutAsText)
-import Vehicle.TypeCheck (flattenProgram, loadUserSpecification)
+import Vehicle.TypeCheck (loadUserSpecification)
 
 --------------------------------------------------------------------------------
 -- API
@@ -74,14 +75,15 @@ collectSemanticTokens logger filePath = do
       -- TODO: This means a specification has to successfully type check before we can
       -- produce semantic tokens for it, which sucks. We should just do scope checking
       -- here instead.
-      (userModule, builtinModules, moduleGraph) <- loadUserSpecification filePath
-      (Main allDecls) <- flattenProgram userModule builtinModules moduleGraph
+      (Main userDecls, builtinModules, _) <- loadUserSpecification filePath
+      let builtinDecls = concat (elems builtinModules)
 
       maybeToks <-
         runFreshFreeContextT (Proxy @Builtin) $
-          runFreshBoundContextT (Proxy @(Expr Builtin)) $
-            flip runReaderT filePath $
-              collectDeclsTokens allDecls
+          populateFreeContext builtinDecls $
+            runFreshBoundContextT (Proxy @(Expr Builtin)) $
+              flip runReaderT filePath $
+                collectDeclsTokens userDecls
 
       return $ catMaybes maybeToks
 
@@ -96,6 +98,10 @@ collectSemanticTokens logger filePath = do
     makeLspSemanticTokens tokens = do
       let sortedTokens = sortOn (\t -> (t ^. line, t ^. startChar)) tokens
       makeSemanticTokens defaultSemanticTokensLegend sortedTokens
+
+    populateFreeContext :: (MonadFreeContext Builtin n) => [Decl Builtin] -> n a -> n a
+    populateFreeContext [] f = f
+    populateFreeContext (d : ds) f = addDeclToContext d $ populateFreeContext ds f
 
 --------------------------------------------------------------------------------
 -- Internal types and utilities

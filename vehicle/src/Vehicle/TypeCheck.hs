@@ -2,7 +2,6 @@ module Vehicle.TypeCheck
   ( TypeCheckOptions (..),
     ProgramContext (..),
     initialProgramContext,
-    flattenProgram,
     typeCheck,
     typeCheckUserProg,
     runCompileMonad,
