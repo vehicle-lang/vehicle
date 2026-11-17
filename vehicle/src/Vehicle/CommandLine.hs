@@ -443,8 +443,11 @@ resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
   where
     readNL :: String -> Maybe (Text, String)
-    readNL s = case Text.splitOn (Text.pack ":") (Text.pack s) of
-      [name, val] -> Just (name, Text.unpack val)
+    -- Split on the first colon only, as the value may itself contain colons
+    -- (e.g. Windows paths such as `f:C:\path\to\network.onnx`).
+    readNL s = case Text.breakOn (Text.pack ":") (Text.pack s) of
+      (name, rest)
+        | not (Text.null name) && not (Text.null rest) -> Just (name, Text.unpack (Text.drop 1 rest))
       _ -> Nothing
 
 showVersionParser :: Parser Bool
