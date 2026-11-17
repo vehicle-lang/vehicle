@@ -354,7 +354,7 @@ classifyTokenOfType depth = \case
     case decl of
       DefAbstract {} -> return $ Just (SemanticTokenTypes_Variable, [])
       DefFunction _ _ _ _ e -> classifyTokenOfType depth e
-      DefRecord {} -> return $ Just (SemanticTokenTypes_Type, [])
+      DefRecord {} -> return $ Just (SemanticTokenTypes_Variable, [])
   Hole _ _name -> return $ Just (SemanticTokenTypes_Macro, [])
   Meta _ _metaId -> return $ Just (SemanticTokenTypes_Macro, [])
   App f _args -> classifyTokenOfType depth f
