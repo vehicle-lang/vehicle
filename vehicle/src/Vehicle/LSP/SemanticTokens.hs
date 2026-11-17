@@ -168,7 +168,7 @@ collectDeclTokens decl = do
 
 collectBinderTokens :: (MonadCollectTokens m) => GenericBinder (Expr Builtin) -> m [IntermediateSemTok]
 collectBinderTokens binder@(Binder _ _ _ val)
-  | wasInsertedByCompiler binder = pure []
+  | wasInsertedByCompiler binder = return []
   | otherwise = do
       exprToks <- collectExprTokens val
       nameTok <- getNameTok
@@ -188,16 +188,16 @@ collectExprTokens ::
   Expr Builtin ->
   m [IntermediateSemTok]
 collectExprTokens = \case
-  Universe p _level -> pure [mkTok p (SemanticTokenTypes_Type, [])]
+  Universe p _level -> return [mkTok p (SemanticTokenTypes_Type, [])]
   Pi _p binder res -> do
     binderToks <- collectBinderTokens binder
     exprToks <- addBinderToContext binder $ collectExprTokens res
     return $ binderToks ++ exprToks
-  Builtin p builtin -> pure $ [emitAt p (classifyBuiltin builtin)]
+  Builtin p builtin -> return $ [emitAt p (classifyBuiltin builtin)]
   BoundVar p ix -> singleton <$> emitAt p <$> classifyBoundVar 0 ix
   FreeVar p ident -> singleton <$> emitAt p <$> classifyFreeVar ident
-  Hole p _name -> pure [mkTok p (SemanticTokenTypes_Decorator, [])]
-  Meta p _metaId -> pure [mkTok p (SemanticTokenTypes_TypeParameter, [])]
+  Hole p _name -> return [mkTok p (SemanticTokenTypes_Decorator, [])]
+  Meta p _metaId -> return [mkTok p (SemanticTokenTypes_TypeParameter, [])]
   App f args -> do
     fnToks <- collectExprTokens f
     argsToks <- concat <$> traverse collectArgTokens (filter (not . wasInsertedByCompiler) (NonEmpty.toList args))
@@ -216,7 +216,7 @@ collectExprTokens = \case
   Record _p _typ fields -> do
     fieldsToks <- collectFieldsTokens fields
     return fieldsToks
-  RecordProj p _typ _body _fieldName -> pure [mkTok p (SemanticTokenTypes_Method, [])]
+  RecordProj p _typ _body _fieldName -> return [mkTok p (SemanticTokenTypes_Method, [])]
 
 collectArgTokens ::
   (MonadCollectTokens m) =>
@@ -247,13 +247,13 @@ collectFieldsTokens fields = concat <$> traverse collectFieldTokens fields
 classifyTokenOfType :: (MonadCollectTokens m) => BinderDepth -> Expr Builtin -> m (Maybe TokenClass)
 classifyTokenOfType depth = \case
   Universe {}
-    | depth > 0 -> pure $ Just (SemanticTokenTypes_Variable, [])
-    | otherwise -> pure $ Just (SemanticTokenTypes_Type, [])
+    | depth > 0 -> return $ Just (SemanticTokenTypes_Variable, [])
+    | otherwise -> return $ Just (SemanticTokenTypes_Type, [])
   Pi _ binder res ->
     if wasInsertedByCompiler binder
       then addBinderToContext binder $ classifyTokenOfType depth res
-      else pure $ Just (SemanticTokenTypes_Function, [])
-  Builtin _ _builtin -> pure $ Just (SemanticTokenTypes_Variable, [])
+      else return $ Just (SemanticTokenTypes_Function, [])
+  Builtin _ _builtin -> return $ Just (SemanticTokenTypes_Variable, [])
   -- We need to keep track of how many "binders deep" we are, so we can determine if a BoundVar is an
   -- element of Type, or merely an element of something which is an element of Type.
   --
@@ -272,16 +272,16 @@ classifyTokenOfType depth = \case
   FreeVar _ ident -> do
     decl <- getDeclEntry (Proxy @Builtin) ident
     case decl of
-      DefAbstract {} -> pure $ Just (SemanticTokenTypes_Variable, [])
+      DefAbstract {} -> return $ Just (SemanticTokenTypes_Variable, [])
       DefFunction _ _ _ _ e -> classifyTokenOfType depth e
-      DefRecord {} -> pure $ Just (SemanticTokenTypes_Class, [])
-  Hole _ _name -> pure $ Just (SemanticTokenTypes_Macro, [])
-  Meta _ _metaId -> pure $ Just (SemanticTokenTypes_Macro, [])
+      DefRecord {} -> return $ Just (SemanticTokenTypes_Class, [])
+  Hole _ _name -> return $ Just (SemanticTokenTypes_Macro, [])
+  Meta _ _metaId -> return $ Just (SemanticTokenTypes_Macro, [])
   App f _args -> classifyTokenOfType depth f
   Let _ _bound bodyBinder bodyExpr -> addBinderToContext bodyBinder $ classifyTokenOfType depth bodyExpr
   Lam _ binder body -> addBinderToContext binder $ classifyTokenOfType depth body
   Record _ typ _fields -> classifyTokenOfType depth typ
-  RecordProj _ _typ _body _fieldName -> pure $ Just (SemanticTokenTypes_Method, [])
+  RecordProj _ _typ _body _fieldName -> return $ Just (SemanticTokenTypes_Method, [])
 
 classifyDeclHead :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m (Maybe TokenClass)
 classifyDeclHead = \case
@@ -292,7 +292,7 @@ classifyDeclHead = \case
           ProjectionDecl {} -> (Lsp.SemanticTokenTypes_Method, mods)
           _ -> tok
     classifyTokenOfType 0 t <&> fmap fixProjectionTokenType
-  DefRecord {} -> pure $ Just (SemanticTokenTypes_Class, [])
+  DefRecord {} -> return $ Just (SemanticTokenTypes_Class, [])
 
 classifyBinderName :: (MonadCollectTokens m) => BinderDepth -> GenericBinder (Expr Builtin) -> m (Maybe TokenClass)
 classifyBinderName depth b = classifyTokenOfType depth (typeOf b)
