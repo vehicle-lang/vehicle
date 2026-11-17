@@ -6,6 +6,7 @@ where
 
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Lens ((^.))
+import Control.Monad (forM)
 import Control.Monad.Reader (MonadReader, ask, runReaderT)
 import Data.Functor ((<&>))
 import Data.List
@@ -226,16 +227,15 @@ collectFieldsTokens ::
   (MonadCollectTokens m) =>
   RecordFields Builtin ->
   m [IntermediateSemTok]
-collectFieldsTokens fields = concat <$> traverse collectFieldTokens fields
-  where
-    collectFieldTokens ::
-      (MonadCollectTokens m) =>
-      RecordField Builtin ->
-      m [IntermediateSemTok]
-    collectFieldTokens (field, fieldValue) = do
-      valueToks <- collectExprTokens fieldValue
-      fieldTok <- mkTok (provenanceOf field) (SemanticTokenTypes_Method, [])
-      return $ fieldTok : valueToks
+collectFieldsTokens fields =
+  concat
+    <$> forM
+      fields
+      ( \(field, fieldValue) -> do
+          valueToks <- collectExprTokens fieldValue
+          fieldTok <- mkTok (provenanceOf field) (SemanticTokenTypes_Method, [])
+          return $ fieldTok : valueToks
+      )
 
 -- Builtins are always a single token and cannot be free/bound variables, so this function
 -- can be pure.
