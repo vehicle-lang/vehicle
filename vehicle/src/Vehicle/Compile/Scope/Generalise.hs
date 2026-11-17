@@ -53,7 +53,8 @@ findGeneralisableVariablesBinder binder update = do
 registerVar :: (MonadScopeExpr builtin m, MonadWriter [GeneralisableVariable] m) => Provenance -> Name -> m ()
 registerVar p symbol = do
   maybeVar <- lookupMaybeVariable symbol
-  when (isNothing maybeVar) $ tell [(p, symbol)]
+  when (isNothing maybeVar && nameStartsWithLowerCase symbol) $
+    tell [(p, symbol)]
 
 generaliseOverVariables ::
   (MonadCompile m) =>
