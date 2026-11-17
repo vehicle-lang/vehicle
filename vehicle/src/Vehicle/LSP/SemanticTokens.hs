@@ -323,6 +323,21 @@ getBuiltinToken = \case
 -- We have a single token `foo` of type `bar`, where `bar` is an arbitrary
 -- expression; we need to work out what colour to make `foo`.
 
+-- | A note on 'BinderDepth':
+-- We need to keep track of how many "binders deep" we are, so we can determine if a BoundVar is an
+-- element of Type, or merely an element of something which is an element of Type.
+--
+-- For example, consider the following:
+--
+--   identity (T : Type) (x : T) = x
+--
+-- T is a Type, x is a T; x is not a Type.
+--
+-- Without tracking BinderDepth, x would resolve to T which would resolve to Type (Universe), so x
+-- would be highlighted the same as T. Instead, when x resolves to T, it does so with an incremented
+-- BinderDepth, so when T resolves to Type, it knows it is not the first one in the binder chain.
+-- I'm sure there is a more elegant solution to this, and there are probably edge cases I haven't
+-- considered, but this will do for now.
 classifyTokenOfType :: (MonadCollectTokens m) => BinderDepth -> Expr Builtin -> m (Maybe TokenClass)
 classifyTokenOfType depth = \case
   Universe {}
@@ -332,20 +347,6 @@ classifyTokenOfType depth = \case
     | wasInsertedByCompiler binder -> addBinderToContext binder $ classifyTokenOfType depth res
     | otherwise -> return $ Just (SemanticTokenTypes_Function, [])
   Builtin _ _builtin -> return $ Just (SemanticTokenTypes_Variable, [])
-  -- We need to keep track of how many "binders deep" we are, so we can determine if a BoundVar is an
-  -- element of Type, or merely an element of something which is an element of Type.
-  --
-  -- For example, consider the following:
-  --
-  --   identity (T : Type) (x : T) = x
-  --
-  -- T is a Type, x is a T; x is not a Type.
-  --
-  -- Without tracking BinderDepth, x would resolve to T which would resolve to Type (Universe), so x
-  -- would be highlighted the same as T. Instead, when x resolves to T, it does so with an incremented
-  -- BinderDepth, so when T resolves to Type, it knows it is not the first one in the binder chain.
-  -- I'm sure there is a more elegant solution to this, and there are probably edge cases I haven't
-  -- considered, but this will do for now.
   BoundVar _ ix -> classifyBoundVar (depth + 1) ix
   FreeVar _ ident -> do
     decl <- getDeclEntry (Proxy @Builtin) ident
