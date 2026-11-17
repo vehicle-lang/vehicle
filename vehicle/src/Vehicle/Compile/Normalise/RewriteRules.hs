@@ -86,7 +86,7 @@ rewriteAppendList ::
   m (ForcedValue builtin)
 rewriteAppendList args = logCompilerSection2 MaxDetail "rewrite-appendList" $ do
   args' <- traverseAppendListArgs (fmap Forced . forceAndRewriteDims) args
-  force =<< forceEvaluation accessAppendList evalAppendList args'
+  force =<< forceEvalAppendList args'
 
 -----------------------------------------------------------------------------
 -- Const
@@ -97,7 +97,7 @@ rewriteConstTensor ::
   m (ForcedValue builtin)
 rewriteConstTensor args = logCompilerSection2 MaxDetail "rewrite-const" $ do
   args' <- traverseConstTensorValue (fmap Forced . forceAndRewriteTensor) args
-  force =<< forceEvaluation accessConstTensor evalConstTensor args'
+  force =<< evalOrReconstructConst args'
 
 -----------------------------------------------------------------------------
 -- Stack
@@ -173,7 +173,7 @@ rewriteReduceAndTensor =
     rewritePointwiseComparison (op, TensorComparisonArgs pDims rDims xs ys)
       | op == Ne = return Nothing
       | otherwise = do
-          rDims' <- forceEvaluation accessAppendList evalAppendList $ AppendListArgs (Forced INatType) pDims rDims
+          rDims' <- forceEvalAppendList $ AppendListArgs (Forced INatType) pDims rDims
           let args =
                 TensorComparisonArgs
                   { tensorPointwiseDims = Forced IDimNil,
@@ -383,7 +383,7 @@ rewriteNotTensor (TensorOp1Args dimensions tensor) =
         (getExpr accessForeachTensor -> Just args) ->
           mkExpr accessForeachTensor <$> negateForeachArgs args
         _ -> do
-          evalResult <- forceEvaluation accessNotTensor evalNot $ TensorOp1Args dims value
+          evalResult <- evalOrReconstructNot $ TensorOp1Args dims value
           forceThunk evalResult
 
     mkNot :: Thunk builtin -> Thunk builtin -> Thunk builtin
