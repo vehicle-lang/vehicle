@@ -131,9 +131,10 @@ mkTok p tok = do
   where
     makeToken :: FilePath -> Provenance -> TokenClass -> IntermediateSemTok
     makeToken filePath (Provenance (Range (Position sl sc) (Position _el ec)) provFilePath) (tType, modifiers)
-      | filePath == provFilePath =
+      | filePath == provFilePath && sl > 0 && sc > 0 =
           Just $
             -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
+            -- This also means that sl <= 0 || sc <= 0 indicates an invalid location.
             Lsp.SemanticTokenAbsolute
               { _line = fromIntegral sl - 1,
                 _startChar = fromIntegral sc - 1,
