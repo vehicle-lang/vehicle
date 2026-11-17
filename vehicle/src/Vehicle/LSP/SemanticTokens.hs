@@ -38,8 +38,7 @@ import Vehicle.Data.Variable.Bound.Index (Ix (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, getDeclEntry, runFreshFreeContextT)
 import Vehicle.LSP.State (MonadVehicleLsp)
 import Vehicle.Prelude
-  ( BinderNamingForm (..),
-    DefFunctionSort (..),
+  ( DefFunctionSort (..),
     GenericArg (..),
     GenericBinder (..),
     GenericDecl (..),
@@ -173,21 +172,14 @@ collectDeclTokens decl = do
         return $ binderToks ++ fieldsToks
 
 collectBinderTokens :: (MonadCollectTokens m) => GenericBinder (Expr Builtin) -> m [IntermediateSemTok]
-collectBinderTokens binder@(Binder _ _ _ val)
+collectBinderTokens binder
   | wasInsertedByCompiler binder = return []
   | otherwise = do
-      exprToks <- collectExprTokens val
+      exprToks <- collectExprTokens (typeOf binder)
       nameTok <- getNameTok
       return $ nameTok : exprToks
   where
-    getNameTok = emitAt nameProvenance =<< classifyBinderName 0 binder
-
-    -- `provenanceOf b` exists, but it mixes the `typeOf b` and `binderNamingForm b`'s provenances;
-    -- we just want the provenance of the name.
-    nameProvenance = case binderNamingForm binder of
-      NameAndType _n p -> p
-      OnlyName _n p -> p
-      OnlyType -> mempty
+    getNameTok = emitAt (provenanceOf $ binderNamingForm binder) =<< classifyBinderName 0 binder
 
 collectExprTokens ::
   (MonadCollectTokens m) =>
