@@ -166,10 +166,13 @@ collectDeclTokens decl = do
     getBodyToks = case decl of
       DefAbstract _ _ _ t -> collectExprTokens t
       DefFunction _ _ _ t e -> concat <$> traverse collectExprTokens ([t, e] :: [Expr Builtin])
-      DefRecord _ _ _ t e _ -> do
-        binderToks <- concat <$> traverse collectBinderTokens t
-        fieldsToks <- collectFieldsTokens e
-        return $ binderToks ++ fieldsToks
+      DefRecord _ _ _ t e _ -> go t
+        where
+          go [] = collectFieldsTokens e
+          go (binder : binders) = do
+            binderToks <- collectBinderTokens binder
+            restToks <- addBinderToContext binder $ go binders
+            return $ binderToks ++ restToks
 
 collectBinderTokens :: (MonadCollectTokens m) => GenericBinder (Expr Builtin) -> m [IntermediateSemTok]
 collectBinderTokens binder
