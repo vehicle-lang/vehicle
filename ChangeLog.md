@@ -12,10 +12,6 @@
 
 * Fixed a rare internal error in the type-checker.
 
-### ITP backend
-
-* The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
-
 ### Loss backend
 
 * Fixed various bugs that sometimes occurred when a quantifier appeared inside the body of another quantifier,
@@ -24,6 +20,14 @@
 * Fixed a bug that occured when constructing sequences for which some elements had gradients and others did not, e.g. `[1.0, x]`.
 
 * Fixed a bug that occured when one branch of an `if` had gradients and the other did not, e.g. `if c then x else 0.0`.
+
+### Solver backend
+
+* Fixed a bug that occasionally occured during compilation of vector indexing operations.
+
+### ITP backend
+
+* The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
 
 ### Other
 
