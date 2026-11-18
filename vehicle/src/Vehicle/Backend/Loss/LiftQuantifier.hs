@@ -270,6 +270,11 @@ updateVarLevels liftedBinders value = do
       typ' <- updateVarLevels liftedBinders typ
       record' <- updateVarLevels liftedBinders record
       VRecordAcc typ' record' field <$> traverseArgs (updateVarLevels liftedBinders) spine
+    VDifferentiate recordType expr field spine -> do
+      recordType' <- updateVarLevels liftedBinders recordType
+      expr' <- updateVarLevels liftedBinders expr
+      spine' <- traverseArgs (updateVarLevels liftedBinders) spine
+      return $ VDifferentiate recordType' expr' field spine'
 
 updateVarLevelsInClosure ::
   (MonadLiftQuantifiers m) =>
