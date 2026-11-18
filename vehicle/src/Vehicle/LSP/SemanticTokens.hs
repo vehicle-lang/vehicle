@@ -374,7 +374,7 @@ classifyTokenOfType depth = \case
   Lam _ binder body -> addBinderToContext binder $ classifyTokenOfType depth body
   Record _ typ _fields -> classifyTokenOfType depth typ
   RecordProj _ _typ _body _fieldName -> return $ Just (SemanticTokenTypes_Method, [])
-  -- A differentiation expression is not expected in type position
+  -- Not sure at this point
   Differentiate {} -> return Nothing
 
 classifyDeclHead :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m (Maybe TokenClass)
