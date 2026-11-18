@@ -4,16 +4,19 @@ module Vehicle.Test.Unit.Compile.CommandLine
 where
 
 import Data.Map qualified as Map (fromList)
-import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
+import Options.Applicative (ParserResult (..), execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
+import Vehicle.Backend.Prelude (InteractiveTheoremProverID (..))
 import Vehicle.CommandLine
   ( GlobalOptions (..),
     ModeOptions (..),
     Options (..),
     commandLineOptionsParserInfo,
+    commandLineParserPrefs,
     defaultGlobalOptions,
   )
+import Vehicle.Export (ExportOptions (..))
 import Vehicle.List (ListOptions (..))
 import Vehicle.Prelude
   ( Pretty (pretty),
@@ -35,7 +38,8 @@ commandLineParserTests =
       checkModeTests,
       verifyTests,
       validateModeTests,
-      listModeTests
+      listModeTests,
+      exportModeTests
     ]
 
 noModeTests :: TestTree
@@ -126,11 +130,100 @@ validateModeTests =
           }
     ]
 
+exportModeTests :: TestTree
+exportModeTests =
+  testGroup
+    "exportMode"
+    [ parserTest
+        "cache"
+        "vehicle export \
+        \--target Agda \
+        \--cache local/outputFolder"
+        $ Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                Export $
+                  ExportOptions
+                    { target = Agda,
+                      specification = Nothing,
+                      declarationsToCompile = mempty,
+                      networkLocations = mempty,
+                      datasetLocations = mempty,
+                      parameterValues = mempty,
+                      output = Nothing,
+                      moduleName = Nothing,
+                      verificationCache = Just "local/outputFolder",
+                      constructiveReals = False
+                    }
+          },
+      parserTest
+        "specification"
+        "vehicle export \
+        \--target Rocq \
+        \--specification test/spec.vcl \
+        \--declaration property \
+        \--network f:test/network.onnx \
+        \--dataset d:test/dataset.idx \
+        \--parameter p:1 \
+        \--output test/spec.v"
+        $ Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                Export $
+                  ExportOptions
+                    { target = Rocq,
+                      specification = Just "test/spec.vcl",
+                      declarationsToCompile = ["property"],
+                      networkLocations = Map.fromList [("f", "test/network.onnx")],
+                      datasetLocations = Map.fromList [("d", "test/dataset.idx")],
+                      parameterValues = Map.fromList [("p", "1")],
+                      output = Just "test/spec.v",
+                      moduleName = Nothing,
+                      verificationCache = Nothing,
+                      constructiveReals = False
+                    }
+          }
+    ]
+
+noWarningsVerifyOptions :: Options
+noWarningsVerifyOptions =
+  Options
+    { globalOptions = defaultGlobalOptions {noWarnings = True},
+      modeOptions =
+        Just $
+          Verify $
+            VerifyOptions
+              { specification = "spec.vcl",
+                properties = mempty,
+                networkLocations = mempty,
+                datasetLocations = mempty,
+                parameterValues = mempty,
+                solverExecutable = "Marabou",
+                verificationCache = Nothing,
+                solverExtraArgs = Nothing,
+                noSatPrint = False
+              }
+    }
+
 verifyTests :: TestTree
 verifyTests =
   testGroup
     "verifyMode"
     [ parserTest
+        "globalOptionBeforeModeOptions"
+        "vehicle verify --no-warnings -s spec.vcl -v Marabou"
+        noWarningsVerifyOptions,
+      parserTest
+        "globalOptionAfterModeOptions"
+        "vehicle verify -s spec.vcl -v Marabou --no-warnings"
+        noWarningsVerifyOptions,
+      parserTest
+        "globalOptionBeforeMode"
+        "vehicle --no-warnings verify -s spec.vcl -v Marabou"
+        noWarningsVerifyOptions,
+      parserTest
         "basic"
         "vehicle verify \
         \--specification queries \
@@ -213,7 +306,7 @@ parserTest name command expected = testCase name $ do
   let args = case words command of
         (_ : as) -> as
         _ -> developerError "Malformed command. Commands must start with 'vehicle'"
-  let result = execParserPure defaultPrefs commandLineOptionsParserInfo args
+  let result = execParserPure commandLineParserPrefs commandLineOptionsParserInfo args
 
   case result of
     Failure failure -> assertFailure (show failure)

@@ -1,0 +1,108 @@
+name: Test Agda
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  test-vehicle-agda:
+    name: Agda / Linux - Agda 2.8.0
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v7
+
+      - name: 🛠️ Install Haskell
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: "9.6.5"
+          cabal-version: "3.14.2.0"
+
+      - name: 🛠️ Configure
+        run: |
+          cabal configure --project-file=cabal.project
+          cabal build all --project-file=cabal.project --dry-run
+
+      - name: 💾 Restore Cabal dependencies
+        uses: actions/cache/restore@v6
+        if: ${{ !env.ACT }}
+        id: cache-haskell
+        env:
+          key: Linux-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ env.key }}-
+
+      - name: 🛠️ Install Cabal dependencies
+        if: ${{ env.ACT || steps.cache-haskell.outputs.cache-hit != 'true' }}
+        run: cabal build all --project-file=cabal.project --only-dependencies
+
+      - name: 💾 Save Cabal dependencies
+        uses: actions/cache/save@v6
+        if: ${{ !env.ACT && steps.cache-haskell.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
+
+      - name: 🛠️ Install Agda
+        uses: agda/agda-setup-action@v1
+        id: setup-agda
+        with:
+          agda-version: "2.8.0"
+          agda-stdlib-version: "2.3"
+
+      - name: 🏗️ Build Vehicle
+        run: cabal build vehicle:exe:vehicle --project-file=cabal.project
+
+      - name: 🔎 Locate Vehicle
+        id: vehicle
+        run: |
+          vehicle_bin="$(cabal list-bin vehicle:exe:vehicle --project-file=cabal.project)"
+          echo "path=$vehicle_bin" >> "$GITHUB_OUTPUT"
+
+      - name: 🛠️ Configure Agda integration
+        env:
+          AGDA_DIR: ${{ steps.setup-agda.outputs.agda-dir }}
+          VEHICLE_BIN: ${{ steps.vehicle.outputs.path }}
+        run: |
+          library_file="$GITHUB_WORKSPACE/vehicle-agda/vehicle.agda-lib"
+          mkdir -p "$AGDA_DIR"
+          touch "$AGDA_DIR/libraries" "$AGDA_DIR/executables"
+          grep -Fqx "$library_file" "$AGDA_DIR/libraries" ||
+            echo "$library_file" >> "$AGDA_DIR/libraries"
+          grep -Fqx "$VEHICLE_BIN" "$AGDA_DIR/executables" ||
+            echo "$VEHICLE_BIN" >> "$AGDA_DIR/executables"
+
+      - name: 🧪 Type-check Vehicle-Agda
+        env:
+          AGDA_DIR: ${{ steps.setup-agda.outputs.agda-dir }}
+        working-directory: vehicle-agda
+        run: agda -WnoUnsupportedIndexedMatch --build-library
+
+      - name: 🧪 Test Agda verification cache
+        env:
+          AGDA_DIR: ${{ steps.setup-agda.outputs.agda-dir }}
+          AGDA_BIN: ${{ steps.setup-agda.outputs.agda-path }}
+          VEHICLE_BIN: ${{ steps.vehicle.outputs.path }}
+        run: vehicle-agda/test/run_validate_test.sh
+
+      - name: 🧪 Test generated Agda specifications
+        env:
+          AGDA_DIR: ${{ steps.setup-agda.outputs.agda-dir }}
+        run: |
+          cabal test vehicle:test:golden-tests \
+            --project-file=cabal.project \
+            --test-show-details=always \
+            --test-option=--color=always \
+            --test-option=--num-threads=1 \
+            --test-option=-p \
+            --test-option='/AgdaVerify/' \
+            --test-option=--allowlist-externals=agda

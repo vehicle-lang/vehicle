@@ -1,16 +1,19 @@
 module Vehicle.Backend.Loss.Domain
   ( findAndAttachQuantifierBounds,
+    compileQuantifier,
   )
 where
 
 import Control.Monad (foldM, forM)
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.Writer.Strict (MonadWriter (..), runWriterT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Monoid (Any (..))
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.PurifyAssertion
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
@@ -19,7 +22,7 @@ import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
-import Vehicle.Compile.Normalise.Builtin (elimImplies, evalAnd, evalNot, evalOr, forceEvaluation)
+import Vehicle.Compile.Normalise.Builtin (elimImplies, evalOrReconstructAnd, evalOrReconstructNot, evalOrReconstructOr)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.Quote (unnormaliseInTensorCtx)
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
@@ -105,7 +108,8 @@ processExpr expr = case expr of
   FreeVar {} -> return expr
   BoundVar {} -> return expr
   App fun args -> App <$> processExpr fun <*> traverse (traverse processExpr) args
-  Let p bound binder body -> Let p <$> processExpr bound <*> pure binder <*> processExpr body
+  Let p bound binder body ->
+    Let p <$> processExpr bound <*> pure binder <*> addNonTensorBinderToContext binder (processExpr body)
   Lam p binder body -> Lam p binder <$> addNonTensorBinderToContext binder (processExpr body)
   Record p t fs -> Record p t <$> traverseRecordFields processExpr fs
   RecordProj p t r field -> RecordProj p t <$> processExpr r <*> pure field
@@ -334,7 +338,7 @@ type Partition = (Maybe UserVariableConstraintTree, Maybe (Expr Builtin))
 andPartition :: (MonadDomain m) => Expr Builtin -> Partition -> Partition -> m Partition
 andPartition dims (c1, v1) (c2, v2) = do
   let c = unionMaybeWith andBoolExpr c1 c2
-  v <- unionMaybeWithM (\x y -> forceEvaluation accessAndTensor evalAnd $ TensorOp2Args dims x y) v1 v2
+  v <- unionMaybeWithM (\x y -> evalOrReconstructAnd $ TensorOp2Args dims x y) v1 v2
   return (c, v)
 
 -- | Note that the constraints live in the extended tensor context, where as the remaining value lives
@@ -380,7 +384,7 @@ notPartitions dims partitions = do
     notPartition :: Partition -> m Partition
     notPartition (constraintTree, value) = do
       notConstraintTree <- traverse (traverse notConstraint) constraintTree
-      notValue <- traverse (forceEvaluation accessNotTensor evalNot . TensorOp1Args dims) value
+      notValue <- traverse (evalOrReconstructNot . TensorOp1Args dims) value
       return (fmap flattenBoolExpr notConstraintTree, notValue)
 
     notConstraint :: UserVariableConstraint -> m (BooleanExpr UserVariableConstraint)
@@ -406,7 +410,7 @@ disjunctMaybeTrivialPartitions :: (MonadDomain m) => Expr Builtin -> DisjunctAll
 disjunctMaybeTrivialPartitions dims = traverse (disjunctPartitions dims) . eliminateTrivialDisjunctions
 
 orPartitions :: (MonadDomain m) => Expr Builtin -> Partitions -> Partitions -> m Partitions
-orPartitions dims = unionWithM (unionMaybeWithM (\x y -> forceEvaluation accessOrTensor evalOr $ TensorOp2Args dims x y))
+orPartitions dims = unionWithM (unionMaybeWithM (\x y -> evalOrReconstructOr $ TensorOp2Args dims x y))
 
 andPartitions :: (MonadDomain m) => Expr Builtin -> Partitions -> Partitions -> m Partitions
 andPartitions dims p1 p2 = do
@@ -416,10 +420,21 @@ andPartitions dims p1 p2 = do
 --------------------------------------------------------------------------------
 -- Search algorithm
 
+-- | Tracks whether the value being searched contained a quantifier in it, and
+-- is used to ensure we keep the compiled version of it, even if no constraints
+-- were found for quantifiers above this point.
+type CompiledQuantifier = Any
+
 compileBool :: (MonadDomain m) => Thunk Builtin -> m (MaybeTrivial Partitions)
-compileBool value = logEntryAndExit value $ do
+compileBool value = fst <$> runWriterT (compileBoolValue value)
+
+compileBoolValue ::
+  (MonadDomain m, MonadWriter CompiledQuantifier m) =>
+  Thunk Builtin ->
+  m (MaybeTrivial Partitions)
+compileBoolValue value = logEntryAndExit value $ do
   forcedValue <- forceAndRewriteTensor value
-  result <- case toBoolValue forcedValue of
+  (result, compiledQuantifier) <- listen $ case toBoolValue forcedValue of
     -----------------------
     -- Useful base cases --
     -----------------------
@@ -433,10 +448,12 @@ compileBool value = logEntryAndExit value $ do
     ---------------------
     -- Recursive cases --
     ---------------------
-    VImplies args -> compileBool $ elimImplies args
+    VImplies args -> compileBoolValue $ elimImplies args
     VAnd args -> compileAnd args
     VOr args -> compileOr args
-    VQuantifyRatTensor args -> compileQuantifierInternal mempty args
+    VQuantifyRatTensor args -> do
+      tell $ Any True
+      compileQuantifierInternal mempty args
     VQuantifyRecord _args -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
     -------------------
     -- Blocked cases --
@@ -445,36 +462,38 @@ compileBool value = logEntryAndExit value $ do
     VReduceOrTensor {} -> unblock forcedValue
     VBoolTensorAt {} -> unblock forcedValue
     VBoolVectorAt {} -> unblock forcedValue
+    VBoolParameter {} -> unblock forcedValue
     VBoolFoldList {} -> unblock forcedValue
-    VBoolIf args -> compileBool =<< unfoldIf args
+    VBoolIf args -> compileBoolValue =<< unfoldIf args
     VNot (TensorOp1Args dims xs) -> unblockWith (lowerNot unblockingActions $ TensorOp1Args dims xs) (Forced forcedValue)
 
   -- In the case where we only return one partition with no constraints then
   -- we can just return the unnormalised result.
   case result of
-    NonTrivial (Map.toList -> [(Nothing, _)]) -> NonTrivial <$> singletonUnconstrainedPartition value
+    NonTrivial (Map.toList -> [(Nothing, _)])
+      | not (getAny compiledQuantifier) -> NonTrivial <$> singletonUnconstrainedPartition value
     _ -> return result
   where
     unblock forced = unblockWith (unblockBoolExpr unblockingActions (Forced forced)) (Forced forced)
 
 compileAnd ::
-  (MonadDomain m) =>
+  (MonadDomain m, MonadWriter CompiledQuantifier m) =>
   TensorOp2Args (Thunk Builtin) ->
   m (MaybeTrivial Partitions)
 compileAnd (TensorOp2Args dims e1 e2) = do
   dims' <- unnormaliseInTensorCtx dims
-  c1 <- compileBool e1
-  c2 <- compileBool e2
+  c1 <- compileBoolValue e1
+  c2 <- compileBoolValue e2
   andTrivialM (andPartitions dims') c1 c2
 
 compileOr ::
-  (MonadDomain m) =>
+  (MonadDomain m, MonadWriter CompiledQuantifier m) =>
   TensorOp2Args (Thunk Builtin) ->
   m (MaybeTrivial Partitions)
 compileOr (TensorOp2Args dims e1 e2) = do
   dims' <- unnormaliseInTensorCtx dims
-  c1 <- compileBool e1
-  c2 <- compileBool e2
+  c1 <- compileBoolValue e1
+  c2 <- compileBoolValue e2
   orTrivialM (orPartitions dims') c1 c2
 
 -- | A comparison may be compiled to a potential bound as long as:
@@ -527,7 +546,7 @@ compileComparison (op, args) =
 -- | Unblocking a boolean value is a little complicated.
 unblockWith ::
   forall m.
-  (MonadDomain m) =>
+  (MonadDomain m, MonadWriter CompiledQuantifier m) =>
   ExceptT BlockingReason m (Thunk Builtin) ->
   Thunk Builtin ->
   m (MaybeTrivial Partitions)
@@ -541,10 +560,11 @@ unblockWith action defaultValue = do
       NonTrivial <$> singletonUnconstrainedPartition defaultValue
     Right unblockedExpr -> do
       -- If we can unblock it then try to continue compilation
-      maybePartitions <- compileBool unblockedExpr
+      (maybePartitions, compiledQuantifier) <- listen $ compileBoolValue unblockedExpr
       case maybePartitions of
         NonTrivial partitions
-          | not (containsConstraints partitions) ->
+          | not (containsConstraints partitions),
+            not (getAny compiledQuantifier) ->
               NonTrivial <$> singletonUnconstrainedPartition defaultValue
         _ -> return maybePartitions
 

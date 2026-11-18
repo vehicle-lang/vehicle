@@ -1,8 +1,11 @@
 module Vehicle.TypeCheck
   ( TypeCheckOptions (..),
+    ProgramContext (..),
+    initialProgramContext,
     typeCheck,
     typeCheckUserProg,
     runCompileMonad,
+    loadUserSpecification,
   )
 where
 
@@ -41,7 +44,7 @@ import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
 import Vehicle.Libraries.Core (ResolvedLibrary (..))
 import Vehicle.Libraries.StandardLibrary (standardLibIdent, standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
 import Vehicle.Prelude.Logging.Instance
-import Vehicle.Verify.Specification.IO (readSpecification)
+import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecification)
 
 data TypeCheckOptions = TypeCheckOptions
   { specification :: FilePath,
@@ -66,7 +69,7 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
 -- Useful functions that apply to multiple compiler passes
 
 typeCheckUserProg ::
-  (MonadStdIO m, MonadCompile m) =>
+  (MonadReadSpecification m, MonadStdIO m, MonadCompile m) =>
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
@@ -132,10 +135,10 @@ printPropertyTypes = \case
 
 runCompileMonad ::
   forall m a.
-  (MonadStdIO m) =>
+  (MonadStdIO m, MonadReadSpecification m) =>
   LoggingSettings ->
   OutputAsJSON ->
-  (forall n. (MonadStdIO n, MonadLogger n) => ExceptT CompileError n a) ->
+  (forall n. (MonadStdIO n, MonadLogger n, MonadReadSpecification n) => ExceptT CompileError n a) ->
   m a
 runCompileMonad loggingSettings outputAsJSON x = do
   errorOrResult <- runLoggerT loggingSettings (logCompileError x)
@@ -164,9 +167,15 @@ data ModuleInfo = ModuleInfo
 -- | The full state of the Vehicle program
 data ProgramContext = ProgramContext
   { moduleGraph :: AdjacencyGraph ModulePath,
-    loadedModules :: Map ModulePath ModuleInfo,
-    availableModules :: Map ModulePath FilePath
+    loadedModules :: Map ModulePath ModuleInfo
   }
+
+initialProgramContext :: ProgramContext
+initialProgramContext = do
+  ProgramContext
+    { moduleGraph = emptyAdjacencyGraph,
+      loadedModules = mempty
+    }
 
 lookupModuleCertain ::
   Prog Builtin ->
@@ -193,13 +202,14 @@ flattenProgram userProg importedModules moduleGraph = do
 
 data ModuleStack = ModuleStack
   { stackCurrentModule :: ModulePath,
-    stackRemainingModules :: [ModulePath]
+    stackRemainingModules :: [ModulePath],
+    availableModules :: Map ModulePath FilePath
   }
 
 type MonadTCMProg m =
   ( MonadState ProgramContext m,
     MonadReader ModuleStack m,
-    MonadStdIO m,
+    MonadIO m,
     MonadCompile m
   )
 
@@ -211,14 +221,14 @@ lookupModule modulePath = gets (Map.lookup modulePath . loadedModules)
 
 lookupModuleFilePath :: (MonadTCMProg m) => ModulePath -> m FilePath
 lookupModuleFilePath modulePath = do
-  maybeFilePath <- gets (Map.lookup modulePath . availableModules)
+  maybeFilePath <- asks (Map.lookup modulePath . availableModules)
   case maybeFilePath of
     Nothing -> missingImportError modulePath
     Just moduleFile -> return moduleFile
 
 enterModule :: (MonadTCMProg m) => ModulePath -> m a -> m a
 enterModule newModule action = do
-  ModuleStack {..} <- ask
+  currentStack@ModuleStack {..} <- ask
 
   -- Add an edge to the dependency graph
   modify $ \ProgramContext {..} ->
@@ -233,7 +243,11 @@ enterModule newModule action = do
     cyclicImportsError newModule previousStack
 
   -- Run the action under the updated
-  let newStack = ModuleStack newModule previousStack
+  let newStack =
+        currentStack
+          { stackCurrentModule = newModule,
+            stackRemainingModules = previousStack
+          }
   local (const newStack) action
 
 storeModule :: (MonadTCMProg m) => ModulePath -> ModuleInfo -> m ()
@@ -248,22 +262,17 @@ storeModule modulePath moduleInfo =
 -- Algorithm
 
 loadUserSpecification ::
-  (MonadCompile m, MonadStdIO m) =>
+  (MonadReadSpecification m, MonadCompile m, MonadIO m) =>
   FilePath ->
   m (Prog Builtin, Map ModulePath [Decl Builtin], AdjacencyGraph ModulePath)
 loadUserSpecification specificationFile = do
+  let initialContext = initialProgramContext
   availableModules <- loadLibraries specificationFile
-
-  let initialContext =
-        ProgramContext
-          { moduleGraph = emptyAdjacencyGraph,
-            loadedModules = mempty,
-            availableModules = availableModules
-          }
   let initialStack =
         ModuleStack
           { stackCurrentModule = userModulePath,
-            stackRemainingModules = []
+            stackRemainingModules = [],
+            availableModules = availableModules
           }
   let implicitImports = ImportStatement <$> [standardLibraryDefinitionsModulePath]
   let action = loadUnloadedModule implicitImports userModulePath
@@ -291,7 +300,7 @@ loadLibraries specificationFile = do
 -- | Loads a module into the program state and returning `True` if
 -- the module .
 loadModule ::
-  (MonadTCMProg m) =>
+  (MonadReadSpecification m, MonadTCMProg m) =>
   ModulePath ->
   m ModuleInfo
 loadModule modulePath =
@@ -302,7 +311,7 @@ loadModule modulePath =
       Nothing -> loadUnloadedModule mempty modulePath
 
 loadUnloadedModule ::
-  (MonadTCMProg m) =>
+  (MonadReadSpecification m, MonadTCMProg m) =>
   [ImportStatement] ->
   ModulePath ->
   m ModuleInfo
@@ -318,7 +327,7 @@ loadUnloadedModule implicitImports modulePath = do
     return moduleInfo
 
 loadCachedModule ::
-  (MonadTCMProg m) =>
+  (MonadTCMProg m, MonadReadSpecification m) =>
   FilePath ->
   [ImportStatement] ->
   ModuleText ->
@@ -339,7 +348,7 @@ loadCachedModule moduleFile implicitImports moduleText moduleInterface = do
           }
 
 loadImports ::
-  (MonadTCMProg m) =>
+  (MonadTCMProg m, MonadReadSpecification m) =>
   [ImportStatement] ->
   m (ModuleStatus, ImportedModuleContext Builtin)
 loadImports imports = do
@@ -353,7 +362,7 @@ loadImports imports = do
   return (finalStatus, importedCtx)
 
 parseAndTypeCheckModule ::
-  (MonadTCMProg m) =>
+  (MonadTCMProg m, MonadReadSpecification m) =>
   FilePath ->
   [ImportStatement] ->
   ModuleText ->
@@ -410,7 +419,7 @@ cyclicImportsError newModule previousModules =
 
 missingImportError :: (MonadTCMProg m) => ModulePath -> m a
 missingImportError modulePath = do
-  allModules <- gets availableModules
+  allModules <- asks availableModules
   developerError $
     "unable to find module" <+> quotePretty modulePath <+> "in imported modules:"
       <> lineIndent (prettyMap pretty pretty allModules)

@@ -8,6 +8,7 @@ module Vehicle.CommandLine
     ModeOptions (..),
     defaultGlobalOptions,
     commandLineOptionsParserInfo,
+    commandLineParserPrefs,
   )
 where
 
@@ -16,9 +17,10 @@ import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Options.Applicative
-import Vehicle.Backend.Prelude (BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..))
+import Vehicle.Backend.Prelude (BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, LossFunctionMode (Training), SecondaryTypeSystem (..))
 import Vehicle.Compile (CompileOptions (..), ITPOptions (..), LossOptions (..), QueryOptions (..))
 import Vehicle.Export (ExportOptions (..))
+import Vehicle.LSP (LSPOptions (..))
 import Vehicle.List (ListOptions (..))
 import Vehicle.Prelude
   ( Doc,
@@ -76,6 +78,7 @@ data ModeOptions
   | Validate ValidateOptions
   | Export ExportOptions
   | List ListOptions
+  | LSP LSPOptions
   deriving (Show, Eq)
 
 --------------------------------------------------------------------------------
@@ -108,6 +111,14 @@ solver            = Opt "v" "solver"
 property          = Opt "y" "property"
 --  - z
 -}
+
+-- | We inline the subparsers for each mode so that global options
+-- (e.g. `--no-warnings`) can be freely interleaved with mode-specific
+-- options. With the default backtracking behaviour, an option belonging to
+-- the parent parser is only accepted after the subcommand's required
+-- options, e.g. `vehicle verify --no-warnings -s f.vcl` would fail.
+commandLineParserPrefs :: ParserPrefs
+commandLineParserPrefs = prefs subparserInline
 
 commandLineOptionsParserInfo :: ParserInfo Options
 commandLineOptionsParserInfo =
@@ -152,6 +163,7 @@ modeOptionsParser =
         <> command "validate" validateParserInfo
         <> command "export" exportParserInfo
         <> command "list" listParserInfo
+        <> command "lsp" lspParserInfo
 
 --------------------------------------------------------------------------------
 -- Check mode
@@ -228,7 +240,8 @@ compileLossDescription =
 compileLossParser :: Parser LossOptions
 compileLossParser =
   LossOptions
-    <$> lossLogicParser
+    <$> lossModeParser
+    <*> lossLogicParser
     <*> specificationParser
     <*> declarationParser
     <*> outputParser
@@ -240,6 +253,16 @@ lossLogicParser =
       <> short 'l'
       <> metavar "LOGIC"
       <> helpDoc (Just ("The differentiable logic to export to." <+> supportedOptions allBuiltinDifferentiableLogics))
+
+lossModeParser :: Parser LossFunctionMode
+lossModeParser =
+  option auto $
+    long "lossMode"
+      <> short 'm'
+      <> metavar "MODE"
+      <> value Training
+      <> showDefault
+      <> helpDoc (Just ("Sets the loss function for training or search." <+> supportedOptions allLossModes))
 
 --------------------------------------------------------------------------------
 -- Compile query mode
@@ -353,13 +376,41 @@ exportParser :: Parser ExportOptions
 exportParser =
   ExportOptions
     <$> itpParser
-    <*> exportCacheParser
+    <*> optional specificationParser
+    <*> declarationParser
+    <*> networkParser
+    <*> datasetParser
+    <*> parameterParser
     <*> outputParser
     <*> modulePrefixOption
+    <*> optional exportCacheParser
     <*> compileConstReals
 
 exportParserInfo :: ParserInfo ModeOptions
 exportParserInfo = info (Export <$> exportParser) exportDescription
+
+--------------------------------------------------------------------------------
+-- List mode
+
+lspDescription :: InfoMod ModeOptions
+lspDescription = progDesc "Start the Vehicle Language Server"
+
+lspParser :: Parser LSPOptions
+lspParser =
+  LSPOptions
+    <$> logFileOption
+      <**> helper
+
+lspParserInfo :: ParserInfo ModeOptions
+lspParserInfo = info (LSP <$> lspParser) lspDescription
+
+logFileOption :: Parser (Maybe String)
+logFileOption =
+  optional . strOption . mconcat $
+    [ long "log-file",
+      metavar "FILE",
+      help "Log file to use while LSP logging is unavailable."
+    ]
 
 --------------------------------------------------------------------------------
 -- Some shared option parsers
@@ -372,6 +423,9 @@ allITPs = map show (enumerate @InteractiveTheoremProverID)
 
 allSolversFormats :: [String]
 allSolversFormats = map show (enumerate @QueryFormatID)
+
+allLossModes :: [String]
+allLossModes = map show (enumerate @LossFunctionMode)
 
 allBuiltinDifferentiableLogics :: [String]
 allBuiltinDifferentiableLogics = map show (enumerate @BuiltinDifferentiableLogicID)
@@ -389,15 +443,18 @@ resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
   where
     readNL :: String -> Maybe (Text, String)
-    readNL s = case Text.splitOn (Text.pack ":") (Text.pack s) of
-      [name, val] -> Just (name, Text.unpack val)
+    -- Split on the first colon only, as the value may itself contain colons
+    -- (e.g. Windows paths such as `f:C:\path\to\network.onnx`).
+    readNL s = case Text.breakOn (Text.pack ":") (Text.pack s) of
+      (name, rest)
+        | not (Text.null name) && not (Text.null rest) -> Just (name, Text.unpack (Text.drop 1 rest))
       _ -> Nothing
 
 showVersionParser :: Parser Bool
 showVersionParser =
   switch $
     long "version"
-      <> short 'v'
+      <> short 'V'
       <> help "Show version information."
 
 redirectLogsParser :: Parser (Maybe FilePath)

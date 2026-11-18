@@ -8,7 +8,7 @@ module Vehicle.Compile.Type.Constraint.UnificationSolver
   )
 where
 
-import Control.Monad (forM)
+import Control.Monad (forM, void)
 import Control.Monad.Except (MonadError (..))
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
@@ -413,8 +413,8 @@ pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies attemptedSolutio
               if sharedDependencies /= jDeps
                 then do
                   -- We first recursive prune the type of the meta-variable
-                  metaType <- getMetaType m
-                  prunedMetaType <- pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies (Unforced (boundContextToEnv ctx) metaType)
+                  metaType <- getInstantiatedMetaType m spine
+                  prunedMetaType <- pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies metaType
                   let unnormalisedPrunedMetaType = unnormalise (boundCtxLv ctx) prunedMetaType
                   -- And then create a new meta-variable recursively.
                   createMetaWithRestrictedDependencies ctx m unnormalisedPrunedMetaType sharedDependencies remainingSpine
@@ -435,6 +435,26 @@ getNormMetaDependencies meta spine = do
         _ -> developerError $ "Meta variable" <+> pretty meta <+> "has non-index arg"
   let lvs = fmap getLv forcedDeps
   return (lvs, remainingArgs)
+
+-- | Gets the type of the meta-variable when applied to the provided spine.
+-- Note that the type of the meta-variable lives in the meta-variable's own
+-- context, and therefore we must instantiate the variables in that context
+-- with the corresponding arguments in the spine, in order to obtain the type
+-- in the current context.
+getInstantiatedMetaType ::
+  forall builtin m.
+  (MonadUnify builtin m) =>
+  MetaID ->
+  UnforcedSpineWithMetas builtin ->
+  m (ThunkWithMetas builtin)
+getInstantiatedMetaType meta spine = do
+  metaType <- getMetaType meta
+  metaCtx <- getMetaCtx (Proxy @builtin) meta
+  let depArgs = take (length metaCtx) spine
+  -- The context is ordered innermost variable first whereas the spine is
+  -- ordered outermost argument first, hence the `reverse`.
+  let env = BoundEnv $ zip (fmap void metaCtx) (reverse (fmap argExpr depArgs))
+  return $ Unforced env metaType
 
 createMetaWithRestrictedDependencies ::
   forall builtin m.

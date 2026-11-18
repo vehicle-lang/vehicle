@@ -19,6 +19,7 @@ open import Function.Base using (flip)
 open import Vehicle.Utils
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Nullary using (yes; no)
 
 Dimension : Set
 Dimension = ℕ
@@ -112,7 +113,7 @@ tensor xs ! i = tensor (λ j → xs (combine i j))
 -- Rational specialisations
 
 infix  8 -_
-infixl 7 _*_ _⊓_
+infixl 7 _*_ _÷_ _⊓_
 infixl 6 _-_ _+_ _⊔_
 
 natScalar : ℕ → Tensor ℚ []
@@ -127,8 +128,13 @@ _-_ = zipWith ℚ._-_
 _*_ : Tensor ℚ ds → Tensor ℚ ds → Tensor ℚ ds
 _*_ = zipWith ℚ._*_
 
-_÷_ : (p q : Tensor ℚ []) → .⦃ _ : ℚ.NonZero (unScalar q) ⦄ → Tensor ℚ []
-_÷_ p q = scalar (unScalar p ℚ.÷ unScalar q)
+-- ℚ cannot represent Vehicle's infinite division results, so use the same
+-- finite zero fallback as empty extrema when the denominator is zero.
+_÷_ : Tensor ℚ [] → Tensor ℚ [] → Tensor ℚ []
+p ÷ q with unScalar q ℚ.≟ ℚ.0ℚ
+... | yes _ = natScalar 0
+... | no q≢0 =
+  scalar (ℚ._÷_ (unScalar p) (unScalar q) {{ℚ.≢-nonZero q≢0}})
 
 -_ : Tensor ℚ ds → Tensor ℚ ds
 -_ = map (ℚ.-_)
@@ -144,6 +150,19 @@ reduceAnd = reduce _∧_ true
 
 reduceOr : Tensor Bool ds → Tensor Bool []
 reduceOr = reduce _∨_ false
+
+-- Vehicle uses infinities for empty extrema, which ℚ cannot represent.
+-- The non-empty case is exact; zero is the current finite-rational fallback.
+reduceExtrema : (ℚ → ℚ → ℚ) → Tensor ℚ ds → Tensor ℚ []
+reduceExtrema f xs with toList xs
+... | [] = natScalar 0
+... | x ∷ xs = scalar (foldr f x xs)
+
+reduceMin : Tensor ℚ ds → Tensor ℚ []
+reduceMin = reduceExtrema ℚ._⊓_
+
+reduceMax : Tensor ℚ ds → Tensor ℚ []
+reduceMax = reduceExtrema ℚ._⊔_
 
 -- Type operations
 

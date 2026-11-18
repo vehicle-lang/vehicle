@@ -43,10 +43,16 @@ instance HasName BinderNamingForm (Maybe Name) where
     OnlyName name _ -> Just name
     OnlyType -> Nothing
 
+instance HasProvenance BinderNamingForm where
+  provenanceOf = \case
+    NameAndType _ p -> p
+    OnlyName _ p -> p
+    OnlyType -> mempty
+
 mapBindingNamingFormName :: (Name -> Name) -> BinderNamingForm -> BinderNamingForm
 mapBindingNamingFormName f = \case
   NameAndType name p -> NameAndType (f name) p
-  OnlyName name p -> OnlyName name p
+  OnlyName name p -> OnlyName (f name) p
   OnlyType -> OnlyType
 
 --------------------------------------------------------------------------------

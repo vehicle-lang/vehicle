@@ -204,7 +204,7 @@ foldConstant (TensorConstantValue dims c maybeValue) = case maybeValue of
 
 constThunk :: (MonadNorm Builtin m) => UnforcedDims Builtin -> ExtendedRational -> m (Thunk Builtin)
 constThunk dims value =
-  forceEvaluation accessConstTensor evalConstTensor $
+  evalOrReconstructConst $
     ConstTensorArgs
       { constType = Forced IRatType,
         constValue = Forced $ IRatLiteral value,

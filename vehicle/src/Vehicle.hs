@@ -11,7 +11,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as Text (pack)
 import Data.Text.IO qualified as TextIO (hPutStrLn)
 import GHC.IO.Encoding (setLocaleEncoding)
-import Options.Applicative (ParserInfo, ParserResult (CompletionInvoked, Failure, Success), defaultPrefs, execCompletion, execParserPure, renderFailure)
+import Options.Applicative (ParserInfo, ParserResult (CompletionInvoked, Failure, Success), execCompletion, execParserPure, renderFailure)
 import System.Directory (createDirectoryIfMissing)
 import System.Environment (getProgName)
 import System.Exit (ExitCode (..), exitFailure, exitSuccess, exitWith)
@@ -23,9 +23,10 @@ import System.IO
     utf8,
     withFile,
   )
-import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), commandLineOptionsParserInfo)
+import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), commandLineOptionsParserInfo, commandLineParserPrefs)
 import Vehicle.Compile (compile)
 import Vehicle.Export (export)
+import Vehicle.LSP (runLSP)
 import Vehicle.List (list)
 import Vehicle.Prelude
 import Vehicle.Prelude.IO as VIO (MonadStdIO (writeStderrLn), fatalError, programOutput)
@@ -74,6 +75,7 @@ runVehicle Options {..} = do
             Validate options -> validate logSettings outputAsJson options
             Export options -> export logSettings outputAsJson options
             List options -> list logSettings outputAsJson options
+            LSP options -> runLSP options
             where
               outputAsJson = outputAsJSON globalOptions
 
@@ -97,7 +99,7 @@ withLogger GlobalOptions {logFile, loggingTarget, loggingLevel, noWarnings} acti
 
 execParserWithArgs :: (MonadStdIO m) => ParserInfo a -> [String] -> m a
 execParserWithArgs parserInfo args =
-  handleParseResult (execParserPure defaultPrefs parserInfo args)
+  handleParseResult (execParserPure commandLineParserPrefs parserInfo args)
 
 handleExitCode :: (MonadIO m) => ExitCode -> m Int
 handleExitCode = return . fromExitCode

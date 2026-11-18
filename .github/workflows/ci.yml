@@ -36,6 +36,9 @@ jobs:
   test-integration-rocq:
     uses: ./.github/workflows/test-integration-rocq.yml
 
+  test-integration-agda:
+    uses: ./.github/workflows/test-integration-agda.yml
+
   test-integration-bumpver:
     runs-on: ubuntu-latest
     steps:
@@ -47,11 +50,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dieghernan/cff-validator@v5
-
-  # NOTE: This job is disabled because Marabou reliably runs out of memory.
-  #
-  # test-integration-marabou:
-  #   uses: ./.github/workflows/test-integration-marabou.yml
 
   test-integration-ormolu:
     runs-on: ubuntu-latest
@@ -73,7 +71,6 @@ jobs:
       - build-vehicle
       - build-vehicle-python
       - test-integration-bumpver
-      # - test-integration-marabou
       - test-integration-ormolu
 
     permissions:
