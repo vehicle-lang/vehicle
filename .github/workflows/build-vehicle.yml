@@ -184,6 +184,13 @@ jobs:
             ${{ matrix.haskell.cabal.extra-args }}
 
           cabal test                                                \
+            vehicle:test:lsp-tests                                  \
+            --test-show-details=always                              \
+            --test-option=--color=always                            \
+            --project-file=${{ matrix.haskell.cabal.project-file }} \
+            ${{ matrix.haskell.cabal.extra-args }}
+
+          cabal test                                                \
             vehicle:test:golden-tests                               \
             --test-show-details=always                              \
             --test-option=--color=always                            \

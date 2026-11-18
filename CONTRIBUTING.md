@@ -13,6 +13,7 @@
       - [Testing](#testing)
         - [Running specific tests](#running-specific-tests)
         - [The unit tests](#the-unit-tests)
+        - [The LSP tests](#the-lsp-tests)
         - [The golden tests](#the-golden-tests)
         - [Adding golden tests](#adding-golden-tests)
         - [Updating the golden files](#updating-the-golden-files)
@@ -232,15 +233,16 @@ Ensure that you can successfully build the Vehicle compiler.
 
 The tests for the Vehicle compiler are in the `vehicle/tests/` subdirectory and use [the Tasty testing framework] as well as a custom driver for golden file tests—see `vehicle/tests/golden/Vehicle/Test/Golden.hs`.
 
-There are two test suites for the Vehicle compiler:
+There are three test suites for the Vehicle compiler:
 
 - [The unit tests](#the-unit-tests) (`unit-tests`)
+- [The LSP tests](#the-lsp-tests) (`lsp-tests`)
 - [The golden tests](#the-golden-tests) (`golden-tests`)
 
-The standard command to test the Vehicle compiler runs the unit and the compiler tests:
+The standard command to test the Vehicle compiler runs the unit, compiler, and LSP tests:
 
 ```sh
-cabal test unit-tests golden-tests --test-show-details=streaming --test-option=--color=always
+cabal test unit-tests lsp-tests golden-tests --test-show-details=streaming --test-option=--color=always
 ```
 
 This command is run on GitHub Actions whenever changes are pushed to Vehicle the default branch or an open pull request—see `.github/workflows/build-vehicle.yml`.
@@ -334,6 +336,18 @@ cabal test unit-tests --test-show-details=streaming --test-option=--color=always
 You can use `--test-option="--vehicle-logging X"` to set the logging level, where `X` is one of `NoDetail`, `MinDetail`, `MidDetail`, or `MaxDetail`. The logging levels can be found by running `vehicle --help`.
 
 These tests are specified in Haskell in `vehicle/tests/unit/`.
+
+##### The LSP tests
+
+The LSP tests use `lsp-test` to exercise the `vehicle lsp` server in an end-to-end session.
+
+Run the following command:
+
+```sh
+cabal test lsp-tests --test-show-details=streaming --test-option=--color=always
+```
+
+These tests are specified in Haskell under `vehicle/tests/LSP/`.
 
 ##### The golden tests
 

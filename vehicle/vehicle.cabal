@@ -465,3 +465,20 @@ test-suite golden-tests
     , vehicle-syntax
 
   build-tool-depends: vehicle:vehicle
+
+test-suite lsp-tests
+  import:             common-test
+  type:               exitcode-stdio-1.0
+  main-is:            Main.hs
+  hs-source-dirs:     tests/LSP
+  other-modules:
+    Session.Smoke
+    Tests
+
+  build-depends:
+    , base
+    , lsp-test
+    , tasty
+    , tasty-hunit
+
+  build-tool-depends: vehicle:vehicle
