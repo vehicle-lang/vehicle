@@ -128,7 +128,7 @@ unblockBoolTensorValue actions value = showEntry value $ do
     VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (unblockIndexValue actions) (evalCompareIndex op) args
     VBoolTensorCompareNat (op, args) -> unblockOp2 (unblockNatValue actions) (evalCompareNat op) args
     VBoolTensorTensorAt args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
-    VBoolTensorVectorAt args -> unblockAtVector unblock (unblockIndexValue actions) args
+    VBoolTensorVectorAt args -> unblockAtVector unblock (unblockVectorValue actions) (unblockIndexValue actions) args
     VBoolTensorForeach args -> unblockForeachTensor actions args
     VBoolTensorFoldList args -> unblockFoldList actions args
     VBoolTensorParameter ident -> unblockDatasetOrParameter actions unblock ident
@@ -167,7 +167,7 @@ unblockRatTensorValue actions@UnblockingActions {..} expr =
       VNetworkApplication n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
       VParameterOrDataset ident -> unblockDatasetOrParameter unblock ident
       VRatAtTensor args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
-      VRatAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
+      VRatAtVector args -> unblockAtVector unblock (unblockVectorValue actions) (unblockIndexValue actions) args
       VRatForeach args -> unblockForeachTensor actions args
       VRatTensorTranspose args -> unblockTransposeTensor unblock args
       VRatTensorRecordAcc typ value fieldName args -> unblockRecordAcc actions typ value fieldName args
@@ -200,7 +200,7 @@ unblockIndexValue actions value = showEntry value $ do
     VIndexLiteral {} -> return $ IfLeaf value
     VIndexParameter ident -> unblockDatasetOrParameter actions (unblockIndexValue actions) ident
     VIndexIf args -> unblockIf (unblockIndexValue actions) args
-    VIndexAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
+    VIndexAtVector args -> unblockAtVector (unblockIndexValue actions) (unblockVectorValue actions) (unblockIndexValue actions) args
     VIndexRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
     VIndexBoundVar v spine -> unblockBoundVar actions (unblockIndexValue actions) v spine
 
@@ -225,7 +225,7 @@ unblockVectorValue actions value = showEntry value $ do
   case toVectorValue forcedValue of
     VVectorLiteral {} -> return $ IfLeaf $ Forced forcedValue
     VVectorIf args -> unblockIf (unblockVectorValue actions) args
-    VVectorAt args -> unblockAtVector (unblockVectorValue actions) (unblockVectorValue actions) args
+    VVectorAt args -> unblockAtVector (unblockVectorValue actions) (unblockVectorValue actions) (unblockIndexValue actions) args
     VVectorForeach args -> unblockForeachVector actions args
     VVectorBoundVar v spine -> unblockBoundVar actions (unblockVectorValue actions) v spine
     VVectorDataset ident -> unblockDatasetOrParameter actions (unblockVectorValue actions) ident
@@ -358,14 +358,15 @@ unblockAtVector ::
   (MonadUnblock m) =>
   TypeUnblockingFunction (Thunk Builtin) m ->
   TypeUnblockingFunction (Thunk Builtin) m ->
+  TypeUnblockingFunction (Thunk Builtin) m ->
   OperationUnblockingFunction AtVectorArgs (Thunk Builtin) m
-unblockAtVector unblockVector unblockIndex (AtVectorArgs tElem d xs i) = do
+unblockAtVector unblockElem unblockVector unblockIndex (AtVectorArgs tElem d xs i) = do
   xs' <- unblockVector xs
   i' <- unblockIndex i
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->
-      IfLeaf <$> do
-        forceEval evalAtVector $ AtVectorArgs tElem d xs'' i''
+      unblockElem
+        =<< forceEval evalAtVector (AtVectorArgs tElem d xs'' i'')
 
 unblockRecordAcc ::
   (MonadUnblock m) =>
