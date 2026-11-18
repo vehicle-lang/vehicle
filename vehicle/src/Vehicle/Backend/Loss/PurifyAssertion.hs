@@ -127,9 +127,9 @@ isUsableBound ::
 isUsableBound lexp = do
   let coefficientVariables = Set.map toLv $ variablesOf lexp
   coefficientParentVariables <- lookupParentTensorVariables (variablesOf lexp)
+  -- Cannot handle constraints where there are multiple variables from
+  -- the same tensor variable, e.g. `x0 < x1`
   if length coefficientVariables /= length coefficientParentVariables
-    -- Cannot handle constraints where there are multiple variables from
-    -- the same tensor variable, e.g. `x0 < x1`
     then return False
     else do
       constantVariables <- findSliceVariablesInConstant lexp
