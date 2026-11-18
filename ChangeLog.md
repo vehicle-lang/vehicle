@@ -22,7 +22,6 @@
 * Fixed a bug that occured when one branch of an `if` had gradients and the other did not, e.g. `if c then x else 0.0`.
 
 * Fixed a bug that somtimes occured when constructing bounds involving multiple variables, e.g. `forall x y . x ! 0  < y`.
-* 
 
 ### Solver backend
 
