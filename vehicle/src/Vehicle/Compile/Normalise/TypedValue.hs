@@ -205,6 +205,7 @@ data NatValue
   | VNatIf (IfArgs (Thunk Builtin))
   | VNatAdd (Op2Args (Thunk Builtin))
   | VNatMul (Op2Args (Thunk Builtin))
+  | VNatAtVector (AtVectorArgs (Thunk Builtin))
   | VNatParameter Identifier
 
 builtinToNatValue :: Builtin -> UnforcedSpine Builtin -> NatValue
@@ -213,6 +214,7 @@ builtinToNatValue b spine = case VBuiltin b spine of
   (getExpr accessIf -> Just args) -> VNatIf args
   (getExpr accessAddNat -> Just args) -> VNatAdd args
   (getExpr accessMulNat -> Just args) -> VNatMul args
+  (getExpr accessAtVector -> Just args) -> VNatAtVector args
   _ -> developerError $ "ill-typed Nat expression:" <+> pretty b <+> prettyVerbose spine
 
 toNatValue :: ForcedValue Builtin -> NatValue

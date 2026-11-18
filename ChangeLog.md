@@ -25,7 +25,7 @@
 
 ### Solver backend
 
-* Fixed a bug that occasionally occured during compilation of vector indexing operations.
+* Fixed two bugs which occured when indexing into a Vector of natural numbers.
 
 ### ITP backend
 
