@@ -11,7 +11,7 @@ void _unsafe_vehicle_init(int argc, char **argv)
 
 void _unsafe_vehicle_free()
 {
-  void hs_exit();
+  hs_exit();
 }
 
 void _unsafe_python_write_stdout(const char * str) {
