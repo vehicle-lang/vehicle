@@ -5,6 +5,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer.Strict
 import Data.Coerce (coerce)
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Resource (NetworkModality)
@@ -98,18 +99,18 @@ lookupNestedTensorVariable var = do
 -- | Given a set of variables representing the slices of a given set of tensors
 -- returns the set of tensor variables that those slices are taken from.
 lookupParentTensorVariables ::
-  (MonadLogger m, MonadReadableTensorBoundContext m) =>
-  Set SliceVariable ->
+  (MonadLogger m, MonadReadableTensorBoundContext m, VariableLike var) =>
+  Set var ->
   m (Set TensorVariable)
 lookupParentTensorVariables sliceVars = do
   ctx <- getNestedVariableCtx
   let result = findCorrespondingVariableInOriginalCtx ctx sliceVars
-  return $ Set.fromList $ fmap extractTensorVar result
+  return $ Set.fromList $ fromMaybe mempty $ mapM extractTensorVar result
   where
-    extractTensorVar :: (OriginalLv, Maybe NestedSliceVariable) -> TensorVariable
+    extractTensorVar :: (OriginalLv, Maybe NestedSliceVariable) -> Maybe TensorVariable
     extractTensorVar = \case
-      (_, Nothing) -> developerError "was expecting only tensor variables"
-      (_, Just var) -> coerce $ nestedStartingVariable var
+      (_, Nothing) -> Nothing
+      (_, Just var) -> Just $ coerce $ nestedStartingVariable var
 
 lookupParentTensorVariable ::
   (MonadReadableTensorBoundContext m, SliceVariableLike variable) =>
