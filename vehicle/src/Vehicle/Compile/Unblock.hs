@@ -214,6 +214,7 @@ unblockNatValue actions value = showEntry value $ do
     VNatIf ifArgs -> unblockIf (unblockNatValue actions) ifArgs
     VNatAdd args -> unblockOp2 (unblockNatValue actions) evalAddNat args
     VNatMul args -> unblockOp2 (unblockNatValue actions) evalMulNat args
+    VNatAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
     VNatBoundVar v spine -> unblockBoundVar actions (unblockNatValue actions) v spine
     VNatParameter ident -> unblockDatasetOrParameter actions (unblockNatValue actions) ident
 

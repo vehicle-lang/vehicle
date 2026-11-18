@@ -12,6 +12,10 @@
 
 * Fixed a rare internal error in the type-checker.
 
+### Solver
+
+* Fixed a bug which occured when indexing into a Vector of natural numbers.
+
 ### ITP backend
 
 * The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
