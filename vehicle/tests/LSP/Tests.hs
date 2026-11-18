@@ -4,6 +4,7 @@ module Tests
   )
 where
 
+import SemanticTokens.Simple (test_tokensSimple)
 import Session.Smoke (test_sessionSmoke)
 import Test.Tasty (TestTree, defaultIngredients, testGroup)
 import Test.Tasty.Ingredients (Ingredient)
@@ -13,7 +14,8 @@ tests =
   pure $
     testGroup
       "Tests"
-      [ test_sessionSmoke
+      [ test_sessionSmoke,
+        test_tokensSimple
       ]
 
 ingredients :: [Ingredient]

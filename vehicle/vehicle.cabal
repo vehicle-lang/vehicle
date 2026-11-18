@@ -472,13 +472,17 @@ test-suite lsp-tests
   main-is:            Main.hs
   hs-source-dirs:     tests/LSP
   other-modules:
+    SemanticTokens.Common
+    SemanticTokens.Simple
     Session.Smoke
     Tests
 
   build-depends:
     , base
+    , filepath
     , lsp-test
     , tasty
     , tasty-hunit
+    , temporary
 
   build-tool-depends: vehicle:vehicle
