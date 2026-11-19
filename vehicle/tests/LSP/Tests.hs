@@ -4,6 +4,7 @@ module Tests
   )
 where
 
+import SemanticTokens.NameAndTypeBinder (test_tokensNameAndTypeBinder)
 import SemanticTokens.NameOnlyBinder (test_tokensNameOnlyBinder)
 import SemanticTokens.Simple (test_tokensSimple)
 import Session.Smoke (test_sessionSmoke)
@@ -14,10 +15,11 @@ tests :: IO TestTree
 tests =
   pure $
     testGroup
-      "Tests"
+      "LSP Tests"
       [ test_sessionSmoke,
         test_tokensSimple,
-        test_tokensNameOnlyBinder
+        test_tokensNameOnlyBinder,
+        test_tokensNameAndTypeBinder
       ]
 
 ingredients :: [Ingredient]
