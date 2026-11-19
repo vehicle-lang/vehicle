@@ -12,6 +12,8 @@
 
 * Fixed a rare internal error in the type-checker.
 
+* Improved error message when using an undefined variable in an @property declaration, e.g. `@property robust : Vector Bool n`.
+
 ### Loss backend
 
 * Fixed various bugs that sometimes occurred when a quantifier appeared inside the body of another quantifier,
