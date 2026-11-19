@@ -5,8 +5,11 @@
 ### Language
 
 * Quantifiers and `if` expressions can now be used without brackets as the right-hand operand of `and`, `or` and `=>`,
-  e.g. `1 >= 0 and exists (x : Index 2) . x >= 0` and `x > 0 => if x > 1 then p else q` previously failed to parse.
+  e.g. `1 >= 0 and exists (x : Index 2) . x >= 0` and `x > 0 => if x > 1 then p else q`.
   As before, the body of the quantifier (or the `else` branch of the `if`) extends as far to the right as possible.
+
+* The `else` branch of an `if` can now contain another `if`, a quantifier, a `let` or a lambda without brackets,
+  so `if`s can be chained, e.g. `if i == 0 then 1.0 else if i == 1 then 2.0 else 0.0`.
 
 ### Type-checker
 
