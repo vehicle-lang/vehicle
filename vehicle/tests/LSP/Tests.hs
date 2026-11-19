@@ -5,6 +5,7 @@ module Tests
 where
 
 import SemanticTokens.Binders (test_tokensBinders)
+import SemanticTokens.Declarations (test_tokensDeclarations)
 import SemanticTokens.Simple (test_tokensSimple)
 import Session.Smoke (test_sessionSmoke)
 import Test.Tasty (TestTree, defaultIngredients, testGroup)
@@ -17,7 +18,8 @@ tests =
       "LSP Tests"
       [ test_sessionSmoke,
         test_tokensSimple,
-        test_tokensBinders
+        test_tokensBinders,
+        test_tokensDeclarations
       ]
 
 ingredients :: [Ingredient]

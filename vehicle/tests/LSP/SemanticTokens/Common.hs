@@ -5,6 +5,7 @@ module SemanticTokens.Common
     ExpectedTokens,
     expectTokens,
     as,
+    xas,
   )
 where
 
@@ -48,8 +49,24 @@ valueOf = \case
 instance IsString ExpectedToken where
   fromString = NoToken
 
+-- | Expect a token with a specific type and modifiers.
+--
+-- The following example will cause the test to fail if the token at `foo`'s position is not a
+-- `SemanticTokenTypes_Variable` with zero modifiers:
+--
+-- > "foo" `as` (SemanticTokenTypes_Variable, [])
 as :: String -> (SemanticTokenTypes, [SemanticTokenModifiers]) -> ExpectedToken
 as v (t, m) = SomeToken v t m
+
+-- | Expect no token, but document which token we would like to expect in the future. Useful for
+-- "expected-failure" situations, where we would eventually like to assert a certain token, but we
+-- can't right now.
+--
+-- The following example will cause the test to fail there is any token at `foo`'s position.
+--
+-- > "foo" `xas` (SemanticTokenTypes_Variable, [])
+xas :: String -> (SemanticTokenTypes, [SemanticTokenModifiers]) -> ExpectedToken
+xas v _ = NoToken v
 
 type ExpectedTokens = [ExpectedToken]
 

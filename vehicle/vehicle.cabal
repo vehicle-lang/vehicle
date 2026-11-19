@@ -474,6 +474,7 @@ test-suite lsp-tests
   other-modules:
     SemanticTokens.Binders
     SemanticTokens.Common
+    SemanticTokens.Declarations
     SemanticTokens.Simple
     Session.Smoke
     Tests
