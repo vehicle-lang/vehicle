@@ -473,6 +473,7 @@ test-suite lsp-tests
   hs-source-dirs:     tests/LSP
   other-modules:
     SemanticTokens.Common
+    SemanticTokens.NameOnlyBinder
     SemanticTokens.Simple
     Session.Smoke
     Tests
@@ -480,7 +481,9 @@ test-suite lsp-tests
   build-depends:
     , base
     , filepath
+    , lens
     , lsp-test
+    , lsp-types
     , tasty
     , tasty-hunit
     , temporary

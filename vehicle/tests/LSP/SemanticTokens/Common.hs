@@ -1,18 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module SemanticTokens.Common
-  ( ExpectedTokens,
+  ( OverlapMode (..),
+    ExpectedTokens,
     expectTokens,
     as,
   )
 where
 
+import Control.Lens ((^.))
 import Control.Monad.IO.Class (liftIO)
 import Data.Bits (testBit)
 import Data.Char (ord)
 import Data.List (sortOn)
 import Data.String (IsString (..))
 import Language.LSP.Protocol.Capabilities (fullLatestClientCaps)
+import Language.LSP.Protocol.Lens qualified as Lsp
 import Language.LSP.Protocol.Types
   ( LanguageKind (LanguageKind_Custom),
     SemanticTokenAbsolute (..),
@@ -183,8 +186,36 @@ toString :: ExpectedTokens -> String
 toString [] = ""
 toString (t : ts) = valueOf t ++ toString ts
 
-expectTokens :: ExpectedTokens -> IO ()
-expectTokens expectedTokens =
+-- | This is a stop-gap to allow us to test semantic tokens despite the fact that they currently
+-- generate lots of overlapping tokens, which are hidden by VSCode. Obviously this token-hiding
+-- behaviour is client-specific and non-portable, so eventually we will fix it and stop generating
+-- overlapping tokens, at which point this can be removed.
+data OverlapMode
+  = -- | No post-processing is done to remove overlapping tokens.
+    NoOverlaps
+  | -- | Overlaps whose line, startChar, and length all match are removed.
+    AllowStrictOverlaps
+  | -- | Overlaps whose line and startChar match are removed, but their lengths
+    -- do not need to match. This matches VSCode's observed behaviour.
+    AllowLaxOverlaps
+
+removeOverlaps :: OverlapMode -> [SemanticTokenAbsolute] -> [SemanticTokenAbsolute]
+removeOverlaps _ [] = []
+removeOverlaps _ (t : []) = [t]
+removeOverlaps mode (t1 : t2 : ts)
+  | overlapping mode = removeOverlaps mode (t1 : ts)
+  | otherwise = t1 : removeOverlaps mode (t2 : ts)
+  where
+    overlapping NoOverlaps = False
+    overlapping AllowStrictOverlaps =
+      overlapping AllowLaxOverlaps
+        && t1 ^. Lsp.length == t2 ^. Lsp.length
+    overlapping AllowLaxOverlaps =
+      t1 ^. Lsp.line == t2 ^. Lsp.line
+        && t1 ^. Lsp.startChar == t2 ^. Lsp.startChar
+
+expectTokens :: ExpectedTokens -> OverlapMode -> IO ()
+expectTokens expectedTokens overlapMode =
   withSystemTempDirectory "vehicle-lsp-test" $ \root -> do
     writeFile (root </> "test.vcl") (toString expectedTokens)
     runSession "vehicle lsp" fullLatestClientCaps root $
@@ -194,8 +225,9 @@ expectTokens expectedTokens =
           InL semanticTokens ->
             case decodeSemanticTokens semanticTokens of
               Left err -> liftIO $ assertFailure err
-              Right tokens ->
-                let expected = toTokens expectedTokens
+              Right rawTokens ->
+                let expected = removeOverlaps overlapMode $ toTokens expectedTokens
+                    tokens = removeOverlaps overlapMode rawTokens
                  in if tokens == expected
                       then pure ()
                       else

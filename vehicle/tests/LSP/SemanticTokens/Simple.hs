@@ -1,7 +1,7 @@
 module SemanticTokens.Simple where
 
 import Language.LSP.Protocol.Types (SemanticTokenTypes (..))
-import SemanticTokens.Common (ExpectedTokens, as, expectTokens)
+import SemanticTokens.Common (ExpectedTokens, OverlapMode (..), as, expectTokens)
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (testCase)
 
@@ -20,4 +20,4 @@ specification =
 test_tokensSimple :: TestTree
 test_tokensSimple =
   testCase "produces tokens for a simple example" $
-    expectTokens specification
+    expectTokens specification NoOverlaps

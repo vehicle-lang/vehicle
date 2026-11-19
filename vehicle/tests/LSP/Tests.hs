@@ -4,6 +4,7 @@ module Tests
   )
 where
 
+import SemanticTokens.NameOnlyBinder (test_tokensNameOnlyBinder)
 import SemanticTokens.Simple (test_tokensSimple)
 import Session.Smoke (test_sessionSmoke)
 import Test.Tasty (TestTree, defaultIngredients, testGroup)
@@ -15,7 +16,8 @@ tests =
     testGroup
       "Tests"
       [ test_sessionSmoke,
-        test_tokensSimple
+        test_tokensSimple,
+        test_tokensNameOnlyBinder
       ]
 
 ingredients :: [Ingredient]
