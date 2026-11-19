@@ -1,11 +1,15 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module SemanticTokens.Common
-  ( expectTokens,
-    tokenAt,
+  ( ExpectedTokens,
+    expectTokens,
+    as,
   )
 where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Bits (testBit)
+import Data.String (IsString (..))
 import Language.LSP.Protocol.Capabilities (fullLatestClientCaps)
 import Language.LSP.Protocol.Types
   ( LanguageKind (LanguageKind_Custom),
@@ -26,10 +30,54 @@ import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Tasty.HUnit (assertFailure, (@?=))
 
-expectTokens :: String -> [SemanticTokenAbsolute] -> IO ()
-expectTokens specification expectedTokens =
+data ExpectedToken
+  = SomeToken String SemanticTokenTypes [SemanticTokenModifiers]
+  | NoToken String
+  deriving (Eq)
+
+valueOf :: ExpectedToken -> String
+valueOf = \case
+  SomeToken v _ _ -> v
+  NoToken v -> v
+
+instance IsString ExpectedToken where
+  fromString = NoToken
+
+as :: String -> (SemanticTokenTypes, [SemanticTokenModifiers]) -> ExpectedToken
+as v (t, m) = SomeToken v t m
+
+type ExpectedTokens = [ExpectedToken]
+
+toTokens :: ExpectedTokens -> [SemanticTokenAbsolute]
+toTokens ts = absolutizeTokens $ go 0 0 ts
+  where
+    go :: UInt -> UInt -> ExpectedTokens -> [SemanticTokenRelative]
+    go _ _ [] = []
+    go dl dc (NoToken value : rest) = do
+      let dl' = dl + getDeltaLine value
+      let dc' = (if dl' > 0 then 0 else dc) + getDeltaStartChar value
+      go dl' dc' rest
+    go dl dc (SomeToken value typ mods : rest) =
+      SemanticTokenRelative
+        { _deltaLine = dl,
+          _deltaStartChar = dc,
+          _length = fromIntegral (length value),
+          _tokenType = typ,
+          _tokenModifiers = mods
+        }
+        : go (getDeltaLine value) (getDeltaStartChar value) rest
+
+    getDeltaLine = fromIntegral . length . filter (== '\n')
+    getDeltaStartChar = fromIntegral . length . fst . break (== '\n') . reverse -- TODO: incorrect
+
+toString :: ExpectedTokens -> String
+toString [] = ""
+toString (t : ts) = valueOf t ++ toString ts
+
+expectTokens :: ExpectedTokens -> IO ()
+expectTokens expectedTokens =
   withSystemTempDirectory "vehicle-lsp-test" $ \root -> do
-    writeFile (root </> "test.vcl") specification
+    writeFile (root </> "test.vcl") (toString expectedTokens)
     runSession "vehicle lsp" fullLatestClientCaps root $
       openDoc "test.vcl" (LanguageKind_Custom "vehicle") >>= \doc -> do
         result <- getSemanticTokens doc
@@ -39,18 +87,8 @@ expectTokens specification expectedTokens =
               Left err -> liftIO $ assertFailure err
               Right tokens ->
                 liftIO $
-                  tokens @?= expectedTokens
+                  tokens @?= toTokens expectedTokens
           _ -> liftIO $ assertFailure "semantic tokens request returned no tokens"
-
-tokenAt :: UInt -> UInt -> UInt -> SemanticTokenTypes -> SemanticTokenAbsolute
-tokenAt line startColumn endColumn tokenType =
-  SemanticTokenAbsolute
-    { _line = line - 1,
-      _startChar = startColumn - 1,
-      _length = endColumn - startColumn + 1,
-      _tokenType = tokenType,
-      _tokenModifiers = []
-    }
 
 decodeSemanticTokens :: SemanticTokens -> Either String [SemanticTokenAbsolute]
 decodeSemanticTokens (SemanticTokens _ data_) = do

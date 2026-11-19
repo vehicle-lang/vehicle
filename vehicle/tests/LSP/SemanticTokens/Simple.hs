@@ -1,18 +1,23 @@
 module SemanticTokens.Simple where
 
 import Language.LSP.Protocol.Types (SemanticTokenTypes (..))
-import SemanticTokens.Common (expectTokens, tokenAt)
+import SemanticTokens.Common (ExpectedTokens, as, expectTokens)
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (testCase)
 
-specification :: String
-specification = "foo = 42\n"
+specification :: ExpectedTokens
+specification =
+  [ "foo" `as` (SemanticTokenTypes_Variable, []),
+    " = ",
+    "42" `as` (SemanticTokenTypes_Number, []),
+    "\n",
+    "bar" `as` (SemanticTokenTypes_Variable, []),
+    " = ",
+    "True" `as` (SemanticTokenTypes_Keyword, []),
+    "\n"
+  ]
 
 test_tokensSimple :: TestTree
 test_tokensSimple =
   testCase "produces tokens for a simple example" $
-    expectTokens
-      specification
-      [ tokenAt 1 1 3 SemanticTokenTypes_Variable,
-        tokenAt 1 7 8 SemanticTokenTypes_Number
-      ]
+    expectTokens specification
