@@ -1,0 +1,15 @@
+[
+  {
+    "name": "Marabou",
+    "run": "vehicle compile queries -f MarabouQueries -s spec.vcl -n f:baseline.onnx -o Marabou.queries/",
+    "needs": ["spec.vcl", "baseline.onnx"],
+    "produces": [
+      "Marabou.queries/*.txt",
+      "Marabou.queries/p.vcl-plan"
+    ],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "sizeOnly": ".vcl-plan"
+  }
+]
