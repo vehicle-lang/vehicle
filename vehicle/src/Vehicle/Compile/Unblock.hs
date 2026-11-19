@@ -19,6 +19,7 @@ module Vehicle.Compile.Unblock
     unblockTensorOp2,
     unblockTensorOp1,
     unblockRecordAcc,
+    unblockSliceVariable,
     noUnblocking,
     forceEval,
   )
@@ -39,8 +40,12 @@ import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), elimIfTree, forIfTreeM)
 import Vehicle.Data.Code.ForcedValue
+import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Tensor (HasShape (..))
 import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Bound.Context.Tensor (MonadReadableTensorBoundContext, lookupNestedSliceVariable)
+import Vehicle.Data.Variable.Bound.Level (SliceVariable, VariableLike (..), childVariablesOf)
 import Vehicle.Data.Variable.Free.Context.Class
 
 --------------------------------------------------------------------------------
@@ -166,7 +171,7 @@ unblockRatTensorValue actions@UnblockingActions {..} expr =
       VRatTensorBoundVar v spine -> unblockBoundVar unblock v spine
       VNetworkApplication n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
       VParameterOrDataset ident -> unblockDatasetOrParameter unblock ident
-      VRatAtTensor args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
+      VRatAtTensor args -> unblockAtTensor unblock unblock (unblockIndexValue actions) args
       VRatAtVector args -> unblockAtVector unblock (unblockVectorValue actions) (unblockIndexValue actions) args
       VRatForeach args -> unblockForeachTensor actions args
       VRatTensorTranspose args -> unblockTransposeTensor unblock args
@@ -459,6 +464,31 @@ unblockConstTensor unblockValue actions (ConstTensorArgs t x ds) = do
     forIfTreeM ds' $ \ds'' ->
       IfLeaf <$> do
         evalOrReconstructConst $ ConstTensorArgs t x'' ds''
+
+-- | Given a variable `x`:
+--   - if not a tensor variable errors
+--   - if an element variable then returns `x`
+--   - if not an element variable then unblocks `[x!0, x!1, ..., x!n]
+unblockSliceVariable ::
+  (MonadUnblock m, MonadReadableTensorBoundContext m) =>
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  SliceVariable ->
+  m (IfTree (Thunk Builtin) (Thunk Builtin))
+unblockSliceVariable unblock var = do
+  nestedVar <- lookupNestedSliceVariable var
+  case (childVariablesOf nestedVar, shapeOf nestedVar) of
+    (Nothing, []) -> return $ IfLeaf $ Forced $ Forced.VBoundVar (toLv var) []
+    (Just childVars, d : ds) ->
+      unblock $
+        Forced $
+          mkExpr accessStackTensor $
+            StackTensorArgs
+              { stackType = Forced IRatType,
+                stackFirstDim = Forced $ INatLiteral d,
+                stackRemainingDims = Forced $ mkDims ds,
+                stackElements = flip map childVars $ \v -> Forced $ Forced.VBoundVar (toLv v) []
+              }
+    _ -> developerError "mismatched children and shape"
 
 --------------------------------------------------------------------------------
 -- Unblocking operations

@@ -27,7 +27,7 @@ import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
 import Vehicle.Compile.Prelude hiding (boundVariablesIn)
-import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue)
+import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue, unblockSliceVariable)
 import Vehicle.Data.Assertion (Assertion, NormalisedRelation (..), comparisonToAssertion)
 import Vehicle.Data.Builtin.Interface (Accessor (..), applyAccessor)
 import Vehicle.Data.Builtin.Standard
@@ -393,7 +393,7 @@ purifyBoundVar unblock lv spine = case spine of
     maybeSliceVar <- lookupSliceVariableInNestedCtx lv
     case maybeSliceVar of
       Nothing -> return $ IfLeaf $ Forced $ VBoundVar lv []
-      Just sliceVar -> unblock =<< replaceTensorVariableWithStackedChildren sliceVar
+      Just sliceVar -> unblockSliceVariable unblock sliceVar
 
 --------------------------------------------------------------------------------
 -- Utility functions
