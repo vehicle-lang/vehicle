@@ -27,6 +27,9 @@
 
 * Fixed two bugs which occured when indexing into a Vector of natural numbers.
 
+* Fixed an internal error that occurred when a nested index quantifier bounded a network input using a value
+  obtained by further indexing into a higher-dimensional tensor, e.g. `forall i j . box ! i ! j ! 0 <= x ! i ! j <= 1`.
+
 ### ITP backend
 
 * The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
