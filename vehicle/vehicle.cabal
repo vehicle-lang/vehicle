@@ -472,9 +472,8 @@ test-suite lsp-tests
   main-is:            Main.hs
   hs-source-dirs:     tests/LSP
   other-modules:
+    SemanticTokens.Binders
     SemanticTokens.Common
-    SemanticTokens.NameAndTypeBinder
-    SemanticTokens.NameOnlyBinder
     SemanticTokens.Simple
     Session.Smoke
     Tests
