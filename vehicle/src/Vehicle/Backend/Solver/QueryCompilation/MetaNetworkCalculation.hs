@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
 module Vehicle.Backend.Solver.QueryCompilation.MetaNetworkCalculation
   ( calculateMetaNetworkApplications,
   )

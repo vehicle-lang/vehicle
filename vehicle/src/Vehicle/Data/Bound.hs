@@ -288,7 +288,17 @@ convertToTensorBounds ::
   constant ->
   m (TensorBounds constant)
 convertToTensorBounds shape indices rel coeff bound = do
-  -- c*x + b REL 0   -> x REL (-1/c)*b
+  let sliceBounds = convertToSliceBounds rel coeff bound
+  let tensorSliceBounds = singleNestedSliceBound sliceBounds shape indices
+  return $ TensorBounds tensorSliceBounds
+
+-- | Converts `c*x + b REL 0` where `bound = (-1/c)*b` into the bounds `x REL bound`.
+convertToSliceBounds ::
+  Relation ->
+  Coefficient ->
+  constant ->
+  SliceBounds constant
+convertToSliceBounds rel coeff bound = do
   let strictness = case rel of
         OEq -> These NonStrict NonStrict
         OLt
@@ -299,9 +309,11 @@ convertToTensorBounds shape indices rel coeff bound = do
           | otherwise -> That NonStrict
 
   let maybeBounds = bimap (`LowerBound` bound) (`UpperBound` bound) strictness
-  let sliceBounds = maybeBoundsToSliceBounds maybeBounds
-  let tensorSliceBounds = singleNestedSliceBound sliceBounds shape indices
-  return $ TensorBounds tensorSliceBounds
+  maybeBoundsToSliceBounds maybeBounds
+
+mapSliceBounds :: (a -> b) -> SliceBounds a -> SliceBounds b
+mapSliceBounds f (SliceBounds lower upper) =
+  SliceBounds (fmap (fmap f) lower) (fmap (fmap f) upper)
 
 --------------------------------------------------------------------------------
 -- Domains

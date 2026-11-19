@@ -637,8 +637,7 @@ compileBuiltinFunction p f args = case f of
   ConstTensor -> annotateApp [DataTensor] Nothing "constTensor" args
   QuantifyRatTensor q -> compileQuantifierFunction q args
   QuantifyRecord q -> compileQuantifierFunction q args
-  AtTensor ->
-    annotateInfixAppWithResultPrecedence [DataTensor] 6 (-1) Nothing "_!_" args
+  AtTensor -> annotateInfixAppWithResultPrecedence [DataTensor] 6 (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
   ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args

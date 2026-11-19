@@ -27,6 +27,9 @@
 
 * Fixed two bugs which occured when indexing into a Vector of natural numbers.
 
+* Fixed bug where bounds over a variable used as input two networks weren't being
+  shared properly, e.g. `forall v . 0 <= v <= 1 => f v <= g v`.
+
 ### ITP backend
 
 * The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
