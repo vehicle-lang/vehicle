@@ -475,7 +475,9 @@ test-suite lsp-tests
     SemanticTokens.Binders
     SemanticTokens.Common
     SemanticTokens.Declarations
+    SemanticTokens.EdgeCases
     SemanticTokens.Simple
+    SemanticTokens.TokenTypes
     Session.Smoke
     Tests
 

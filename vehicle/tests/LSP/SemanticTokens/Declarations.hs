@@ -23,5 +23,25 @@ test_tokensDeclarations =
             "x" `as` (SemanticTokenTypes_Variable, []),
             "\n"
           ]
-          AllowStrictOverlaps
+          AllowStrictOverlaps,
+      testCase "@ annotations" $
+        expectTokens
+          [ "@parameter" `xas` (SemanticTokenTypes_Decorator, []),
+            "\n",
+            "p" `as` (SemanticTokenTypes_Variable, []),
+            " : ",
+            "Nat" `as` (SemanticTokenTypes_Type, []),
+            "\n"
+          ]
+          NoOverlaps,
+      testCase "type aliases" $
+        expectTokens
+          [ "type" `xas` (SemanticTokenTypes_Keyword, []),
+            " ",
+            "Alias" `as` (SemanticTokenTypes_Type, []),
+            " = ",
+            "Nat" `as` (SemanticTokenTypes_Type, []),
+            "\n"
+          ]
+          NoOverlaps
     ]
