@@ -9,6 +9,8 @@ where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Bits (testBit)
+import Data.Char (ord)
+import Data.List (sortOn)
 import Data.String (IsString (..))
 import Language.LSP.Protocol.Capabilities (fullLatestClientCaps)
 import Language.LSP.Protocol.Types
@@ -28,7 +30,7 @@ import Language.LSP.Protocol.Types
 import Language.LSP.Test (getSemanticTokens, openDoc, runSession)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
-import Test.Tasty.HUnit (assertFailure, (@?=))
+import Test.Tasty.HUnit (assertFailure)
 
 data ExpectedToken
   = SomeToken String SemanticTokenTypes [SemanticTokenModifiers]
@@ -49,26 +51,133 @@ as v (t, m) = SomeToken v t m
 type ExpectedTokens = [ExpectedToken]
 
 toTokens :: ExpectedTokens -> [SemanticTokenAbsolute]
-toTokens ts = absolutizeTokens $ go 0 0 ts
+toTokens ts = absolutizeTokens $ go (0, 0) (0, 0) ts
   where
-    go :: UInt -> UInt -> ExpectedTokens -> [SemanticTokenRelative]
+    go :: (UInt, UInt) -> (UInt, UInt) -> ExpectedTokens -> [SemanticTokenRelative]
     go _ _ [] = []
-    go dl dc (NoToken value : rest) = do
-      let dl' = dl + getDeltaLine value
-      let dc' = (if dl' > 0 then 0 else dc) + getDeltaStartChar value
-      go dl' dc' rest
-    go dl dc (SomeToken value typ mods : rest) =
-      SemanticTokenRelative
-        { _deltaLine = dl,
-          _deltaStartChar = dc,
-          _length = fromIntegral (length value),
-          _tokenType = typ,
-          _tokenModifiers = mods
-        }
-        : go (getDeltaLine value) (getDeltaStartChar value) rest
+    go previous cursor (NoToken value : rest) =
+      go previous (advancePosition cursor value) rest
+    go (previousLine, previousChar) cursor@(cursorLine, cursorChar) (SomeToken value typ mods : rest) =
+      let relativeLine = cursorLine - previousLine
+          relativeChar =
+            if relativeLine == 0
+              then cursorChar - previousChar
+              else cursorChar
+       in SemanticTokenRelative
+            { _deltaLine = relativeLine,
+              _deltaStartChar = relativeChar,
+              _length = fromIntegral (utf16Length value),
+              _tokenType = typ,
+              _tokenModifiers = mods
+            }
+            : go cursor (advancePosition cursor value) rest
 
-    getDeltaLine = fromIntegral . length . filter (== '\n')
-    getDeltaStartChar = fromIntegral . length . fst . break (== '\n') . reverse -- TODO: incorrect
+utf16Length :: String -> Int
+-- LSP character offsets are based on the negotiated PositionEncodingKind; the
+-- mandatory/default encoding is UTF-16, where non-BMP code points take two code
+-- units. Source: LSP 3.17 spec ("Position"/"PositionEncodingKind"):
+-- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#position
+utf16Length = sum . fmap (\char -> if ord char > 0xFFFF then 2 else 1)
+
+advancePosition :: (UInt, UInt) -> String -> (UInt, UInt)
+advancePosition (line, char) value =
+  case break (== '\n') value of
+    (before, []) -> (line, char + fromIntegral (utf16Length before))
+    (_before, _ : after) -> advancePosition (line + 1, 0) after
+
+data TokenDiffStatus
+  = TokenMatched
+  | TokenAdded
+  | TokenRemoved
+
+data TokenDiff
+  = TokenDiff
+      UInt
+      UInt
+      UInt
+      SemanticTokenTypes
+      [SemanticTokenModifiers]
+      TokenDiffStatus
+
+renderSemanticTokenDiff :: String -> [SemanticTokenAbsolute] -> [SemanticTokenAbsolute] -> String
+renderSemanticTokenDiff source expected actual =
+  unlines $
+    concatMap renderLine ([0 .. sourceLineCount - 1] :: [Int])
+  where
+    diffs = diffTokens expected actual
+    sourceLines = lines source
+    sourceLineCount = max 1 (length sourceLines)
+
+    renderLine :: Int -> [String]
+    renderLine line =
+      let sourceLine = sourceLineAt line sourceLines
+          lineDiffs =
+            sortOn
+              (\(TokenDiff _ start _ _ _ _) -> start)
+              [diff | diff <- diffs, fromIntegral (tokenDiffLine diff) == line]
+          resetPrefix = "\ESC[0m"
+       in map (resetPrefix ++) (sourceLine : concatMap renderDiff lineDiffs)
+
+    renderDiff :: TokenDiff -> [String]
+    renderDiff (TokenDiff _ start length' typ mods status) =
+      [ indent start ++ colour status (replicate (fromIntegral length') '^'),
+        indent start ++ colour status (show (typ, mods))
+      ]
+
+    indent :: UInt -> String
+    indent = flip replicate ' ' . fromIntegral
+
+    colour :: TokenDiffStatus -> String -> String
+    colour TokenMatched text = text
+    colour TokenAdded text = "\ESC[32m" ++ text ++ "\ESC[0m"
+    colour TokenRemoved text = "\ESC[31m" ++ text ++ "\ESC[0m"
+
+sourceLineAt :: Int -> [String] -> String
+sourceLineAt line = \case
+  [] -> ""
+  (first : rest) ->
+    if line == 0
+      then first
+      else sourceLineAt (line - 1) rest
+
+tokenDiffLine :: TokenDiff -> UInt
+tokenDiffLine (TokenDiff line _ _ _ _ _) = line
+
+diffTokens :: [SemanticTokenAbsolute] -> [SemanticTokenAbsolute] -> [TokenDiff]
+diffTokens expected actual =
+  snd (foldl matchActual (expected, []) actual) ++ removedDiffs
+  where
+    matchActual (remaining, diffs) token =
+      case findMatching token remaining of
+        Just (remaining', matched) ->
+          (remaining', diffs ++ [toDiff TokenMatched matched])
+        Nothing ->
+          (remaining, diffs ++ [toDiff TokenAdded token])
+
+    removedDiffs =
+      map (toDiff TokenRemoved) (fst (foldlOnlyRemaining expected actual))
+
+    foldlOnlyRemaining remaining [] = (remaining, ())
+    foldlOnlyRemaining remaining (token : rest) =
+      case findMatching token remaining of
+        Just (remaining', _) -> foldlOnlyRemaining remaining' rest
+        Nothing -> foldlOnlyRemaining remaining rest
+
+findMatching ::
+  SemanticTokenAbsolute ->
+  [SemanticTokenAbsolute] ->
+  Maybe ([SemanticTokenAbsolute], SemanticTokenAbsolute)
+findMatching _ [] = Nothing
+findMatching token (candidate : rest)
+  | token == candidate = Just (rest, candidate)
+  | otherwise =
+      case findMatching token rest of
+        Nothing -> Nothing
+        Just (remaining, matched) -> Just (candidate : remaining, matched)
+
+toDiff :: TokenDiffStatus -> SemanticTokenAbsolute -> TokenDiff
+toDiff status SemanticTokenAbsolute {..} =
+  TokenDiff _line _startChar _length _tokenType _tokenModifiers status
 
 toString :: ExpectedTokens -> String
 toString [] = ""
@@ -86,8 +195,14 @@ expectTokens expectedTokens =
             case decodeSemanticTokens semanticTokens of
               Left err -> liftIO $ assertFailure err
               Right tokens ->
-                liftIO $
-                  tokens @?= toTokens expectedTokens
+                let expected = toTokens expectedTokens
+                 in if tokens == expected
+                      then pure ()
+                      else
+                        liftIO $
+                          assertFailure $
+                            "Semantic tokens differ:\n"
+                              <> renderSemanticTokenDiff (toString expectedTokens) expected tokens
           _ -> liftIO $ assertFailure "semantic tokens request returned no tokens"
 
 decodeSemanticTokens :: SemanticTokens -> Either String [SemanticTokenAbsolute]
