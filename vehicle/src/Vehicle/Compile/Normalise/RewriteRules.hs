@@ -470,33 +470,38 @@ rewriteForeachTensor (ForeachTensorArgs t d ds fn) =
         let lv = boundCtxLv ctx
         let body = extendClosureWithBound closure binder lv
 
-        let createForeachArgs tElem newBody = do
+        let createForeachArgs tElem elemDims newBody = do
               let newBody' = unnormalise (lv + 1) newBody
               let newLam = mkExpr accessForcedLamC (binder, Closure (namedBoundContextToEnv ctx) newBody')
-              ForeachTensorArgs tElem d ds newLam
+              ForeachTensorArgs tElem d elemDims newLam
 
         addNameToContext binder $ do
           rewrittenBody <- forceAndRewriteTensor body
-          liftForeach ctx createForeachArgs lv d t (Forced rewrittenBody)
+          liftForeach ctx createForeachArgs lv d ds t (Forced rewrittenBody)
       _ -> unexpectedExprError "NBE" "foreachIndex"
 
 liftForeach ::
   forall builtin m.
   (MonadRewrite builtin m) =>
   NamedBoundCtx ->
-  (Thunk builtin -> Thunk builtin -> ForeachTensorArgs (Thunk builtin)) ->
+  (Thunk builtin -> Thunk builtin -> Thunk builtin -> ForeachTensorArgs (Thunk builtin)) ->
   Lv ->
+  Thunk builtin ->
   Thunk builtin ->
   Thunk builtin ->
   Thunk builtin ->
   m (ForcedValue builtin)
 liftForeach outputCtx createForeachArgs lv dim = go
   where
+    -- Note that `elemDims` are the dimensions of `body` which may differ from
+    -- the dimensions of the original body of the `foreach` (e.g. when recursing
+    -- into the arguments of a comparison which reduces over some dimensions).
     go ::
       Thunk builtin ->
       Thunk builtin ->
+      Thunk builtin ->
       m (ForcedValue builtin)
-    go typ body = logRewrite (return outputCtx) mkForeach "foreach" body $ do
+    go elemDims typ body = logRewrite (return outputCtx) (mkForeach elemDims) "foreach" body $ do
       forcedBody <- force body
       -- Try each of the following in turn until it works.
       maybeResult <-
@@ -513,13 +518,17 @@ liftForeach outputCtx createForeachArgs lv dim = go
               ]
       case maybeResult of
         Just result -> return result
-        Nothing
-          | doesNotReferenceBoundVar body -> do
-              let dims = Forced $ IDimCons dim $ Forced IDimNil
-              let constArgs = ConstTensorArgs typ body dims
-              forceThunk =<< evalOrReconstructConst constArgs
-          | otherwise -> do
-              let args = createForeachArgs typ body
+        Nothing -> do
+          -- `ConstTensor` requires a scalar value so only use it if the body is zero-dimensional.
+          forcedElemDims <- force elemDims
+          case forcedElemDims of
+            IDimNil
+              | doesNotReferenceBoundVar body -> do
+                  let dims = Forced $ IDimCons dim $ Forced IDimNil
+                  let constArgs = ConstTensorArgs typ body dims
+                  forceThunk =<< evalOrReconstructConst constArgs
+            _ -> do
+              let args = createForeachArgs typ elemDims body
               maybeEvalResult <- evalForeachTensor args
               case maybeEvalResult of
                 Unevaluable {} -> return $ mkExpr accessForeachTensor args
@@ -534,7 +543,7 @@ liftForeach outputCtx createForeachArgs lv dim = go
     goOp1 body = \case
       (accessOp1, typ) : remainingOp1s -> case getExpr accessOp1 body of
         Just (TensorOp1Args ds e) -> do
-          e' <- Forced <$> go (Forced typ) e
+          e' <- Forced <$> go ds (Forced typ) e
           return $ Just $ mkExpr accessOp1 (TensorOp1Args (Forced $ IDimCons dim ds) e')
         _ -> goOp1 body remainingOp1s
       [] -> return Nothing
@@ -548,8 +557,8 @@ liftForeach outputCtx createForeachArgs lv dim = go
     goOp2 body = \case
       (accessOp2, typ) : remainingOps -> case getExpr accessOp2 body of
         Just (TensorOp2Args ds e1 e2) -> do
-          e1' <- Forced <$> go (Forced typ) e1
-          e2' <- Forced <$> go (Forced typ) e2
+          e1' <- Forced <$> go ds (Forced typ) e1
+          e2' <- Forced <$> go ds (Forced typ) e2
           let newSpine = TensorOp2Args (Forced $ IDimCons dim ds) e1' e2'
           return $ Just $ mkExpr accessOp2 newSpine
         _ -> goOp2 body remainingOps
@@ -586,8 +595,9 @@ liftForeach outputCtx createForeachArgs lv dim = go
       (accessOp, typ) : remainingOps -> do
         case getExpr accessOp body of
           Just (op, TensorComparisonArgs pDims rDims e1 e2) | op /= Ne -> do
-            e1' <- go (exprToThunk typ) e1
-            e2' <- go (exprToThunk typ) e2
+            argDims <- forceEvalAppendList (AppendListArgs (Forced INatType) pDims rDims)
+            e1' <- go argDims (exprToThunk typ) e1
+            e2' <- go argDims (exprToThunk typ) e2
             let newSpine = TensorComparisonArgs (exprToThunk $ IDimCons dim pDims) rDims (exprToThunk e1') (exprToThunk e2')
             return $ Just $ mkExpr accessOp (op, newSpine)
           _ -> goComparisons body remainingOps
@@ -602,8 +612,8 @@ liftForeach outputCtx createForeachArgs lv dim = go
               ConstTensorArgs t x (Forced $ IDimCons dim ds)
       _ -> return Nothing
 
-    mkForeach :: Thunk builtin -> Thunk builtin
-    mkForeach body = Forced $ mkExpr accessForeachTensor $ createForeachArgs (Forced IRatType) body
+    mkForeach :: Thunk builtin -> Thunk builtin -> Thunk builtin
+    mkForeach elemDims body = Forced $ mkExpr accessForeachTensor $ createForeachArgs (Forced IRatType) elemDims body
 
     doesNotReferenceBoundVar :: Thunk builtin -> Bool
     doesNotReferenceBoundVar value = lv `Set.notMember` Forced.boundVariablesIn (lv + 1) value

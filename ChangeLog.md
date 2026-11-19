@@ -25,10 +25,13 @@
 
 ### Solver backend
 
-* Fixed two bugs which occured when indexing into a Vector of natural numbers.
+* Fixed two bugs which occured when indexing into a vectors of natural numbers.
 
 * Fixed bug where bounds over a variable used as input two networks weren't being
   shared properly, e.g. `forall v . 0 <= v <= 1 => f v <= g v`.
+
+* Fixed an internal error that occurred when a nested index quantifier bounded a network input using a value
+  obtained by further indexing into a higher-dimensional tensor, e.g. `forall i j . box ! i ! j ! 0 <= x ! i ! j <= 1`.
 
 ### ITP backend
 
