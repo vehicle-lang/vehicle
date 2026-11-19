@@ -1,0 +1,5 @@
+Error in file 'spec.vcl' at Line 74, Columns 1-12: The property 'User.unshareable' cannot be compiled as cannot deduce lower and upper bounds for the input of 
+  g 
+  g (foreach i. foreach j. 2.0 * x ! i ! j)
+In particular, missing lower bounds and missing upper bounds for tensor 'foreach i. foreach j. 2.0 * x ! i ! j'
+Fix: add additional inequalities that restrict the variables in the value above.

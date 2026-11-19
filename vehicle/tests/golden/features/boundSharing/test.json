@@ -1,0 +1,17 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s spec.vcl",
+    "needs": ["spec.vcl"]
+  },
+  {
+    "name": "VNNLib",
+    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries/ -n f:fake.onnx -n g:fake.onnx -n h:fake.onnx",
+    "needs": ["spec.vcl", "fake.onnx"],
+    "produces": ["VNNLib.queries/*.txt", "VNNLib.queries/*.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "sizeOnly": ".vcl-plan"
+  }
+]

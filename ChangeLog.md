@@ -30,6 +30,11 @@
 
 ### Solver backend
 
+* Fixed bug where bounds over a variable used as input two networks weren't being
+  shared properly, e.g. `forall v . 0 <= v <= 1 => f v <= g v`.
+
+* Fixed two bugs which occured when indexing into a vectors of natural numbers.
+
 * Fixed various bugs which occured when performing complex combinations of indexing operations into vectors and tensors.
 
 * Fixed an internal error that occurred when a nested index quantifier bounded a network input using a value
