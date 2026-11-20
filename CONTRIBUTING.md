@@ -239,7 +239,7 @@ There are three test suites for the Vehicle compiler:
 - [The LSP tests](#the-lsp-tests) (`lsp-tests`)
 - [The golden tests](#the-golden-tests) (`golden-tests`)
 
-The standard command to test the Vehicle compiler runs the unit, compiler, and LSP tests:
+The standard command to test the Vehicle compiler runs the unit, LSP, and compiler tests:
 
 ```sh
 cabal test unit-tests lsp-tests golden-tests --test-show-details=streaming --test-option=--color=always
