@@ -10,7 +10,7 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, isJust, isNothing)
+import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Sequence (Seq, (><), (|>))
 import Data.Sequence qualified as Seq
@@ -24,13 +24,21 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta
   ( MetaInfo (..),
     MetaVariableContext,
-    findMetaInfo,
+    lookupMetaInfo,
   )
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution (HasMetas, MetaSubstitutable (..), RawMetaSubstitutable (..))
 import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
+import Vehicle.Compile.Type.Meta.Variable
+  ( addFreshMeta,
+    adjustMetaInfo,
+    emptyMetaVariableContext,
+    numberOfMetas,
+    solvedMetasIn,
+    unsolvedMetasIn,
+  )
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.ForcedValue (ForcedValueWithMetas, ThunkWithMetas, UnforcedSpineWithMetas)
 import Vehicle.Data.Code.ModuleInterface
@@ -97,7 +105,7 @@ emptyTypeCheckerDeclState ::
 emptyTypeCheckerDeclState =
   TypeCheckerDeclState
     { currentDecl = Nothing,
-      metaVariableCtx = mempty,
+      metaVariableCtx = emptyMetaVariableContext,
       applicationConstraints = mempty,
       unificationConstraints = mempty,
       instanceConstraints = mempty,
@@ -198,7 +206,7 @@ getMetaVariableCtx :: (MonadTypeChecker builtin m) => m (MetaVariableContext bui
 getMetaVariableCtx = getsTypeCheckerDeclState metaVariableCtx
 
 getNumberOfMetasCreated :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m Int
-getNumberOfMetasCreated _ = getsTypeCheckerDeclState @builtin (length . metaVariableCtx)
+getNumberOfMetasCreated _ = getsTypeCheckerDeclState @builtin (numberOfMetas . metaVariableCtx)
 
 getInstanceCandidatesFromFreeCtx ::
   (MonadTypeChecker builtin m) =>
@@ -296,12 +304,12 @@ substMetaVariablesAt ctx x = do
 
 getSolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet
 getSolvedMetas _proxy = do
-  unsolvedMetas <- MetaMap.filter (isJust . metaSolution) <$> getMetaVariableCtx @builtin
+  unsolvedMetas <- solvedMetasIn <$> getMetaVariableCtx @builtin
   return $ MetaMap.keys unsolvedMetas
 
 getUnsolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet
 getUnsolvedMetas _proxy = do
-  unsolvedMetas <- MetaMap.filter (isNothing . metaSolution) <$> getMetaVariableCtx @builtin
+  unsolvedMetas <- unsolvedMetasIn <$> getMetaVariableCtx @builtin
   return $ MetaMap.keys unsolvedMetas
 
 forceThunkWithMetas ::
@@ -341,19 +349,16 @@ freshMeta ::
   BoundCtx (Type builtin) ->
   m (MetaID, Expr builtin)
 freshMeta p metaType relevance boundCtx = do
-  -- Create a fresh id for the meta
-  TypeCheckerDeclState {..} <- getTypeCheckerDeclState
-  let nextMetaID = length metaVariableCtx
-  let metaID = MetaID nextMetaID
-
   -- Construct the information about the meta-variable
   let info = MetaInfo p metaType relevance boundCtx Nothing
 
-  -- Update the meta context
+  -- Add it to the meta context, generating a fresh id
+  TypeCheckerDeclState {..} <- getTypeCheckerDeclState
+  let (metaID, newMetaVariableCtx) = addFreshMeta info metaVariableCtx
   modifyTypeCheckerDeclState $
     const $
       TypeCheckerDeclState
-        { metaVariableCtx = MetaMap.insert metaID info metaVariableCtx,
+        { metaVariableCtx = newMetaVariableCtx,
           ..
         }
 
@@ -372,7 +377,7 @@ freshMeta p metaType relevance boundCtx = do
 getMetaInfo :: (MonadTypeChecker builtin m) => MetaID -> m (MetaInfo builtin)
 getMetaInfo meta = do
   state <- getTypeCheckerDeclState
-  return $ findMetaInfo (metaVariableCtx state) meta
+  return $ lookupMetaInfo (metaVariableCtx state) meta
 
 getMetaIndex :: [MetaInfo builtin] -> MetaID -> Int
 getMetaIndex metaInfo (MetaID m) = length metaInfo - m - 1
@@ -525,7 +530,7 @@ updateMetaType m typ = do
   let updateInfo info = info {metaType = typ}
   modifyTypeCheckerDeclState $ \state ->
     state
-      { metaVariableCtx = MetaMap.adjust updateInfo m (metaVariableCtx state)
+      { metaVariableCtx = adjustMetaInfo updateInfo m (metaVariableCtx state)
       }
 
 --------------------------------------------------------------------------------

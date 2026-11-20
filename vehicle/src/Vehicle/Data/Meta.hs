@@ -10,7 +10,9 @@ import Prettyprinter (Pretty (..))
 --------------------------------------------------------------------------------
 -- Meta-variables
 
-newtype MetaID = MetaID Int
+newtype MetaID = MetaID
+  { unMetaID :: Int
+  }
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData MetaID

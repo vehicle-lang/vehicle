@@ -13,7 +13,7 @@ import Control.Monad.Writer.Strict
 import Vehicle.Compile.Normalise.Core (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Meta (MetaInfo (..), MetaSet, MetaVariableContext, findMetaInfo)
+import Vehicle.Compile.Type.Meta (MetaInfo (..), MetaSet, MetaVariableContext, lookupMetaInfo)
 import qualified Vehicle.Compile.Type.Meta.Set as MetaSet
 import Vehicle.Data.Code.ForcedValue (ForcedValueWithMetas, GenericForcedValue (..), ThunkWithMetas, UnforcedSpineWithMetas, normalised)
 import Vehicle.Data.Variable.Bound.Context.Name (runNameBoundContextT)
