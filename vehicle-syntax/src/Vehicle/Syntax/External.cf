@@ -246,7 +246,7 @@ Pow. Expr11 ::= Expr11 TokPow Expr12;
 Neg. Expr12 ::= TokSub Expr12;
 
 -- Boolean expressions.
-If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
+If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr2;
 Impl.    Expr5  ::= Expr6 TokImpl Expr5;
 And.     Expr7  ::= Expr8 TokAnd Expr7;
 Or.      Expr7  ::= Expr8 TokOr  Expr7;
@@ -285,7 +285,7 @@ Forall.    Expr18 ::= TokForall [NameBinder] "." Expr2;
 Exists.    Expr18 ::= TokExists [NameBinder] "." Expr2;
 ForallIn.  Expr18 ::= TokForall NameBinder "in" Expr3 "." Expr2;
 ExistsIn.  Expr18 ::= TokExists NameBinder "in" Expr3 "." Expr2;
-If.        Expr18 ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
+If.        Expr18 ::= TokIf Expr5 TokThen Expr5 TokElse Expr2;
 
 -- Container syntax.
 VecLiteral. Expr17 ::= TokSeqOpen [Expr] TokSeqClose;

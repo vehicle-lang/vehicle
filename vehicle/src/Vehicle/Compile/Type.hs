@@ -6,9 +6,9 @@ where
 import Control.Monad (forM, when)
 import Control.Monad.Except (MonadError (..))
 import Data.IntSet qualified as IntSet
-import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
+import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Dependency (completelyUnusedDeclarations)
@@ -225,7 +225,7 @@ solveConstraints proxy = logCompilerSection2 MaxDetail "constraint solving" $ do
       -- We try and priortise resolving the cast constraints first (e.g. HasTensor, IsNatLiteral)
       -- as it produces far better error messages for the user.
       instanceConstraints <- getActiveInstanceConstraints @builtin
-      let sortedInstanceConstraints = sortOn (not . isCastConstraint . goalHead . instanceGoal . objectIn) instanceConstraints
+      let sortedInstanceConstraints = Seq.sortOn (not . isCastConstraint . goalHead . instanceGoal . objectIn) instanceConstraints
       setInstanceConstraints sortedInstanceConstraints
 
     loopOverConstraints :: (TCM builtin m) => Int -> m ()

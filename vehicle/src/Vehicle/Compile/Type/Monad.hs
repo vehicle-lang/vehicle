@@ -45,10 +45,12 @@ where
 import Control.Monad (unless, when)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
-import Data.List (partition, sortOn)
+import Data.Foldable (toList)
+import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (isJust)
 import Data.Proxy (Proxy (..))
+import Data.Sequence (Seq, (><), pattern Empty, pattern (:<|))
+import Data.Sequence qualified as Seq
 import Vehicle.Compile.Error (CompileError (..), TypingError (..), compilerDeveloperError)
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Quote (unnormalise)
@@ -56,8 +58,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyExternal, prettyExternal, prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
-import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
-import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..), addMetaSolution)
+import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..), addMetaSolution, solvedMetaInfos, unsolvedMetaInfos)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
@@ -260,7 +261,8 @@ solveMeta ::
   m ()
 solveMeta meta solution solutionCtx = do
   metaInfo <- getMetaInfo meta
-  case metaSolution metaInfo of
+  maybeExistingSolution <- getMetaSolution @builtin meta
+  case maybeExistingSolution of
     Just existing ->
       compilerDeveloperError $
         "meta-variable"
@@ -288,8 +290,7 @@ solveMeta meta solution solutionCtx = do
 
       modifyTypeCheckerDeclState $ \state ->
         state
-          { metaVariableCtx = addMetaSolution gluedSolution meta (metaVariableCtx state),
-            solvedMetaState = registerSolvedMeta meta (solvedMetaState state)
+          { metaVariableCtx = addMetaSolution gluedSolution meta (metaVariableCtx state)
           }
 
 -- | Attempts to solve as many constraints as possible. Takes in
@@ -298,8 +299,8 @@ solveMeta meta solution solutionCtx = do
 runConstraintSolver ::
   forall builtin m constraint.
   (MonadTypeChecker builtin m, TypableBuiltin builtin, PrettyExternal (Contextualised constraint (ConstraintContext builtin))) =>
-  m [Contextualised constraint (ConstraintContext builtin)] ->
-  ([Contextualised constraint (ConstraintContext builtin)] -> m ()) ->
+  m (Seq (Contextualised constraint (ConstraintContext builtin))) ->
+  (Seq (Contextualised constraint (ConstraintContext builtin)) -> m ()) ->
   (Contextualised constraint (ConstraintContext builtin) -> m ()) ->
   Bool ->
   Proxy builtin ->
@@ -341,7 +342,7 @@ logUnsolvedUnknowns _proxy = do
     unsolvedConstraints <- getActiveConstraints @builtin
 
     isUnblocked <- getIsUnblockedFn
-    let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
+    let (unblockedConstraints, blockedConstraints) = Seq.partition isUnblocked unsolvedConstraints
     let constraintsDoc =
           "unsolved-blocked-constraints:"
             <> line
@@ -360,7 +361,8 @@ logUnsolvedUnknowns _proxy = do
               <> indent 2 (prettyExternal decl)
               <> line
 
-    let (solvedMetas, unsolvedMetas) = MetaMap.partition (isJust . metaSolution) updatedMetaVarCtx
+    let solvedMetas = solvedMetaInfos updatedMetaVarCtx
+    let unsolvedMetas = unsolvedMetaInfos updatedMetaVarCtx
 
     return $
       "solved-metas:"
@@ -374,33 +376,31 @@ logUnsolvedUnknowns _proxy = do
         <> constraintsDoc
         <> declDoc
 
-prettyConstraints :: (PrintableBuiltin builtin) => [WithContext (Constraint builtin)] -> Doc a
+prettyConstraints :: (Foldable t, PrintableBuiltin builtin) => t (WithContext (Constraint builtin)) -> Doc a
 prettyConstraints constraints = do
-  let sortedConstraints = sortOn (constraintID . contextOf) constraints
+  let sortedConstraints = sortOn (constraintID . contextOf) (toList constraints)
   let pairs = fmap prettyExternal sortedConstraints
   prettySetLike pairs
 
 -- | Find the first constraint satisfying `p` appending all the constraints that don't satisfy it to
 -- the end of the list, so we don't search through them again immediately next time.
-findFirstConstraint :: forall a. (a -> Bool) -> [a] -> Maybe (a, [a])
-findFirstConstraint p xs = (\(found, seen, unseen) -> (found, unseen <> seen)) <$> go xs
-  where
-    go :: [a] -> Maybe (a, [a], [a])
-    go = \case
-      [] -> Nothing
-      c : cs
-        | p c -> Just (c, [], cs)
-        | otherwise -> fmap (\(found, seen, unseen) -> (found, c : seen, unseen)) (go cs)
+findFirstConstraint :: forall a. (a -> Bool) -> Seq a -> Maybe (a, Seq a)
+findFirstConstraint p xs = do
+  i <- Seq.findIndexL p xs
+  let (seen, rest) = Seq.splitAt i xs
+  case rest of
+    found :<| unseen -> Just (found, unseen >< seen)
+    Empty -> Nothing
 
 checkAllConstraintsSolved ::
-  (MonadTypeChecker builtin m, Eq builtin, NormalisableBuiltin builtin) =>
+  (Foldable t, MonadTypeChecker builtin m, Eq builtin, NormalisableBuiltin builtin) =>
   Proxy builtin ->
-  m [Contextualised constraint (ConstraintContext builtin)] ->
+  m (t (Contextualised constraint (ConstraintContext builtin))) ->
   (constraint -> Constraint builtin) ->
   m ()
 checkAllConstraintsSolved _ getConstraints toConstraint = do
   constraints <- getConstraints
-  case constraints of
+  case toList constraints of
     [] -> return ()
     (c : cs) -> do
       let failedConstraints = mapObject toConstraint <$> (c :| cs)

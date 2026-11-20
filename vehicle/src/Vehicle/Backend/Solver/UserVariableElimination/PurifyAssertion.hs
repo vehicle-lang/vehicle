@@ -210,8 +210,9 @@ purifyAtTensor args actions incrDims = do
     args
 
 purifyAtVector :: AtVectorArgs (Thunk Builtin) -> PurifyFn m
-purifyAtVector args actions _incrDims = do
+purifyAtVector args actions incrDims = do
   unblockAtVector
+    (purifyExpr actions incrDims)
     (unblockVectorValue actions)
     (unblockIndexValue actions)
     args

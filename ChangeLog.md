@@ -5,16 +5,17 @@
 ### Language
 
 * Quantifiers and `if` expressions can now be used without brackets as the right-hand operand of `and`, `or` and `=>`,
-  e.g. `1 >= 0 and exists (x : Index 2) . x >= 0` and `x > 0 => if x > 1 then p else q` previously failed to parse.
+  e.g. `1 >= 0 and exists (x : Index 2) . x >= 0` and `x > 0 => if x > 1 then p else q`.
   As before, the body of the quantifier (or the `else` branch of the `if`) extends as far to the right as possible.
+
+* The `else` branch of an `if` can now contain another `if`, a quantifier, a `let` or a lambda without brackets,
+  so `if`s can be chained, e.g. `if i == 0 then 1.0 else if i == 1 then 2.0 else 0.0`.
 
 ### Type-checker
 
 * Fixed a rare internal error in the type-checker.
 
-### ITP backend
-
-* The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
+* Improved error message when using an undefined variable in an @property declaration, e.g. `@property robust : Vector Bool n`.
 
 ### Loss backend
 
@@ -24,6 +25,24 @@
 * Fixed a bug that occured when constructing sequences for which some elements had gradients and others did not, e.g. `[1.0, x]`.
 
 * Fixed a bug that occured when one branch of an `if` had gradients and the other did not, e.g. `if c then x else 0.0`.
+
+* Fixed a bug that somtimes occured when constructing bounds involving multiple variables, e.g. `forall x y . x ! 0  < y`.
+
+### Solver backend
+
+* Fixed bug where bounds over a variable used as input two networks weren't being
+  shared properly, e.g. `forall v . 0 <= v <= 1 => f v <= g v`.
+
+* Fixed two bugs which occured when indexing into a vectors of natural numbers.
+
+* Fixed various bugs which occured when performing complex combinations of indexing operations into vectors and tensors.
+
+* Fixed an internal error that occurred when a nested index quantifier bounded a network input using a value
+  obtained by further indexing into a higher-dimensional tensor, e.g. `forall i j . box ! i ! j ! 0 <= x ! i ! j <= 1`.
+
+### ITP backend
+
+* The `vehicle export` command now allows you to pass dataset, parameter and network resources even if you are not going via a pre-existing verification cache.
 
 ### Other
 

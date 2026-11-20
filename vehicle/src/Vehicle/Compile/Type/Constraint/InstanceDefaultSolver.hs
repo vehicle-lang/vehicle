@@ -5,7 +5,7 @@ module Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 where
 
 import Control.Monad (filterM)
-import Data.Foldable (minimumBy)
+import Data.Foldable (minimumBy, toList)
 import Data.Maybe (catMaybes, mapMaybe)
 import Data.Ord (comparing)
 import Data.Proxy (Proxy (..))
@@ -42,7 +42,7 @@ addNewInstanceConstraintUsingDefaults ::
   m Bool
 addNewInstanceConstraintUsingDefaults proxy = do
   instanceConstraints <- getActiveInstanceConstraints @builtin
-  defaultableConstraints <- getDefaultableConstraints proxy instanceConstraints
+  defaultableConstraints <- getDefaultableConstraints proxy (toList instanceConstraints)
   result <- chooseDefaultConstraint defaultableConstraints
   case result of
     Just candidate -> do

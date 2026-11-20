@@ -17,6 +17,8 @@ import Control.Applicative (liftA2)
 
 import Control.Monad (liftM2)
 import Control.Monad.Except (MonadError (..), runExceptT)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Compile.Constants.TensorValue
 import Vehicle.Compile.Constants.TensorValue.Core
 import Vehicle.Compile.Error
@@ -24,9 +26,9 @@ import Vehicle.Compile.Normalise.Builtin (evalCompareIndex, evalCompareNat, eval
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Normalise.RewriteRules (forceAndRewriteTensor)
 import Vehicle.Compile.Normalise.TypedValue
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue)
-import Vehicle.Data.Assertion (Assertion, comparisonToAssertion)
+import Vehicle.Compile.Prelude hiding (boundVariablesIn)
+import Vehicle.Compile.Unblock (TypeUnblockingFunction, UnblockingActions (..), unblockRatTensorValue, unblockSliceVariable)
+import Vehicle.Data.Assertion (Assertion, NormalisedRelation (..), comparisonToAssertion)
 import Vehicle.Data.Builtin.Interface (Accessor (..), applyAccessor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), forIfTreeM, mapIfTreeLeaves)
@@ -36,7 +38,7 @@ import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
-import Vehicle.Data.Variable.Bound.Level (SliceVariable)
+import Vehicle.Data.Variable.Bound.Level (SliceVariable, toLv)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
 type TensorValueLinearExpr = LinearExpr SliceVariable TensorConstantValue
@@ -115,13 +117,33 @@ tryPurifyRatTensorComparison op (TensorComparisonArgs _pDims rDims e1 e2) = do
             isUsable <- isUsableBound le
             return $ NonTrivial (val, if isUsable then Just le else Nothing)
 
-isUsableBound :: (MonadPurifyAssertion m) => Assertion TensorValueLinearExpr -> m Bool
+-- | Cannot currently create a bound from an assertion linking multiple
+-- sub-tensors of a single variable, e.g. `x ! 0 < x ! 1`, so this cuts it
+-- out.
+isUsableBound ::
+  (MonadPurifyAssertion m) =>
+  Assertion TensorValueLinearExpr ->
+  m Bool
 isUsableBound lexp = do
-  let variables = variablesOf lexp
-  parentVariables <- lookupParentTensorVariables (variablesOf lexp)
-  -- Cannot currently create a bound from an assertion linking multiple
-  -- sub-tensors of a single variable, e.g. `x ! 0 < x ! 1`.
-  return $ length variables == length parentVariables
+  let coefficientVariables = Set.map toLv $ variablesOf lexp
+  coefficientParentVariables <- lookupParentTensorVariables (variablesOf lexp)
+  -- Cannot handle constraints where there are multiple variables from
+  -- the same tensor variable, e.g. `x0 < x1`
+  if length coefficientVariables /= length coefficientParentVariables
+    then return False
+    else do
+      constantVariables <- findSliceVariablesInConstant lexp
+      constantParentVariables <- lookupParentTensorVariables constantVariables
+      -- Cannot handle constraints where the variables in the constant part
+      -- of the expression are not in scope for the coefficients.
+      return $ Set.lookupMax constantParentVariables < Set.lookupMin coefficientParentVariables
+
+findSliceVariablesInConstant ::
+  (MonadPurifyAssertion m) => Assertion TensorValueLinearExpr -> m (Set Lv)
+findSliceVariablesInConstant lexp = do
+  depth <- getBinderDepth
+  let maybeValue = tensorValue $ constantValue $ expression lexp
+  return $ maybe mempty (boundVariablesIn depth) maybeValue
 
 --------------------------------------------------------------------------------
 -- Compiling linear expressions
@@ -371,7 +393,7 @@ purifyBoundVar unblock lv spine = case spine of
     maybeSliceVar <- lookupSliceVariableInNestedCtx lv
     case maybeSliceVar of
       Nothing -> return $ IfLeaf $ Forced $ VBoundVar lv []
-      Just sliceVar -> unblock =<< replaceTensorVariableWithStackedChildren sliceVar
+      Just sliceVar -> unblockSliceVariable unblock sliceVar
 
 --------------------------------------------------------------------------------
 -- Utility functions

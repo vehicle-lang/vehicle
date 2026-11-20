@@ -33,7 +33,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar, constructToTensorFreeVar)
-import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..))
+import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..), unblockSliceVariable)
 import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Interface
@@ -43,7 +43,6 @@ import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Context.Name (getFreshTensorBinderName, getNameContext, prettyFriendlyInCtx)
-import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStackedChildren)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields, getRecordProvenance)
 import Vehicle.Verify.Core
@@ -282,7 +281,7 @@ unblockQuantifiedBoundVar ::
   m (IfTree (Thunk Builtin) (Thunk Builtin))
 unblockQuantifiedBoundVar unblock lv spine = case spine of
   _ : _ -> unexpectedExprError "purification" "bound var with non-empty spine"
-  [] -> unblock =<< replaceTensorVariableWithStackedChildren (SliceVariable lv)
+  [] -> unblockSliceVariable unblock (SliceVariable lv)
 
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>

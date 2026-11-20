@@ -33,11 +33,11 @@ instance Pretty BlockingStatus where
 unknownBlockingStatus :: BlockingStatus
 unknownBlockingStatus = BlockingStatus Nothing
 
-isStillBlocked :: MetaSet -> BlockingStatus -> Bool
-isStillBlocked solvedMetas (BlockingStatus status) =
+isStillBlocked :: (MetaID -> Bool) -> BlockingStatus -> Bool
+isStillBlocked isSolved (BlockingStatus status) =
   -- If unknown then not blocked, otherwise blocked if none of the blocking
   -- metas are solved.
-  maybe False (MetaSet.disjoint solvedMetas) status
+  maybe False (not . any isSolved . MetaSet.toList) status
 
 --------------------------------------------------------------------------------
 -- Constraint contexts
@@ -293,11 +293,11 @@ blockConstraintOn ::
   Contextualised c (ConstraintContext builtin)
 blockConstraintOn (WithContext c ctx) metas = WithContext c (blockCtxOn metas ctx)
 
-isBlocked :: MetaSet -> ConstraintContext builtin -> Bool
-isBlocked solvedMetas ctx = isStillBlocked solvedMetas (blockedBy ctx)
+isBlocked :: (MetaID -> Bool) -> ConstraintContext builtin -> Bool
+isBlocked isSolved ctx = isStillBlocked isSolved (blockedBy ctx)
 
-constraintIsBlocked :: MetaSet -> Contextualised c (ConstraintContext builtin) -> Bool
-constraintIsBlocked solvedMetas c = isBlocked solvedMetas (contextOf c)
+constraintIsBlocked :: (MetaID -> Bool) -> Contextualised c (ConstraintContext builtin) -> Bool
+constraintIsBlocked isSolved c = isBlocked isSolved (contextOf c)
 
 --------------------------------------------------------------------------------
 -- Restrictions on decl types

@@ -41,9 +41,13 @@ scopeDecl decl =
         t' <- runMonadScopeExprT $ scopeExpr t
         return [DefAbstract p ident r t']
       DefFunction p ident anns t e -> do
-        t' <- runMonadScopeExprT $ scopeExpr =<< generaliseType t
+        t' <-
+          if isAnnotatedAsProperty anns
+            then return t
+            else runMonadScopeExprT $ generaliseType t
+        t'' <- runMonadScopeExprT $ scopeExpr =<< generaliseType t'
         e' <- runMonadScopeExprT $ scopeExpr e
-        return [DefFunction p ident anns t' e']
+        return [DefFunction p ident anns t'' e']
       DefRecord p ident sort telescope fields supports -> do
         (telescope', fields') <- runMonadScopeExprT $ scopeRecordDefinition ident telescope fields
         auxiliaryDeclarations <- generateAuxiliaryRecordDefinitions p ident sort telescope' fields' supports
