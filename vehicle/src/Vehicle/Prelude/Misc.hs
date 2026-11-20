@@ -25,6 +25,8 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Serialize as Serialize (Get, Putter, Serialize (..), getListOf, putListOf)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -212,6 +214,14 @@ findAndDeleteElem p = go id
 
 traverseAndPair :: (Applicative m, Traversable f) => (a -> m b) -> f a -> m (f (a, b))
 traverseAndPair f = traverse (\x -> (x,) <$> f x)
+
+-- | Finds and removes the first element satisfying the predicate,
+-- preserving the order of the remaining elements.
+findAndDeleteSeqElem :: (a -> Bool) -> Seq a -> Maybe (a, Seq a)
+findAndDeleteSeqElem p xs = do
+  i <- Seq.findIndexL p xs
+  x <- Seq.lookup i xs
+  return (x, Seq.deleteAt i xs)
 
 -- | Used to distinguish between inputs and outputs of neural networks.
 data InputOrOutput

@@ -3,6 +3,7 @@
 module Vehicle.Data.Builtin.Standard.Type () where
 
 import Data.Foldable (traverse_)
+import Data.Foldable qualified as Foldable
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Scope.Core
@@ -231,5 +232,5 @@ addNewStandardAuxiliaryConstraintUsingDefaults ::
 addNewStandardAuxiliaryConstraintUsingDefaults proxy = do
   -- Calculate the set of candidate constraints
   auxiliaryConstraints <- getActiveAuxiliaryInstanceConstraints
-  defaultableConstraints <- getDefaultableConstraints proxy auxiliaryConstraints
+  defaultableConstraints <- getDefaultableConstraints proxy (Foldable.toList auxiliaryConstraints)
   solveDefaultIndexConstraints defaultableConstraints
