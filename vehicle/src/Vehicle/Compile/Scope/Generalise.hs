@@ -44,6 +44,8 @@ findGeneralisableVariables = \case
     void $ traverseRecordFields findGeneralisableVariables fields
   S.RecordAcc _ record _field -> do
     findGeneralisableVariables record
+  S.Differentiate _ expr _field ->
+    findGeneralisableVariables expr
 
 findGeneralisableVariablesBinder :: (MonadScopeExpr builtin m, MonadWriter [GeneralisableVariable] m) => S.Binder builtin -> m () -> m ()
 findGeneralisableVariablesBinder binder update = do

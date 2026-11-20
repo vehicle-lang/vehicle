@@ -259,7 +259,19 @@ inferExpr e = do
       checkedRecord <- checkExpr checkedRecordType uncheckedRecord
       let fieldType = lookupRecordField expectedFieldTypes field
       return (RecordProj p checkedRecordType checkedRecord field, fieldType)
+    Differentiate p t expr field -> do
+      -- Check t has type 'type'
+      checkedT <- checkExpr (TypeUniverse p 0) t
+      -- Build expected function type t -> ?R, with unknown result type
+      relevance <- ask
+      boundCtx <- getBoundCtx (Proxy @(Type builtin))
+      resultType <- freshMetaExpr p (TypeUniverse p 0) relevance boundCtx
+      let inputBinder = mkExplicitBinder checkedT Nothing
+      let functionType = Pi p inputBinder (liftDBIndices 1 resultType)
 
+      -- Infer result type by checking expr against t -> ?R
+      checkedExpr <- checkExpr functionType expr
+      return (Differentiate p checkedT checkedExpr field, functionType)
   showInferExit res
   return res
 

@@ -463,6 +463,7 @@ compileExpr expr = do
             )
     RecordProj _p _t r field ->
       annotateApp [] Nothing (pretty field) [explicit r]
+    Differentiate {} -> developerError "Differentiation compilation to Agda is not implemented"
   logExit result
   return result
 

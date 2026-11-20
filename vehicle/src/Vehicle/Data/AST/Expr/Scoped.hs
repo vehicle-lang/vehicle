@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Data.AST.Expr.Scoped
-  ( Expr (Universe, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj, App),
+  ( Expr (Universe, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj, App, Differentiate),
     Type,
     Binder,
     Arg,
@@ -128,6 +128,12 @@ data Expr builtin
       (Type builtin) -- Type of the record, e.g. `Pair Int Int`
       (Expr builtin) -- The actual record, e.g. `{a = 1, b = 1}`
       FieldName -- The field to access, e.g. `a`
+  | -- | Differentiation
+    Differentiate
+      Provenance
+      (Type builtin) -- Type of the record, e.g. `{ position : Real, time : Real}`
+      (Expr builtin) -- The function being differentiated
+      FieldName -- The field which the expression is differentiated with respect to, e.g. `time`
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 --------------------------------------------------------------------------------
@@ -144,7 +150,7 @@ pattern App f xs <- UnsafeApp f xs
   where
     App f xs = normApp f xs
 
-{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj #-}
+{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj, Differentiate #-}
 
 -- | Smart constructor for applications with possibly no arguments.
 normAppList :: Expr builtin -> [Arg builtin] -> Expr builtin
@@ -191,6 +197,7 @@ instance HasProvenance (Expr builtin) where
     Lam p _ _ -> p
     Record p _ _ -> p
     RecordProj p _ _ _ -> p
+    Differentiate p _ _ _ -> p
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -246,6 +253,7 @@ traverseBuiltinsM f expr = case expr of
   BoundVar p v -> return $ BoundVar p v
   Hole p n -> return $ Hole p n
   Meta p m -> return $ Meta p m
+  Differentiate p t e field -> Differentiate p <$> traverseBuiltinsM f t <*> traverseBuiltinsM f e <*> pure field
 
 traverseBuiltinsArg :: (Monad m) => BuiltinUpdate m builtin1 builtin2 -> Arg builtin1 -> m (Arg builtin2)
 traverseBuiltinsArg f = traverse (traverseBuiltinsM f)
@@ -312,6 +320,10 @@ traverseFreeVarsM underBinder processFreeVar = go
         return $ Let p bound' binder' body'
       Record p i fs -> Record p i <$> traverseRecordFields go fs
       RecordProj p t r field -> RecordProj p <$> go t <*> go r <*> pure field
+      Differentiate p t e field -> do
+        t' <- go t
+        e' <- go e
+        return $ Differentiate p t' e' field
 
 freeVarsIn :: Expr builtin -> Set Identifier
 freeVarsIn =
@@ -358,6 +370,7 @@ traverseBoundVariables_ f ctxSize = go ctxSize
         go (depth + 1) body
       Record _ i fs -> do go depth i; traverseRecordFields_ (go depth) fs
       RecordProj _ t r _field -> do go depth t; go depth r
+      Differentiate _ t e _ -> do go depth t; go depth e
 
 replaceProvenance :: Provenance -> Expr builtin -> Expr builtin
 replaceProvenance p = go
@@ -376,6 +389,7 @@ replaceProvenance p = go
       Lam _ binder e -> Lam p (fmap go binder) (go e)
       Record _ ident fields -> Record p ident (mapRecordFields go fields)
       RecordProj _ recordType record field -> RecordProj p (go recordType) (go record) field
+      Differentiate _ t e field -> Differentiate p (go t) (go e) field
 
 -----------------------------------------------------------------------------
 -- Instances
@@ -471,6 +485,7 @@ instance Substitutable (Expr builtin) (Expr builtin) where
     Lam p binder e -> Lam p <$> traverse subst binder <*> underDBBinder (subst e)
     Record p i fs -> Record p i <$> traverseRecordFields subst fs
     RecordProj p t r field -> RecordProj p <$> subst t <*> subst r <*> pure field
+    Differentiate p t e field -> Differentiate p <$> subst t <*> subst e <*> pure field
 
 shiftDBIndex :: Ix -> Lv -> Ix
 shiftDBIndex i l = Ix (unIx i + unLv l)

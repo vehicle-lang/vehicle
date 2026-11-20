@@ -116,6 +116,11 @@ scopeExpr e = case e of
     (ident, _) <- lookupRecordDefinitionByField field
     let projFn = FreeVar p (Identifier (modulePath ident) (nameOf field))
     return $ normAppList projFn [explicit record']
+  S.Differentiate p expr field -> do
+    expr' <- scopeExpr expr
+    identAndTelescope <- lookupRecordDefinitionByField field
+    let t = calculateConcreteRecordType p identAndTelescope
+    return $ Differentiate p t expr' field
 
 scopeBuiltin ::
   (MonadScopeExpr builtin m) =>

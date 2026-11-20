@@ -59,6 +59,11 @@ data GenericForcedValue meta builtin
   | VRecord
       !(GenericThunk meta builtin)
       !(GenericUnforcedRecordFields meta builtin)
+  | VDifferentiate
+      !(GenericThunk meta builtin)
+      !(GenericThunk meta builtin)
+      !FieldName
+      !(GenericUnforcedSpine meta builtin)
   deriving (Show, Generic, Eq, Ord)
 
 -- | A thunk represents an expression that may not yet have been evaluated.
@@ -208,6 +213,9 @@ boundVariablesIn ctxSize = execWriter . goThunk ctxSize
         goThunk depth i
         traverse_ (goThunk depth) fs
       VRecordAcc _ t _ spine -> do
+        goThunk depth t
+        goSpine depth spine
+      VDifferentiate _ t _ spine -> do
         goThunk depth t
         goSpine depth spine
 

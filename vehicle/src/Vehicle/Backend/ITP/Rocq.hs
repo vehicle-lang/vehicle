@@ -399,6 +399,8 @@ compileExpr expr = do
       return $ encloseSep (lbrace <> "|" <> space) (space <> "|" <> rbrace) (semi <> space) fs'
     RecordProj _p _t r field ->
       compileNotationAndArgs [] NotAssociative Nothing ("$0.(" <> nameOf field <> ")") (Just $ nameOf field) [explicit r]
+    Differentiate {} ->
+      developerError "Differentiation compilation to Rocq is not implemented"
   logExit result
   return result
 

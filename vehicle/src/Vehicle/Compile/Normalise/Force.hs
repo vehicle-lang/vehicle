@@ -96,6 +96,7 @@ instance
     VFreeVar {} -> return value
     VBoundVar {} -> return value
     VRecord {} -> return value
+    VDifferentiate {} -> return value
 
   forceBuiltinEval evalFn b spine =
     case getExpr accessSpine spine of
@@ -158,6 +159,8 @@ eval env expr = do
       return $ VPi (fmap (Unforced env) binder) (Closure env body)
     Record _p recordType fields ->
       return $ VRecord (Unforced env recordType) $ OMap.fromList $ fmap (second (Unforced env)) fields
+    Differentiate _ t e field ->
+      return $ VDifferentiate (Unforced env t) (Unforced env e) field []
 
   showExit result
   return result
@@ -201,6 +204,8 @@ forceApplication fun args@(a : as) = do
     VPi {} -> illTyped "VPi"
     VRecord {} -> illTyped "VRecord"
     VUniverse {} -> illTyped "VUniverse"
+    VDifferentiate t e field spine ->
+      return $ VDifferentiate t e field (spine <> args)
   where
     illTyped e = developerError $ "ill-typed function" <+> e
 

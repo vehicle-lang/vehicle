@@ -70,6 +70,7 @@ instance Delaborate (V.Expr V.Builtin) B.Expr where
     V.App fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
     V.Record _ fs -> B.Record <$> traverse delabM fs
     V.RecordAcc _ r f -> B.RecordAcc <$> delabM r <*> delabM f
+    V.Differentiate _ e f -> B.Differentiate <$> delabM e <*> delabM f
 
 instance Delaborate V.FieldName B.NameToken where
   delabM (V.FieldName _ name) = return $ delabSymbol name

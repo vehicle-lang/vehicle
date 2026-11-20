@@ -88,6 +88,7 @@ instance HasMetas (Expr builtin) where
     App fun args -> do findMetas s fun; findMetas s args
     Record _ _ fields -> findMetas s $ fmap snd fields
     RecordProj _ recordType record _ -> do findMetas s recordType; findMetas s record
+    Differentiate _ t e _ -> do findMetas s t; findMetas s e
 
 instance HasMetas (ForcedValueWithMetas builtin) where
   findMetas s expr = case expr of
@@ -104,6 +105,10 @@ instance HasMetas (ForcedValueWithMetas builtin) where
     VRecordAcc recordType record _ spine -> do
       findMetas s recordType
       findMetas s record
+      findMetas s spine
+    VDifferentiate recordType e _field spine -> do
+      findMetas s recordType
+      findMetas s e
       findMetas s spine
 
 instance HasMetas (ThunkWithMetas builtin) where
@@ -209,6 +214,7 @@ instance MetaSubstitutable m builtin (Expr builtin) where
       Pi p binder res -> Pi p <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s res
       Let p e1 binder e2 -> Let p <$> substMetasAt ctx s e1 <*> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s e2
       Lam p binder e -> Lam p <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s e
+      Differentiate p t e field -> Differentiate p <$> substMetasAt ctx s t <*> substMetasAt ctx s e <*> pure field
 
 -- | We really don't want un-normalised lambda applications from solved meta-variables
 -- clogging up our program so this function detects meta applications and normalises
@@ -255,6 +261,11 @@ instance MetaSubstitutable m builtin (ForcedValueWithMetas builtin) where
     VBuiltin b spine -> do
       spine' <- traverse (substMetasAt ctx s) spine
       return $ VBuiltin b spine'
+    VDifferentiate recordType e field spine -> do
+      recordType' <- substMetasAt ctx s recordType
+      e' <- substMetasAt ctx s e
+      spine' <- traverse (substMetasAt ctx s) spine
+      return $ VDifferentiate recordType' e' field spine'
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.

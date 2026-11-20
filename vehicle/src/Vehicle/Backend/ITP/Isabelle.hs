@@ -528,6 +528,7 @@ compileExprUnfoldings expr = case expr of
   Universe _ _ -> []
   Meta _ _ -> []
   Hole _ _ -> []
+  Differentiate {} -> developerError "Differentiation compilation to Isabelle is not implemented"
 
 compileExpr :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> Expr DecidabilityBuiltin -> m Code
 compileExpr isOutType localeAssms expr = do
@@ -557,6 +558,8 @@ compileExpr isOutType localeAssms expr = do
     App fun args -> compileApp isOutType localeAssms fun args
     Record _p _i fs -> compileRecord localeAssms fs
     RecordProj _p _t _r _field -> developerError "Record projection should have been eliminated before compilation"
+    Differentiate {} ->
+      developerError "Differentiation compilation to Isabelle is not implemented"
   logExit result
   return result
 

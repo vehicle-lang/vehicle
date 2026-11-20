@@ -222,6 +222,11 @@ collectExprTokens = \case
     fieldsToks <- collectFieldsTokens fields
     return fieldsToks
   RecordProj p _typ _body _fieldName -> singleton <$> mkTok p (SemanticTokenTypes_Method, [])
+  Differentiate _p _typ expr field -> do
+    exprToks <- collectExprTokens expr
+    -- Could be odd to record this field as a method, because it won't be accessed like model.time, rather delta[model]/delta[time]
+    fieldTok <- mkTok (provenanceOf field) (SemanticTokenTypes_Property, [])
+    return $ exprToks ++ [fieldTok]
 
 collectArgTokens ::
   (MonadCollectTokens m) =>
@@ -369,6 +374,8 @@ classifyTokenOfType depth = \case
   Lam _ binder body -> addBinderToContext binder $ classifyTokenOfType depth body
   Record _ typ _fields -> classifyTokenOfType depth typ
   RecordProj _ _typ _body _fieldName -> return $ Just (SemanticTokenTypes_Method, [])
+  -- Not sure at this point
+  Differentiate {} -> return Nothing
 
 classifyDeclHead :: (MonadCollectTokens m) => GenericDecl (Expr Builtin) -> m (Maybe TokenClass)
 classifyDeclHead = \case

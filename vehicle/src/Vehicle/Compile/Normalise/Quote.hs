@@ -106,6 +106,11 @@ instance (MetaLike meta) => Quote (GenericForcedValue meta builtin) (Expr builti
       let quotedRecord = quote handler level record
       let quotedProj = RecordProj p quotedRecordType quotedRecord field
       quoteApp handler level quotedProj spine
+    VDifferentiate recordType expr field spine -> do
+      let quotedRecordType = quote handler level recordType
+      let quotedExpr = quote handler level expr
+      let quotedDiff = Differentiate p quotedRecordType quotedExpr field
+      quoteApp handler level quotedDiff spine
     where
       p = mempty
 
