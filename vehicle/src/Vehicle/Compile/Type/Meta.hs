@@ -2,6 +2,7 @@ module Vehicle.Compile.Type.Meta
   ( MetaSet,
     MetaVariableContext,
     MetaInfo (..),
+    SolvedMetaInfo (..),
     extendMetaCtx,
     makeMetaType,
     getMetaDependencies,
@@ -22,8 +23,7 @@ findUltimateUnsolvedMeta ::
   MetaID ->
   m MetaID
 findUltimateUnsolvedMeta ctx meta = do
-  let metaInfo = lookupMetaInfo ctx meta
-  maybeNextMeta <- case metaSolution metaInfo of
+  maybeNextMeta <- case lookupMetaSolution ctx meta of
     Just solution -> findMetaInSolution ctx $ unnormalised solution
     Nothing -> return Nothing
 

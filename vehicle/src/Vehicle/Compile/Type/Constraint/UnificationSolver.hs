@@ -402,8 +402,8 @@ pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies attemptedSolutio
               <+> "found in own solution"
               <+> squotes (prettyVerbose attemptedSolution)
       | otherwise = do
-          metaInfo <- getMetaInfo m
-          case metaSolution metaInfo of
+          maybeSolution <- getMetaSolution m
+          case maybeSolution of
             Just solution -> do
               forceApplicationWithMetas (toNamedBoundCtx ctx) (normalised solution) spine
             Nothing -> do

@@ -58,7 +58,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyExternal, prettyExternal, prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
-import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..), addMetaSolution, solvedMetasIn, unsolvedMetasIn)
+import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..), addMetaSolution, solvedMetaInfos, unsolvedMetaInfos)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
@@ -261,7 +261,8 @@ solveMeta ::
   m ()
 solveMeta meta solution solutionCtx = do
   metaInfo <- getMetaInfo meta
-  case metaSolution metaInfo of
+  maybeExistingSolution <- getMetaSolution @builtin meta
+  case maybeExistingSolution of
     Just existing ->
       compilerDeveloperError $
         "meta-variable"
@@ -289,8 +290,7 @@ solveMeta meta solution solutionCtx = do
 
       modifyTypeCheckerDeclState $ \state ->
         state
-          { metaVariableCtx = addMetaSolution gluedSolution meta (metaVariableCtx state),
-            solvedMetaState = registerSolvedMeta meta (solvedMetaState state)
+          { metaVariableCtx = addMetaSolution gluedSolution meta (metaVariableCtx state)
           }
 
 -- | Attempts to solve as many constraints as possible. Takes in
@@ -361,8 +361,8 @@ logUnsolvedUnknowns _proxy = do
               <> indent 2 (prettyExternal decl)
               <> line
 
-    let solvedMetas = solvedMetasIn updatedMetaVarCtx
-    let unsolvedMetas = unsolvedMetasIn updatedMetaVarCtx
+    let solvedMetas = solvedMetaInfos updatedMetaVarCtx
+    let unsolvedMetas = unsolvedMetaInfos updatedMetaVarCtx
 
     return $
       "solved-metas:"

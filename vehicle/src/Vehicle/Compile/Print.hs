@@ -40,7 +40,7 @@ import Vehicle.Compile.Simplify
 import Vehicle.Compile.Sugar.Resugar.External as External (delab)
 import Vehicle.Compile.Sugar.Resugar.Internal as Internal (delab)
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta (MetaInfo (..))
+import Vehicle.Compile.Type.Meta (MetaInfo (..), SolvedMetaInfo (..))
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Data.AST.Expr.Desugared qualified as D
 import Vehicle.Data.Assertion (NormalisedRelation (..), prettyFlip)
@@ -48,7 +48,7 @@ import Vehicle.Data.Bound
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.ForcedValue (ForcedValue, ForcedValueWithMetas, GenericBoundEnv (..), GenericForcedValue (..), GenericThunk, GenericUnforcedArg, GenericUnforcedBinder, Thunk, ThunkWithMetas, unnormalised)
+import Vehicle.Data.Code.ForcedValue (ForcedValue, ForcedValueWithMetas, GenericBoundEnv (..), GenericForcedValue (..), GenericThunk, GenericUnforcedArg, GenericUnforcedBinder, GluedExprWithMetas, Thunk, ThunkWithMetas, unnormalised)
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Real (ExtendedRational (..))
@@ -270,6 +270,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (Constraint builtin `In` ConstraintContext builtin) = StrategyFor tags (ThunkWithMetas builtin `In` NamedBoundCtx)
   StrategyFor tags (InstanceCandidate builtin `In` BoundCtx (Type builtin)) = StrategyFor tags (Expr builtin `In` NamedBoundCtx)
   StrategyFor tags (MetaInfo builtin `In` NoCtx) = StrategyFor tags (ThunkWithMetas builtin `In` NamedBoundCtx)
+  StrategyFor tags (SolvedMetaInfo builtin `In` NoCtx) = StrategyFor tags (ThunkWithMetas builtin `In` NamedBoundCtx)
   --------------------------
   -- Variable constraints --
   --------------------------
@@ -888,18 +889,32 @@ instance
   (PrettyUsing rest (Type builtin `In` NamedBoundCtx)) =>
   PrettyUsing rest (MetaInfo builtin `In` NoCtx)
   where
-  prettyUsing (MetaInfo {..}, ()) = do
-    let nameCtx = toNamedBoundCtx metaCtx
-    let typeDoc = prettyUsing @rest (metaType, nameCtx)
-    let solutionDoc = case metaSolution of
-          Nothing -> "?"
-          Just solution -> prettyUsing @rest (unnormalised solution, nameCtx)
-    align $
-      prettyMapEntries
-        [ ("solution", solutionDoc),
-          ("type    ", typeDoc),
-          ("context ", prettyNamedBoundCtx nameCtx)
-        ]
+  prettyUsing (info, ()) = prettyMetaInfoWithSolution @rest info Nothing
+
+instance
+  (PrettyUsing rest (Type builtin `In` NamedBoundCtx)) =>
+  PrettyUsing rest (SolvedMetaInfo builtin `In` NoCtx)
+  where
+  prettyUsing (SolvedMetaInfo {..}, ()) = prettyMetaInfoWithSolution @rest solvedMetaInfo (Just metaSolution)
+
+prettyMetaInfoWithSolution ::
+  forall rest builtin a.
+  (PrettyUsing rest (Type builtin `In` NamedBoundCtx)) =>
+  MetaInfo builtin ->
+  Maybe (GluedExprWithMetas builtin) ->
+  Doc a
+prettyMetaInfoWithSolution MetaInfo {..} maybeSolution = do
+  let nameCtx = toNamedBoundCtx metaCtx
+  let typeDoc = prettyUsing @rest (metaType, nameCtx)
+  let solutionDoc = case maybeSolution of
+        Nothing -> "?"
+        Just solution -> prettyUsing @rest (unnormalised solution, nameCtx)
+  align $
+    prettyMapEntries
+      [ ("solution", solutionDoc),
+        ("type    ", typeDoc),
+        ("context ", prettyNamedBoundCtx nameCtx)
+      ]
 
 --------------------------------------------------------------------------------
 -- Assertions

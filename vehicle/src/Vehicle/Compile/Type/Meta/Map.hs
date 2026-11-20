@@ -8,6 +8,7 @@ module Vehicle.Compile.Type.Meta.Map
     mapMaybe,
     insert,
     insertWith,
+    delete,
     filter,
     partition,
     keys,
@@ -66,6 +67,9 @@ insertWith ::
   MetaMap a ->
   MetaMap a
 insertWith f m e s = coerce (IntMap.insertWith f (coerce m) e (coerce s))
+
+delete :: MetaID -> MetaMap a -> MetaMap a
+delete (MetaID m) (MetaMap s) = MetaMap (IntMap.delete m s)
 
 unions :: [MetaMap a] -> MetaMap a
 unions xs = MetaMap (IntMap.unions (fmap coerce xs))

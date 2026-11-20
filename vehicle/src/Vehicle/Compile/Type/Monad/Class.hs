@@ -21,60 +21,19 @@ import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta
-  ( MetaInfo (..),
-    MetaVariableContext,
-    lookupMetaInfo,
-  )
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution (HasMetas, MetaSubstitutable (..), RawMetaSubstitutable (..))
 import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
 import Vehicle.Compile.Type.Meta.Variable
-  ( addFreshMeta,
-    adjustMetaInfo,
-    emptyMetaVariableContext,
-    numberOfMetas,
-    solvedMetasIn,
-    unsolvedMetasIn,
-  )
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.ForcedValue (ForcedValueWithMetas, ThunkWithMetas, UnforcedSpineWithMetas)
+import Vehicle.Data.Code.ForcedValue (ForcedValueWithMetas, GluedExprWithMetas, ThunkWithMetas, UnforcedSpineWithMetas)
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (addDeclToContext)
 import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext)
-
---------------------------------------------------------------------------------
--- Solved meta-state
-
--- | Tracks meta-variables that have been solved in certain regions of the code.
--- Each element in the list represent one nested tracking region, with the
--- head of the list representing the most recent.
-newtype SolvedMetaState = SolvedMetaState [MetaSet]
-
-enterSolvedMetaTrackingRegion :: SolvedMetaState -> SolvedMetaState
-enterSolvedMetaTrackingRegion (SolvedMetaState state) =
-  SolvedMetaState (mempty : state)
-
-registerSolvedMeta :: MetaID -> SolvedMetaState -> SolvedMetaState
-registerSolvedMeta m (SolvedMetaState state) = SolvedMetaState $
-  case state of
-    [] -> []
-    l : ls -> MetaSet.insert m l : ls
-
-getMostRecentlySolvedMetas :: SolvedMetaState -> MetaSet
-getMostRecentlySolvedMetas (SolvedMetaState state) =
-  fromMaybe mempty (state !!? 0)
-
-exitSolvedMetaTrackingRegion :: SolvedMetaState -> SolvedMetaState
-exitSolvedMetaTrackingRegion (SolvedMetaState state) = SolvedMetaState $
-  case state of
-    [] -> []
-    [_] -> []
-    l1 : l2 : ls -> l1 <> l2 : ls
 
 --------------------------------------------------------------------------------
 -- The overall meta variable context
@@ -95,7 +54,6 @@ data TypeCheckerDeclState builtin = TypeCheckerDeclState
     -- | Instance constraints not solvable by instance class resolution
     auxiliaryInstanceConstraints :: Seq (WithContext (InstanceConstraint builtin)),
     freshNameState :: FreshNameState,
-    solvedMetaState :: SolvedMetaState,
     nextConstraintID :: ConstraintID
   }
 
@@ -111,7 +69,6 @@ emptyTypeCheckerDeclState =
       instanceConstraints = mempty,
       auxiliaryInstanceConstraints = mempty,
       freshNameState = 0,
-      solvedMetaState = SolvedMetaState mempty,
       nextConstraintID = 0
     }
 
@@ -246,31 +203,23 @@ addBuiltinTypeToDatabase builtin builtinType = do
       }
 
 -- | Track the metas solved while performing the provided computation.
--- Multiple calls can be nested arbitrarily deepily.
+-- Multiple calls can be nested arbitrarily deeply. As meta solutions are
+-- never removed, the metas solved during the computation are exactly
+-- those solved afterwards that were not solved beforehand.
 trackSolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m () -> m MetaSet
-trackSolvedMetas _ performComputation = do
-  modifySolvedMetaState enterSolvedMetaTrackingRegion
-
+trackSolvedMetas proxy performComputation = do
+  solvedBefore <- getSolvedMetas proxy
   performComputation
-
-  solvedMetas <- getsTypeCheckerDeclState @builtin (getMostRecentlySolvedMetas . solvedMetaState)
-  modifySolvedMetaState exitSolvedMetaTrackingRegion
-
-  return solvedMetas
-  where
-    modifySolvedMetaState :: (SolvedMetaState -> SolvedMetaState) -> m ()
-    modifySolvedMetaState f = modifyTypeCheckerDeclState @builtin $ \state ->
-      state
-        { solvedMetaState = f (solvedMetaState state)
-        }
+  solvedAfter <- getSolvedMetas proxy
+  return $ MetaSet.difference solvedAfter solvedBefore
 
 getIsUnblockedFn ::
   forall builtin m constraint.
   (MonadTypeChecker builtin m) =>
   m (Contextualised constraint (ConstraintContext builtin) -> Bool)
 getIsUnblockedFn = do
-  metasSolved <- getSolvedMetas (Proxy @builtin)
-  let isUnblocked = not . constraintIsBlocked metasSolved
+  metaCtx <- getMetaVariableCtx @builtin
+  let isUnblocked = not . constraintIsBlocked (isMetaSolved metaCtx)
   return isUnblocked
 
 metasIn ::
@@ -302,15 +251,13 @@ substMetaVariablesAt ctx x = do
   s <- getMetaVariableCtx
   MetaSubstitution.substMetasAt ctx s x
 
+-- | The set of solved metas. Note this is O(n).
 getSolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet
-getSolvedMetas _proxy = do
-  unsolvedMetas <- solvedMetasIn <$> getMetaVariableCtx @builtin
-  return $ MetaMap.keys unsolvedMetas
+getSolvedMetas _proxy = solvedMetaIDs <$> getMetaVariableCtx @builtin
 
+-- | The set of unsolved metas. Note this is O(n).
 getUnsolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet
-getUnsolvedMetas _proxy = do
-  unsolvedMetas <- unsolvedMetasIn <$> getMetaVariableCtx @builtin
-  return $ MetaMap.keys unsolvedMetas
+getUnsolvedMetas _proxy = MetaMap.keys . unsolvedMetaInfos <$> getMetaVariableCtx @builtin
 
 forceThunkWithMetas ::
   (MonadTypeChecker builtin m) =>
@@ -350,7 +297,7 @@ freshMeta ::
   m (MetaID, Expr builtin)
 freshMeta p metaType relevance boundCtx = do
   -- Construct the information about the meta-variable
-  let info = MetaInfo p metaType relevance boundCtx Nothing
+  let info = MetaInfo p metaType relevance boundCtx
 
   -- Add it to the meta context, generating a fresh id
   TypeCheckerDeclState {..} <- getTypeCheckerDeclState
@@ -378,6 +325,12 @@ getMetaInfo :: (MonadTypeChecker builtin m) => MetaID -> m (MetaInfo builtin)
 getMetaInfo meta = do
   state <- getTypeCheckerDeclState
   return $ lookupMetaInfo (metaVariableCtx state) meta
+
+-- | Get the solution to the meta-variable, returning `Nothing` if it is unsolved.
+getMetaSolution :: (MonadTypeChecker builtin m) => MetaID -> m (Maybe (GluedExprWithMetas builtin))
+getMetaSolution meta = do
+  state <- getTypeCheckerDeclState
+  return $ lookupMetaSolution (metaVariableCtx state) meta
 
 getMetaIndex :: [MetaInfo builtin] -> MetaID -> Int
 getMetaIndex metaInfo (MetaID m) = length metaInfo - m - 1
@@ -527,10 +480,9 @@ getSubstMetaType m = do
 
 updateMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> Type builtin -> m ()
 updateMetaType m typ = do
-  let updateInfo info = info {metaType = typ}
   modifyTypeCheckerDeclState $ \state ->
     state
-      { metaVariableCtx = adjustMetaInfo updateInfo m (metaVariableCtx state)
+      { metaVariableCtx = setMetaType m typ (metaVariableCtx state)
       }
 
 --------------------------------------------------------------------------------
