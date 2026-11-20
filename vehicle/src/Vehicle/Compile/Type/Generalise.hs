@@ -11,7 +11,7 @@ import Data.Data (Proxy (..))
 import Data.Foldable (foldlM)
 import Data.Graph (graphFromEdges, topSort)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as Text
 import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
@@ -22,7 +22,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Meta.Variable (metasSatisfyingIn, unsolvedMetasIn)
+import Vehicle.Compile.Type.Meta.Variable (unsolvedMetaInfos)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
@@ -71,8 +71,8 @@ removeAllDependencies decl = do
   logCompilerSection2 MaxDetail "removing dependencies of unsolved metas" $ do
     -- Remove meta dependencies
     metaVariableCtx <- getMetaVariableCtx @builtin
-    let hasDependencies metaInfo = isNothing (metaSolution metaInfo) && not (null $ metaCtx metaInfo)
-    let metasToRemove = metasSatisfyingIn hasDependencies metaVariableCtx
+    let hasDependencies metaInfo = not (null $ metaCtx metaInfo)
+    let metasToRemove = MetaMap.filter hasDependencies (unsolvedMetaInfos metaVariableCtx)
     orderedMetasToRemove <- orderMetasByTypeDependencies metasToRemove
     forM_ orderedMetasToRemove $ \(meta, metaInfo) -> do
       logCompilerSection2 MaxDetail ("removing dependencies of" <+> pretty meta) $ do
@@ -178,7 +178,7 @@ generaliseOverUnsolvedMetas ::
   m (Decl builtin)
 generaliseOverUnsolvedMetas decl = do
   metaVariableCtx <- getMetaVariableCtx @builtin
-  let unsolvedMetas = unsolvedMetasIn metaVariableCtx
+  let unsolvedMetas = unsolvedMetaInfos metaVariableCtx
   sortedUnsolvedMetas <- sortMetasByTypeDependencies unsolvedMetas
 
   unsolvedInstanceConstraints <- getActiveInstanceConstraints
@@ -283,7 +283,7 @@ solveInTermsOfNewMetaWithDependencies ::
   MetaInfo builtin ->
   BoundCtx (Type builtin) ->
   m MetaID
-solveInTermsOfNewMetaWithDependencies meta (MetaInfo p typ relevance oldCtx _) newCtx = do
+solveInTermsOfNewMetaWithDependencies meta (MetaInfo p typ relevance oldCtx) newCtx = do
   substType <- substMetaVariablesAt (toNamedBoundCtx oldCtx) typ
   (newMeta, newMetaExpr) <- freshMeta p substType relevance newCtx
   solveMeta meta newMetaExpr newCtx

@@ -22,7 +22,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet, findUltimateUnsolvedMeta)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Meta.Variable (MetaVariableContext, lookupMetaInfo, metaCtx, metaSolution, metaType, traverseMetaInfos)
+import Vehicle.Compile.Type.Meta.Variable (MetaInfo, MetaVariableContext, lookupMetaInfo, lookupMetaSolution, metaCtx, traverseMetaTypesAndSolutions)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name
@@ -58,7 +58,7 @@ runForceT ::
   ReaderT (MetaID -> Maybe (GluedExprWithMetas builtin)) (WriterT MetaSet (NameBoundContextT m)) a ->
   m (a, MetaSet)
 runForceT ctx metaCtx action =
-  runNameBoundContextT ctx $ runWriterT $ runReaderT action (\m -> metaSolution $ lookupMetaInfo metaCtx m)
+  runNameBoundContextT ctx $ runWriterT $ runReaderT action (lookupMetaSolution metaCtx)
 
 --------------------------------------------------------------------------------
 -- Objects which have meta variables in.
@@ -70,7 +70,7 @@ class HasMetas a where
   findMetas :: (MonadWriter MetaSet m) => MetaSubstitution builtin -> a -> m ()
 
 processMeta :: (MonadWriter MetaSet m) => MetaSubstitution builtin -> MetaID -> m ()
-processMeta s m = case metaSolution $ lookupMetaInfo s m of
+processMeta s m = case lookupMetaSolution s m of
   Nothing -> tell (MetaSet.singleton m)
   Just sol -> findMetas s $ normalised sol
 
@@ -221,11 +221,10 @@ substMeta ::
   (Provenance, MetaID, [Arg builtin]) ->
   m (Expr builtin)
 substMeta ctx s (p, m, mArgs) = do
-  let metaInfo = lookupMetaInfo s m
-  case metaSolution metaInfo of
+  case lookupMetaSolution s m of
     Nothing -> normAppList (Meta p m) <$> substMetasAt ctx s mArgs
     Just value -> do
-      let shiftLv = boundCtxLv ctx - boundCtxLv (metaCtx metaInfo)
+      let shiftLv = boundCtxLv ctx - boundCtxLv (metaCtx (lookupMetaInfo s m))
       let liftedValue = liftDBIndices shiftLv (unnormalised value)
       substMetasAt ctx s $ substArgs liftedValue mArgs
 
@@ -237,8 +236,7 @@ instance MetaSubstitutable m builtin (ThunkWithMetas builtin) where
 instance MetaSubstitutable m builtin (ForcedValueWithMetas builtin) where
   substMetasAt ctx s expr = case expr of
     VMeta m spine -> do
-      let metaInfo = lookupMetaInfo s m
-      case metaSolution metaInfo of
+      case lookupMetaSolution s m of
         Nothing -> VMeta m <$> substMetasAt ctx s spine
         Just value -> do
           substValue <- forceApplicationWithMetas ctx s (normalised value) spine
@@ -311,12 +309,7 @@ instance (RawMetaSubstitutable m builtin a) => RawMetaSubstitutable m builtin [a
   substMetas s = traverse (substMetas s)
 
 instance RawMetaSubstitutable m builtin (MetaVariableContext builtin) where
-  substMetas s ctx = flip traverseMetaInfos ctx $ \entry -> do
-    let namedCtx = toNamedBoundCtx $ metaCtx entry
-    newType <- substMetasAt namedCtx s (metaType entry)
-    newSolution <- substMetasAt namedCtx s (metaSolution entry)
-    return $
-      entry
-        { metaSolution = newSolution,
-          metaType = newType
-        }
+  substMetas s = traverseMetaTypesAndSolutions subst subst
+    where
+      subst :: (MetaSubstitutable m builtin a) => MetaInfo builtin -> a -> m a
+      subst entry = substMetasAt (toNamedBoundCtx $ metaCtx entry) s
