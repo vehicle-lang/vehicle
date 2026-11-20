@@ -10,7 +10,9 @@ where
 
 import Control.Monad.Except (MonadError (..), runExcept, runExceptT)
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans (lift)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -45,6 +47,7 @@ import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), emptyModuleScopingInterface, emptyModuleTypingInterface)
+import Vehicle.Data.Variable.Free.Context (FreeContextT, MonadFreeContext (..), addDeclToContext, runFreshFreeContextT)
 import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath, standardLibraryInstanceOps)
 import Vehicle.Syntax.Parse (parseExternalModule)
 
@@ -167,16 +170,26 @@ resolveInstanceArgumentsAndCasts ::
   (MonadCompile m, Forced.NormalisableBuiltin builtin, BuiltinHasListLiterals builtin, Show builtin) =>
   Prog builtin ->
   m (Prog builtin)
-resolveInstanceArgumentsAndCasts prog =
+resolveInstanceArgumentsAndCasts (Main decls) =
   logCompilerSection2 MidDetail "resolution of instance arguments and casts" $ do
-    prog' <- flip traverseDecls prog $ \decl -> do
-      decl1 <- traverse (traverseBuiltinsM removeBuiltinInstances) decl
-      decl2 <- traverse (traverseBuiltinsM removeCasts) decl1
-      decl3 <- traverse (traverseFreeVarsM (\_b r -> r) removeExternalInstances) decl2
-      return decl3
+    resolvedDecls <- runFreshFreeContextT (Proxy @builtin) (resolveDecls decls)
+    let prog' = Main resolvedDecls
     logDebug MidDetail $ "Result:" <> lineIndent (prettyExternal prog')
     return prog'
   where
+    -- Declarations are processed in dependency order, and each resolved
+    -- declaration is added to the free context so that references to
+    -- instance declarations in later declarations can be unfolded.
+    resolveDecls :: [Decl builtin] -> FreeContextT builtin m [Decl builtin]
+    resolveDecls = \case
+      [] -> return []
+      decl : ds -> do
+        decl1 <- lift $ traverse (traverseBuiltinsM removeBuiltinInstances) decl
+        decl2 <- lift $ traverse (traverseBuiltinsM removeCasts) decl1
+        decl3 <- traverse (traverseFreeVarsM (\_b r -> r) removeExternalInstances) decl2
+        ds' <- addDeclToContext decl3 $ resolveDecls ds
+        return (decl3 : ds')
+
     removeBuiltinInstances :: BuiltinUpdate m builtin builtin
     removeBuiltinInstances p b args
       | Forced.isTypeClassOp b = do
@@ -197,12 +210,13 @@ resolveInstanceArgumentsAndCasts prog =
       Just f -> f args
       Nothing -> return $ normAppList (Builtin p b) args
 
-    removeExternalInstances :: FreeVarUpdate m builtin
+    removeExternalInstances :: FreeVarUpdate (FreeContextT builtin m) builtin
     removeExternalInstances recGo p ident args
       | Set.member ident standardLibraryInstanceOps = do
           args' <- traverseArgs recGo args
           (inst, remainingArgs) <- findInstanceArg ident args'
-          case inst of
+          unfoldedInst <- unfoldInstance inst
+          case unfoldedInst of
             Record _ _ fields -> do
               let solution = lookupRecordField fields (FieldName p (nameOf ident))
               -- Replace the provenance of the final solution with the provenance of where the
@@ -216,6 +230,22 @@ resolveInstanceArgumentsAndCasts prog =
       | otherwise = do
           args' <- traverseArgs recGo args
           return $ normAppList (FreeVar p ident) args'
+
+-- | Solved instance arguments are references to instance declarations.
+-- This unfolds such a reference to the definition of the instance.
+unfoldInstance ::
+  forall builtin m.
+  (MonadFreeContext builtin m) =>
+  Expr builtin ->
+  m (Expr builtin)
+unfoldInstance inst = case toHead inst of
+  (FreeVar _ instIdent, instArgs) -> do
+    decl <- getDeclEntry (Proxy @builtin) instIdent
+    case decl of
+      DefFunction _ _ _ _ definition ->
+        unfoldInstance (substArgs definition instArgs)
+      _ -> return inst
+  _ -> return inst
 
 removeImplicitArgs ::
   forall m builtin.

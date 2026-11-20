@@ -218,8 +218,8 @@ addInstanceToInstanceDatabase ::
   m ()
 addInstanceToInstanceDatabase decl priority =
   case decl of
-    DefFunction _ _ _ t e -> do
-      let candidate = InstanceCandidate t e priority
+    DefFunction p ident _ t _ -> do
+      let candidate = InstanceCandidate t (FreeVar p ident) priority
       instanceHead <- findValidInstanceHead (identifierOf decl, provenanceOf decl) candidate
       modifyTypeCheckerState $ \state ->
         state
@@ -418,10 +418,11 @@ instantiateTelescope ::
   (Type builtin, Expr builtin) ->
   m (Type builtin, Expr builtin, [Arg builtin])
 instantiateTelescope telescopeType createFreshInstance boundCtx = \case
-  (Pi _ piBinder exprBody, Lam _ _solutionBinder solutionBody) -> do
+  (Pi _ piBinder exprBody, solution) -> do
     let binderProvenance = provenanceOf piBinder
     let binderType = typeOf piBinder
     let binderRelevance = relevanceOf piBinder
+
     newArg <- case visibilityOf piBinder of
       Explicit {} -> case telescopeType of
         InstanceTelescope -> compilerDeveloperError "Should not have an explicit argument in instance goal telescope"
@@ -430,8 +431,13 @@ instantiateTelescope telescopeType createFreshInstance boundCtx = \case
         freshMetaExpr binderProvenance binderType binderRelevance boundCtx
       Instance {} -> do
         createFreshInstance (relevanceOf piBinder) binderType
+
     let exprBodyResult = newArg `substDBInto` exprBody
-    let solutionBodyResult = newArg `substDBInto` solutionBody
+    let solutionBodyResult = case solution of
+          -- If the solution is a lambda then beta-reduce it directly...
+          Lam _ _solutionBinder solutionBody -> newArg `substDBInto` solutionBody
+          -- ...otherwise apply it to the new argument.
+          _ -> normAppList solution [argFromBinder piBinder newArg]
     (typ', body', args) <- instantiateTelescope telescopeType createFreshInstance boundCtx (exprBodyResult, solutionBodyResult)
     return (typ', body', argFromBinder piBinder newArg : args)
   (typ, body) -> return (typ, body, [])
