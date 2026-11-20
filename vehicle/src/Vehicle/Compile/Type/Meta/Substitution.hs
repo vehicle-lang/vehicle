@@ -86,7 +86,7 @@ instance HasMetas (Expr builtin) where
     Let _ bound binder body -> do findMetas s bound; findMetas s binder; findMetas s body
     Lam _ binder body -> do findMetas s binder; findMetas s body
     App fun args -> do findMetas s fun; findMetas s args
-    Record _ _ fields -> findMetas s $ fmap snd fields
+    Record _ recordType fields -> do findMetas s recordType; findMetas s $ fmap snd fields
     RecordProj _ recordType record _ -> do findMetas s recordType; findMetas s record
 
 instance HasMetas (ForcedValueWithMetas builtin) where
@@ -202,7 +202,7 @@ instance MetaSubstitutable m builtin (Expr builtin) where
       Builtin {} -> return expr
       FreeVar {} -> return expr
       BoundVar {} -> return expr
-      Record p ident fields -> Record p ident <$> traverseRecordFields (substMetasAt ctx s) fields
+      Record p recordType fields -> Record p <$> substMetasAt ctx s recordType <*> traverseRecordFields (substMetasAt ctx s) fields
       RecordProj p recordType record field -> RecordProj p <$> substMetasAt ctx s recordType <*> substMetasAt ctx s record <*> pure field
       -- NOTE: no need to lift the substitutions here as we're passing under the binders
       -- because by construction every meta-variable solution is a closed term.
