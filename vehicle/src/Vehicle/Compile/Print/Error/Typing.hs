@@ -25,7 +25,6 @@ import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Free.Context (FreeContextT, runFreeContextT)
-import Vehicle.Prelude.Logging (SilentLoggerT, runSilentLoggerT)
 import Prelude hiding (pi)
 
 typingErrorDetails ::
@@ -497,8 +496,8 @@ prettyUnificationConstraintOriginExpr ::
 prettyUnificationConstraintOriginExpr ctx expr =
   prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
 
-runNorm :: FreeCtx builtin -> FreeContextT builtin (SilentLoggerT Identity) b -> b
-runNorm freeCtx = fst . runIdentity . runSilentLoggerT . runFreeContextT freeCtx
+runNorm :: FreeCtx builtin -> FreeContextT builtin Identity b -> b
+runNorm freeCtx = runIdentity . runFreeContextT freeCtx
 
 unsupportedAnnotationTypeDescription ::
   forall builtin a.
