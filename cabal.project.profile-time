@@ -9,3 +9,13 @@ import: cabal.project
 profiling: True
 package *
     profiling-detail: toplevel-functions
+
+-- For Vehicle's own packages, use late cost centres (GHC >= 9.4), which are
+-- inserted after optimisation. Unlike `toplevel-functions`, they don't block
+-- inlining/specialisation or smear costs across monad instance methods
+-- (e.g. `fmap`, `>>=`), so the profile reflects the optimised program.
+package vehicle
+    profiling-detail: late
+
+package vehicle-syntax
+    profiling-detail: late

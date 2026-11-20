@@ -23,7 +23,7 @@ where
 
 import Control.Monad (when)
 import Control.Monad.Except (ExceptT (..), mapExceptT)
-import Control.Monad.Identity (IdentityT (..), mapIdentityT)
+import Control.Monad.Identity (Identity, IdentityT (..), mapIdentityT)
 import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Trans (MonadTrans (..))
@@ -133,6 +133,18 @@ class (Monad m) => MonadLogger m where
   getDebugLevel :: m LoggingLevel
   logMessage :: DebugMessage -> m ()
   logWarning :: CompileWarning -> m ()
+
+-- | Pure computations cannot log, so all logging and warnings are discarded.
+instance MonadLogger Identity where
+  runCompilerPass _ a = a
+  runCompileDecl _ a = a
+  setCallDepth _ = return ()
+  getCallDepth = return 0
+  incrCallDepth = return ()
+  decrCallDepth = return ()
+  getDebugLevel = return NoDetail
+  logMessage _ = return ()
+  logWarning _ = return ()
 
 instance (MonadLogger m) => MonadLogger (StateT s m) where
   runCompilerPass = mapStateT . runCompilerPass

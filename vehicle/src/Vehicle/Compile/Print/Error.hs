@@ -8,7 +8,7 @@ module Vehicle.Compile.Print.Error
 where
 
 import Control.Monad.Except (ExceptT, runExceptT)
-import Control.Monad.Identity (Identity)
+import Control.Monad.Identity (Identity (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe)
@@ -35,7 +35,6 @@ import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (FreeContextT, runFreshFreeContextT)
-import Vehicle.Prelude.Logging (SilentLoggerT, runSilentLogger)
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -511,8 +510,8 @@ formatCompileError = \case
         fix = Just $ datasetDimensionsFix "dimensions" ident file
       }
     where
-      run :: NameBoundContextT (FreeContextT Builtin (SilentLoggerT Identity)) a -> a
-      run = runSilentLogger . runFreshFreeContextT (Proxy @Builtin) . runFreshNameBoundContextT
+      run :: NameBoundContextT (FreeContextT Builtin Identity) a -> a
+      run = runIdentity . runFreshFreeContextT (Proxy @Builtin) . runFreshNameBoundContextT
 
       dimensionsOf :: UnforcedType Builtin -> Maybe Int
       dimensionsOf typ = do

@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Vehicle.TypeCheck
   ( TypeCheckOptions (..),
     ProgramContext (..),
@@ -13,7 +15,8 @@ import Control.Monad (forM, when)
 import Control.Monad.Except (ExceptT, MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
-import Control.Monad.State (MonadState (..), StateT (..), gets, modify)
+import Control.Monad.State (MonadState, StateT (..), gets, modify)
+import Control.Monad.Trans.Class (MonadTrans (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -134,12 +137,11 @@ printPropertyTypes = \case
         _ -> Nothing
 
 runCompileMonad ::
-  forall m a.
-  (MonadStdIO m, MonadReadSpecification m) =>
+  (MonadStdIO IO) =>
   LoggingSettings ->
   OutputAsJSON ->
-  (forall n. (MonadStdIO n, MonadLogger n, MonadReadSpecification n) => ExceptT CompileError n a) ->
-  m a
+  ExceptT CompileError (LoggerT IO) a ->
+  IO a
 runCompileMonad loggingSettings outputAsJSON x = do
   errorOrResult <- runLoggerT loggingSettings (logCompileError x)
   case errorOrResult of
@@ -206,27 +208,47 @@ data ModuleStack = ModuleStack
     availableModules :: Map ModulePath FilePath
   }
 
-type MonadTCMProg m =
-  ( MonadState ProgramContext m,
-    MonadReader ModuleStack m,
-    MonadIO m,
-    MonadCompile m
-  )
+-- | The monad in which modules are loaded.
+--
+-- The expensive passes (parsing, scoping and type-checking) should be run
+-- directly in the underlying monad `m` via `lift`, rather than in this monad,
+-- as otherwise every operation they perform pays for the extra `ReaderT` and
+-- `StateT` layers. To enforce this, `ModuleLoaderT` deliberately has no
+-- `MonadError CompileError` instance, so passes that require `MonadCompile`
+-- cannot be run in it without lifting them first.
+newtype ModuleLoaderT m a = ModuleLoaderT
+  { unModuleLoaderT :: ReaderT ModuleStack (StateT ProgramContext m) a
+  }
+  deriving
+    ( Functor,
+      Applicative,
+      Monad,
+      MonadReader ModuleStack,
+      MonadState ProgramContext,
+      MonadLogger
+    )
 
-getCurrentModulePath :: (MonadTCMProg m) => m ModulePath
+instance MonadTrans ModuleLoaderT where
+  lift = ModuleLoaderT . lift . lift
+
+runModuleLoaderT :: (Monad m) => ModuleStack -> ProgramContext -> ModuleLoaderT m a -> m (a, ProgramContext)
+runModuleLoaderT moduleStack programCtx action =
+  runStateT (runReaderT (unModuleLoaderT action) moduleStack) programCtx
+
+getCurrentModulePath :: (Monad m) => ModuleLoaderT m ModulePath
 getCurrentModulePath = asks stackCurrentModule
 
-lookupModule :: (MonadTCMProg m) => ModulePath -> m (Maybe ModuleInfo)
+lookupModule :: (Monad m) => ModulePath -> ModuleLoaderT m (Maybe ModuleInfo)
 lookupModule modulePath = gets (Map.lookup modulePath . loadedModules)
 
-lookupModuleFilePath :: (MonadTCMProg m) => ModulePath -> m FilePath
+lookupModuleFilePath :: (Monad m) => ModulePath -> ModuleLoaderT m FilePath
 lookupModuleFilePath modulePath = do
   maybeFilePath <- asks (Map.lookup modulePath . availableModules)
   case maybeFilePath of
     Nothing -> missingImportError modulePath
     Just moduleFile -> return moduleFile
 
-enterModule :: (MonadTCMProg m) => ModulePath -> m a -> m a
+enterModule :: (Monad m) => ModulePath -> ModuleLoaderT m a -> ModuleLoaderT m a
 enterModule newModule action = do
   currentStack@ModuleStack {..} <- ask
 
@@ -250,7 +272,7 @@ enterModule newModule action = do
           }
   local (const newStack) action
 
-storeModule :: (MonadTCMProg m) => ModulePath -> ModuleInfo -> m ()
+storeModule :: (Monad m) => ModulePath -> ModuleInfo -> ModuleLoaderT m ()
 storeModule modulePath moduleInfo =
   modify $ \ProgramContext {..} ->
     ProgramContext
@@ -276,7 +298,7 @@ loadUserSpecification specificationFile = do
           }
   let implicitImports = ImportStatement <$> [standardLibraryDefinitionsModulePath]
   let action = loadUnloadedModule implicitImports userModulePath
-  (_status, programCtx) <- runStateT (runReaderT action initialStack) initialContext
+  (_status, programCtx) <- runModuleLoaderT initialStack initialContext action
 
   let declsMap = fmap (moduleDeclarations . typedModule . moduleInterface) (loadedModules programCtx)
   let (maybeUserModule, builtinModules) = Map.updateLookupWithKey (\_ _ -> Nothing) userModulePath declsMap
@@ -300,9 +322,9 @@ loadLibraries specificationFile = do
 -- | Loads a module into the program state and returning `True` if
 -- the module .
 loadModule ::
-  (MonadReadSpecification m, MonadTCMProg m) =>
+  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
   ModulePath ->
-  m ModuleInfo
+  ModuleLoaderT m ModuleInfo
 loadModule modulePath =
   enterModule modulePath $ do
     alreadyLoadedModuleInfo <- lookupModule modulePath
@@ -311,15 +333,15 @@ loadModule modulePath =
       Nothing -> loadUnloadedModule mempty modulePath
 
 loadUnloadedModule ::
-  (MonadReadSpecification m, MonadTCMProg m) =>
+  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
   [ImportStatement] ->
   ModulePath ->
-  m ModuleInfo
+  ModuleLoaderT m ModuleInfo
 loadUnloadedModule implicitImports modulePath = do
   logCompilerSection2 MidDetail ("loading module" <+> quotePretty modulePath) $ do
     moduleFile <- lookupModuleFilePath modulePath
-    moduleText <- readSpecification moduleFile
-    interfaceFileResult <- readObjectFile moduleFile moduleText
+    moduleText <- lift $ readSpecification moduleFile
+    interfaceFileResult <- lift $ readObjectFile moduleFile moduleText
     moduleInfo <- case interfaceFileResult of
       Just cachedModule -> loadCachedModule moduleFile implicitImports moduleText cachedModule
       Nothing -> parseAndTypeCheckModule moduleFile implicitImports moduleText
@@ -327,19 +349,19 @@ loadUnloadedModule implicitImports modulePath = do
     return moduleInfo
 
 loadCachedModule ::
-  (MonadTCMProg m, MonadReadSpecification m) =>
+  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
   FilePath ->
   [ImportStatement] ->
   ModuleText ->
   ModuleInterface Builtin ->
-  m ModuleInfo
+  ModuleLoaderT m ModuleInfo
 loadCachedModule moduleFile implicitImports moduleText moduleInterface = do
   let Module imports decls = typedModule moduleInterface
   (status, importedCtx) <- loadImports imports
   case status of
     Changed -> parseAndTypeCheckModule moduleFile implicitImports moduleText
     Unchanged -> do
-      freeCtx <- calculateModuleCtx importedCtx decls
+      freeCtx <- lift $ calculateModuleCtx importedCtx decls
       return $
         ModuleInfo
           { moduleInterface = moduleInterface,
@@ -348,9 +370,9 @@ loadCachedModule moduleFile implicitImports moduleText moduleInterface = do
           }
 
 loadImports ::
-  (MonadTCMProg m, MonadReadSpecification m) =>
+  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
   [ImportStatement] ->
-  m (ModuleStatus, ImportedModuleContext Builtin)
+  ModuleLoaderT m (ModuleStatus, ImportedModuleContext Builtin)
 loadImports imports = do
   results <- forM imports $ \importStatement -> do
     let modulePath = importPath importStatement
@@ -362,15 +384,15 @@ loadImports imports = do
   return (finalStatus, importedCtx)
 
 parseAndTypeCheckModule ::
-  (MonadTCMProg m, MonadReadSpecification m) =>
+  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
   FilePath ->
   [ImportStatement] ->
   ModuleText ->
-  m ModuleInfo
+  ModuleLoaderT m ModuleInfo
 parseAndTypeCheckModule moduleFile implicitImports moduleText = do
   modulePath <- getCurrentModulePath
 
-  Module imports decls <- parseModuleText (modulePath, moduleFile) moduleText
+  Module imports decls <- lift $ parseModuleText (modulePath, moduleFile) moduleText
   let finalImports = implicitImports <> imports
   (_status, importedCtx) <- loadImports finalImports
 
@@ -378,8 +400,8 @@ parseAndTypeCheckModule moduleFile implicitImports moduleText = do
         if modulePath == standardLibraryDefinitionsModulePath
           then standardBuiltinInstances
           else emptyInstanceDatabase
-  (scopedDecls, scopingInterface) <- scopeModuleDecls modulePath importedCtx decls
-  (typedDecls, typingInterface, moduleEnv) <- typeCheckModuleDecls modulePath instances importedCtx scopedDecls
+  (scopedDecls, scopingInterface) <- lift $ scopeModuleDecls modulePath importedCtx decls
+  (typedDecls, typingInterface, moduleEnv) <- lift $ typeCheckModuleDecls modulePath instances importedCtx scopedDecls
   let typedModule = Module finalImports typedDecls
 
   let moduleInterface =
@@ -389,7 +411,7 @@ parseAndTypeCheckModule moduleFile implicitImports moduleText = do
             typedModule = typedModule
           }
 
-  writeObjectFile moduleFile moduleText moduleInterface
+  lift $ writeObjectFile moduleFile moduleText moduleInterface
 
   return $
     ModuleInfo
@@ -411,13 +433,13 @@ calculateModuleCtx importedCtx = go (mergeImportedFreeCtxs importedCtx)
       [] -> return env
       d : ds -> go (Map.insert (identifierOf d) d env) ds
 
-cyclicImportsError :: (MonadTCMProg m) => ModulePath -> [ModulePath] -> m a
+cyclicImportsError :: (Monad m) => ModulePath -> [ModulePath] -> ModuleLoaderT m a
 cyclicImportsError newModule previousModules =
   developerError $
     "cyclic module imports not yet handled correctly:"
       <> lineIndent (pretty $ newModule : previousModules)
 
-missingImportError :: (MonadTCMProg m) => ModulePath -> m a
+missingImportError :: (Monad m) => ModulePath -> ModuleLoaderT m a
 missingImportError modulePath = do
   allModules <- asks availableModules
   developerError $
