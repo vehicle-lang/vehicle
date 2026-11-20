@@ -22,6 +22,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Variable (metasSatisfyingIn, unsolvedMetasIn)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
@@ -70,8 +71,8 @@ removeAllDependencies decl = do
   logCompilerSection2 MaxDetail "removing dependencies of unsolved metas" $ do
     -- Remove meta dependencies
     metaVariableCtx <- getMetaVariableCtx @builtin
-    let hasDepedendencies metaInfo = isNothing (metaSolution metaInfo) && not (null $ metaCtx metaInfo)
-    let metasToRemove = MetaMap.filter hasDepedendencies metaVariableCtx
+    let hasDependencies metaInfo = isNothing (metaSolution metaInfo) && not (null $ metaCtx metaInfo)
+    let metasToRemove = metasSatisfyingIn hasDependencies metaVariableCtx
     orderedMetasToRemove <- orderMetasByTypeDependencies metasToRemove
     forM_ orderedMetasToRemove $ \(meta, metaInfo) -> do
       logCompilerSection2 MaxDetail ("removing dependencies of" <+> pretty meta) $ do
@@ -177,7 +178,7 @@ generaliseOverUnsolvedMetas ::
   m (Decl builtin)
 generaliseOverUnsolvedMetas decl = do
   metaVariableCtx <- getMetaVariableCtx @builtin
-  let unsolvedMetas = MetaMap.filter (isNothing . metaSolution) metaVariableCtx
+  let unsolvedMetas = unsolvedMetasIn metaVariableCtx
   sortedUnsolvedMetas <- sortMetasByTypeDependencies unsolvedMetas
 
   unsolvedInstanceConstraints <- getActiveInstanceConstraints
@@ -198,7 +199,7 @@ generaliseOverUnsolvedMetas decl = do
 sortMetasByTypeDependencies ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
-  MetaVariableContext builtin ->
+  MetaMap (MetaInfo builtin) ->
   m [MetaID]
 sortMetasByTypeDependencies unsolvedMetas = do
   logCompilerSection2 MaxDetail "sorting generalisable constraints" $ do

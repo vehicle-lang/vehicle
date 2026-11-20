@@ -16,14 +16,13 @@ import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..), execWriter)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Ordered qualified as OMap
-import Data.Traversable (for)
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet, findUltimateUnsolvedMeta)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Meta.Variable (MetaVariableContext, findMetaInfo, metaCtx, metaSolution, metaType)
+import Vehicle.Compile.Type.Meta.Variable (MetaVariableContext, lookupMetaInfo, metaCtx, metaSolution, metaType, traverseMetaInfos)
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name
@@ -59,7 +58,7 @@ runForceT ::
   ReaderT (MetaID -> Maybe (GluedExprWithMetas builtin)) (WriterT MetaSet (NameBoundContextT m)) a ->
   m (a, MetaSet)
 runForceT ctx metaCtx action =
-  runNameBoundContextT ctx $ runWriterT $ runReaderT action (\m -> metaSolution $ findMetaInfo metaCtx m)
+  runNameBoundContextT ctx $ runWriterT $ runReaderT action (\m -> metaSolution $ lookupMetaInfo metaCtx m)
 
 --------------------------------------------------------------------------------
 -- Objects which have meta variables in.
@@ -71,7 +70,7 @@ class HasMetas a where
   findMetas :: (MonadWriter MetaSet m) => MetaSubstitution builtin -> a -> m ()
 
 processMeta :: (MonadWriter MetaSet m) => MetaSubstitution builtin -> MetaID -> m ()
-processMeta s m = case metaSolution $ findMetaInfo s m of
+processMeta s m = case metaSolution $ lookupMetaInfo s m of
   Nothing -> tell (MetaSet.singleton m)
   Just sol -> findMetas s $ normalised sol
 
@@ -222,7 +221,7 @@ substMeta ::
   (Provenance, MetaID, [Arg builtin]) ->
   m (Expr builtin)
 substMeta ctx s (p, m, mArgs) = do
-  let metaInfo = findMetaInfo s m
+  let metaInfo = lookupMetaInfo s m
   case metaSolution metaInfo of
     Nothing -> normAppList (Meta p m) <$> substMetasAt ctx s mArgs
     Just value -> do
@@ -238,7 +237,7 @@ instance MetaSubstitutable m builtin (ThunkWithMetas builtin) where
 instance MetaSubstitutable m builtin (ForcedValueWithMetas builtin) where
   substMetasAt ctx s expr = case expr of
     VMeta m spine -> do
-      let metaInfo = findMetaInfo s m
+      let metaInfo = lookupMetaInfo s m
       case metaSolution metaInfo of
         Nothing -> VMeta m <$> substMetasAt ctx s spine
         Just value -> do
@@ -312,7 +311,7 @@ instance (RawMetaSubstitutable m builtin a) => RawMetaSubstitutable m builtin [a
   substMetas s = traverse (substMetas s)
 
 instance RawMetaSubstitutable m builtin (MetaVariableContext builtin) where
-  substMetas s ctx = for ctx $ \entry -> do
+  substMetas s ctx = flip traverseMetaInfos ctx $ \entry -> do
     let namedCtx = toNamedBoundCtx $ metaCtx entry
     newType <- substMetasAt namedCtx s (metaType entry)
     newSolution <- substMetasAt namedCtx s (metaSolution entry)

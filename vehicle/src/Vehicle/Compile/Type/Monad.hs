@@ -47,7 +47,6 @@ import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.List (partition, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (isJust)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error (CompileError (..), TypingError (..), compilerDeveloperError)
 import Vehicle.Compile.Normalise.Core
@@ -56,8 +55,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyExternal, prettyExternal, prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
-import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
-import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..), addMetaSolution)
+import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..), addMetaSolution, solvedMetasIn, unsolvedMetasIn)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
@@ -360,7 +358,8 @@ logUnsolvedUnknowns _proxy = do
               <> indent 2 (prettyExternal decl)
               <> line
 
-    let (solvedMetas, unsolvedMetas) = MetaMap.partition (isJust . metaSolution) updatedMetaVarCtx
+    let solvedMetas = solvedMetasIn updatedMetaVarCtx
+    let unsolvedMetas = unsolvedMetasIn updatedMetaVarCtx
 
     return $
       "solved-metas:"

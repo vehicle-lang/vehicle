@@ -17,6 +17,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
+import Vehicle.Compile.Type.Meta.Variable (emptyMetaVariableContext)
 import Vehicle.Data.Builtin.Core (BuiltinType (..))
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.ForcedValue
@@ -445,7 +446,7 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
     instantiateTelescope ctx typ arguments = do
       let (forcedType, _) =
             runNorm freeEnv $
-              MetaSubstitution.forceThunkWithMetas (toNamedBoundCtx ctx) mempty typ
+              MetaSubstitution.forceThunkWithMetas (toNamedBoundCtx ctx) emptyMetaVariableContext typ
       case (forcedType, arguments) of
         (VPi binder _, [])
           | isExplicit binder ->
