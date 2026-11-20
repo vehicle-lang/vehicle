@@ -27,7 +27,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error
 import Vehicle.Compile.Scope (scopeModuleDecls)
-import Vehicle.Compile.Serialise (readObjectFile, writeObjectFile)
+import Vehicle.Compile.Serialise (CachedModule (..), decodeCachedModuleInterface, readObjectFile, writeObjectFile)
 import Vehicle.Compile.Type
 import Vehicle.Compile.Type.Core (emptyInstanceDatabase)
 import Vehicle.Compile.Type.Subsystem
@@ -319,8 +319,8 @@ loadUnloadedModule implicitImports modulePath = do
   logCompilerSection2 MidDetail ("loading module" <+> quotePretty modulePath) $ do
     moduleFile <- lookupModuleFilePath modulePath
     moduleText <- readSpecification moduleFile
-    interfaceFileResult <- readObjectFile moduleFile moduleText
-    moduleInfo <- case interfaceFileResult of
+    cachedModuleResult <- readObjectFile moduleFile moduleText
+    moduleInfo <- case cachedModuleResult of
       Just cachedModule -> loadCachedModule moduleFile implicitImports moduleText cachedModule
       Nothing -> parseAndTypeCheckModule moduleFile implicitImports moduleText
     storeModule modulePath moduleInfo
@@ -331,21 +331,27 @@ loadCachedModule ::
   FilePath ->
   [ImportStatement] ->
   ModuleText ->
-  ModuleInterface Builtin ->
+  CachedModule ->
   m ModuleInfo
-loadCachedModule moduleFile implicitImports moduleText moduleInterface = do
-  let Module imports decls = typedModule moduleInterface
-  (status, importedCtx) <- loadImports imports
+loadCachedModule moduleFile implicitImports moduleText cachedModule = do
+  -- Check the imports before decoding the (expensive) cached interface, as if
+  -- any of them have changed then the cached interface is useless.
+  (status, importedCtx) <- loadImports (cachedImports cachedModule)
   case status of
     Changed -> parseAndTypeCheckModule moduleFile implicitImports moduleText
     Unchanged -> do
-      freeCtx <- calculateModuleCtx importedCtx decls
-      return $
-        ModuleInfo
-          { moduleInterface = moduleInterface,
-            moduleFreeCtx = freeCtx,
-            moduleStatus = Unchanged
-          }
+      maybeInterface <- decodeCachedModuleInterface moduleFile cachedModule
+      case maybeInterface of
+        Nothing -> parseAndTypeCheckModule moduleFile implicitImports moduleText
+        Just moduleInterface -> do
+          let Module _ decls = typedModule moduleInterface
+          freeCtx <- calculateModuleCtx importedCtx decls
+          return $
+            ModuleInfo
+              { moduleInterface = moduleInterface,
+                moduleFreeCtx = freeCtx,
+                moduleStatus = Unchanged
+              }
 
 loadImports ::
   (MonadTCMProg m, MonadReadSpecification m) =>
