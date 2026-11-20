@@ -1,7 +1,7 @@
 module SemanticTokens.TokenTypes where
 
 import Language.LSP.Protocol.Types (SemanticTokenTypes (..))
-import SemanticTokens.Common (OverlapMode (..), as, expectTokens, xas)
+import SemanticTokens.Common (OverlapMode (..), as, eventually, expectTokens)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase)
 
@@ -18,7 +18,7 @@ test_tokenTypes =
             " -> ",
             "Bool" `as` (SemanticTokenTypes_Type, []),
             "\n",
-            "usesMap" `xas` (SemanticTokenTypes_Function, []),
+            "usesMap" `eventually` (SemanticTokenTypes_Function, []),
             " ",
             "evidence" `as` (SemanticTokenTypes_Variable, []),
             " = ",
@@ -28,11 +28,11 @@ test_tokenTypes =
           AllowStrictOverlaps,
       testCase "record fields and projections are methods" $
         expectTokens
-          [ "record" `xas` (SemanticTokenTypes_Keyword, []),
+          [ "record" `eventually` (SemanticTokenTypes_Keyword, []),
             " ",
             "Pair" `as` (SemanticTokenTypes_Type, []),
             " ",
-            "where" `xas` (SemanticTokenTypes_Keyword, []),
+            "where" `eventually` (SemanticTokenTypes_Keyword, []),
             "\n  { ",
             "left" `as` (SemanticTokenTypes_Method, []),
             " : ",
@@ -46,7 +46,7 @@ test_tokenTypes =
             " : ",
             "Pair" `as` (SemanticTokenTypes_Type, []),
             "\n",
-            "pair" `xas` (SemanticTokenTypes_Variable, []),
+            "pair" `eventually` (SemanticTokenTypes_Variable, []),
             " = { ",
             "left" `as` (SemanticTokenTypes_Method, []),
             " = ",
@@ -62,7 +62,7 @@ test_tokenTypes =
             " -> ",
             "Real" `as` (SemanticTokenTypes_Type, []),
             "\n",
-            "getLeft" `xas` (SemanticTokenTypes_Function, []),
+            "getLeft" `eventually` (SemanticTokenTypes_Function, []),
             " ",
             "p" `as` (SemanticTokenTypes_Variable, []),
             " = ",
@@ -83,7 +83,7 @@ test_tokenTypes =
             " -> ",
             "Real" `as` (SemanticTokenTypes_Type, []),
             "\n",
-            "useAt" `xas` (SemanticTokenTypes_Function, []),
+            "useAt" `eventually` (SemanticTokenTypes_Function, []),
             " ",
             "v" `as` (SemanticTokenTypes_Variable, []),
             " = ",
@@ -95,19 +95,19 @@ test_tokenTypes =
           AllowStrictOverlaps,
       testCase "comments" $
         expectTokens
-          [ "-- this is a single-line comment\n" `xas` (SemanticTokenTypes_Comment, []),
-            "{-\nand this is\n\na multi-line\ncomment -}" `xas` (SemanticTokenTypes_Comment, []),
+          [ "-- this is a single-line comment\n" `eventually` (SemanticTokenTypes_Comment, []),
+            "{-\nand this is\n\na multi-line\ncomment -}" `eventually` (SemanticTokenTypes_Comment, []),
             "\n\n",
             "foo" `as` (SemanticTokenTypes_Variable, []),
             " = ",
             "True" `as` (SemanticTokenTypes_Keyword, []),
             "  ",
-            "-- this is an inline comment\n" `xas` (SemanticTokenTypes_Comment, []),
+            "-- this is an inline comment\n" `eventually` (SemanticTokenTypes_Comment, []),
             "bar" `as` (SemanticTokenTypes_Variable, []),
             " ",
-            "{- comments can -}" `xas` (SemanticTokenTypes_Comment, []),
+            "{- comments can -}" `eventually` (SemanticTokenTypes_Comment, []),
             " = ",
-            "{- go anywhere! -}" `xas` (SemanticTokenTypes_Comment, []),
+            "{- go anywhere! -}" `eventually` (SemanticTokenTypes_Comment, []),
             "False" `as` (SemanticTokenTypes_Keyword, [])
           ]
           NoOverlaps

@@ -5,7 +5,7 @@ module SemanticTokens.Common
     ExpectedTokens,
     expectTokens,
     as,
-    xas,
+    eventually,
   )
 where
 
@@ -64,9 +64,9 @@ as v (t, m) = SomeToken v t m
 --
 -- The following example will cause the test to fail there is any token at `foo`'s position.
 --
--- > "foo" `xas` (SemanticTokenTypes_Variable, [])
-xas :: String -> (SemanticTokenTypes, [SemanticTokenModifiers]) -> ExpectedToken
-xas v _ = NoToken v
+-- > "foo" `eventually` (SemanticTokenTypes_Variable, [])
+eventually :: String -> (SemanticTokenTypes, [SemanticTokenModifiers]) -> ExpectedToken
+eventually v _ = NoToken v
 
 type ExpectedTokens = [ExpectedToken]
 

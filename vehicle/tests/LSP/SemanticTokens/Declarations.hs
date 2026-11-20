@@ -1,7 +1,7 @@
 module SemanticTokens.Declarations where
 
 import Language.LSP.Protocol.Types (SemanticTokenTypes (..))
-import SemanticTokens.Common (OverlapMode (..), as, expectTokens, xas)
+import SemanticTokens.Common (OverlapMode (..), as, eventually, expectTokens)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase)
 
@@ -16,7 +16,7 @@ test_tokensDeclarations =
             " -> ",
             "Real" `as` (SemanticTokenTypes_Type, []),
             "\n",
-            "foo" `xas` (SemanticTokenTypes_Function, []),
+            "foo" `eventually` (SemanticTokenTypes_Function, []),
             " ",
             "x" `as` (SemanticTokenTypes_Variable, []),
             " = ",
@@ -26,7 +26,7 @@ test_tokensDeclarations =
           AllowStrictOverlaps,
       testCase "@ annotations" $
         expectTokens
-          [ "@parameter" `xas` (SemanticTokenTypes_Decorator, []),
+          [ "@parameter" `eventually` (SemanticTokenTypes_Decorator, []),
             "\n",
             "p" `as` (SemanticTokenTypes_Variable, []),
             " : ",
@@ -36,7 +36,7 @@ test_tokensDeclarations =
           NoOverlaps,
       testCase "type aliases" $
         expectTokens
-          [ "type" `xas` (SemanticTokenTypes_Keyword, []),
+          [ "type" `eventually` (SemanticTokenTypes_Keyword, []),
             " ",
             "Alias" `as` (SemanticTokenTypes_Type, []),
             " = ",

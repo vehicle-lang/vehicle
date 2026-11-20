@@ -1,7 +1,7 @@
 module SemanticTokens.EdgeCases where
 
 import Language.LSP.Protocol.Types (SemanticTokenTypes (..))
-import SemanticTokens.Common (OverlapMode (..), as, expectTokens, xas)
+import SemanticTokens.Common (OverlapMode (..), as, eventually, expectTokens)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase)
 
@@ -18,7 +18,7 @@ test_tokenEdgeCases =
             " ",
             "Nat" `as` (SemanticTokenTypes_Type, []),
             "\n",
-            "choose" `xas` (SemanticTokenTypes_Function, []),
+            "choose" `eventually` (SemanticTokenTypes_Function, []),
             " ",
             "condition" `as` (SemanticTokenTypes_Variable, []),
             " = ",
@@ -28,22 +28,22 @@ test_tokenEdgeCases =
             " = ",
             "[" `as` (SemanticTokenTypes_Keyword, []),
             "1" `as` (SemanticTokenTypes_Number, []),
-            "]" `xas` (SemanticTokenTypes_Keyword, []),
+            "]" `eventually` (SemanticTokenTypes_Keyword, []),
             " ",
-            "in" `xas` (SemanticTokenTypes_Keyword, []),
+            "in" `eventually` (SemanticTokenTypes_Keyword, []),
             "\n  ",
             "if" `as` (SemanticTokenTypes_Keyword, []),
             " ",
             "condition" `as` (SemanticTokenTypes_Variable, []),
             " ",
-            "then" `xas` (SemanticTokenTypes_Keyword, []),
+            "then" `eventually` (SemanticTokenTypes_Keyword, []),
             " ",
             "singleton" `as` (SemanticTokenTypes_Variable, []),
             " ",
-            "else" `xas` (SemanticTokenTypes_Keyword, []),
+            "else" `eventually` (SemanticTokenTypes_Keyword, []),
             " ",
             "[" `as` (SemanticTokenTypes_Keyword, []),
-            "]" `xas` (SemanticTokenTypes_Keyword, []),
+            "]" `eventually` (SemanticTokenTypes_Keyword, []),
             "\n"
           ]
           AllowStrictOverlaps,
@@ -54,7 +54,7 @@ test_tokenEdgeCases =
         expectTokens
           [ "identity1" `as` (SemanticTokenTypes_Function, []),
             " : ",
-            "forallT" `xas` (SemanticTokenTypes_Keyword, []),
+            "forallT" `eventually` (SemanticTokenTypes_Keyword, []),
             " {",
             "t" `as` (SemanticTokenTypes_Type, []),
             " : ",
@@ -64,7 +64,7 @@ test_tokenEdgeCases =
             " -> ",
             "t" `as` (SemanticTokenTypes_Type, []),
             "\n",
-            "identity1" `xas` (SemanticTokenTypes_Function, []),
+            "identity1" `eventually` (SemanticTokenTypes_Function, []),
             " {",
             "t" `as` (SemanticTokenTypes_Type, []),
             "} ",
@@ -84,7 +84,7 @@ test_tokenEdgeCases =
             " -> ",
             "t" `as` (SemanticTokenTypes_Type, []),
             "\n",
-            "identity2" `xas` (SemanticTokenTypes_Function, []),
+            "identity2" `eventually` (SemanticTokenTypes_Function, []),
             " ",
             "x" `as` (SemanticTokenTypes_Variable, []),
             " = ",
