@@ -15,7 +15,7 @@ import Control.Monad (forM, when)
 import Control.Monad.Except (ExceptT, MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
-import Control.Monad.State (MonadState, StateT (..), gets, modify)
+import Control.Monad.State.Strict (MonadState, StateT (..), gets, modify')
 import Control.Monad.Trans.Class (MonadTrans (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
@@ -168,8 +168,8 @@ data ModuleInfo = ModuleInfo
 
 -- | The full state of the Vehicle program
 data ProgramContext = ProgramContext
-  { moduleGraph :: AdjacencyGraph ModulePath,
-    loadedModules :: Map ModulePath ModuleInfo
+  { moduleGraph :: !(AdjacencyGraph ModulePath),
+    loadedModules :: !(Map ModulePath ModuleInfo)
   }
 
 initialProgramContext :: ProgramContext
@@ -253,7 +253,7 @@ enterModule newModule action = do
   currentStack@ModuleStack {..} <- ask
 
   -- Add an edge to the dependency graph
-  modify $ \ProgramContext {..} ->
+  modify' $ \ProgramContext {..} ->
     ProgramContext
       { moduleGraph = insertEdge (stackCurrentModule, newModule) $ insertNode newModule moduleGraph,
         ..
@@ -274,7 +274,7 @@ enterModule newModule action = do
 
 storeModule :: (Monad m) => ModulePath -> ModuleInfo -> ModuleLoaderT m ()
 storeModule modulePath moduleInfo =
-  modify $ \ProgramContext {..} ->
+  modify' $ \ProgramContext {..} ->
     ProgramContext
       { loadedModules = Map.insert modulePath moduleInfo loadedModules,
         ..

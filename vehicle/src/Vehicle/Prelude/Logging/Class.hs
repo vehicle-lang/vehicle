@@ -26,6 +26,7 @@ import Control.Monad.Except (ExceptT (..), mapExceptT)
 import Control.Monad.Identity (Identity, IdentityT (..), mapIdentityT)
 import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
+import Control.Monad.State.Strict qualified as Strict
 import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Trans.Maybe (MaybeT, mapMaybeT)
 import Control.Monad.Writer.Strict (WriterT (..), mapWriterT)
@@ -149,6 +150,17 @@ instance MonadLogger Identity where
 instance (MonadLogger m) => MonadLogger (StateT s m) where
   runCompilerPass = mapStateT . runCompilerPass
   runCompileDecl = mapStateT . runCompileDecl
+  setCallDepth = lift . setCallDepth
+  getCallDepth = lift getCallDepth
+  incrCallDepth = lift incrCallDepth
+  decrCallDepth = lift decrCallDepth
+  getDebugLevel = lift getDebugLevel
+  logMessage = lift . logMessage
+  logWarning = lift . logWarning
+
+instance (MonadLogger m) => MonadLogger (Strict.StateT s m) where
+  runCompilerPass = Strict.mapStateT . runCompilerPass
+  runCompileDecl = Strict.mapStateT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
