@@ -8,10 +8,11 @@ where
 
 import Control.Monad (forM, forM_, void)
 import Data.Data (Proxy (..))
-import Data.Foldable (foldlM)
+import Data.Foldable (foldlM, toList)
 import Data.Graph (graphFromEdges, topSort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
+import Data.Sequence qualified as Seq
 import Data.Text qualified as Text
 import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
@@ -89,8 +90,8 @@ removeAllDependencies decl = do
     mergedInstanceConstraints <- mergeInstanceConstraints newInstanceConstraints
     mergedAuxiliaryInstanceConstraints <- mergeInstanceConstraints newAuxiliaryInstanceConstraints
 
-    setInstanceConstraints mergedInstanceConstraints
-    setAuxiliaryInstanceConstraints mergedAuxiliaryInstanceConstraints
+    setInstanceConstraints (Seq.fromList mergedInstanceConstraints)
+    setAuxiliaryInstanceConstraints (Seq.fromList mergedAuxiliaryInstanceConstraints)
 
   -- Substitute through the new metas variables through the types of the meta variables
   logCompilerSection2 MaxDetail "substituting metas through solution" $ do
@@ -125,16 +126,19 @@ removeInstanceDependencies c@(WithContext constraint ctx) =
     return result
 
 mergeInstanceConstraints ::
-  forall builtin m.
-  (MonadGeneralise builtin m) =>
-  [WithContext (InstanceConstraint builtin)] ->
+  forall t builtin m.
+  (Foldable t, MonadGeneralise builtin m) =>
+  t (WithContext (InstanceConstraint builtin)) ->
   m [WithContext (InstanceConstraint builtin)]
 mergeInstanceConstraints constraints = do
-  substitutedConstraintsByMeta <- forM constraints $ \(WithContext constraint ctx) -> do
-    updatedConstraint <- updateSolutionMeta constraint
-    return (instanceSolution updatedConstraint, WithContext updatedConstraint ctx :| [])
+  -- Group the constraints by solution meta.
+  let insertConstraint acc (WithContext constraint ctx) = do
+        updatedConstraint <- updateSolutionMeta constraint
+        let entry = WithContext updatedConstraint ctx :| []
+        return $ MetaMap.insertWith (<>) (instanceSolution updatedConstraint) entry acc
+  substitutedConstraintsByMeta <- foldlM insertConstraint mempty constraints
 
-  let constraintsBySolutionMeta = MetaMap.toList $ MetaMap.fromListWith (<>) substitutedConstraintsByMeta
+  let constraintsBySolutionMeta = MetaMap.toList substitutedConstraintsByMeta
   mergedConstraints <- forM constraintsBySolutionMeta $ \(_meta, masterConstraint :| otherConstraints) -> do
     let getGoal = goalExpr . instanceGoal . objectIn
     let mainGoal = getGoal masterConstraint
@@ -187,7 +191,7 @@ generaliseOverUnsolvedMetas decl = do
   setAuxiliaryInstanceConstraints @builtin mempty
 
   let unsolvedConstraints = unsolvedInstanceConstraints <> unsolvedAuxInstanceConstraints
-  let unsolvedConstraintMetas = MetaMap.fromList $ fmap ((\c -> (instanceSolution c, c)) . objectIn) unsolvedConstraints
+  let unsolvedConstraintMetas = MetaMap.fromList $ fmap ((\c -> (instanceSolution c, c)) . objectIn) (toList unsolvedConstraints)
 
   let p = provenanceOf decl
   binders <- traverse (createBinderForMeta unsolvedConstraintMetas p) (zip [1 ..] sortedUnsolvedMetas)

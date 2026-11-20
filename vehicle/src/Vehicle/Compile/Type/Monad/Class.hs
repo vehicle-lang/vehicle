@@ -12,6 +12,8 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
+import Data.Sequence (Seq, (><), (|>))
+import Data.Sequence qualified as Seq
 import GHC.Stack (HasCallStack)
 import Prettyprinter (fill)
 import Vehicle.Compile.Error (MonadCompile)
@@ -46,11 +48,11 @@ data TypeCheckerDeclState builtin = TypeCheckerDeclState
     -- | The origin and type of each meta variable.
     -- NB: these are stored in *reverse* order from which they were created.
     metaVariableCtx :: !(MetaVariableContext builtin),
-    applicationConstraints :: ![WithContext (ApplicationConstraint builtin)],
-    unificationConstraints :: ![WithContext (UnificationConstraint builtin)],
-    instanceConstraints :: ![WithContext (InstanceConstraint builtin)],
+    applicationConstraints :: !(Seq (WithContext (ApplicationConstraint builtin))),
+    unificationConstraints :: !(Seq (WithContext (UnificationConstraint builtin))),
+    instanceConstraints :: !(Seq (WithContext (InstanceConstraint builtin))),
     -- | Instance constraints not solvable by instance class resolution
-    auxiliaryInstanceConstraints :: ![WithContext (InstanceConstraint builtin)],
+    auxiliaryInstanceConstraints :: !(Seq (WithContext (InstanceConstraint builtin))),
     freshNameState :: !FreshNameState,
     nextConstraintID :: !ConstraintID
   }
@@ -397,7 +399,7 @@ addTypedDeclToContext decl cont = do
 getMetasLinkedToMetasIn ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
-  [WithContext (Constraint builtin)] ->
+  Seq (WithContext (Constraint builtin)) ->
   Type builtin ->
   m MetaSet
 getMetasLinkedToMetasIn allConstraints typeOfInterest = do
@@ -405,7 +407,7 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
   metasInType <- metasIn (Proxy @builtin) typeOfInterest
   loopOverConstraints constraints metasInType
   where
-    loopOverConstraints :: [Constraint builtin] -> MetaSet -> m MetaSet
+    loopOverConstraints :: (Foldable t) => t (Constraint builtin) -> MetaSet -> m MetaSet
     loopOverConstraints constraints metas = do
       (unrelatedConstraints, newMetas) <- foldM processConstraint ([], metas) constraints
       if metas /= newMetas
@@ -503,7 +505,7 @@ createFreshConstraintCtx creationProvenance ctx = do
   cid <- generateFreshConstraintID (Proxy @builtin)
   return $ ConstraintContext cid creationProvenance unknownBlockingStatus ctx
 
-getActiveConstraints :: (MonadTypeChecker builtin m) => m [WithContext (Constraint builtin)]
+getActiveConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (Constraint builtin)))
 getActiveConstraints = do
   us <- fmap (mapObject UnificationConstraint) <$> getActiveUnificationConstraints
   as <- fmap (mapObject ApplicationConstraint) <$> getActiveApplicationConstraints
@@ -514,33 +516,33 @@ getActiveConstraints = do
 getActiveConstraintIDs :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m IntSet
 getActiveConstraintIDs _ = do
   activeConstraints <- getActiveConstraints @builtin
-  return $ IntSet.fromList $ fmap (unConstraintID . constraintID . contextOf) activeConstraints
+  return $ foldr (IntSet.insert . unConstraintID . constraintID . contextOf) mempty activeConstraints
 
-getActiveUnificationConstraints :: (MonadTypeChecker builtin m) => m [WithContext (UnificationConstraint builtin)]
+getActiveUnificationConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (UnificationConstraint builtin)))
 getActiveUnificationConstraints = getsTypeCheckerDeclState unificationConstraints
 
-getActiveApplicationConstraints :: (MonadTypeChecker builtin m) => m [WithContext (ApplicationConstraint builtin)]
+getActiveApplicationConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (ApplicationConstraint builtin)))
 getActiveApplicationConstraints = getsTypeCheckerDeclState applicationConstraints
 
-getActiveInstanceConstraints :: (MonadTypeChecker builtin m) => m [WithContext (InstanceConstraint builtin)]
+getActiveInstanceConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (InstanceConstraint builtin)))
 getActiveInstanceConstraints = getsTypeCheckerDeclState instanceConstraints
 
-getActiveAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => m [WithContext (InstanceConstraint builtin)]
+getActiveAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (InstanceConstraint builtin)))
 getActiveAuxiliaryInstanceConstraints = getsTypeCheckerDeclState auxiliaryInstanceConstraints
 
-setInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
+setInstanceConstraints :: (MonadTypeChecker builtin m) => Seq (WithContext (InstanceConstraint builtin)) -> m ()
 setInstanceConstraints newConstraints = modifyTypeCheckerDeclState $ \state ->
   state {instanceConstraints = newConstraints}
 
-setApplicationConstraints :: (MonadTypeChecker builtin m) => [WithContext (ApplicationConstraint builtin)] -> m ()
+setApplicationConstraints :: (MonadTypeChecker builtin m) => Seq (WithContext (ApplicationConstraint builtin)) -> m ()
 setApplicationConstraints newConstraints = modifyTypeCheckerDeclState $ \state ->
   state {applicationConstraints = newConstraints}
 
-setUnificationConstraints :: (MonadTypeChecker builtin m) => [WithContext (UnificationConstraint builtin)] -> m ()
+setUnificationConstraints :: (MonadTypeChecker builtin m) => Seq (WithContext (UnificationConstraint builtin)) -> m ()
 setUnificationConstraints newConstraints = modifyTypeCheckerDeclState $ \state ->
   state {unificationConstraints = newConstraints}
 
-setAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
+setAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => Seq (WithContext (InstanceConstraint builtin)) -> m ()
 setAuxiliaryInstanceConstraints newConstraints = modifyTypeCheckerDeclState $ \state ->
   state {auxiliaryInstanceConstraints = newConstraints}
 
@@ -550,7 +552,7 @@ addUnificationConstraints constraints = do
     logDebug MaxDetail ("add-constraints:" <> lineIndent (vcat (fmap prettyExternal constraints)))
 
   modifyTypeCheckerDeclState $ \state ->
-    state {unificationConstraints = unificationConstraints state ++ constraints}
+    state {unificationConstraints = unificationConstraints state >< Seq.fromList constraints}
 
 addInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 addInstanceConstraints constraints = do
@@ -558,21 +560,21 @@ addInstanceConstraints constraints = do
     logDebug MaxDetail ("add-constraints:" <> lineIndent (vcat (fmap prettyExternal constraints)))
 
   modifyTypeCheckerDeclState $ \state ->
-    state {instanceConstraints = instanceConstraints state ++ constraints}
+    state {instanceConstraints = instanceConstraints state >< Seq.fromList constraints}
 
 addApplicationConstraint :: (MonadTypeChecker builtin m) => WithContext (ApplicationConstraint builtin) -> m ()
 addApplicationConstraint constraint = do
   logDebug MaxDetail ("add-constraints:" <> lineIndent (prettyExternal constraint))
 
   modifyTypeCheckerDeclState $ \state ->
-    state {applicationConstraints = applicationConstraints state ++ [constraint]}
+    state {applicationConstraints = applicationConstraints state |> constraint}
 
 addAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 addAuxiliaryInstanceConstraints constraints = do
   logDebug MaxDetail ("add-constraints:" <> lineIndent (vcat (fmap prettyExternal constraints)))
 
   modifyTypeCheckerDeclState $ \state ->
-    state {auxiliaryInstanceConstraints = auxiliaryInstanceConstraints state ++ constraints}
+    state {auxiliaryInstanceConstraints = auxiliaryInstanceConstraints state >< Seq.fromList constraints}
 
 removeInstanceConstraint ::
   (MonadTypeChecker builtin m) =>
@@ -582,13 +584,13 @@ removeInstanceConstraint ::
 removeInstanceConstraint _ idToFind = do
   TypeCheckerDeclState {..} <- getTypeCheckerDeclState
   let idOf = constraintID . contextOf
-  let result1 = findAndDeleteElem (\c -> idOf c == idToFind) instanceConstraints
+  let result1 = findAndDeleteSeqElem (\c -> idOf c == idToFind) instanceConstraints
   case result1 of
     Just (constraint, remainder) -> do
       modifyTypeCheckerDeclState (const $ TypeCheckerDeclState {instanceConstraints = remainder, ..})
       return constraint
     Nothing -> do
-      let result2 = findAndDeleteElem (\c -> idOf c == idToFind) auxiliaryInstanceConstraints
+      let result2 = findAndDeleteSeqElem (\c -> idOf c == idToFind) auxiliaryInstanceConstraints
       case result2 of
         Just (constraint, remainder) -> do
           modifyTypeCheckerDeclState (const $ TypeCheckerDeclState {auxiliaryInstanceConstraints = remainder, ..})
