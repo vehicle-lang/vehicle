@@ -349,6 +349,8 @@ cabal test lsp-tests --test-show-details=streaming --test-option=--color=always
 
 These tests are specified in Haskell under `vehicle/tests/LSP/`.
 
+Note: Currently the LSP tests are not run in CI as the language server is still in early development. They will be added to CI once the language server is more stable.
+
 ##### The golden tests
 
 The golden tests test properties of the compiler as a whole, by running it with various input files and comparing the output to golden files, which have the `.golden` file extension.
