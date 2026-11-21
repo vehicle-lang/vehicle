@@ -45,7 +45,7 @@ import Vehicle.Data.Builtin.Standard.Type ()
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeCtxs, typedModule)
 import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
 import Vehicle.Libraries.Core (ResolvedLibrary (..))
-import Vehicle.Libraries.StandardLibrary (standardLibIdent, standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
+import Vehicle.Libraries.StandardLibrary (getStandardLibrary, standardLibIdent, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecification)
 
@@ -76,6 +76,7 @@ typeCheckUserProg ::
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
+  standardLibrary <- getStandardLibrary
   ensureLatestVersionOfLibraryInstalled standardLibrary standardLibraryContent
 
   -- Load builtins and definitions
