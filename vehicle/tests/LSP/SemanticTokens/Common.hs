@@ -77,20 +77,21 @@ toTokens ts = absolutizeTokens $ go (0, 0) (0, 0) ts
     go _ _ [] = []
     go previous cursor (NoToken value : rest) =
       go previous (advancePosition cursor value) rest
-    go (previousLine, previousChar) cursor@(cursorLine, cursorChar) (SomeToken value typ mods : rest) =
+    go (previousLine, previousChar) cursor@(cursorLine, cursorChar) (SomeToken value typ mods : rest) = do
       let relativeLine = cursorLine - previousLine
-          relativeChar =
+      let relativeChar =
             if relativeLine == 0
               then cursorChar - previousChar
               else cursorChar
-       in SemanticTokenRelative
-            { _deltaLine = relativeLine,
-              _deltaStartChar = relativeChar,
-              _length = fromIntegral (utf16Length value),
-              _tokenType = typ,
-              _tokenModifiers = mods
-            }
-            : go cursor (advancePosition cursor value) rest
+      let relativeToken =
+            SemanticTokenRelative
+              { _deltaLine = relativeLine,
+                _deltaStartChar = relativeChar,
+                _length = fromIntegral (utf16Length value),
+                _tokenType = typ,
+                _tokenModifiers = mods
+              }
+      relativeToken : go cursor (advancePosition cursor value) rest
 
 utf16Length :: String -> Int
 -- LSP character offsets are based on the negotiated PositionEncodingKind; the
@@ -129,14 +130,14 @@ renderSemanticTokenDiff source expected actual =
     sourceLineCount = max 1 (length sourceLines)
 
     renderLine :: Int -> [String]
-    renderLine line =
+    renderLine line = do
       let sourceLine = sourceLineAt line sourceLines
-          lineDiffs =
+      let lineDiffs =
             sortOn
               (\(TokenDiff _ start _ _ _ _) -> start)
               [diff | diff <- diffs, fromIntegral (tokenDiffLine diff) == line]
-          resetPrefix = "\ESC[0m"
-       in map (resetPrefix ++) (sourceLine : concatMap renderDiff lineDiffs)
+
+      map ("\ESC[0m" ++) (sourceLine : concatMap renderDiff lineDiffs)
 
     renderDiff :: TokenDiff -> [String]
     renderDiff (TokenDiff _ start length' typ mods status) =
@@ -242,16 +243,16 @@ expectTokens expectedTokens overlapMode =
           InL semanticTokens ->
             case decodeSemanticTokens semanticTokens of
               Left err -> liftIO $ assertFailure err
-              Right rawTokens ->
+              Right rawTokens -> do
                 let expected = removeOverlaps overlapMode $ toTokens expectedTokens
-                    tokens = removeOverlaps overlapMode rawTokens
-                 in if tokens == expected
-                      then pure ()
-                      else
-                        liftIO $
-                          assertFailure $
-                            "Semantic tokens differ:\n"
-                              <> renderSemanticTokenDiff (toString expectedTokens) expected tokens
+                let tokens = removeOverlaps overlapMode rawTokens
+                if tokens == expected
+                  then pure ()
+                  else
+                    liftIO $
+                      assertFailure $
+                        "Semantic tokens differ:\n"
+                          <> renderSemanticTokenDiff (toString expectedTokens) expected tokens
           _ -> liftIO $ assertFailure "semantic tokens request returned no tokens"
 
 decodeSemanticTokens :: SemanticTokens -> Either String [SemanticTokenAbsolute]
