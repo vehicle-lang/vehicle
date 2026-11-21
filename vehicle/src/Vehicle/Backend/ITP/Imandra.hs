@@ -547,7 +547,7 @@ compileExpr isOutType moduleDefs expr = do
     App fun args -> compileApp isOutType moduleDefs fun args
     Record _p _i fs -> compileRecord moduleDefs fs
     RecordProj _p _t _r _field -> developerError "Record projection should have been eliminated before compilation"
-    Differentiate {} -> developerError "Differentiation compilation to Imandra is not implemented"
+    Differentiate p _t _e _field -> throwError $ UnimplementedFeature p "derivatives"
   logExit result
   return result
 
