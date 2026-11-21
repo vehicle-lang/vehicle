@@ -113,9 +113,9 @@ data TokenDiffStatus
 
 data TokenDiff
   = TokenDiff
-      UInt
-      UInt
-      UInt
+      UInt -- line (0-indexed)
+      UInt -- start column (0-indexed)
+      UInt -- token length
       SemanticTokenTypes
       [SemanticTokenModifiers]
       TokenDiffStatus
