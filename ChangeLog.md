@@ -48,6 +48,8 @@
 
 ### Other
 
+* Removed support for GHC 9.2 and added support for GHC 9.14.
+
 * **Breaking:** the short form of `--version` is now `-V` rather than `-v`, as `-v` clashed with the `--solver` option of `vehicle verify`.
 
 * Vehicle now correctly handles Windows file paths that contain additional colons when parsing dataset and network filepaths.
