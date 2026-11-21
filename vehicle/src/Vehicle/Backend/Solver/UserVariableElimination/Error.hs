@@ -27,10 +27,10 @@ diagnoseNonLinearity ::
 diagnoseNonLinearity queryFormat prog propertyProv@(propertyIdentifier, _) = do
   errorOrOrigin <- diagnoseSpecIncompatiblility prog propertyIdentifier linearityTypeCheck
   let origin = case errorOrOrigin of
-        Left err -> Left err
+        Left err -> DiagnosisFailed err
         Right originType -> case originType of
-          Builtin _ (Linearity (NonLinear source)) -> Right source
-          _ -> Left $ unexpectedOriginType propertyIdentifier
+          Builtin _ (Linearity (NonLinear source)) -> Diagnosed source
+          _ -> DiagnosisFailed $ unexpectedOriginType propertyIdentifier
   return $ UnsupportedNonLinearConstraint queryFormat propertyProv origin
 
 diagnoseAlternatingQuantifiers ::
@@ -43,10 +43,10 @@ diagnoseAlternatingQuantifiers ::
 diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier, _) = do
   errorOrOrigin <- diagnoseSpecIncompatiblility prog propertyIdentifier polarityTypeCheck
   let origin = case errorOrOrigin of
-        Left err -> Left err
+        Left err -> DiagnosisFailed err
         Right originType -> case originType of
-          Builtin _ (Polarity (MixedSequential q p pp2)) -> Right (q, p, pp2)
-          _ -> Left $ unexpectedOriginType propertyIdentifier
+          Builtin _ (Polarity (MixedSequential q p pp2)) -> Diagnosed (q, p, pp2)
+          _ -> DiagnosisFailed $ unexpectedOriginType propertyIdentifier
   return $ UnsupportedAlternatingQuantifiers queryFormat propertyProv origin
 
 diagnoseSpecIncompatiblility ::

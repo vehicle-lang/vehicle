@@ -19,6 +19,7 @@ module Vehicle.Compile.Error
     ParseLocation,
     MonadCompile,
     BlockingReason (..),
+    Diagnosis (..),
     compilerDeveloperError,
     unsupportedTensorLikeQuantifier,
   )
@@ -215,9 +216,9 @@ data CompileError
     ZeroFieldTensorLike DeclProvenance
   | -- Query backend
     NoPropertiesFound
-  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
+  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Diagnosis (Quantifier, Provenance, PolarityProvenance))
   | DuplicateQuantifierNames DeclProvenance Name
-  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearityProof)
+  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Diagnosis NonLinearityProof)
   | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Thunk Builtin)]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (UnforcedBinder Builtin) (UnforcedType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
@@ -238,6 +239,18 @@ data CompileError
     UnsupportedInequality QueryFormatID DeclProvenance
 
 deriving stock instance Show CompileError
+
+-- | The result of attempting to locate the original source of an error that
+-- was detected during compilation, but whose root cause can only be found by
+-- re-analysing the original program (e.g. with a type-checking subsystem).
+data Diagnosis a
+  = -- | No diagnosis has been attempted yet.
+    Undiagnosed
+  | -- | Diagnosis was attempted but itself failed with the given error.
+    DiagnosisFailed CompileError
+  | -- | Diagnosis succeeded and found the original source.
+    Diagnosed a
+  deriving (Show)
 
 data BlockingReason
   = BlockingNetwork Identifier
