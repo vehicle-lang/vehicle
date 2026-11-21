@@ -18,8 +18,8 @@ lspSessionConfig :: SessionConfig
 lspSessionConfig =
   defaultConfig
     { messageTimeout = 60,
-      logStdErr = True,
-      logMessages = True,
+      logStdErr = False,
+      logMessages = False,
       logColor = False
     }
 
