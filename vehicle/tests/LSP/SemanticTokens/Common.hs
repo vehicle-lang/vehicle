@@ -156,10 +156,9 @@ renderSemanticTokenDiff source expected actual =
 sourceLineAt :: Int -> [String] -> String
 sourceLineAt line = \case
   [] -> ""
-  (first : rest) ->
-    if line == 0
-      then first
-      else sourceLineAt (line - 1) rest
+  (first : rest)
+    | line == 0 -> first
+    | otherwise -> sourceLineAt (line - 1) rest
 
 tokenDiffLine :: TokenDiff -> UInt
 tokenDiffLine (TokenDiff line _ _ _ _ _) = line
