@@ -1,5 +1,47 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | A declarative syntax for writing semantic highlighting tests, where the expected class of each
+-- token is written directly in the test case.
+--
+-- Usage:
+--
+-- @
+-- testCase "simple example" $
+--   expectTokens
+--     [ "foo" `as` (SemanticTokenTypes_Function, []),
+--       " = ",
+--       "42" `as` (SemanticTokenTypes_Number, []),
+--       "\n"
+--     ]
+--     NoOverlaps
+-- @
+--
+-- You may want to specify a token assertion which will `eventually` be true:
+--
+-- @
+-- expectTokens
+--   [ "@parameter" `eventually` (SemanticTokenTypes_Decorator, []),
+--     "\n",
+--     "p" `as` (SemanticTokenTypes_Variable, []),
+--     " : ",
+--     "Nat" `as` (SemanticTokenTypes_Type, []),
+--     "\n"
+--   ]
+--   NoOverlaps
+-- @
+--
+-- Failing tests are shown line-by-line, with the expected and actual tokens rendered in diff-style
+-- colours:
+--
+-- @
+-- bar = True
+-- ^^^
+-- (SemanticTokenTypes_Variable,[])
+--       ^^^^
+--       (SemanticTokenTypes_Keyword,[])    (green - an extra token that was not expected)
+--       ^^^^
+--       (SemanticTokenTypes_Comment,[])    (red - a token that was expected but not found)
+-- @
 module SemanticTokens.Common
   ( OverlapMode (..),
     ExpectedTokens,
