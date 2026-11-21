@@ -53,11 +53,14 @@ import Vehicle.LSP.Config qualified as Config
 import Vehicle.LSP.Handlers (handlers)
 import Vehicle.LSP.Monad as LSPMonad
 import Vehicle.LSP.State (Server, initialiseServer, newServer)
+import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled)
+import Vehicle.Libraries.StandardLibrary (standardLibrary, standardLibraryContent)
+import Vehicle.Prelude.Logging (LoggingSettings, runLoggerT)
 
 --------------------------------------------------------------------------------
 
-runLSP :: (MonadStdIO IO) => LSPOptions -> IO ()
-runLSP LSPOptions {..} = do
+runLSP :: (MonadStdIO IO) => LoggingSettings -> LSPOptions -> IO ()
+runLSP loggingSettings LSPOptions {..} = do
   result <- withLogHandle maybeLogFile $ \logHandle -> do
     let -- Setup loggers:
         -- logs to 'logHandle' (either 'stderr' or 'logFile')
@@ -69,6 +72,9 @@ runLSP LSPOptions {..} = do
         -- logs to both
         dualLogger :: (MonadLsp Config m, Pretty a) => LogAction m (WithSeverity a)
         dualLogger = clientLogger <> Colog.hoistLogAction liftIO handleLogger
+
+    runLoggerT loggingSettings $
+      ensureLatestVersionOfLibraryInstalled standardLibrary standardLibraryContent
 
     -- Setup global queue with LSP message reactions:
     reactorInputChan <- newTChanIO

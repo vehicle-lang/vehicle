@@ -75,7 +75,7 @@ runVehicle Options {..} = do
             Validate options -> validate logSettings outputAsJson options
             Export options -> export logSettings outputAsJson options
             List options -> list logSettings outputAsJson options
-            LSP options -> runLSP options
+            LSP options -> runLSP logSettings options
             where
               outputAsJson = outputAsJSON globalOptions
 
