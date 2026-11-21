@@ -5,6 +5,7 @@ module Vehicle.Verify.Core where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
 import Data.Bifunctor qualified
+import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text, unpack)
@@ -14,7 +15,7 @@ import System.FilePath ((<.>), (</>))
 import Vehicle.Compile.Resource
 import Vehicle.Data.Assertion (InequalityRelation (..), Relation (..))
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Tensor (RatTensor, TensorIndices, TensorShape, showTensorIndices)
+import Vehicle.Data.Tensor (RatTensor, TensorIndices, TensorShape)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -91,14 +92,12 @@ instance ToJSON PropertyAddress where
 
 instance Pretty PropertyAddress where
   pretty (PropertyAddress name indices) =
-    concatWith (\a b -> a <> "!" <> b) (pretty name : fmap pretty indices)
+    concatWith (\a b -> a <> "!" <> b) (pretty name : fmap pretty (reverse indices))
 
+-- | The prefix used for all files generated for the property.
 calculatePropertyFilePrefix :: PropertyAddress -> FilePath
-calculatePropertyFilePrefix (PropertyAddress propertyName indices) = do
-  let indexStr
-        | null indices = ""
-        | otherwise = showTensorIndices indices
-  unpack propertyName <> indexStr
+calculatePropertyFilePrefix (PropertyAddress propertyName indices) =
+  intercalate "-" (unpack propertyName : fmap show (reverse indices))
 
 --------------------------------------------------------------------------------
 -- Addresses

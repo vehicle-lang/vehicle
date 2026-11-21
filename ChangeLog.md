@@ -34,6 +34,8 @@
 
 * Optimised solver backend, reducing compilation time by ~40% and memory requirements by ~30%.
 
+* The files generated for tensors of properties no longer contain the special character `!` in their names, e.g. `robust!0-query1.txt` is now `robust-0-query1.txt`.
+
 * Fixed bug where bounds over a variable used as input two networks weren't being
   shared properly, e.g. `forall v . 0 <= v <= 1 => f v <= g v`.
 
@@ -43,6 +45,8 @@
 
 * Fixed an internal error that occurred when a nested index quantifier bounded a network input using a value
   obtained by further indexing into a higher-dimensional tensor, e.g. `forall i j . box ! i ! j ! 0 <= x ! i ! j <= 1`.
+
+* Fixed bug where the indices of a property in a multi-dimensional tensor of properties were sometimes displayed in reverse order and in the names of the generated `.vcl-plan` files.
 
 ### ITP backend
 

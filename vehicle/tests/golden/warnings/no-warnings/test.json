@@ -7,9 +7,9 @@
       "fake.onnx"
     ],
     "produces": [
-      "Marabou.queries/p!0-query1.txt",
-      "Marabou.queries/p!1.vcl-plan",
-      "Marabou.queries/p!0.vcl-plan"
+      "Marabou.queries/p-0-query1.txt",
+      "Marabou.queries/p-1.vcl-plan",
+      "Marabou.queries/p-0.vcl-plan"
     ],
     "ignore": {
       "lines": ".*\"fileHash\".*"
