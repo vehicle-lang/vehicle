@@ -40,11 +40,6 @@ flag ghc-debug
   manual:      True
   default:     False
 
-flag nothunks
-  description: Add NoThunks instrumentation
-  manual:      True
-  default:     False
-
 flag release-build
   description: Marks this as an official release build
   manual:      True
@@ -96,10 +91,6 @@ common common-library
   if flag(ghc-debug)
     build-depends: ghc-debug-stub >=0.3 && <0.5
     cpp-options:   -DghcDebug
-
-  if flag(nothunks)
-    build-depends: nothunks >=0.1.3 && <0.2
-    cpp-options:   -Dnothunks
 
   if flag(release-build)
     cpp-options: -DreleaseBuild
@@ -267,7 +258,6 @@ library
     Vehicle.Data.AST.Binder
     Vehicle.Data.AST.Decl
     Vehicle.Data.AST.Expr.Desugared
-    Vehicle.Data.AST.Instances.NoThunks
     Vehicle.Data.AST.Module
     Vehicle.Data.AST.Name
     Vehicle.Data.AST.Prog
@@ -338,6 +328,7 @@ library
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
     Vehicle.Prelude.Version
+    Vehicle.Prelude.WriterCPS
     Vehicle.Verify.Core
     Vehicle.Verify.QueryFormat.Core
     Vehicle.Verify.QueryFormat.Interface
@@ -462,5 +453,33 @@ test-suite golden-tests
     , tasty-golden-executable
     , vehicle
     , vehicle-syntax
+
+  build-tool-depends: vehicle:vehicle
+
+test-suite lsp-tests
+  import:             common-test
+  type:               exitcode-stdio-1.0
+  main-is:            Main.hs
+  hs-source-dirs:     tests/LSP
+  other-modules:
+    SemanticTokens.Binders
+    SemanticTokens.Common
+    SemanticTokens.Declarations
+    SemanticTokens.EdgeCases
+    SemanticTokens.Simple
+    SemanticTokens.TokenTypes
+    Session.Common
+    Session.Smoke
+    Tests
+
+  build-depends:
+    , base
+    , filepath
+    , lens
+    , lsp-test
+    , lsp-types
+    , tasty
+    , tasty-hunit
+    , temporary
 
   build-tool-depends: vehicle:vehicle

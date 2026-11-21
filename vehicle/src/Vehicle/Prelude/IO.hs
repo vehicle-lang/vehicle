@@ -25,6 +25,7 @@ import Control.Monad.Identity (IdentityT)
 import Control.Monad.Reader (ReaderT)
 import Control.Monad.State (StateT)
 import Control.Monad.Trans.Class (MonadTrans (lift))
+import Control.Monad.Trans.Writer.CPS qualified as CPS
 import Control.Monad.Writer.Strict (WriterT)
 import Data.ByteString qualified as BIO
 import Data.Hashable (hash)
@@ -79,6 +80,10 @@ instance (Monoid w, MonadStdIO m) => MonadStdIO (WriterT w m) where
   writeStdout :: (Monoid w, MonadStdIO m) => Text -> WriterT w m ()
   writeStdout = lift . writeStdout
   writeStderr :: (Monoid w, MonadStdIO m) => Text -> WriterT w m ()
+  writeStderr = lift . writeStderr
+
+instance (Monoid w, MonadStdIO m) => MonadStdIO (CPS.WriterT w m) where
+  writeStdout = lift . writeStdout
   writeStderr = lift . writeStderr
 
 instance (MonadStdIO m) => MonadStdIO (IdentityT m) where

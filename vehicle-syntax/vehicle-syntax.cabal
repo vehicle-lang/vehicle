@@ -52,11 +52,6 @@ flag ghc-debug
   manual:      True
   default:     False
 
-flag nothunks
-  description: Add NoThunks instrumentation
-  manual:      True
-  default:     False
-
 flag optimise-heavily
   default:     False
   description: Enable some expensive optimisations when compiling Vehicle.
@@ -90,10 +85,6 @@ common common-library
   if flag(ghc-debug)
     build-depends: ghc-debug-stub >=0.3 && <0.5
     cpp-options:   -DghcDebug
-
-  if flag(nothunks)
-    build-depends: nothunks >=0.1.3 && <0.2
-    cpp-options:   -Dnothunks
 
   if flag(optimise-heavily)
     cpp-options: -DoptimiseHeavily

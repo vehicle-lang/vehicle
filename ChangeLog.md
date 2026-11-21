@@ -28,9 +28,11 @@
 
 * Fixed a bug that occured when one branch of an `if` had gradients and the other did not, e.g. `if c then x else 0.0`.
 
-* Fixed a bug that somtimes occured when constructing bounds involving multiple variables, e.g. `forall x y . x ! 0  < y`.
+* Fixed a bug that sometimes occured when constructing bounds involving multiple variables, e.g. `forall x y . x ! 0  < y`.
 
 ### Solver backend
+
+* Optimised solver backend, reducing compilation time by ~40% and memory requirements by ~30%.
 
 * Fixed bug where bounds over a variable used as input two networks weren't being
   shared properly, e.g. `forall v . 0 <= v <= 1 => f v <= g v`.

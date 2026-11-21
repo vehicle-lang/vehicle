@@ -5,6 +5,7 @@ import Control.Monad.Identity (IdentityT, mapIdentityT)
 import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Trans.Maybe (MaybeT, mapMaybeT)
+import Control.Monad.Trans.Writer.CPS qualified as CPS
 import Control.Monad.Writer.Strict
 import Data.Data (Proxy (..))
 import GHC.Stack (HasCallStack)
@@ -31,6 +32,11 @@ class (PrintableBuiltin builtin, MonadLogger m) => MonadFreeContext builtin m wh
 
 instance (Monoid w, MonadFreeContext builtin m) => MonadFreeContext builtin (WriterT w m) where
   addDeclEntryToContext = mapWriterT . addDeclEntryToContext
+  getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
+
+instance (Monoid w, MonadFreeContext builtin m) => MonadFreeContext builtin (CPS.WriterT w m) where
+  addDeclEntryToContext = CPS.mapWriterT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
   getDeclEntry proxy = lift . getDeclEntry proxy
 

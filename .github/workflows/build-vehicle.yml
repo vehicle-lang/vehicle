@@ -10,6 +10,7 @@ defaults:
 jobs:
   build-vehicle:
     strategy:
+      fail-fast: false
       matrix:
         os:
           - name: "Linux"
@@ -92,20 +93,6 @@ jobs:
                 project-file: "cabal.project"
                 extra-args: ""
                 extra-args-test-golden: ""
-          # Build with -fnothunks:
-          # 30-01-2025:
-          # Disabled while not using NoThunks
-          # - os:
-          #     name: Linux
-          #     type: ubuntu-latest
-          #   haskell:
-          #     ghc:
-          #       version: "9.6.5"
-          #     cabal:
-          #       version: "3.14.2.0"
-          #       project-file: "cabal.project.nothunks"
-          #       extra-args: "-fnothunks"
-          #       extra-args-test-golden: ""
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
           # Build with -fghc-debug:
@@ -119,19 +106,6 @@ jobs:
           #       version: "3.14.2.0"
           #       project-file: "cabal.project.ghc-debug"
           #       extra-args: "-fghc-debug"
-          # 20-12-2022:
-          # This test is disabled because -fghc-debug requires two threads, which triggers #342.
-          # Build with -fghc-debug and -fnothunks:
-          # - os:
-          #     name: Linux
-          #     type: ubuntu-latest
-          #   haskell:
-          #     ghc:
-          #       version: "9.6.5"
-          #     cabal:
-          #       version: "3.14.2.0"
-          #       project-file: "cabal.project.ghc-debug.nothunks"
-          #       extra-args: "-fghc-debug -fnothunks"
 
     name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.haskell.ghc.version }} ${{ matrix.haskell.cabal.extra-args }}
     runs-on: ${{ matrix.os.type }}
@@ -139,6 +113,14 @@ jobs:
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v7
+
+      # GHC 9.4.8 is configured to link with the gold linker (`ld.gold`),
+      # which is no longer bundled with `binutils` from Ubuntu 26.04 onwards.
+      - name: 🛠️ Install gold linker
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils-gold
 
       - name: 🛠️ Install Haskell
         uses: haskell-actions/setup@v2
@@ -183,6 +165,15 @@ jobs:
             --test-option=--color=always                            \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}
+
+          # LSP tests are disabled until the language server is more stable.
+          #
+          # cabal test                                                \
+          #   vehicle:test:lsp-tests                                  \
+          #   --test-show-details=always                              \
+          #   --test-option=--color=always                            \
+          #   --project-file=${{ matrix.haskell.cabal.project-file }} \
+          #   ${{ matrix.haskell.cabal.extra-args }}
 
           cabal test                                                \
             vehicle:test:golden-tests                               \
