@@ -23,4 +23,4 @@ data TensorConstantValue = TensorConstantValue
     tensorCoefficient :: ExtendedRational,
     tensorValue :: Maybe (Thunk Builtin)
   }
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)

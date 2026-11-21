@@ -31,13 +31,8 @@ data TypeClass
   | ValidParameterType ParameterSort
   | ValidNetworkTensorType
   | ValidTensorLikeType
-  deriving (Eq, Ord, Generic, Show)
-
-instance NFData TypeClass
-
-instance Hashable TypeClass
-
-instance Serialize TypeClass
+  deriving stock (Eq, Ord, Generic, Show)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty TypeClass where
   pretty = \case
@@ -75,13 +70,8 @@ data TypeClassOp
   | FoldTC
   | ForeachTC
   | TensorTypeTC
-  deriving (Eq, Ord, Generic, Show)
-
-instance NFData TypeClassOp
-
-instance Hashable TypeClassOp
-
-instance Serialize TypeClassOp
+  deriving stock (Eq, Ord, Generic, Show)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty TypeClassOp where
   pretty = \case

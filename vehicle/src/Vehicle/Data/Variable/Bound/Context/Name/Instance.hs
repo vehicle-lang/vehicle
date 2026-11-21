@@ -20,7 +20,7 @@ import Vehicle.Data.Variable.Bound.Context.Name.Core
 newtype NameBoundContextT m a = NameBoundContextT
   { unNameBoundContextT :: ReaderT NamedBoundCtx m a
   }
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
 
 type BoundContext a = NameBoundContextT Identity a
 

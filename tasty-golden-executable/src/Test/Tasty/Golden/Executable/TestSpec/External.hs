@@ -15,7 +15,7 @@ import Test.Tasty.Options (IsOption (..), safeRead)
 
 -- | The name of an external program.
 newtype External = External {programName :: FilePath}
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Show External where
   show :: External -> String
@@ -39,7 +39,8 @@ instance ToJSON External where
   toJSON = toJSON . programName
 
 newtype AllowlistExternals = AllowlistExternals [External]
-  deriving (Eq, Ord, Show, Semigroup, Monoid)
+  deriving stock (Eq, Ord, Show)
+  deriving newtype (Semigroup, Monoid)
 
 instance IsOption AllowlistExternals where
   defaultValue :: AllowlistExternals

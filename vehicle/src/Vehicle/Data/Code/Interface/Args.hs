@@ -588,9 +588,8 @@ instance IsArgs IterateArgs where
 newtype NetworkAppArgs expr = NetworkAppArgs
   { networkAppArg :: expr
   }
-  deriving (Generic, Show, Eq)
-
-instance (Hashable expr) => Hashable (NetworkAppArgs expr)
+  deriving stock (Generic, Show, Eq)
+  deriving anyclass (Hashable)
 
 instance IsArgs NetworkAppArgs where
   accessSpine =

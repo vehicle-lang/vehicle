@@ -19,13 +19,8 @@ import Vehicle.Prelude.Supply
 data MaybeTrivial a
   = Trivial !Bool
   | NonTrivial !a
-  deriving (Show, Generic, Foldable, Traversable)
-
-instance (NFData a) => NFData (MaybeTrivial a)
-
-instance (ToJSON a) => ToJSON (MaybeTrivial a)
-
-instance (FromJSON a) => FromJSON (MaybeTrivial a)
+  deriving stock (Show, Generic, Foldable, Traversable)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance Functor MaybeTrivial where
   fmap f = \case
@@ -108,7 +103,7 @@ newtype MaybeTrivialT m a = MaybeTrivialT
     -- the trivial result rather than combine them together appropriately!
     runMaybeTrivialT :: m (MaybeTrivial a)
   }
-  deriving (Functor)
+  deriving stock (Functor)
 
 mapMaybeTrivialT ::
   (m (MaybeTrivial a) -> n (MaybeTrivial b)) ->

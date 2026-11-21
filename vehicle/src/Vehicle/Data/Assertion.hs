@@ -38,7 +38,7 @@ data Relation
   = OEq
   | OLe
   | OLt
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 relationToComparisonOp :: Relation -> ComparisonOp
 relationToComparisonOp = \case
@@ -61,13 +61,8 @@ instance IsRelation Relation where
 data InequalityRelation
   = Strict
   | NonStrict
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData InequalityRelation
-
-instance ToJSON InequalityRelation
-
-instance FromJSON InequalityRelation
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance Pretty InequalityRelation where
   pretty = \case
@@ -111,7 +106,7 @@ data NormalisedRelation rel expr = NormalisedRelation
   { relation :: rel,
     expression :: expr
   }
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
 
 instance
   (NFData rel, NFData expr) =>

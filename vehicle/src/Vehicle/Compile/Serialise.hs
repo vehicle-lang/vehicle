@@ -30,9 +30,8 @@ data ObjectFileContents = ObjectFileContents
     fileImports :: [ImportStatement],
     encodedInterface :: ByteString
   }
-  deriving (Generic)
-
-instance Serialize ObjectFileContents
+  deriving stock (Generic)
+  deriving anyclass (Serialize)
 
 -- | A module whose object file is present and up-to-date with respect to its
 -- source, but whose interface has not yet been decoded.

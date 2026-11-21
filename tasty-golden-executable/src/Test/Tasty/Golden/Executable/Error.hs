@@ -16,12 +16,12 @@ import Text.Printf (printf)
 
 -- | Raised when the needed file for a test is not found.
 newtype NeededFilesError = NeededFilesError {neededFilesNotFound :: [FilePath]}
-  deriving (Show, Semigroup)
+  deriving stock (Show)
+  deriving newtype (Semigroup)
+  deriving anyclass (Exception)
 
 neededFileNotFound :: FilePath -> NeededFilesError
 neededFileNotFound file = NeededFilesError [file]
-
-instance Exception NeededFilesError
 
 handleNeededFilesError :: NeededFilesError -> IO Result
 handleNeededFilesError NeededFilesError {..} = do
@@ -32,9 +32,9 @@ handleNeededFilesError NeededFilesError {..} = do
 
 -- | Raised when the golden file for a test is not found.
 newtype GoldenFilesNotFoundError = GoldenFilesNotFoundError {goldenFilesNotFound :: [FilePath]}
-  deriving (Show, Semigroup)
-
-instance Exception GoldenFilesNotFoundError
+  deriving stock (Show)
+  deriving newtype (Semigroup)
+  deriving anyclass (Exception)
 
 handleGoldenFilesNotFoundError :: GoldenFilesNotFoundError -> IO Result
 handleGoldenFilesNotFoundError GoldenFilesNotFoundError {..} = do
@@ -45,9 +45,9 @@ handleGoldenFilesNotFoundError GoldenFilesNotFoundError {..} = do
 
 -- | Raised when no golden files provided.
 newtype GoldenFilesNotProvidedError = GoldenFilesNotProvidedError {goldenFilesNotProvided :: [FilePattern]}
-  deriving (Show, Semigroup)
-
-instance Exception GoldenFilesNotProvidedError
+  deriving stock (Show)
+  deriving newtype (Semigroup)
+  deriving anyclass (Exception)
 
 handleGoldenFilesNotProvidedError :: GoldenFilesNotProvidedError -> IO Result
 handleGoldenFilesNotProvidedError GoldenFilesNotProvidedError {..} = do
@@ -69,7 +69,8 @@ data ProducedFilesError = ProducedFilesError
     producedFilesNotExpected :: [FilePath],
     producedAndExpectedDiffs :: Map FilePath Diff
   }
-  deriving (Show)
+  deriving stock (Show)
+  deriving anyclass (Exception)
 
 instance Semigroup ProducedFilesError where
   (<>) :: ProducedFilesError -> ProducedFilesError -> ProducedFilesError
@@ -97,8 +98,6 @@ stdoutDiffer diff = ProducedFilesError (Just diff) Nothing [] [] mempty
 stderrDiffer :: Diff -> ProducedFilesError
 stderrDiffer diff = ProducedFilesError Nothing (Just diff) [] [] mempty
 
-instance Exception ProducedFilesError
-
 handleProducedFilesError :: ProducedFilesError -> IO Result
 handleProducedFilesError ProducedFilesError {..} = do
   let message =
@@ -124,19 +123,17 @@ handleProducedFilesError ProducedFilesError {..} = do
 data Diff
   = Diff String
   | NoDiff String
+  deriving anyclass (Exception)
 
 instance Show Diff where
   show :: Diff -> String
   show (Diff prettyDiff) = prettyDiff
   show (NoDiff reason) = "No diff: " <> reason
 
-instance Exception Diff
-
 -- | Raised when the test run exits with a non-zero exit code.
 newtype ExitFailure = ExitFailure Int
-  deriving (Show)
-
-instance Exception ExitFailure
+  deriving stock (Show)
+  deriving anyclass (Exception)
 
 handleExitFailure :: ExitFailure -> IO Result
 handleExitFailure (ExitFailure code) = do
@@ -149,13 +146,13 @@ data AmbiguousGoldenFile = AmbiguousGoldenFile
     otherTestName :: TestName,
     otherTestProducesPattern :: FilePattern
   }
-  deriving (Show)
+  deriving stock (Show)
 
 -- | Raised when a golden file is matched by the produces pattern of an unrelated test.
 newtype AmbiguousGoldenFilesError = AmbiguousGoldenFilesError [AmbiguousGoldenFile]
-  deriving (Show, Semigroup)
-
-instance Exception AmbiguousGoldenFilesError
+  deriving stock (Show)
+  deriving newtype (Semigroup)
+  deriving anyclass (Exception)
 
 ambiguousGoldenFileToString :: AmbiguousGoldenFile -> String
 ambiguousGoldenFileToString AmbiguousGoldenFile {..} =

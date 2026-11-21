@@ -23,7 +23,7 @@ data ExportOptions = ExportOptions
     verificationCache :: Maybe FilePath,
     constructiveReals :: Bool
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 export :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ExportOptions -> IO ()
 export loggingSettings outputAsJSON ExportOptions {..} = do

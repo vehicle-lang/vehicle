@@ -47,7 +47,9 @@ import Vehicle.Prelude
 --   * v6 = c
 --   * v7 = d
 newtype SliceVariable = SliceVariable Lv
-  deriving (Show, Eq, Ord, Enum, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving newtype (Enum)
+  deriving anyclass (NFData, ToJSON, ToJSONKey, FromJSON, FromJSONKey)
 
 class (VariableLike variable) => SliceVariableLike variable where
   toSliceVar :: variable -> SliceVariable
@@ -58,22 +60,12 @@ instance SliceVariableLike SliceVariable where
 instance VariableLike SliceVariable where
   toLv = coerce
 
-instance NFData SliceVariable
-
-instance ToJSON SliceVariable
-
-instance ToJSONKey SliceVariable
-
-instance FromJSON SliceVariable
-
-instance FromJSONKey SliceVariable
-
 --------------------------------------------------------------------------------
 -- Tensor variables
 
 -- | Variables that represent a whole tensor, rather than an individual slice.
 newtype TensorVariable = TensorVariable SliceVariable
-  deriving (Eq, Ord, Show)
+  deriving stock (Eq, Ord, Show)
 
 instance VariableLike TensorVariable where
   toLv = coerce
@@ -92,16 +84,11 @@ instance TensorVariableLike TensorVariable where
 
 -- | SliceVariables introduced by the user via a quantifier.
 newtype UserSliceVariable = UserSliceVariable Lv
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance VariableLike UserSliceVariable where
   toLv = coerce
-
-instance NFData UserSliceVariable
-
-instance ToJSON UserSliceVariable
-
-instance FromJSON UserSliceVariable
 
 instance SliceVariableLike UserSliceVariable where
   toSliceVar = coerce
@@ -111,7 +98,7 @@ instance SliceVariableLike UserSliceVariable where
 
 -- | TensorVariables introduced by the user via a quantifier.
 newtype UserTensorVariable = UserTensorVariable TensorVariable
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance VariableLike UserTensorVariable where
   toLv = coerce
@@ -128,7 +115,7 @@ instance TensorVariableLike UserTensorVariable where
 -- | Variables introduced by the compiler that represent a tensor which is used
 -- to represent the input to a neural network.
 newtype NetworkInputTensorVariable = NetworkInputTensorVariable TensorVariable
-  deriving (Eq, Ord, Show)
+  deriving stock (Eq, Ord, Show)
 
 instance VariableLike NetworkInputTensorVariable where
   toLv = coerce
@@ -145,7 +132,7 @@ instance SliceVariableLike NetworkInputTensorVariable where
 -- | Variables introduced by the compiler that represent a tensor which is used
 -- to represent the output of a neural network.
 newtype NetworkOutputTensorVariable = NetworkOutputTensorVariable Lv
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance VariableLike NetworkOutputTensorVariable where
   toLv = coerce
@@ -170,16 +157,11 @@ instance SliceVariableLike NetworkOutputTensorVariable where
 --   x = [x_0]
 --   y = [y_0, y_1]
 newtype NetworkIOVariable = NetworkIOVariable Lv
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance VariableLike NetworkIOVariable where
   toLv = coerce
-
-instance NFData NetworkIOVariable
-
-instance ToJSON NetworkIOVariable
-
-instance FromJSON NetworkIOVariable
 
 instance SliceVariableLike NetworkIOVariable where
   toSliceVar = coerce
@@ -188,13 +170,8 @@ instance SliceVariableLike NetworkIOVariable where
 -- Element variables
 
 newtype NetworkIOElementVariable = NetworkIOElementVariable Lv
-  deriving (Ord, Eq, Generic)
-
-instance NFData NetworkIOElementVariable
-
-instance ToJSON NetworkIOElementVariable
-
-instance FromJSON NetworkIOElementVariable
+  deriving stock (Ord, Eq, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance VariableLike NetworkIOElementVariable where
   toLv = coerce
@@ -217,13 +194,8 @@ data NestedSliceVariable = NestedSliceVariable
   { nestedTensorShape :: NetworkModality TensorShape,
     nestedStartingVariable :: SliceVariable
   }
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData NestedSliceVariable
-
-instance ToJSON NestedSliceVariable
-
-instance FromJSON NestedSliceVariable
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance Pretty NestedSliceVariable where
   pretty (NestedSliceVariable shape l) = pretty (toLv l) <> ":" <+> pretty shape

@@ -90,7 +90,7 @@ monomorphisationError b args = do
 data AuxiliaryConstraintProgress builtin
   = Stuck MetaSet
   | Progress [WithContext (UnificationConstraint builtin)] [WithContext (InstanceConstraint builtin)]
-  deriving (Show)
+  deriving stock (Show)
 
 handleAuxiliaryConstraintProgress ::
   (MonadTypeChecker builtin m, TypableBuiltin builtin) =>

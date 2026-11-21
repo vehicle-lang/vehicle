@@ -2,7 +2,7 @@ module Vehicle.Data.Code.LinearExpr where
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Identity (Identity (..))
-import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Foldable (foldrM)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -47,15 +47,8 @@ data LinearExpr variable constant = Sparse
   { coefficients :: Map variable Coefficient,
     constantValue :: constant
   }
-  deriving (Show, Eq, Ord, Generic)
-
-instance (NFData variable, NFData constant) => NFData (LinearExpr variable constant)
-
-instance (ToJSONKey variable, ToJSON constant) => ToJSON (LinearExpr variable constant)
-
-instance (Ord variable, FromJSONKey variable, FromJSON constant) => FromJSON (LinearExpr variable constant)
-
-instance (Hashable variable, Hashable constant) => Hashable (LinearExpr variable constant)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON, Hashable)
 
 instance (HasShape constant) => HasShape (LinearExpr variable constant) where
   shapeOf = shapeOf . constantValue

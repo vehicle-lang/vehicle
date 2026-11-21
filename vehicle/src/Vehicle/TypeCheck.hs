@@ -54,7 +54,7 @@ data TypeCheckOptions = TypeCheckOptions
     secondaryTypeSystem :: Maybe SecondaryTypeSystem,
     declarationsToCompile :: DeclarationNames
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 typeCheck :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> TypeCheckOptions -> IO ()
 typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
@@ -220,14 +220,7 @@ data ModuleStack = ModuleStack
 newtype ModuleLoaderT m a = ModuleLoaderT
   { unModuleLoaderT :: ReaderT ModuleStack (StateT ProgramContext m) a
   }
-  deriving
-    ( Functor,
-      Applicative,
-      Monad,
-      MonadReader ModuleStack,
-      MonadState ProgramContext,
-      MonadLogger
-    )
+  deriving newtype (Functor, Applicative, Monad, MonadReader ModuleStack, MonadState ProgramContext, MonadLogger)
 
 instance MonadTrans ModuleLoaderT where
   lift = ModuleLoaderT . lift . lift

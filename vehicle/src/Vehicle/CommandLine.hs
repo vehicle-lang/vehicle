@@ -48,7 +48,7 @@ data Options = Options
   { globalOptions :: GlobalOptions,
     modeOptions :: Maybe ModeOptions
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 data GlobalOptions = GlobalOptions
   { version :: Bool,
@@ -58,7 +58,7 @@ data GlobalOptions = GlobalOptions
     noWarnings :: Bool,
     outputAsJSON :: OutputAsJSON
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 defaultGlobalOptions :: GlobalOptions
 defaultGlobalOptions =
@@ -79,7 +79,7 @@ data ModeOptions
   | Export ExportOptions
   | List ListOptions
   | LSP LSPOptions
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 --------------------------------------------------------------------------------
 -- List of all options

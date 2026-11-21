@@ -18,7 +18,7 @@ acceptOptionIngredient =
     ]
 
 newtype Accept = Accept {unAccept :: Bool}
-  deriving (Eq, Ord, Show)
+  deriving stock (Eq, Ord, Show)
 
 instance IsOption Accept where
   defaultValue :: Accept

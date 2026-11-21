@@ -15,7 +15,7 @@ import Vehicle.Prelude.Logging
 data LossFunctionMode
   = Training
   | Search
-  deriving (Eq, Show, Read, Bounded, Enum)
+  deriving stock (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty LossFunctionMode where
   pretty = pretty . show
@@ -26,7 +26,7 @@ instance Pretty LossFunctionMode where
 data BuiltinDifferentiableLogicID
   = VehicleLoss
   | DL2Loss
-  deriving (Eq, Show, Read, Enum, Bounded)
+  deriving stock (Eq, Show, Read, Enum, Bounded)
 
 instance Pretty BuiltinDifferentiableLogicID where
   pretty = pretty . show
@@ -38,7 +38,7 @@ instance Pretty BuiltinDifferentiableLogicID where
 data DifferentiableLogicID
   = BuiltinLogic BuiltinDifferentiableLogicID
   | CustomLogic Name
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 instance Read DifferentiableLogicID where
   readsPrec _prec value = do
@@ -62,7 +62,7 @@ data InteractiveTheoremProverID
   | Rocq
   | Isabelle
   | Imandra
-  deriving (Eq, Show, Read, Bounded, Enum)
+  deriving stock (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty InteractiveTheoremProverID where
   pretty = pretty . show
@@ -75,7 +75,7 @@ data SecondaryTypeSystem
   | LinearityTypes
   | DecidabilityTypes
   | GradientCarryingTypes
-  deriving (Eq, Show, Bounded, Enum)
+  deriving stock (Eq, Show, Bounded, Enum)
 
 instance Pretty SecondaryTypeSystem where
   pretty = \case

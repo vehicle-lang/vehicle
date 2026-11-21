@@ -24,7 +24,7 @@ class (Monad m) => MonadSupply s m where
 newtype SupplyT s m a = SupplyT
   { unsupplyT :: StateT [s] m a
   }
-  deriving (Functor, Applicative, Monad, MonadTrans)
+  deriving newtype (Functor, Applicative, Monad, MonadTrans)
 
 runSupplyT :: (Monad m) => [s] -> SupplyT s m a -> m a
 runSupplyT xs (SupplyT m) = evalStateT m xs

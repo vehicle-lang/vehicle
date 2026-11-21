@@ -24,13 +24,8 @@ data NetworkContextInfo = NetworkContextInfo
   { networkFilepath :: FilePath,
     networkType :: NetworkType
   }
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData NetworkContextInfo
-
-instance ToJSON NetworkContextInfo
-
-instance FromJSON NetworkContextInfo
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 -- | A list of neural networks used in a given query.
 -- The last `int` refers to the number of times it is applied.
@@ -62,11 +57,8 @@ type QuerySetNegationStatus = Bool
 data QueryResult witness
   = SAT (Maybe witness)
   | UnSAT
-  deriving (Show, Functor, Foldable, Traversable, Generic)
-
-instance (FromJSON witness) => FromJSON (QueryResult witness)
-
-instance (ToJSON witness) => ToJSON (QueryResult witness)
+  deriving stock (Show, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
 instance (Pretty witness) => Pretty (QueryResult witness) where
   pretty = \case
@@ -91,14 +83,11 @@ data PropertyAddress = PropertyAddress
   { propertyName :: PropertyName,
     propertyIndices :: TensorIndices
   }
-  deriving (Eq, Show, Generic)
-
-instance NFData PropertyAddress
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (NFData, FromJSON)
 
 instance ToJSON PropertyAddress where
   toJSON = genericToJSON jsonOptions
-
-instance FromJSON PropertyAddress
 
 instance Pretty PropertyAddress where
   pretty (PropertyAddress name indices) =
@@ -122,14 +111,11 @@ data QueryAddress = QueryAddress
   { property :: PropertyAddress,
     queryID :: QueryID
   }
-  deriving (Eq, Show, Generic)
-
-instance NFData QueryAddress
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (NFData, FromJSON)
 
 instance ToJSON QueryAddress where
   toJSON = genericToJSON jsonOptions
-
-instance FromJSON QueryAddress
 
 instance Pretty QueryAddress where
   pretty (QueryAddress property queryID) = pretty property <+> brackets (pretty queryID)
@@ -151,7 +137,7 @@ data QueryRelation
   | LtRel
   | GeRel
   | GtRel
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)
 
 instance Pretty QueryRelation where
   pretty = \case
@@ -186,24 +172,18 @@ flipQueryRel = \case
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
   = UserVariableAssignment [(Name, UserVariableValue)]
-  deriving (Generic)
+  deriving stock (Generic)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Pretty UserVariableAssignment where
   pretty (UserVariableAssignment assignments) =
     vsep (fmap pretty assignments)
 
-instance ToJSON UserVariableAssignment
-
-instance FromJSON UserVariableAssignment
-
 data UserVariableValue
   = TensorValue RatTensor
   | RecordValue (NonEmpty (Name, RatTensor))
-  deriving (Show, Generic, Eq)
-
-instance ToJSON UserVariableValue
-
-instance FromJSON UserVariableValue
+  deriving stock (Show, Generic, Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Pretty UserVariableValue where
   pretty t = case t of

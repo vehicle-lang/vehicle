@@ -17,7 +17,7 @@ import Vehicle.Verify.Specification.IO (readPropertyResult, readSpecificationCac
 -- Proof validation
 
 newtype ValidateOptions = ValidateOptions {verificationCache :: FilePath}
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 validate :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ValidateOptions -> IO ()
 validate loggingSettings outputAsJSON checkOptions = runLoggerT loggingSettings $ do
@@ -52,11 +52,10 @@ data ValidateResult
   = Verified
   | Unverified
   | IntegrityError ResourceIntegrityError
-  deriving (Generic)
+  deriving stock (Generic)
+  deriving anyclass (ToJSON)
 
 instance Pretty ValidateResult where
   pretty Verified = "Status: verified"
   pretty Unverified = "Status: unverified"
   pretty (IntegrityError err) = "Status: unknown" <> line <> line <> pretty err
-
-instance ToJSON ValidateResult

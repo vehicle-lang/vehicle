@@ -25,7 +25,7 @@ data ExternalResource
   = Network
   | Dataset
   | Parameter
-  deriving (Eq, Show, Generic)
+  deriving stock (Eq, Show, Generic)
 
 instance Pretty ExternalResource where
   pretty = \case
@@ -75,11 +75,8 @@ data ResourceIntegrityInfo = ResourceIntegrityInfo
     filePath :: FilePath,
     fileHash :: Int
   }
-  deriving (Show, Generic)
-
-instance FromJSON ResourceIntegrityInfo
-
-instance ToJSON ResourceIntegrityInfo
+  deriving stock (Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
 instance Pretty ResourceIntegrityInfo where
   pretty ResourceIntegrityInfo {..} =
@@ -91,18 +88,14 @@ data ResourcesIntegrityInfo = ResourcesIntegrityInfo
     datasetSummaries :: [ResourceIntegrityInfo],
     parameterSummaries :: ParameterValues
   }
-  deriving (Show, Generic)
-
-instance FromJSON ResourcesIntegrityInfo
-
-instance ToJSON ResourcesIntegrityInfo
+  deriving stock (Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
 data ResourceIntegrityError
   = MissingResources (NonEmpty ResourceIntegrityInfo)
   | AlteredResources (NonEmpty ResourceIntegrityInfo)
-  deriving (Show, Generic)
-
-instance ToJSON ResourceIntegrityError
+  deriving stock (Show, Generic)
+  deriving anyclass (ToJSON)
 
 instance Pretty ResourceIntegrityError where
   pretty = \case

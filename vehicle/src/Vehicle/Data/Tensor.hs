@@ -95,17 +95,8 @@ isZeroDimensional v = null (shapeOf v)
 data Tensor a
   = DenseTensor TensorShape (Vector a)
   | ConstantTensor TensorShape a
-  deriving (Show, Eq, Ord, Generic)
-
-instance (NFData a) => NFData (Tensor a)
-
-instance (Serialize a) => Serialize (Tensor a)
-
-instance (Hashable a) => Hashable (Tensor a)
-
-instance (ToJSON a) => ToJSON (Tensor a)
-
-instance (FromJSON a) => FromJSON (Tensor a)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, Serialize, Hashable, ToJSON, FromJSON)
 
 toVector :: Tensor a -> Vector a
 toVector = \case

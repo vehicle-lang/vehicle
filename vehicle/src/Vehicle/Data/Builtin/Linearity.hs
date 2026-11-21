@@ -25,9 +25,8 @@ data LinearityProof
   = QuantifiedVariableProvenance Provenance Text
   | NetworkOutputProvenance Provenance Text
   | LinFunctionProvenance Provenance LinearityProof FunctionPosition
-  deriving (Eq, Ord, Show, Generic)
-
-instance Serialize LinearityProof
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Serialize)
 
 instance NFData LinearityProof where
   rnf _x = ()
@@ -45,7 +44,8 @@ data NonLinearityProof
     PowLinearBase Provenance LinearityProof
   | -- | An power where the exponent is linear
     PowLinearExponent Provenance LinearityProof
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance Pretty NonLinearityProof where
   pretty = \case
@@ -53,10 +53,6 @@ instance Pretty NonLinearityProof where
     DivideByLinear {} -> "?/X"
     PowLinearBase {} -> "X^?"
     PowLinearExponent {} -> "?^X"
-
-instance NFData NonLinearityProof
-
-instance Serialize NonLinearityProof
 
 --------------------------------------------------------------------------------
 -- Linearity
@@ -67,11 +63,8 @@ data Linearity
   = Constant
   | Linear LinearityProof
   | NonLinear NonLinearityProof
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData Linearity
-
-instance Serialize Linearity
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance Pretty Linearity where
   pretty = \case
@@ -100,11 +93,8 @@ data LinearityRelation
   | PowLinearity Provenance
   | FunctionLinearity FunctionPosition
   | QuantifierLinearity Quantifier
-  deriving (Eq, Ord, Generic, Show)
-
-instance Serialize LinearityRelation
-
-instance NFData LinearityRelation
+  deriving stock (Eq, Ord, Generic, Show)
+  deriving anyclass (Serialize, NFData)
 
 instance Pretty LinearityRelation where
   pretty = \case
@@ -123,7 +113,7 @@ data LinearityBuiltin
   | LinearityFunction BuiltinFunction
   | Linearity Linearity
   | LinearityRelation LinearityRelation
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
 
 instance Pretty LinearityBuiltin where
   pretty = \case
