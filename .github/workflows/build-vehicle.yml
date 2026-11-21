@@ -143,7 +143,7 @@ jobs:
       # GHC 9.4.8 is configured to link with the gold linker (`ld.gold`),
       # which is no longer bundled with `binutils` from Ubuntu 26.04 onwards.
       - name: 🛠️ Install gold linker
-        if: runner.os == 'Linux' && matrix.haskell.ghc.version == '9.4.8'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y binutils-gold
