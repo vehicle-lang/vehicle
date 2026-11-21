@@ -3,6 +3,7 @@ module Vehicle.Data.Variable.Bound.Context.Tensor.Class where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Trans.Writer.CPS qualified as CPS
 import Control.Monad.Writer.Strict
 import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
@@ -11,7 +12,6 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Resource (NetworkModality)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.ForcedValue (UnforcedBinder)
-import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Core
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
@@ -34,6 +34,9 @@ class (MonadReadableNameContext m) => MonadReadableTensorBoundContext m where
 instance (Monoid w, MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (WriterT w m) where
   getNestedVariableCtx = lift getNestedVariableCtx
 
+instance (Monoid w, MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (CPS.WriterT w m) where
+  getNestedVariableCtx = lift getNestedVariableCtx
+
 instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (ReaderT w m) where
   getNestedVariableCtx = lift getNestedVariableCtx
 
@@ -44,9 +47,6 @@ instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext 
   getNestedVariableCtx = lift getNestedVariableCtx
 
 instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (SupplyT e m) where
-  getNestedVariableCtx = lift getNestedVariableCtx
-
-instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (MaybeTrivialT m) where
   getNestedVariableCtx = lift getNestedVariableCtx
 
 getCompleteNamedCtx :: (MonadReadableTensorBoundContext m) => m CompleteNamedBoundCtx
@@ -149,6 +149,11 @@ instance (Monoid w, MonadTensorBoundContext m) => MonadTensorBoundContext (Write
   addTensorBinderToContextLocally dims binder = mapWriterT (addTensorBinderToContextLocally dims binder)
   addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
 
+instance (Monoid w, MonadTensorBoundContext m) => MonadTensorBoundContext (CPS.WriterT w m) where
+  addNonTensorBinderToContext = CPS.mapWriterT . addNonTensorBinderToContext
+  addTensorBinderToContextLocally dims binder = CPS.mapWriterT (addTensorBinderToContextLocally dims binder)
+  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
+
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (ReaderT w m) where
   addNonTensorBinderToContext = mapReaderT . addNonTensorBinderToContext
   addTensorBinderToContextLocally dims binder = mapReaderT (addTensorBinderToContextLocally dims binder)
@@ -167,9 +172,4 @@ instance (MonadTensorBoundContext m) => MonadTensorBoundContext (StateT e m) whe
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (SupplyT e m) where
   addNonTensorBinderToContext = mapSupplyT . addNonTensorBinderToContext
   addTensorBinderToContextLocally dims binder = mapSupplyT (addTensorBinderToContextLocally dims binder)
-  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
-
-instance (MonadTensorBoundContext m) => MonadTensorBoundContext (MaybeTrivialT m) where
-  addNonTensorBinderToContext = mapMaybeTrivialT . addNonTensorBinderToContext
-  addTensorBinderToContextLocally dims binder = mapMaybeTrivialT (addTensorBinderToContextLocally dims binder)
   addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)

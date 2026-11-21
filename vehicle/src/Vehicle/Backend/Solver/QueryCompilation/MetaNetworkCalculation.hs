@@ -6,7 +6,8 @@ where
 import Control.Monad (forM, unless)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
+import Control.Monad.Trans.Writer.CPS (runWriterT)
+import Control.Monad.Writer.Class (MonadWriter (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (Coercible, coerce)
 import Data.DisjointSet (DisjointSet)
@@ -37,17 +38,17 @@ import Vehicle.Verify.QueryFormat (QueryFormat (..))
 import Vehicle.Verify.Specification (CompilationStep (..))
 
 calculateMetaNetworkApplications ::
-  (MonadQueryCompilation m, MonadMaybeTrivial m) =>
+  (MonadQueryCompilation m) =>
   ConjunctAll LinearAssertion ->
-  m (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep])
+  m (MaybeTrivial (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep]))
 calculateMetaNetworkApplications assertions = do
   (eliminationResult, compilationSteps) <- runWriterT $ eliminateRedundantApplications assertions
   case eliminationResult of
-    Trivial b -> trivial b
+    Trivial b -> return $ Trivial b
     NonTrivial newAssertions -> do
       networkApps <- calculateMetaNetworkApps newAssertions
       checkIfMetaNetworkSupported networkApps
-      nonTrivial (networkApps, newAssertions, compilationSteps)
+      return $ NonTrivial (networkApps, newAssertions, compilationSteps)
 
 --------------------------------------------------------------------------------
 -- Redundant network applications

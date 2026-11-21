@@ -6,10 +6,10 @@ module Vehicle.Data.Variable.Bound.Context.Name.Class where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State (StateT, mapStateT)
+import Control.Monad.Trans.Writer.CPS qualified as CPS
 import Control.Monad.Writer
 import Control.Monad.Writer.Strict qualified as Strict
 import GHC.Stack (HasCallStack)
-import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
 import Vehicle.Data.Variable.Bound.Context.Core
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Index (Ix)
@@ -28,6 +28,9 @@ instance (Monoid w, MonadReadableNameContext m) => MonadReadableNameContext (Wri
 instance (Monoid w, MonadReadableNameContext m) => MonadReadableNameContext (Strict.WriterT w m) where
   getNameContext = lift getNameContext
 
+instance (Monoid w, MonadReadableNameContext m) => MonadReadableNameContext (CPS.WriterT w m) where
+  getNameContext = lift getNameContext
+
 instance (MonadReadableNameContext m) => MonadReadableNameContext (ReaderT w m) where
   getNameContext = lift getNameContext
 
@@ -38,9 +41,6 @@ instance (MonadReadableNameContext m) => MonadReadableNameContext (SupplyT e m) 
   getNameContext = lift getNameContext
 
 instance (MonadReadableNameContext m) => MonadReadableNameContext (StateT e m) where
-  getNameContext = lift getNameContext
-
-instance (MonadReadableNameContext m) => MonadReadableNameContext (MaybeTrivialT m) where
   getNameContext = lift getNameContext
 
 getBinderDepth :: (MonadReadableNameContext m) => m Lv
@@ -93,6 +93,9 @@ instance (Monoid w, MonadNameContext m) => MonadNameContext (WriterT w m) where
 instance (Monoid w, MonadNameContext m) => MonadNameContext (Strict.WriterT w m) where
   addNameToContext = Strict.mapWriterT . addNameToContext
 
+instance (Monoid w, MonadNameContext m) => MonadNameContext (CPS.WriterT w m) where
+  addNameToContext = CPS.mapWriterT . addNameToContext
+
 instance (MonadNameContext m) => MonadNameContext (ReaderT w m) where
   addNameToContext = mapReaderT . addNameToContext
 
@@ -104,6 +107,3 @@ instance (MonadNameContext m) => MonadNameContext (SupplyT e m) where
 
 instance (MonadNameContext m) => MonadNameContext (StateT e m) where
   addNameToContext = mapStateT . addNameToContext
-
-instance (MonadNameContext m) => MonadNameContext (MaybeTrivialT m) where
-  addNameToContext = mapMaybeTrivialT . addNameToContext

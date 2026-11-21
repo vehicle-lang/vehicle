@@ -11,7 +11,7 @@ import Control.Monad (void)
 import Control.Monad.Error.Class
 import Control.Monad.IO.Class
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..), MonadTrans (..), StateT (..), evalStateT, gets, mapStateT, modify)
+import Control.Monad.State.Strict (MonadState (..), MonadTrans (..), StateT (..), evalStateT, gets, mapStateT, modify)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkModality (..))
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadNameContext (..), MonadReadableNameContext (..), getBinderDepth)

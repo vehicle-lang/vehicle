@@ -328,6 +328,7 @@ library
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
     Vehicle.Prelude.Version
+    Vehicle.Prelude.WriterCPS
     Vehicle.Verify.Core
     Vehicle.Verify.QueryFormat.Core
     Vehicle.Verify.QueryFormat.Interface

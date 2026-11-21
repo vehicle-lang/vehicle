@@ -7,13 +7,13 @@ module Vehicle.Backend.Solver.UserVariableElimination
   )
 where
 
--- Needed as Applicative is exported by Prelude in GHC 9.6 and above.
 import Control.Applicative (Applicative (..))
 import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..))
-import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
+import Control.Monad.Trans.Writer.CPS (runWriterT)
+import Control.Monad.Writer.Class (MonadWriter (..))
 import Data.Map qualified as Map
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
@@ -48,6 +48,7 @@ import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields,
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), QueryFormatID, supportsStrictInequalities)
 import Vehicle.Verify.Specification (CompilationStep (..))
+-- Needed as Applicative is exported by Prelude in GHC 9.6 and above.
 import Prelude hiding (Applicative (..))
 
 eliminateExistsRecord ::

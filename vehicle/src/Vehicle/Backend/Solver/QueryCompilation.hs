@@ -56,14 +56,12 @@ compilePartitionsToQueries partitions = do
       logDebug MaxDetail $ "Conversion to DNF resulted in" <+> pretty (length dnfTree) <+> "potential queries"
       forM dnfTree $ \dnfAssertions -> do
         logCompilerSection2 MaxDetail "compiling potential query" $
-          runMaybeTrivialT $ do
-            (metaNetwork, eliminatedAssertions, eliminationSteps) <- calculateMetaNetworkApplications dnfAssertions
+          calculateMetaNetworkApplications dnfAssertions `bindNonTrivial` \(metaNetwork, eliminatedAssertions, eliminationSteps) ->
             -- Check if all variables have lower and upper bounds
-            boundedAssertions <- findInputVariableBounds metaNetwork eliminatedAssertions
-            (reducedAssertions, reductionSteps) <- reduceAllRemainingNetworkTensorVariables metaNetwork boundedAssertions
-            let finalCompilationSteps = reductionSteps <> eliminationSteps <> trace
-            result <- compilePartitionToQuery metaNetwork finalCompilationSteps reducedAssertions
-            nonTrivial result
+            findInputVariableBounds metaNetwork eliminatedAssertions `bindNonTrivial` \boundedAssertions ->
+              reduceAllRemainingNetworkTensorVariables metaNetwork boundedAssertions `bindNonTrivial` \(reducedAssertions, reductionSteps) -> do
+                let finalCompilationSteps = reductionSteps <> eliminationSteps <> trace
+                NonTrivial <$> compilePartitionToQuery metaNetwork finalCompilationSteps reducedAssertions
 
   return $ eliminateTrivialDisjunctions $ disjunctDisjuncts allQueries
 
@@ -118,10 +116,10 @@ makeMetaNetwork networkCtx metaNetworkApps = do
 
 reduceAllRemainingNetworkTensorVariables ::
   forall m.
-  (MonadQueryCompilation m, MonadMaybeTrivial m) =>
+  (MonadQueryCompilation m) =>
   NetworkApplications ->
   BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor ->
-  m (BoundedAssertions NetworkIOElementVariable NetworkIOElementVariable Rational, [CompilationStep])
+  m (MaybeTrivial (BoundedAssertions NetworkIOElementVariable NetworkIOElementVariable Rational, [CompilationStep]))
 reduceAllRemainingNetworkTensorVariables metaNetwork (BoundedAssertions bounds assertions) = do
   logCompilerSection2 MaxDetail "eliminating remaining tensor assertions" $ do
     -- Create the assertions
@@ -137,11 +135,11 @@ reduceAllRemainingNetworkTensorVariables metaNetwork (BoundedAssertions bounds a
       return $ ReconstructTensorVariable nestedVar AllDimensions
 
     case flattenedAssertions of
-      [] -> trivial True
-      a : as -> nonTrivial $ do
+      [] -> return $ Trivial True
+      a : as -> do
         let newAssertions = ConjunctAll (a :| as)
         let newBoundedAssertions = BoundedAssertions newBounds newAssertions
-        (newBoundedAssertions, newSteps)
+        return $ NonTrivial (newBoundedAssertions, newSteps)
 
 reduceDomain ::
   forall m.
