@@ -17,7 +17,7 @@ import System.IO (hPutStrLn, stderr)
 lspSessionConfig :: SessionConfig
 lspSessionConfig =
   defaultConfig
-    { messageTimeout = 180,
+    { messageTimeout = 60,
       logStdErr = True,
       logMessages = True,
       logColor = False
