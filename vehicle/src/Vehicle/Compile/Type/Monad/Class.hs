@@ -44,17 +44,17 @@ type FreshNameState = Int
 type DeclIsUnused = Bool
 
 data TypeCheckerDeclState builtin = TypeCheckerDeclState
-  { currentDecl :: Maybe (Decl builtin, DeclIsUnused),
+  { currentDecl :: !(Maybe (Decl builtin, DeclIsUnused)),
     -- | The origin and type of each meta variable.
     -- NB: these are stored in *reverse* order from which they were created.
-    metaVariableCtx :: MetaVariableContext builtin,
-    applicationConstraints :: Seq (WithContext (ApplicationConstraint builtin)),
-    unificationConstraints :: Seq (WithContext (UnificationConstraint builtin)),
-    instanceConstraints :: Seq (WithContext (InstanceConstraint builtin)),
+    metaVariableCtx :: !(MetaVariableContext builtin),
+    applicationConstraints :: !(Seq (WithContext (ApplicationConstraint builtin))),
+    unificationConstraints :: !(Seq (WithContext (UnificationConstraint builtin))),
+    instanceConstraints :: !(Seq (WithContext (InstanceConstraint builtin))),
     -- | Instance constraints not solvable by instance class resolution
-    auxiliaryInstanceConstraints :: Seq (WithContext (InstanceConstraint builtin)),
-    freshNameState :: FreshNameState,
-    nextConstraintID :: ConstraintID
+    auxiliaryInstanceConstraints :: !(Seq (WithContext (InstanceConstraint builtin))),
+    freshNameState :: !FreshNameState,
+    nextConstraintID :: !ConstraintID
   }
 
 emptyTypeCheckerDeclState ::
@@ -74,11 +74,11 @@ emptyTypeCheckerDeclState =
 
 -- | The meta-variables and constraints relating the variables currently in scope.
 data TypeCheckerState builtin = TypeCheckerState
-  { importedModules :: ImportedModuleContext builtin,
-    currentModuleInterface :: ModuleTypingInterface builtin,
-    declsByName :: Map Identifier (Decl builtin),
-    currentFreeCtx :: FreeCtx builtin,
-    currentDeclState :: TypeCheckerDeclState builtin
+  { importedModules :: !(ImportedModuleContext builtin),
+    currentModuleInterface :: !(ModuleTypingInterface builtin),
+    declsByName :: !(Map Identifier (Decl builtin)),
+    currentFreeCtx :: !(FreeCtx builtin),
+    currentDeclState :: !(TypeCheckerDeclState builtin)
   }
 
 emptyTypeCheckerState ::

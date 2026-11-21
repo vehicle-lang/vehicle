@@ -13,6 +13,8 @@
 
 ### Type-checker
 
+* Optimised the type-checker so that it now runs 40% faster.
+
 * Fixed a rare internal error in the type-checker.
 
 * Improved error message when using an undefined variable in an @property declaration, e.g. `@property robust : Vector Bool n`.

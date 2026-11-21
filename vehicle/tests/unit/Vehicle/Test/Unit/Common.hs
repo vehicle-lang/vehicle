@@ -21,11 +21,11 @@ import Vehicle.Prelude.Warning (groupWarnings)
 --------------------------------------------------------------------------------
 -- Test settings monad
 
-unitTestCase :: String -> ExceptT CompileError (SilentLoggerT IO) Assertion -> TestTree
+unitTestCase :: String -> ExceptT CompileError (LoggerT IO) Assertion -> TestTree
 unitTestCase testName errorOrAssertionWithLogs =
   testCase testName (traceLogs errorOrAssertionWithLogs)
   where
-    traceLogs :: ExceptT CompileError (SilentLoggerT IO) Assertion -> Assertion
+    traceLogs :: ExceptT CompileError (LoggerT IO) Assertion -> Assertion
     traceLogs e = do
       let e' = logCompileError e
       (v, warnings) <- runSilentLoggerT e'

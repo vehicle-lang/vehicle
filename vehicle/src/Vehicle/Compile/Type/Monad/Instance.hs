@@ -8,12 +8,12 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State
+import Control.Monad.State.Strict
   ( MonadState (..),
     StateT (..),
     gets,
     mapStateT,
-    modify,
+    modify',
   )
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
@@ -58,7 +58,7 @@ mapTypeCheckerT f m = TypeCheckerT (mapStateT f (unTypeCheckerT m))
 
 instance (PrintableBuiltin builtin, MonadCompile m) => MonadFreeContext builtin (TypeCheckerT builtin m) where
   addDeclEntryToContext decl action = TypeCheckerT $ do
-    modify $ \typeCheckerState ->
+    modify' $ \typeCheckerState ->
       typeCheckerState {currentFreeCtx = Map.insert (identifierOf decl) decl (currentFreeCtx typeCheckerState)}
     unTypeCheckerT action
 
@@ -69,7 +69,7 @@ instance (PrintableBuiltin builtin, MonadCompile m) => MonadFreeContext builtin 
 
 instance (TypableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
   getTypeCheckerState = TypeCheckerT get
-  modifyTypeCheckerState f = TypeCheckerT $ modify f
+  modifyTypeCheckerState f = TypeCheckerT $ modify' f
 
 --------------------------------------------------------------------------------
 -- Monad inheritance laws that TypeCheckerT satisfies
