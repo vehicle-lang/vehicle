@@ -777,8 +777,9 @@ formatCompileError = \case
     where
       causeDoc :: Doc a
       causeDoc = case cause of
-        Left err -> line <> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
-        Right (q, pq, pp) ->
+        Undiagnosed -> mempty
+        DiagnosisFailed err -> line <> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
+        Diagnosed (q, pq, pp) ->
           "In particular:"
             <> line
             <> indent 2 (prettyPolarityProvenance pq q pp)
@@ -800,8 +801,9 @@ formatCompileError = \case
     where
       causeDoc :: Doc a
       causeDoc = case cause of
-        Left err -> line <> errorInSubsystemMessage "locate the original source of the non-linearity" err
-        Right source -> case source of
+        Undiagnosed -> mempty
+        DiagnosisFailed err -> line <> errorInSubsystemMessage "locate the original source of the non-linearity" err
+        Diagnosed source -> case source of
           LinearTimesLinear opProv lhs rhs ->
             "In particular the multiplication in"
               <+> pretty opProv

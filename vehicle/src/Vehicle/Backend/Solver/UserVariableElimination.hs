@@ -46,7 +46,7 @@ import Vehicle.Data.Variable.Bound.Context.Name (getFreshTensorBinderName, getNa
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields, getRecordProvenance)
 import Vehicle.Verify.Core
-import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
+import Vehicle.Verify.QueryFormat (QueryFormat (..), QueryFormatID, supportsStrictInequalities)
 import Vehicle.Verify.Specification (CompilationStep (..))
 import Prelude hiding (Applicative (..))
 
@@ -168,8 +168,8 @@ compileBoolExpr value = do
     ----------------
     VBoolLiteral b -> return $ Trivial b
     VCompareRatTensor (op, args) -> purifyAndCompileAssertion op args
-    VQuantifyRatTensor (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
-    VQuantifyRecord (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
+    VQuantifyRatTensor (Forall, _) -> throwUndiagnosed UnsupportedAlternatingQuantifiers
+    VQuantifyRecord (Forall, _) -> throwUndiagnosed UnsupportedAlternatingQuantifiers
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VImplies args -> compileBoolExpr $ elimImplies args
@@ -237,7 +237,7 @@ compilePurifiedAssertion (op, args@(TensorComparisonArgs _pDims dims xs ys)) = d
     Right assertion -> do
       return $ Right assertion
     Left NonLinearity ->
-      throwError catchableUnsupportedNonLinearConstraint
+      throwUndiagnosed UnsupportedNonLinearConstraint
     Left (UnexpectedExpr e) ->
       developerError ("unexpected expression" <+> prettyVerbose e)
     Left (TrivialExpr b) ->
@@ -426,21 +426,16 @@ networkEqualitiesToPartition networkEqualities = do
 --------------------------------------------------------------------------------
 -- Vector operations preservation
 
--- | Constructs a temporary error with no real fields. This should be recaught
--- and populated higher up the query compilation process.
-catchableUnsupportedAlternatingQuantifiersError :: CompileError
-catchableUnsupportedAlternatingQuantifiersError =
-  UnsupportedAlternatingQuantifiers x x x
-  where
-    x = developerError "Evaluating temporary quantifier error"
-
--- | Constructs a temporary error with no real fields. This should be recaught
--- and populated higher up the query compilation process.
-catchableUnsupportedNonLinearConstraint :: CompileError
-catchableUnsupportedNonLinearConstraint =
-  UnsupportedNonLinearConstraint x x x
-  where
-    x = developerError "Evaluating temporary quantifier error"
+-- | Throws an error that is not yet diagnosed. This should be caught higher up
+-- the query compilation process, where the original source of the problem
+-- can be located by re-analysing the original program.
+throwUndiagnosed ::
+  (MonadPropertyStructure m, MonadError CompileError m) =>
+  (QueryFormatID -> DeclProvenance -> Diagnosis a -> CompileError) ->
+  m b
+throwUndiagnosed mkError = do
+  PropertyMetaData {..} <- ask
+  throwError $ mkError (queryFormatID queryFormat) propertyProvenance Undiagnosed
 
 showEntry :: (MonadQueryStructure m) => Thunk Builtin -> m ()
 showEntry v = do
