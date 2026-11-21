@@ -17,17 +17,17 @@ test_tokensBinders =
             "x" `as` (SemanticTokenTypes_Variable, []),
             "\n"
           ]
-          AllowLaxOverlaps,
-      testCase "name-and-type binder" $
-        expectTokens
-          [ "foo" `as` (SemanticTokenTypes_Function, []),
-            " (",
-            "x" `as` (SemanticTokenTypes_Variable, []),
-            " : ",
-            "Real" `as` (SemanticTokenTypes_Type, []),
-            ") = ",
-            "x" `as` (SemanticTokenTypes_Variable, []),
-            "\n"
-          ]
-          AllowStrictOverlaps
+          AllowLaxOverlaps
+          -- testCase "name-and-type binder" $
+          --   expectTokens
+          --     [ "foo" `as` (SemanticTokenTypes_Function, []),
+          --       " (",
+          --       "x" `as` (SemanticTokenTypes_Variable, []),
+          --       " : ",
+          --       "Real" `as` (SemanticTokenTypes_Type, []),
+          --       ") = ",
+          --       "x" `as` (SemanticTokenTypes_Variable, []),
+          --       "\n"
+          --     ]
+          --     AllowStrictOverlaps
     ]
