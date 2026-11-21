@@ -26,7 +26,7 @@ import Vehicle.Prelude.IO qualified as VIO
 newtype TensorBoundContextT m a = TensorBoundContextT
   { unTensorBoundContextT :: StateT NestedTensorVariableCtx m a
   }
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
 
 -- | Runs a computation in the tensor context monad allowing you to keep track
 -- of all variables including tensor variables and their children.

@@ -131,7 +131,7 @@ data TestEnvironment = TestEnvironment
 
 -- | Monad for running tests in an isolated environment.
 newtype TestT m a = TestT {unTest :: StateT TestEnvironment m a}
-  deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadCatch, MonadMask, MonadTrans)
+  deriving newtype (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadCatch, MonadMask, MonadTrans)
 
 instance (MonadWriter w m) => MonadWriter w (TestT m) where
   writer :: (MonadWriter w m) => (a, w) -> TestT m a

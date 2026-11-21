@@ -37,7 +37,7 @@ import Vehicle.Verify.Specification (Property, QuerySet (..))
 -- witness for the overall property
 data BooleanTree
   = BooleanTree Provenance Identifier (Property Name)
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 type MonadSearch m =
   ( MonadCompile m,

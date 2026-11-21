@@ -113,7 +113,7 @@ withLogHandle maybeLogFile action = case maybeLogFile of
 newtype LSPOptions = LSPOptions
   { maybeLogFile :: Maybe FilePath
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 --------------------------------------------------------------------------------
 -- Reactor-Style Language Server

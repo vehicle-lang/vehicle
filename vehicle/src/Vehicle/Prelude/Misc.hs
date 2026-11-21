@@ -42,7 +42,7 @@ import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Prettyprinter (Doc, Pretty (pretty))
 
 data VehicleLang = External | Internal
-  deriving (Show)
+  deriving stock (Show)
 
 -- | A textual representation of a Vehicle module.
 type ModuleText = Text
@@ -227,15 +227,8 @@ findAndDeleteSeqElem p xs = do
 data InputOrOutput
   = Input
   | Output
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData InputOrOutput
-
-instance ToJSON InputOrOutput
-
-instance FromJSON InputOrOutput
-
-instance Hashable InputOrOutput
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON, Hashable)
 
 instance Pretty InputOrOutput where
   pretty = \case

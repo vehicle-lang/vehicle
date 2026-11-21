@@ -30,9 +30,8 @@ data ObjectFileContents = ObjectFileContents
     fileImports :: [ImportStatement],
     encodedInterface :: ByteString
   }
-  deriving (Generic)
-
-instance Serialize ObjectFileContents
+  deriving stock (Generic)
+  deriving anyclass (Serialize)
 
 -- | A module whose object file is present and up-to-date with respect to its
 -- source, but whose interface has not yet been decoded.
@@ -81,9 +80,9 @@ readObjectFile specificationFile spec = do
     VersionMismatchError currentVersion writtenVersion -> do
       logDebug MinDetail $
         errString
-          <+> "as it was written with Vehicle version"
-          <+> pretty writtenVersion
-          <+> "which is apparently unreadable with the current Vehicle version"
+          <+> "as it was written by an incompatible build of Vehicle"
+          <+> parens ("cache key" <+> pretty writtenVersion)
+          <+> "and the current build has cache key"
           <+> pretty currentVersion
           <> "."
       return Nothing

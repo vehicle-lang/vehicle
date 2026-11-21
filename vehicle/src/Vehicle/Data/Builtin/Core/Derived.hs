@@ -15,7 +15,8 @@ data DerivedFunction
   = TypeAnn
   | QuantifyIndex Quantifier
   | QuantifyInList Quantifier
-  deriving (Eq, Show, Ord, Generic)
+  deriving stock (Eq, Show, Ord, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
   deriving (Enum, Bounded) via (FiniteEnumeration DerivedFunction)
 
 instance Pretty DerivedFunction where
@@ -29,9 +30,3 @@ instance HasIdentifier DerivedFunction where
 
 instance HasName DerivedFunction Name where
   nameOf = nameOf . identifierOf
-
-instance NFData DerivedFunction
-
-instance Hashable DerivedFunction
-
-instance Serialize DerivedFunction

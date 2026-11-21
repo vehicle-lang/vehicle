@@ -11,11 +11,10 @@ import Vehicle.Prelude.Prettyprinter
 -- Developer errors
 
 newtype DeveloperError = DeveloperError Text
+  deriving anyclass (Exception)
 
 instance Show DeveloperError where
   show (DeveloperError text) = Text.unpack text
-
-instance Exception DeveloperError
 
 -- | Immediately terminates execution. When in the `CompileMonad`, you should
 -- prefer to use the method `compilerDeveloperError` instead of this, as

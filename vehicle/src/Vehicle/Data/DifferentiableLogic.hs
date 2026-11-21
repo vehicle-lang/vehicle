@@ -26,7 +26,7 @@ data BooleanDifferentiableLogicField
   | GreaterEqual
   | Equal
   | NotEqual
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
 
 instance Pretty BooleanDifferentiableLogicField where
   pretty = pretty . show
@@ -43,7 +43,7 @@ data TensorDifferentiableLogicField
   | PointwiseComparison ComparisonOp
   | ReduceConjunction
   | ReduceDisjunction
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
 
 instance Pretty TensorDifferentiableLogicField where
   pretty = pretty . show

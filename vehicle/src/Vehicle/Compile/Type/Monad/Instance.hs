@@ -37,7 +37,7 @@ type TypeCheckerTInternals builtin m =
 newtype TypeCheckerT builtin m a = TypeCheckerT
   { unTypeCheckerT :: TypeCheckerTInternals builtin m a
   }
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
 
 runTypeCheckerT ::
   (Monad m) =>

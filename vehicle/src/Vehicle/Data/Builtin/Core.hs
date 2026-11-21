@@ -32,13 +32,8 @@ data BuiltinType
   | ListType
   | VectorType
   | TensorType
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData BuiltinType
-
-instance Hashable BuiltinType
-
-instance Serialize BuiltinType
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty BuiltinType where
   pretty = \case
@@ -66,13 +61,8 @@ data BuiltinConstructor
   | BoolTensorLiteral (Tensor Bool)
   | NatTensorLiteral (Tensor Int)
   | RatTensorLiteral (Tensor ExtendedRational)
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData BuiltinConstructor
-
-instance Hashable BuiltinConstructor
-
-instance Serialize BuiltinConstructor
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty BuiltinConstructor where
   pretty = \case
@@ -135,13 +125,8 @@ data BuiltinFunction
   | MapList
   | ReverseList
   | AppendList
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData BuiltinFunction
-
-instance Hashable BuiltinFunction
-
-instance Serialize BuiltinFunction
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.
@@ -193,13 +178,8 @@ data BuiltinCast
     FromNat FromNatDomain
   | FromRat FromRatDomain
   | FromVectorToList
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData BuiltinCast
-
-instance Hashable BuiltinCast
-
-instance Serialize BuiltinCast
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty BuiltinCast where
   pretty = \case

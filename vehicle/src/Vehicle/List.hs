@@ -38,7 +38,7 @@ data ListOptions = ListOptions
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 list :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ListOptions -> IO ()
 list loggingSettings outputAsJSON ListOptions {..} =
@@ -74,21 +74,21 @@ data SpecificationSummary = SpecificationSummary
     parameters :: [ParameterSummary],
     properties :: [PropertySummary]
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data NetworkSummary = NetworkSummary
   { provenance :: Provenance,
     name :: Text,
     typeText :: Text
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data DatasetSummary = DatasetSummary
   { provenance :: Provenance,
     name :: Text,
     typeText :: Text
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data ParameterSummary = ParameterSummary
   { provenance :: Provenance,
@@ -96,7 +96,7 @@ data ParameterSummary = ParameterSummary
     typeText :: Text,
     inferable :: Bool
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data PropertySummary = PropertySummary
   { provenance :: Provenance,
@@ -104,7 +104,7 @@ data PropertySummary = PropertySummary
     typeText :: Text,
     quantifiedVariables :: Maybe (MultiProperty [QuantifiedVariableSummary])
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data QuantifiedVariableSummary = QuantifiedVariableSummary
   { provenance :: Provenance,
@@ -112,7 +112,7 @@ data QuantifiedVariableSummary = QuantifiedVariableSummary
     typeText :: Text,
     quantifier :: Quantifier
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 instance ToJSON SpecificationSummary where
   toJSON = genericToJSON jsonOptions

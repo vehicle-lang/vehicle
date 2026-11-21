@@ -34,7 +34,7 @@ data Contextualised object context = WithContext
   { objectIn :: object,
     contextOf :: context
   }
-  deriving (Show)
+  deriving stock (Show)
 
 type family WithContext a
 

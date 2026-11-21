@@ -147,7 +147,7 @@ logExit e = do
 
 data Dependency
   = RequireImport Library
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 data ModuleDef
   = NetworkDefStmt Code Code
@@ -169,7 +169,7 @@ data Library
   | ImlAdd
   | ImlScalarMult
   | ImlVehicle
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty Library where
   pretty = \case
@@ -834,7 +834,7 @@ data ComparisonDomain
   = CIndex
   | CNat
   | CRatTensor
-  deriving (Eq)
+  deriving stock (Eq)
 
 compileComparison :: (MonadImandraCompile m) => [ModuleDef] -> ComparisonDomain -> ComparisonOp -> [Arg DecidabilityBuiltin] -> m Code
 compileComparison moduleDefs _domain op =

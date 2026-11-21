@@ -82,33 +82,33 @@ convertFromJSONSearchProg = fromJSearchProg
 
 newtype JProg
   = Main [JDecl]
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JSearchProg = SearchMain
   { trees :: [JBooleanTree],
     program :: JProg
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JBooleanTree
   = BooleanTree Provenance Name JBooleanExpr
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JBooleanExpr
   = Conjunct [JBooleanExpr]
   | Disjunct [JBooleanExpr]
   | NonTrivialQuery Bool [Name]
   | TrivialQuery Bool
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JDecl
   = DefFunction Name LHSBinderCount Bool JType JExpr
   | DefAbstract Name JSort JType
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JBinder
   = Binder Provenance Name JType
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 data JType
   = Pi JType JType
@@ -120,14 +120,14 @@ data JType
   | DimensionsType
   | DimensionIndexType
   | TypeVar Name [JExpr]
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 data JSort
   = Network
   | Dataset
   | Parameter
   | Builtin
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 data JExpr
   = -- Types
@@ -179,7 +179,7 @@ data JExpr
   | DimensionCons JExpr JExpr
   | DimensionIndex Int
   | Transpose JExpr
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions

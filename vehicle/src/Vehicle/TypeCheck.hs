@@ -45,7 +45,7 @@ import Vehicle.Data.Builtin.Standard.Type ()
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeCtxs, typedModule)
 import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
 import Vehicle.Libraries.Core (ResolvedLibrary (..))
-import Vehicle.Libraries.StandardLibrary (standardLibIdent, standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
+import Vehicle.Libraries.StandardLibrary (getStandardLibrary, standardLibIdent, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecification)
 
@@ -54,7 +54,7 @@ data TypeCheckOptions = TypeCheckOptions
     secondaryTypeSystem :: Maybe SecondaryTypeSystem,
     declarationsToCompile :: DeclarationNames
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 typeCheck :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> TypeCheckOptions -> IO ()
 typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
@@ -76,6 +76,7 @@ typeCheckUserProg ::
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
+  standardLibrary <- getStandardLibrary
   ensureLatestVersionOfLibraryInstalled standardLibrary standardLibraryContent
 
   -- Load builtins and definitions
@@ -219,14 +220,7 @@ data ModuleStack = ModuleStack
 newtype ModuleLoaderT m a = ModuleLoaderT
   { unModuleLoaderT :: ReaderT ModuleStack (StateT ProgramContext m) a
   }
-  deriving
-    ( Functor,
-      Applicative,
-      Monad,
-      MonadReader ModuleStack,
-      MonadState ProgramContext,
-      MonadLogger
-    )
+  deriving newtype (Functor, Applicative, Monad, MonadReader ModuleStack, MonadState ProgramContext, MonadLogger)
 
 instance MonadTrans ModuleLoaderT where
   lift = ModuleLoaderT . lift . lift

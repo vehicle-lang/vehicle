@@ -150,7 +150,7 @@ data Dependency
   | PropEquality
   | RelNullary
   | RelNullaryDecidable
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty Dependency where
   pretty = \case

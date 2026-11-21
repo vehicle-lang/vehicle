@@ -40,13 +40,8 @@ data Builtin
   | TypeClass TypeClass
   | TypeClassOp TypeClassOp
   | NatInDomainConstraint
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData Builtin
-
-instance Hashable Builtin
-
-instance Serialize Builtin
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.

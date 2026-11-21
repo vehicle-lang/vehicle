@@ -39,7 +39,7 @@ data CompileOptions
   = ITPTarget ITPOptions
   | QueryTarget QueryOptions
   | LossTarget LossOptions
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 data LossOptions = LossOptions
   { lossFunctionMode :: LossFunctionMode,
@@ -48,7 +48,7 @@ data LossOptions = LossOptions
     declarationsToCompile :: DeclarationNames,
     outputFile :: Maybe FilePath
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 data QueryOptions = QueryOptions
   { queryFormatID :: QueryFormatID,
@@ -60,7 +60,7 @@ data QueryOptions = QueryOptions
     outputFolder :: Maybe FilePath,
     verificationCache :: Maybe FilePath
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 data ITPOptions = ITPOptions
   { itp :: InteractiveTheoremProverID,
@@ -74,7 +74,7 @@ data ITPOptions = ITPOptions
     verificationCache :: Maybe FilePath,
     constructiveReals :: Bool
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 specificationOf :: CompileOptions -> FilePath
 specificationOf = \case

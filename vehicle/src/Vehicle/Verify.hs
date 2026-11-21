@@ -39,7 +39,7 @@ data VerifyOptions = VerifyOptions
     solverExtraArgs :: Maybe String,
     noSatPrint :: Bool
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 verify :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> VerifyOptions -> IO ()
 verify loggingSettings outputAsJSON options@VerifyOptions {..} = do

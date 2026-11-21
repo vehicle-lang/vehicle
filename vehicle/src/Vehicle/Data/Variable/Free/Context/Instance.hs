@@ -18,7 +18,7 @@ import Vehicle.Prelude.IO qualified as VIO
 newtype FreeContextT builtin m a = FreeContextT
   { unFreeContextT :: ReaderT (FreeCtx builtin) m a
   }
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
 
 -- | Runs a computation in the context monad allowing you to keep track of the
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`

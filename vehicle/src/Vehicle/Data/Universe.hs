@@ -12,13 +12,9 @@ import Vehicle.Prelude
 -- Universes
 
 newtype UniverseLevel = UniverseLevel Int
-  deriving (Eq, Num, Ord, Show, Generic)
-
-instance NFData UniverseLevel
-
-instance Hashable UniverseLevel
-
-instance Serialize UniverseLevel
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving newtype (Num)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty UniverseLevel where
   pretty (UniverseLevel l) = "Type" <+> pretty l

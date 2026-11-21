@@ -19,7 +19,7 @@ data ModuleScopingInterface builtin = ModuleScopingInterface
     fieldsByRecordIdentifier :: Map Identifier (Set FieldName),
     declsIdentifiersByName :: Map Name Identifier
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 instance Serialize (ModuleScopingInterface Builtin)
 
@@ -36,7 +36,7 @@ data ModuleTypingInterface builtin = ModuleTypingInterface
   { instanceDatabase :: InstanceDatabase builtin,
     builtinDatabase :: Map builtin (Type builtin)
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 instance Serialize (ModuleTypingInterface Builtin)
 
@@ -56,7 +56,7 @@ data ModuleInterface builtin = ModuleInterface
     scopingInterface :: ModuleScopingInterface builtin,
     typingInterface :: ModuleTypingInterface builtin
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 instance Serialize (ModuleInterface Builtin)
 

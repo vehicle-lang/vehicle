@@ -17,13 +17,8 @@ import Prettyprinter (Doc, Pretty (..))
 data FunctionPosition
   = FunctionInput Text Int
   | FunctionOutput Text
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData FunctionPosition
-
-instance Hashable FunctionPosition
-
-instance Serialize FunctionPosition
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty FunctionPosition where
   pretty = \case
@@ -40,13 +35,8 @@ data ComparisonOp
   | Gt
   | Eq
   | Ne
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData ComparisonOp
-
-instance Hashable ComparisonOp
-
-instance Serialize ComparisonOp
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty ComparisonOp where
   pretty = \case
@@ -110,15 +100,8 @@ chainable e1 e2 = (e1 == e2 || e1 == flipStrictness e2) && e1 /= Ne
 data Quantifier
   = Forall
   | Exists
-  deriving (Show, Eq, Ord, Enum, Bounded, Generic)
-
-instance NFData Quantifier
-
-instance Hashable Quantifier
-
-instance ToJSON Quantifier
-
-instance Serialize Quantifier
+  deriving stock (Show, Eq, Ord, Enum, Bounded, Generic)
+  deriving anyclass (NFData, Hashable, ToJSON, Serialize)
 
 instance Pretty Quantifier where
   pretty = \case
@@ -130,13 +113,8 @@ instance Pretty Quantifier where
 
 data NegDomain
   = NegRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData NegDomain
-
-instance Hashable NegDomain
-
-instance Serialize NegDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty NegDomain where
   pretty = \case
@@ -145,13 +123,8 @@ instance Pretty NegDomain where
 data AddDomain
   = AddNat
   | AddRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData AddDomain
-
-instance Hashable AddDomain
-
-instance Serialize AddDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty AddDomain where
   pretty = \case
@@ -160,13 +133,8 @@ instance Pretty AddDomain where
 
 data SubDomain
   = SubRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData SubDomain
-
-instance Hashable SubDomain
-
-instance Serialize SubDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty SubDomain where
   pretty = \case
@@ -175,13 +143,8 @@ instance Pretty SubDomain where
 data MulDomain
   = MulNat
   | MulRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData MulDomain
-
-instance Hashable MulDomain
-
-instance Serialize MulDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty MulDomain where
   pretty = \case
@@ -190,13 +153,8 @@ instance Pretty MulDomain where
 
 data DivDomain
   = DivRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData DivDomain
-
-instance Hashable DivDomain
-
-instance Serialize DivDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty DivDomain where
   pretty = \case
@@ -204,13 +162,8 @@ instance Pretty DivDomain where
 
 data PowDomain
   = PowRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData PowDomain
-
-instance Hashable PowDomain
-
-instance Serialize PowDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty PowDomain where
   pretty = \case
@@ -218,13 +171,8 @@ instance Pretty PowDomain where
 
 data LogDomain
   = LogRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData LogDomain
-
-instance Hashable LogDomain
-
-instance Serialize LogDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty LogDomain where
   pretty = \case
@@ -232,13 +180,8 @@ instance Pretty LogDomain where
 
 data ExpDomain
   = ExpRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData ExpDomain
-
-instance Hashable ExpDomain
-
-instance Serialize ExpDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty ExpDomain where
   pretty = \case
@@ -246,13 +189,8 @@ instance Pretty ExpDomain where
 
 data MinDomain
   = MinRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData MinDomain
-
-instance Hashable MinDomain
-
-instance Serialize MinDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty MinDomain where
   pretty = \case
@@ -260,13 +198,8 @@ instance Pretty MinDomain where
 
 data MaxDomain
   = MaxRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData MaxDomain
-
-instance Hashable MaxDomain
-
-instance Serialize MaxDomain
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty MaxDomain where
   pretty = \case
@@ -274,36 +207,26 @@ instance Pretty MaxDomain where
 
 data FromRatDomain
   = FromRatToRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty FromRatDomain where
   pretty = \case
     FromRatToRat -> "Rat"
-
-instance NFData FromRatDomain
-
-instance Hashable FromRatDomain
-
-instance Serialize FromRatDomain
 
 data FromNatDomain
   = -- This is actually needed as it takes an empty type-class parameter (see typing module)
     FromNatToNat
   | FromNatToIndex
   | FromNatToRat
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Serialize, NFData, Hashable)
 
 instance Pretty FromNatDomain where
   pretty = \case
     FromNatToNat -> "Nat"
     FromNatToIndex -> "Index"
     FromNatToRat -> "Rat"
-
-instance Serialize FromNatDomain
-
-instance NFData FromNatDomain
-
-instance Hashable FromNatDomain
 
 {-
 --------------------------------------------------------------------------------
@@ -314,13 +237,8 @@ data TensorElementType
   | IndexElementType
   | NatElementType
   | RatElementType
-  deriving (Eq, Ord, Generic, Show)
-
-instance NFData TensorElementType
-
-instance Hashable TensorElementType
-
-instance Serialize TensorElementType
+  deriving stock (Eq, Ord, Generic, Show)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty TensorElementType where
   pretty = \case

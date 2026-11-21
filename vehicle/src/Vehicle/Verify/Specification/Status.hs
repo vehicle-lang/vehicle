@@ -33,7 +33,7 @@ data SolverError
   | SolverOutputMalformed (Doc ())
   | SolverIncompleteWitness (Set QueryVariable)
   | SolverTimedOut
-  deriving (Show)
+  deriving stock (Show)
 
 isTimeoutError :: SolverError -> Bool
 isTimeoutError = \case
