@@ -15,7 +15,6 @@ import Data.Bits (testBit)
 import Data.Char (ord)
 import Data.List (sortOn)
 import Data.String (IsString (..))
-import Language.LSP.Protocol.Capabilities (fullLatestClientCaps)
 import Language.LSP.Protocol.Lens qualified as Lsp
 import Language.LSP.Protocol.Types
   ( LanguageKind (LanguageKind_Custom),
@@ -31,7 +30,8 @@ import Language.LSP.Protocol.Types
     fromOpenEnumBaseType,
     pattern InL,
   )
-import Language.LSP.Test (getSemanticTokens, openDoc, runSession)
+import Language.LSP.Test (getSemanticTokens, openDoc)
+import Session.Common (runSessionWithDiagnostics)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import Test.Tasty.HUnit (assertFailure)
@@ -235,7 +235,7 @@ expectTokens :: ExpectedTokens -> OverlapMode -> IO ()
 expectTokens expectedTokens overlapMode =
   withSystemTempDirectory "vehicle-lsp-test" $ \root -> do
     writeFile (root </> "test.vcl") (toString expectedTokens)
-    runSession "vehicle lsp" fullLatestClientCaps root $
+    runSessionWithDiagnostics "vehicle lsp" root $
       openDoc "test.vcl" (LanguageKind_Custom "vehicle") >>= \doc -> do
         result <- getSemanticTokens doc
         case result of

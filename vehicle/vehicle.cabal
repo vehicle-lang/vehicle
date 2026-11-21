@@ -478,6 +478,7 @@ test-suite lsp-tests
     SemanticTokens.EdgeCases
     SemanticTokens.Simple
     SemanticTokens.TokenTypes
+    Session.Common
     Session.Smoke
     Tests
 
