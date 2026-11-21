@@ -63,7 +63,7 @@ runVehicle Options {..} = do
     flip catches [Handler rethrowExitCode, Handler uncaughtException] $ do
       -- Handle --version
       if version globalOptions
-        then writeStdoutLn (Text.pack preciseVehicleVersion)
+        then writeStdoutLn . Text.pack =<< getPreciseVehicleVersion
         else case modeOptions of
           Nothing ->
             fatalError
