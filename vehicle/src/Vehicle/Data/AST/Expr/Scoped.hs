@@ -320,10 +320,7 @@ traverseFreeVarsM underBinder processFreeVar = go
         return $ Let p bound' binder' body'
       Record p i fs -> Record p i <$> traverseRecordFields go fs
       RecordProj p t r field -> RecordProj p <$> go t <*> go r <*> pure field
-      Differentiate p t e field -> do
-        t' <- go t
-        e' <- go e
-        return $ Differentiate p t' e' field
+      Differentiate p t e field -> Differentiate p <$> go t <*> go e <*> pure field
 
 freeVarsIn :: Expr builtin -> Set Identifier
 freeVarsIn =
