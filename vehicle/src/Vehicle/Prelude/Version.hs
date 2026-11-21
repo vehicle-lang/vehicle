@@ -42,9 +42,6 @@ impreciseVehicleVersion = showVersion Cabal.version
   <> "+dev"
 #endif
 
---------------------------------------------------------------------------------
--- Cache compatibility
-
 -- | The current precise version of Vehicle, that takes into account the current
 -- dev build so that it can be used to identify which builds of Vehicle can safely
 -- share serialised data (interface files, installed libraries etc.).
