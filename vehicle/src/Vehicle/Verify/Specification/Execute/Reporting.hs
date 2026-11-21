@@ -23,7 +23,7 @@ import Data.Aeson.Types
 import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy.Char8 qualified as ByteString (unpack)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Text (intercalate, pack)
+import Data.Text (pack)
 import Data.Text.Lazy qualified as LazyText
 import GHC.Generics (Generic)
 import Prettyprinter (fill)
@@ -216,8 +216,8 @@ instance (MonadStdIO m) => MonadStdIO (TextReporterT m) where
   writeStderr = lift . writeStderr
 
 createProgressBar :: (MonadStdIO m) => PropertyAddress -> Int -> m (ProgressBar ())
-createProgressBar (PropertyAddress name indices) numberOfQueries = do
-  let propertyName = LazyText.fromStrict $ intercalate "!" (name : fmap (pack . show) indices)
+createProgressBar propertyAddress numberOfQueries = do
+  let propertyName = LazyText.fromStrict $ layoutAsText $ pretty propertyAddress
   let style =
         defStyle
           { stylePrefix = msg ("  " <> propertyName),
