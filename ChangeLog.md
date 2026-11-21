@@ -17,6 +17,8 @@
 
 * Fixed a rare internal error in the type-checker.
 
+* Fixed an internal error when the type of an argument of an unused declaration could not be inferred, e.g. `f x = 0`.
+
 * Improved error message when using an undefined variable in an @property declaration, e.g. `@property robust : Vector Bool n`.
 
 ### Loss backend

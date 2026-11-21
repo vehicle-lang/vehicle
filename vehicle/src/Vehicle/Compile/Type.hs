@@ -155,7 +155,12 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
 
       logUnsolvedUnknowns (Proxy @builtin)
 
-      generaliseOverUnsolvedMetasAndConstraints checkedDecl1
+      -- Unused declarations should not be generalised, as there are no
+      -- applications from which monomorphisation could later work out the
+      -- values of the generalised arguments.
+      if isUnused
+        then return checkedDecl1
+        else generaliseOverUnsolvedMetasAndConstraints checkedDecl1
 
 typeCheckRecordDef ::
   forall builtin m.
