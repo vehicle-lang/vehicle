@@ -184,6 +184,8 @@ forceApplication fun args@(a : as) = do
       return $ VBoundVar v (spine <> args)
     VRecordAcc recordType record field spine ->
       return $ VRecordAcc recordType record field (spine <> args)
+    VDifferentiate t e field spine ->
+      return $ VDifferentiate t e field (spine <> args)
     VLam binder closure
       | not (visibilityMatches binder a) ->
           visibilityError fun a
@@ -204,8 +206,6 @@ forceApplication fun args@(a : as) = do
     VPi {} -> illTyped "VPi"
     VRecord {} -> illTyped "VRecord"
     VUniverse {} -> illTyped "VUniverse"
-    VDifferentiate t e field spine ->
-      return $ VDifferentiate t e field (spine <> args)
   where
     illTyped e = developerError $ "ill-typed function" <+> e
 
