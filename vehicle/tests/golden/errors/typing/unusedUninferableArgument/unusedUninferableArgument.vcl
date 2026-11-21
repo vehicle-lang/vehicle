@@ -1,0 +1,1 @@
+curre ntSensor  = 0

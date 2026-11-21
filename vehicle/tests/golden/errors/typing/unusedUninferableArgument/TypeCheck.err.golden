@@ -1,0 +1,2 @@
+Error in file 'unusedUninferableArgument.vcl' at Line 1, Columns 7-23: Unable to infer type of bound variable
+Fix: add more type annotations
