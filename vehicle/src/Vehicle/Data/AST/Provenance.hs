@@ -5,8 +5,6 @@ module Vehicle.Data.AST.Provenance
     HasProvenance (..),
     expandProvenance,
     fillInProvenance,
-
-    -- * Exported for 'Vehicle.Data.AST.Instances.NoThunks'
     Position (..),
     Range (..),
   )
