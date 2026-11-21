@@ -148,7 +148,7 @@ logExit e = do
 
 data Dependency
   = RequireImport Library
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 data LocaleDef
   = NetworkDefStatement Code Code
@@ -183,7 +183,7 @@ data Library
   | VehicleTensorSubtensor
   | VehicleTensorScalarMult
   | VehicleUtils
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty Library where
   pretty = \case
@@ -1007,7 +1007,7 @@ data ComparisonDomain
   = CIndex
   | CNat
   | CRatTensor
-  deriving (Eq)
+  deriving stock (Eq)
 
 compileComparison :: (MonadIsabelleCompile m) => [LocaleDef] -> ComparisonDomain -> ComparisonOp -> [Arg DecidabilityBuiltin] -> m Code
 compileComparison localeAssms domain op = do

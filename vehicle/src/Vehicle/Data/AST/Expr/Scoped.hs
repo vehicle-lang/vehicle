@@ -128,7 +128,8 @@ data Expr builtin
       (Type builtin) -- Type of the record, e.g. `Pair Int Int`
       (Expr builtin) -- The actual record, e.g. `{a = 1, b = 1}`
       FieldName -- The field to access, e.g. `a`
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
+  deriving stock (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, Serialize)
 
 --------------------------------------------------------------------------------
 -- Safe applications
@@ -172,10 +173,6 @@ type Module builtin = GenericModule (Expr builtin)
 
 --------------------------------------------------------------------------------
 -- Instances
-
-instance (NFData builtin) => NFData (Expr builtin)
-
-instance (Serialize builtin) => Serialize (Expr builtin)
 
 instance HasProvenance (Expr builtin) where
   provenanceOf = \case

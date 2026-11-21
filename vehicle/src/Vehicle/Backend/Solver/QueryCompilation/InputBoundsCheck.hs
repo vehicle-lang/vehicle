@@ -111,7 +111,7 @@ data SliceLocation = SliceLocation
     locationShape :: TensorShape,
     locationIndices :: TensorIndices
   }
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 -- | An equality between two slices of network input tensors.
 type SliceEquality = (SliceLocation, SliceLocation)

@@ -82,7 +82,7 @@ data LoggerEnv = LoggerEnv
 newtype LoggerT m a = LoggerT
   { unLoggerT :: ReaderT LoggerEnv m a
   }
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
 
 -- | Only runs the action if logging is enabled.
 unlessSilent :: (Monad m) => LoggerT m () -> LoggerT m ()

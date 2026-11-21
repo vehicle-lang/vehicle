@@ -34,7 +34,8 @@ import Prelude hiding (filter, lookup, map)
 -- Meta substitution
 
 newtype MetaMap a = MetaMap (IntMap a)
-  deriving (Show, Semigroup, Monoid, Foldable, Traversable, Functor)
+  deriving stock (Show, Traversable)
+  deriving newtype (Semigroup, Monoid, Foldable, Functor)
 
 singleton :: MetaID -> a -> MetaMap a
 singleton m e = coerce (IntMap.singleton (coerce m) e)

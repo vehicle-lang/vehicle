@@ -114,9 +114,8 @@ data Versioned a = Versioned
   { version :: VersionString,
     payload :: a
   }
-  deriving (Generic)
-
-instance (Serialize a) => Serialize (Versioned a)
+  deriving stock (Generic)
+  deriving anyclass (Serialize)
 
 -- `Data.Version` tags feature is deprecated so we can't use it.
 type VersionString = String

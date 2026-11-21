@@ -59,10 +59,10 @@ common common-language
   default-extensions:
     ConstraintKinds
     DataKinds
-    DeriveFoldable
-    DeriveFunctor
+    DeriveAnyClass
     DeriveGeneric
     DeriveTraversable
+    DerivingStrategies
     DuplicateRecordFields
     FlexibleContexts
     FlexibleInstances

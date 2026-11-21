@@ -56,7 +56,7 @@ data CompilerPass
   | LossQuantifierLifting
   | TypingSubsystem
   | Verification
-  deriving (Eq, Show, Read, Bounded, Enum)
+  deriving stock (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty CompilerPass where
   pretty = \case
@@ -74,7 +74,7 @@ allCompilerPasses :: [String]
 allCompilerPasses = map show (enumerate @CompilerPass)
 
 newtype CompilerStack = CS [Either CompilerPass String]
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 instance Read CompilerStack where
   readsPrec _r s = do
@@ -103,7 +103,7 @@ data LoggingLevel
   | MinDetail
   | MidDetail
   | MaxDetail
-  deriving (Eq, Ord, Show, Read, Bounded, Enum)
+  deriving stock (Eq, Ord, Show, Read, Bounded, Enum)
 
 allLoggingLevels :: [String]
 allLoggingLevels = map show (enumerate @LoggingLevel)

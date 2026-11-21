@@ -21,11 +21,8 @@ data GenericArg expr = Arg
     -- | The argument expression
     argExpr :: expr
   }
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
-
-instance (NFData expr) => NFData (GenericArg expr)
-
-instance (Serialize expr) => Serialize (GenericArg expr)
+  deriving stock (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance (HasProvenance expr) => HasProvenance (GenericArg expr) where
   provenanceOf Arg {..} =

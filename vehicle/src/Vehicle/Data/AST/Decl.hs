@@ -37,11 +37,8 @@ data GenericDecl expr
       (GenericTelescope expr) -- Type parameters.
       (GenericRecordFields expr) -- Fields.
       [DerivableRecordOperation] -- Operations
-  deriving (Show, Functor, Foldable, Traversable, Generic)
-
-instance (NFData expr) => NFData (GenericDecl expr)
-
-instance (Serialize expr) => Serialize (GenericDecl expr)
+  deriving stock (Show, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
@@ -123,11 +120,8 @@ data DefAbstractSort
   | DatasetDef
   | ParameterDef ParameterSort
   | BuiltinDef
-  deriving (Eq, Show, Generic)
-
-instance NFData DefAbstractSort
-
-instance Serialize DefAbstractSort
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance Pretty DefAbstractSort where
   pretty t =
@@ -140,13 +134,8 @@ instance Pretty DefAbstractSort where
 data ParameterSort
   = Inferable
   | NonInferable
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData ParameterSort
-
-instance Serialize ParameterSort
-
-instance Hashable ParameterSort
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Serialize, Hashable)
 
 instance Pretty ParameterSort where
   pretty = \case
@@ -189,11 +178,8 @@ data DefFunctionSort
     ProjectionDecl LHSBinderCount
   | -- | The function was generated as a tensor coercion
     TensorCoercionDecl LHSBinderCount
-  deriving (Eq, Show, Generic)
-
-instance NFData DefFunctionSort
-
-instance Serialize DefFunctionSort
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (NFData, Serialize)
 
 incrLHSBinderCount :: Int -> DefFunctionSort -> DefFunctionSort
 incrLHSBinderCount amount = \case
@@ -220,11 +206,8 @@ data FunctionDeclAnnotation
     AnnProperty
   | -- | The function was annotated with @instance..
     AnnInstance (Maybe InstancePriority)
-  deriving (Eq, Show, Generic)
-
-instance NFData FunctionDeclAnnotation
-
-instance Serialize FunctionDeclAnnotation
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance Pretty FunctionDeclAnnotation where
   pretty = \case
@@ -245,11 +228,8 @@ data DefRecordSort
     AnnTensor
   | -- | The record definition was annotated with @typeclass
     AnnTypeClass
-  deriving (Eq, Show, Generic)
-
-instance NFData DefRecordSort
-
-instance Serialize DefRecordSort
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance Pretty DefRecordSort where
   pretty = \case
@@ -272,11 +252,8 @@ isAnnotatedAsTypeClass = \case
 data DerivableRecordOperation
   = Addition
   | Multiplication
-  deriving (Show, Eq, Ord, Bounded, Enum, Generic)
-
-instance NFData DerivableRecordOperation
-
-instance Serialize DerivableRecordOperation
+  deriving stock (Show, Eq, Ord, Bounded, Enum, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance Pretty DerivableRecordOperation where
   pretty = pretty . show

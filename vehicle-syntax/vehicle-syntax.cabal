@@ -65,10 +65,10 @@ common common-language
   default-language:   Haskell2010
   default-extensions:
     ConstraintKinds
-    DeriveFoldable
-    DeriveFunctor
+    DeriveAnyClass
     DeriveGeneric
     DeriveTraversable
+    DerivingStrategies
     FlexibleContexts
     FlexibleInstances
     FunctionalDependencies

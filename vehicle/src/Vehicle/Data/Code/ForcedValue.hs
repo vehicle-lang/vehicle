@@ -59,13 +59,13 @@ data GenericForcedValue meta builtin
   | VRecord
       !(GenericThunk meta builtin)
       !(GenericUnforcedRecordFields meta builtin)
-  deriving (Show, Generic, Eq, Ord)
+  deriving stock (Show, Generic, Eq, Ord)
 
 -- | A thunk represents an expression that may not yet have been evaluated.
 data GenericThunk meta builtin
   = Forced (GenericForcedValue meta builtin)
   | Unforced (GenericBoundEnv meta builtin) (Expr builtin)
-  deriving (Show, Generic, Eq, Ord)
+  deriving stock (Show, Generic, Eq, Ord)
 
 -- | The information stored for each variable in the environment. We choose
 -- to store the binder as it's a convenient mechanism for passing through
@@ -73,14 +73,14 @@ data GenericThunk meta builtin
 newtype GenericBoundEnv meta builtin = BoundEnv
   { unBoundEnv :: GenericBoundCtx (GenericBinder (), GenericThunk meta builtin)
   }
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)
 
 -- | A closure represents the unevaluated body of a new binder
 -- (e.g. lambda, pi, foreach, forall). A value for the bound variable
 -- needs to be added to the contained environment in order to form an
 -- evaluable `Thunk`.
 data GenericClosure meta builtin = Closure (GenericBoundEnv meta builtin) (Expr builtin)
-  deriving (Show, Generic, Eq, Ord)
+  deriving stock (Show, Generic, Eq, Ord)
 
 type GenericUnforcedArg meta builtin = GenericArg (GenericThunk meta builtin)
 
@@ -227,7 +227,7 @@ data GenericGluedExpr meta builtin = Glued
   { unnormalised :: Expr builtin,
     normalised :: GenericThunk meta builtin
   }
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 instance HasProvenance (GenericGluedExpr meta builtin) where
   provenanceOf = provenanceOf . unnormalised

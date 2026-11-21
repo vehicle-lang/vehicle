@@ -24,13 +24,8 @@ type Name = Text
 newtype ModulePath = ModulePath
   { path :: [String]
   }
-  deriving (Eq, Ord, Generic)
-
-instance NFData ModulePath
-
-instance Hashable ModulePath
-
-instance Serialize ModulePath
+  deriving stock (Eq, Ord, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty ModulePath where
   pretty (ModulePath path) = concatWith (surround dot) (fmap pretty path)
@@ -54,22 +49,11 @@ data Identifier = Identifier
   { modulePath :: ModulePath,
     identifierName :: Name
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, ToJSON, FromJSON, ToJSONKey, Serialize)
 
 instance Pretty Identifier where
   pretty (Identifier m s) = pretty m <> dot <> pretty s
-
-instance NFData Identifier
-
-instance Hashable Identifier
-
-instance ToJSON Identifier
-
-instance FromJSON Identifier
-
-instance ToJSONKey Identifier
-
-instance Serialize Identifier
 
 class HasIdentifier a where
   identifierOf :: a -> Identifier

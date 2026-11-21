@@ -28,7 +28,7 @@ data BoundedValue value bounds = BoundedValue
   { boundedValue :: value,
     valueBounds :: bounds
   }
-  deriving (Show)
+  deriving stock (Show)
 
 instance Functor (BoundedValue value) where
   fmap f (BoundedValue var bounds) = BoundedValue var (f bounds)
@@ -84,13 +84,8 @@ data LowerBound expr = LowerBound
   { lowerBoundRel :: InequalityRelation,
     lowerBoundValue :: expr
   }
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
-
-instance (NFData expr) => NFData (LowerBound expr)
-
-instance (ToJSON expr) => ToJSON (LowerBound expr)
-
-instance (FromJSON expr) => FromJSON (LowerBound expr)
+  deriving stock (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance (HasShape expr) => HasShape (LowerBound expr) where
   shapeOf = shapeOf . lowerBoundValue
@@ -113,13 +108,8 @@ data UpperBound expr = UpperBound
   { upperBoundRel :: InequalityRelation,
     upperBoundValue :: expr
   }
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
-
-instance (NFData expr) => NFData (UpperBound expr)
-
-instance (ToJSON expr) => ToJSON (UpperBound expr)
-
-instance (FromJSON expr) => FromJSON (UpperBound expr)
+  deriving stock (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance (ConstantLike expr m) => IsBound UpperBound expr m where
   andBound (UpperBound r1 v1) (UpperBound r2 v2) = do
@@ -149,13 +139,8 @@ data SliceBounds expr = SliceBounds
   { lowerBounds :: [LowerBound expr],
     upperBounds :: [UpperBound expr]
   }
-  deriving (Show, Eq, Ord, Generic)
-
-instance (NFData expr) => NFData (SliceBounds expr)
-
-instance (ToJSON expr) => ToJSON (SliceBounds expr)
-
-instance (FromJSON expr) => FromJSON (SliceBounds expr)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance IsBounds SliceBounds constant where
   emptyBounds = SliceBounds mempty mempty
@@ -171,7 +156,7 @@ data NestedSliceBounds expr = NestedSliceBounds
   { sliceBounds :: SliceBounds expr,
     childSliceBounds :: Maybe [NestedSliceBounds expr]
   }
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)
 
 singleNestedSliceBound ::
   SliceBounds expr ->
@@ -207,7 +192,7 @@ instance IsBounds NestedSliceBounds expr where
 newtype TensorBounds expr = TensorBounds
   { tensorSliceBounds :: NestedSliceBounds expr
   }
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance IsBounds TensorBounds expr where
   emptyBounds =
@@ -322,7 +307,7 @@ data Domain expr = Domain
   { lowerBound :: LowerBound expr,
     upperBound :: UpperBound expr
   }
-  deriving (Show, Functor)
+  deriving stock (Show, Functor)
 
 isSatisfiable :: Domain RatTensor -> Bool
 isSatisfiable (Domain LowerBound {..} UpperBound {..}) = do

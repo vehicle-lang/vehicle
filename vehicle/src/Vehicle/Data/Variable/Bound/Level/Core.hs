@@ -31,13 +31,9 @@ instance VariableLike Lv where
 newtype Lv = Lv
   { unLv :: Int
   }
-  deriving (Eq, Ord, Num, Enum, Show, Generic, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
-
-instance NFData Lv
-
-instance Hashable Lv
-
-instance Serialize Lv
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving newtype (Num, Enum, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance Pretty Lv where
   pretty l = "𝓵" <> pretty (unLv l)

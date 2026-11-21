@@ -20,13 +20,9 @@ import Vehicle.Prelude (Pretty (..), lineIndent, nonEmptyCartesianProductM, prep
 newtype DisjunctAll a = DisjunctAll
   { unDisjunctAll :: NonEmpty a
   }
-  deriving (Show, Eq, Ord, Generic, Semigroup, Functor, Applicative, Monad, Foldable, Traversable)
-
-instance (NFData a) => NFData (DisjunctAll a)
-
-instance (ToJSON a) => ToJSON (DisjunctAll a)
-
-instance (FromJSON a) => FromJSON (DisjunctAll a)
+  deriving stock (Show, Eq, Ord, Generic, Traversable)
+  deriving newtype (Semigroup, Functor, Applicative, Monad, Foldable)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance (Pretty a) => Pretty (DisjunctAll a) where
   pretty x = "Or" <> lineIndent (pretty (unDisjunctAll x))
@@ -60,16 +56,12 @@ conjunctDisjuncts f xs ys = runIdentity $ conjunctDisjunctsM (\u v -> return $ f
 newtype ConjunctAll a = ConjunctAll
   { unConjunctAll :: NonEmpty a
   }
-  deriving (Show, Eq, Ord, Semigroup, Functor, Applicative, Monad, Foldable, Traversable, Generic)
-
-instance (NFData a) => NFData (ConjunctAll a)
+  deriving stock (Show, Eq, Ord, Traversable, Generic)
+  deriving newtype (Semigroup, Functor, Applicative, Monad, Foldable)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance (Pretty a) => Pretty (ConjunctAll a) where
   pretty x = "And" <> lineIndent (pretty (unConjunctAll x))
-
-instance (ToJSON a) => ToJSON (ConjunctAll a)
-
-instance (FromJSON a) => FromJSON (ConjunctAll a)
 
 conjunctsToList :: ConjunctAll a -> [a]
 conjunctsToList = NonEmpty.toList . unConjunctAll
@@ -102,13 +94,8 @@ data BooleanExpr a
   = Conjunct !(ConjunctAll (BooleanExpr a))
   | Disjunct !(DisjunctAll (BooleanExpr a))
   | Query !a
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
-
-instance (NFData a) => NFData (BooleanExpr a)
-
-instance (ToJSON a) => ToJSON (BooleanExpr a)
-
-instance (FromJSON a) => FromJSON (BooleanExpr a)
+  deriving stock (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance (Pretty a) => Pretty (BooleanExpr a) where
   pretty = \case

@@ -25,11 +25,8 @@ data Library = Library
     libraryVersion :: VersionString,
     libraryModules :: [ModulePath]
   }
-  deriving (Generic)
-
-instance FromJSON Library
-
-instance ToJSON Library
+  deriving stock (Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
 --------------------------------------------------------------------------------
 -- The format used internally in the compiler
@@ -38,7 +35,7 @@ instance ToJSON Library
 newtype ResolvedLibrary = ResolvedLibrary
   { resolvedModules :: [(ModulePath, FilePath)]
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 type LibraryContent = Map ModulePath Text
 

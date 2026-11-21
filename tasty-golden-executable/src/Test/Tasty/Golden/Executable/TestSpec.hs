@@ -55,7 +55,7 @@ data TestSpec = TestSpec
     -- | Options that configure what files not to perform a full diff.
     testSpecSizeOnly :: SizeOnlyExtensions
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 -- | Local options derived from the test specification.
 derivedOptions :: TestSpec -> [SomeOption]
@@ -63,9 +63,8 @@ derivedOptions testSpec = [toSomeOption (testSpecTimeout testSpec)]
 
 -- | Error raised when 'testSpecDirectory' is not set.
 data TestSpecDirectoryMissing = TestSpecDirectoryMissing
-  deriving (Show)
-
-instance Exception TestSpecDirectoryMissing
+  deriving stock (Show)
+  deriving anyclass (Exception)
 
 instance FromJSON TestSpec where
   parseJSON :: Value -> Parser TestSpec

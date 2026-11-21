@@ -23,7 +23,7 @@ import Vehicle.Data.Variable.Bound.Context.Generic.Core
 -- | Denotes whether a constraint is blocked and if so what metas it is blocked
 -- on.
 newtype BlockingStatus = BlockingStatus (Maybe MetaSet)
-  deriving (Show)
+  deriving stock (Show)
 
 instance Pretty BlockingStatus where
   pretty (BlockingStatus status) = case status of
@@ -45,7 +45,8 @@ isStillBlocked isSolved (BlockingStatus status) =
 newtype ConstraintID = ConstraintID
   { unConstraintID :: Int
   }
-  deriving (Show, Ord, Eq, Num)
+  deriving stock (Show, Ord, Eq)
+  deriving newtype (Num)
 
 instance Pretty ConstraintID where
   pretty (ConstraintID cid) = "#" <> pretty cid
@@ -61,7 +62,7 @@ data ConstraintContext builtin = ConstraintContext
     -- | The set of bound variables in scope at the point the constraint was generated.
     boundContext :: BoundCtx (Type builtin)
   }
-  deriving (Show)
+  deriving stock (Show)
 
 instance Pretty (ConstraintContext builtin) where
   pretty ctx = pretty (blockedBy ctx)
@@ -110,14 +111,14 @@ data ArgInsertionProblem builtin = ArgInsertionProblem
     uncheckedArgs :: [Arg builtin],
     contextRelevance :: Relevance
   }
-  deriving (Show)
+  deriving stock (Show)
 
 data ApplicationConstraint builtin = InferArgs
   { typeSolution :: MetaID,
     exprSolution :: MetaID,
     argInsertionProblem :: ArgInsertionProblem builtin
   }
-  deriving (Show)
+  deriving stock (Show)
 
 solutionSoFar :: ArgInsertionProblem builtin -> Expr builtin
 solutionSoFar ArgInsertionProblem {..} = normAppList originalFun (reverse checkedArgs)
@@ -135,7 +136,7 @@ data InstanceArgOrigin builtin = ArgOrigin
     checkedInstanceOpType :: Type builtin,
     checkedInstanceType :: Type builtin
   }
-  deriving (Show)
+  deriving stock (Show)
 
 data InstanceTypeRestrictionOrigin builtin = TypeRestrictionOrigin
   { freeEnv :: FreeCtx builtin,
@@ -143,12 +144,12 @@ data InstanceTypeRestrictionOrigin builtin = TypeRestrictionOrigin
     restrictedDeclSort :: Either RestrictedDecl RestrictedRecordField,
     restrictedDeclType :: Type builtin
   }
-  deriving (Show)
+  deriving stock (Show)
 
 data InstanceConstraintOrigin builtin
   = InstanceArgOrigin (InstanceArgOrigin builtin)
   | InstanceTypeRestrictionOrigin (InstanceTypeRestrictionOrigin builtin)
-  deriving (Show)
+  deriving stock (Show)
 
 type InstanceHead builtin = Either Identifier builtin
 
@@ -157,7 +158,7 @@ data InstanceGoal builtin = InstanceGoal
     goalHead :: InstanceHead builtin,
     goalSpine :: UnforcedSpineWithMetas builtin
   }
-  deriving (Show)
+  deriving stock (Show)
 
 goalExpr :: InstanceGoal builtin -> ForcedValueWithMetas builtin
 goalExpr InstanceGoal {..} =
@@ -170,9 +171,8 @@ data InstanceCandidate builtin = InstanceCandidate
     candidateSolution :: Expr builtin,
     candidatePriority :: Maybe InstancePriority
   }
-  deriving (Generic, Show)
-
-instance (Serialize builtin) => Serialize (InstanceCandidate builtin)
+  deriving stock (Generic, Show)
+  deriving anyclass (Serialize)
 
 findInstanceGoalHead :: Expr builtin -> Either (Expr builtin) (InstanceHead builtin)
 findInstanceGoalHead = \case
@@ -204,7 +204,7 @@ data InstanceConstraint builtin = Resolve
     instanceCandidateState :: Maybe (InstanceCandidateState builtin),
     instanceGoal :: InstanceGoal builtin
   }
-  deriving (Show)
+  deriving stock (Show)
 
 type instance
   WithContext (InstanceConstraint builtin) =
@@ -223,9 +223,8 @@ type InstanceSearchDepth = Int
 newtype InstanceDatabase builtin = InstanceDatabase
   { instances :: Map (InstanceHead builtin) [InstanceCandidate builtin]
   }
-  deriving (Generic)
-
-instance (Ord builtin, Serialize builtin) => Serialize (InstanceDatabase builtin)
+  deriving stock (Generic)
+  deriving anyclass (Serialize)
 
 emptyInstanceDatabase :: (Ord builtin) => InstanceDatabase builtin
 emptyInstanceDatabase = InstanceDatabase mempty
@@ -252,12 +251,12 @@ data CheckingExprType builtin = CheckingExpr
     checkedExprExpectedType :: Type builtin,
     checkedExprActualType :: Expr builtin
   }
-  deriving (Show)
+  deriving stock (Show)
 
 data UnificationConstraintOrigin builtin
   = CheckingExprType (CheckingExprType builtin)
   | CheckingInstanceType (InstanceConstraintOrigin builtin)
-  deriving (Show)
+  deriving stock (Show)
 
 -- | A constraint representing that a pair of expressions should be equal
 data UnificationConstraint builtin
@@ -265,7 +264,7 @@ data UnificationConstraint builtin
       (UnificationConstraintOrigin builtin)
       (ThunkWithMetas builtin)
       (ThunkWithMetas builtin)
-  deriving (Show)
+  deriving stock (Show)
 
 type instance
   WithContext (UnificationConstraint builtin) =
@@ -281,7 +280,7 @@ data Constraint builtin
     InstanceConstraint (InstanceConstraint builtin)
   | -- | Represents an implicit/instance application argument insertion problem
     ApplicationConstraint (ApplicationConstraint builtin)
-  deriving (Show)
+  deriving stock (Show)
 
 type instance
   WithContext (Constraint builtin) =
@@ -309,12 +308,12 @@ data RestrictedDecl
   | RestrictedProperty
   | RestrictedNetwork
   | RestrictedDataset
-  deriving (Show)
+  deriving stock (Show)
 
 data RestrictedRecordField
   = FieldTypeIsAllowed FieldName
   | FieldTypesMatch FieldName FieldName
-  deriving (Show)
+  deriving stock (Show)
 
 instance Pretty RestrictedRecordField where
   pretty = \case

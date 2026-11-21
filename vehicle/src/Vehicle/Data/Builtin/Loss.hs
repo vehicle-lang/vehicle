@@ -39,12 +39,11 @@ data LossBuiltin (mode :: LossMode)
   | LossBuiltinCast LossBuiltinCast
   | LossBuiltinTypeClass LossBuiltinTypeClass
   | LossBuiltinTypeClassOp LossBuiltinTypeClassOp
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty (LossBuiltin mode) where
   pretty = pretty . show
-
-instance Hashable (LossBuiltin mode)
 
 --------------------------------------------------------------------------------
 -- Builtin types
@@ -53,13 +52,12 @@ instance Hashable (LossBuiltin mode)
 -- are viewed as constructors for `Type`.
 data LossBuiltinType
   = GradientType
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinType where
   pretty = \case
     GradientType -> "GradientType"
-
-instance Hashable LossBuiltinType
 
 --------------------------------------------------------------------------------
 -- Constructor datatype
@@ -69,14 +67,13 @@ instance Hashable LossBuiltinType
 data LossBuiltinConstructor
   = WithGradients
   | WithoutGradients
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinConstructor where
   pretty = \case
     WithGradients -> "withGradients"
     WithoutGradients -> "withoutGradients"
-
-instance Hashable LossBuiltinConstructor
 
 --------------------------------------------------------------------------------
 -- Loss casts
@@ -89,14 +86,13 @@ instance Hashable LossBuiltinConstructor
 data LossBuiltinCast
   = FromBoolTensorToBoolTensor
   | FromBoolTensorToRatTensor
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinCast where
   pretty = \case
     FromBoolTensorToBoolTensor -> "fromBoolTensorToBoolTensor"
     FromBoolTensorToRatTensor -> "fromBoolTensorToRatTensor"
-
-instance Hashable LossBuiltinCast
 
 --------------------------------------------------------------------------------
 -- Loss function
@@ -112,15 +108,14 @@ data LossBuiltinFunction
     StackRatTensor
   | -- | An `if` operation whose branches each keep their own gradient.
     IfRatTensor
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinFunction where
   pretty = \case
     IfWhoseConditionHasGradients -> "ifWhoseConditionHasGradients"
     StackRatTensor -> "stackRatTensor"
     IfRatTensor -> "ifRatTensor"
-
-instance Hashable LossBuiltinFunction
 
 --------------------------------------------------------------------------------
 -- Type-classes
@@ -143,7 +138,8 @@ data LossBuiltinTypeClass
   | ValidNetworkIOType
   | ValidDatasetType
   | ValidParamType
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinTypeClass where
   pretty = \case
@@ -165,8 +161,6 @@ instance Pretty LossBuiltinTypeClass where
     ValidDatasetType -> "ValidDatasetType"
     ValidParamType -> "ValidParamType"
 
-instance Hashable LossBuiltinTypeClass
-
 --------------------------------------------------------------------------------
 -- Type-classes
 
@@ -183,7 +177,8 @@ data LossBuiltinTypeClassOp
   | ExistsTCOp
   | IfRatTensorTCOp
   | IfNonRatTensorTCOp
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinTypeClassOp where
   pretty = \case
@@ -199,8 +194,6 @@ instance Pretty LossBuiltinTypeClassOp where
     ExistsTCOp -> "existsTC"
     IfRatTensorTCOp -> "ifRatTensorTCOp"
     IfNonRatTensorTCOp -> "ifNonRatTensorTCOp"
-
-instance Hashable LossBuiltinTypeClassOp
 
 --------------------------------------------------------------------------------
 -- Functions
