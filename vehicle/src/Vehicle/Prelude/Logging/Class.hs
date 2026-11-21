@@ -29,6 +29,7 @@ import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.State.Strict qualified as Strict
 import Control.Monad.Trans (MonadTrans (..))
 import Control.Monad.Trans.Maybe (MaybeT, mapMaybeT)
+import Control.Monad.Trans.Writer.CPS qualified as CPS
 import Control.Monad.Writer.Strict (WriterT (..), mapWriterT)
 import Data.List.Split (splitOn)
 import Data.Text (Text)
@@ -191,6 +192,17 @@ instance (MonadLogger m) => MonadLogger (ReaderT s m) where
 instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
   runCompilerPass = mapWriterT . runCompilerPass
   runCompileDecl = mapWriterT . runCompileDecl
+  setCallDepth = lift . setCallDepth
+  getCallDepth = lift getCallDepth
+  incrCallDepth = lift incrCallDepth
+  decrCallDepth = lift decrCallDepth
+  getDebugLevel = lift getDebugLevel
+  logMessage = lift . logMessage
+  logWarning = lift . logWarning
+
+instance (Monoid w, MonadLogger m) => MonadLogger (CPS.WriterT w m) where
+  runCompilerPass = CPS.mapWriterT . runCompilerPass
+  runCompileDecl = CPS.mapWriterT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth

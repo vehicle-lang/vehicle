@@ -16,6 +16,7 @@ import Control.Monad.Reader (MonadReader (..), ReaderT)
 import Control.Monad.State qualified as Lazy
 import Control.Monad.State.Strict (MonadState (..), StateT, evalStateT, mapStateT)
 import Control.Monad.Trans (MonadTrans (..))
+import Control.Monad.Trans.Writer.CPS qualified as CPS
 import Control.Monad.Writer.Strict (WriterT)
 import Vehicle.Prelude.IO
 
@@ -55,6 +56,9 @@ instance (MonadSupply t m) => MonadSupply t (ReaderT s m) where
   demand = lift demand
 
 instance (Monoid w, MonadSupply t m) => MonadSupply t (WriterT w m) where
+  demand = lift demand
+
+instance (Monoid w, MonadSupply t m) => MonadSupply t (CPS.WriterT w m) where
   demand = lift demand
 
 instance (MonadSupply t m) => MonadSupply t (ExceptT e m) where
