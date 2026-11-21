@@ -9,7 +9,6 @@ import Control.Monad.State (StateT, mapStateT)
 import Control.Monad.Writer
 import Control.Monad.Writer.Strict qualified as Strict
 import GHC.Stack (HasCallStack)
-import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
 import Vehicle.Data.Variable.Bound.Context.Core
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Index (Ix)
@@ -38,9 +37,6 @@ instance (MonadReadableNameContext m) => MonadReadableNameContext (SupplyT e m) 
   getNameContext = lift getNameContext
 
 instance (MonadReadableNameContext m) => MonadReadableNameContext (StateT e m) where
-  getNameContext = lift getNameContext
-
-instance (MonadReadableNameContext m) => MonadReadableNameContext (MaybeTrivialT m) where
   getNameContext = lift getNameContext
 
 getBinderDepth :: (MonadReadableNameContext m) => m Lv
@@ -104,6 +100,3 @@ instance (MonadNameContext m) => MonadNameContext (SupplyT e m) where
 
 instance (MonadNameContext m) => MonadNameContext (StateT e m) where
   addNameToContext = mapStateT . addNameToContext
-
-instance (MonadNameContext m) => MonadNameContext (MaybeTrivialT m) where
-  addNameToContext = mapMaybeTrivialT . addNameToContext

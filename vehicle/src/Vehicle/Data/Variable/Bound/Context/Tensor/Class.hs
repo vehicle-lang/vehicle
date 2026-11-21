@@ -11,7 +11,6 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Resource (NetworkModality)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.ForcedValue (UnforcedBinder)
-import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Core
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
@@ -44,9 +43,6 @@ instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext 
   getNestedVariableCtx = lift getNestedVariableCtx
 
 instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (SupplyT e m) where
-  getNestedVariableCtx = lift getNestedVariableCtx
-
-instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (MaybeTrivialT m) where
   getNestedVariableCtx = lift getNestedVariableCtx
 
 getCompleteNamedCtx :: (MonadReadableTensorBoundContext m) => m CompleteNamedBoundCtx
@@ -167,9 +163,4 @@ instance (MonadTensorBoundContext m) => MonadTensorBoundContext (StateT e m) whe
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (SupplyT e m) where
   addNonTensorBinderToContext = mapSupplyT . addNonTensorBinderToContext
   addTensorBinderToContextLocally dims binder = mapSupplyT (addTensorBinderToContextLocally dims binder)
-  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
-
-instance (MonadTensorBoundContext m) => MonadTensorBoundContext (MaybeTrivialT m) where
-  addNonTensorBinderToContext = mapMaybeTrivialT . addNonTensorBinderToContext
-  addTensorBinderToContextLocally dims binder = mapMaybeTrivialT (addTensorBinderToContextLocally dims binder)
   addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)

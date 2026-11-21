@@ -37,17 +37,17 @@ import Vehicle.Verify.QueryFormat (QueryFormat (..))
 import Vehicle.Verify.Specification (CompilationStep (..))
 
 calculateMetaNetworkApplications ::
-  (MonadQueryCompilation m, MonadMaybeTrivial m) =>
+  (MonadQueryCompilation m) =>
   ConjunctAll LinearAssertion ->
-  m (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep])
+  m (MaybeTrivial (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep]))
 calculateMetaNetworkApplications assertions = do
   (eliminationResult, compilationSteps) <- runWriterT $ eliminateRedundantApplications assertions
   case eliminationResult of
-    Trivial b -> trivial b
+    Trivial b -> return $ Trivial b
     NonTrivial newAssertions -> do
       networkApps <- calculateMetaNetworkApps newAssertions
       checkIfMetaNetworkSupported networkApps
-      nonTrivial (networkApps, newAssertions, compilationSteps)
+      return $ NonTrivial (networkApps, newAssertions, compilationSteps)
 
 --------------------------------------------------------------------------------
 -- Redundant network applications

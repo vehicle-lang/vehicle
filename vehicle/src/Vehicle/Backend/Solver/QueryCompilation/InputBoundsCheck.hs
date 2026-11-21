@@ -29,7 +29,7 @@ import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsE
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr (LinearExpr (..))
-import Vehicle.Data.MaybeTrivial (MonadMaybeTrivial (..))
+import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorIndices, TensorShape, at, isTensorOfAll, mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadReadableTensorBoundContext, getCompleteNamedCtx, lookupParentTensorVariable)
@@ -44,10 +44,10 @@ import Vehicle.Verify.QueryFormat.Interface (QueryFormat (..))
 
 -- | Checks for presence of under-constrained input variables.
 findInputVariableBounds ::
-  (MonadQueryCompilation m, MonadMaybeTrivial m) =>
+  (MonadQueryCompilation m) =>
   NetworkApplications ->
   ConjunctAll LinearAssertion ->
-  m (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor)
+  m (MaybeTrivial (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor))
 findInputVariableBounds metaNetworkApps constraints = do
   logCompilerSection2 MaxDetail "network variable bounds checks" $
     runMonadBoundsT metaNetworkApps $ do
@@ -309,10 +309,10 @@ propagateBound equalities (startLocation, startBounds) =
 -- Bound checking
 
 checkAllBoundsPresent ::
-  (MonadBounds m, MonadMaybeTrivial m) =>
+  (MonadBounds m) =>
   Map NetworkInputTensorVariable (TensorBounds RatTensor) ->
   [LinearAssertion] ->
-  m (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor)
+  m (MaybeTrivial (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor))
 checkAllBoundsPresent allPartialbounds assertions = do
   (PropertyMetaData {..}, _, inputVariableMapping) <- ask
   lv <- getBinderDepth
@@ -346,15 +346,16 @@ checkAllBoundsPresent allPartialbounds assertions = do
 
   let boundsUnsatisfiable = not (all isSatisfiable domains)
   if boundsUnsatisfiable
-    then trivial False
+    then return $ Trivial False
     else case assertions of
-      [] -> trivial True
+      [] -> return $ Trivial True
       a : as ->
         return $
-          BoundedAssertions
-            { variableBounds = boundedVariables,
-              assertions = ConjunctAll (a :| as)
-            }
+          NonTrivial $
+            BoundedAssertions
+              { variableBounds = boundedVariables,
+                assertions = ConjunctAll (a :| as)
+              }
 
 findUnboundedVariables :: Lv -> NetworkApplicationInfo -> [Lv]
 findUnboundedVariables ctxSize appInfo = do

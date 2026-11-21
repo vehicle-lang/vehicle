@@ -37,7 +37,6 @@ import System.Console.ANSI (Color (..))
 import Text.Read (readMaybe)
 import Vehicle.Data.AST.Decl (GenericDecl)
 import Vehicle.Data.AST.Name (HasIdentifier (identifierOf), Identifier, nameOf)
-import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
 import Vehicle.Prelude.Misc (enumerate, setTextColour)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT, mapSupplyT)
@@ -236,17 +235,6 @@ instance (MonadLogger m) => MonadLogger (IdentityT m) where
 instance (MonadLogger m) => MonadLogger (MaybeT m) where
   runCompilerPass = mapMaybeT . runCompilerPass
   runCompileDecl = mapMaybeT . runCompileDecl
-  setCallDepth = lift . setCallDepth
-  getCallDepth = lift getCallDepth
-  incrCallDepth = lift incrCallDepth
-  decrCallDepth = lift decrCallDepth
-  getDebugLevel = lift getDebugLevel
-  logMessage = lift . logMessage
-  logWarning = lift . logWarning
-
-instance (MonadLogger m) => MonadLogger (MaybeTrivialT m) where
-  runCompilerPass = mapMaybeTrivialT . runCompilerPass
-  runCompileDecl = mapMaybeTrivialT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
