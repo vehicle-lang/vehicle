@@ -29,6 +29,19 @@ jobs:
               extra-args: ""
               extra-args-test-golden: ""
         include:
+          # Build with GHC 9.14
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "9.14.1"
+              cabal:
+                version: "3.16.1.0"
+                project-file: "cabal.project"
+                extra-args: ""
+                # TODO: Migrate testVerifier to a Haskell executable for portability.
+                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
           # Build with GHC 9.12
           - os:
               name: Linux
@@ -75,18 +88,6 @@ jobs:
             haskell:
               ghc:
                 version: "9.4.8"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project"
-                extra-args: ""
-                extra-args-test-golden: ""
-          # Build with GHC 9.2
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.2.8"
               cabal:
                 version: "3.14.2.0"
                 project-file: "cabal.project"
