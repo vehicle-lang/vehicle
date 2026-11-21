@@ -333,8 +333,8 @@ handlePropertyCompileError ::
 handlePropertyCompileError CompilationSettings {..} declProv err = do
   let formatID = queryFormatID queryFormat
   throwError =<< case err of
-    UnsupportedNonLinearConstraint {} -> diagnoseNonLinearity formatID originalProg declProv
-    UnsupportedAlternatingQuantifiers {} -> diagnoseAlternatingQuantifiers formatID originalProg declProv
+    UnsupportedNonLinearConstraint _ _ Undiagnosed -> diagnoseNonLinearity formatID originalProg declProv
+    UnsupportedAlternatingQuantifiers _ _ Undiagnosed -> diagnoseAlternatingQuantifiers formatID originalProg declProv
     _ -> return err
 
 showTopLevelEntry :: (MonadCompile m) => Thunk Builtin -> m ()
