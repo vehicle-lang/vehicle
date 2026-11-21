@@ -10,6 +10,7 @@ defaults:
 jobs:
   build-vehicle:
     strategy:
+      fail-fast: false
       matrix:
         os:
           - name: "Linux"
@@ -138,6 +139,14 @@ jobs:
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v7
+
+      # GHC 9.4.8 is configured to link with the gold linker (`ld.gold`),
+      # which is no longer bundled with `binutils` from Ubuntu 26.04 onwards.
+      - name: 🛠️ Install gold linker
+        if: runner.os == 'Linux' && matrix.haskell.ghc.version == '9.4.8'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils-gold
 
       - name: 🛠️ Install Haskell
         uses: haskell-actions/setup@v2
