@@ -123,6 +123,7 @@ data TypingError builtin
   | UnsolvedMetas (Proxy builtin) (NonEmpty (MetaID, Provenance))
   | InvalidInstanceHead DeclProvenance (Expr builtin)
   | NonTypeClassInstanceHead (Proxy builtin) DeclProvenance Identifier
+  | QuantifiedIfCondition (ConstraintContext builtin)
   deriving stock (Show)
 
 --------------------------------------------------------------------------------
@@ -184,10 +185,11 @@ data CompileError
   | DeclarationBoundShadowing Provenance Name
   | MissingRequestedDeclarations (NonEmpty Name)
   | UnmatchedRecord Provenance [FieldName] (Maybe (Identifier, RecordMatch))
-  | -- Type checking errors
+  | -- Type checking errors. The type-checker can report multiple errors at
+    -- once, and so this carries a non-empty list of them.
     forall builtin.
     (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, Show builtin) =>
-    TypingError (TypingError builtin)
+    TypingErrors (NonEmpty (TypingError builtin))
   | -- Resource loading errors
     ResourcesNotProvided (NonEmpty MissingResource)
   | ResourceIOError DeclProvenance ExternalResource IOException
@@ -223,7 +225,6 @@ data CompileError
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (UnforcedBinder Builtin) (UnforcedType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
   | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, NetworkIOType, Thunk Builtin, [Lv], UnboundedIndices))
-  | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
   | -- Loss backend errors
     UnknownDifferentiableLogic Name [Name]
   | UnreducableDifferentiableLogic DeclProvenance

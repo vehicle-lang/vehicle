@@ -366,13 +366,8 @@ formatCompileError = \case
   -- Typing --
   ------------
 
-  TypingError t -> typingErrorDetails t
-  QuantifiedIfCondition ctx ->
-    VehicleUserError
-      { provenance = Just $ provenanceOf ctx,
-        problem = "cannot currently use quantifiers in `if` conditions.",
-        fix = Just $ implementationLimitation Nothing
-      }
+  -- TODO: report all of the errors rather than just the first.
+  TypingErrors (t :| _) -> typingErrorDetails t
   ---------------
   -- Resources --
   ---------------
@@ -1044,19 +1039,6 @@ errorInSubsystemMessage task err =
     <> "Please report this as an issue on Github"
       <+> parens githubIssues
     <> line
-
-githubIssues :: Doc a
-githubIssues = "https://github.com/vehicle-lang/vehicle/issues/"
-
-implementationLimitation :: Maybe Int -> Doc a
-implementationLimitation issue =
-  "This is a limitation of the current implementation rather than a fundamental problem."
-    <+> case issue of
-      Nothing -> "If you would like this to be fixed, please open an issue at" <+> squotes githubIssues
-      Just issueNumber ->
-        "If you would like this to be fixed, please comment at"
-          <+> squotes (githubIssues <+> pretty issueNumber)
-          <> "."
 
 prettyResource :: ExternalResource -> Identifier -> Doc a
 prettyResource resourceType ident =

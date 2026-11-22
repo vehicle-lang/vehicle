@@ -98,7 +98,7 @@ solveUnificationConstraint (WithContext (Unify origin e1 e2) ctx) = do
       finalFailedConstraints <- forM failedProblems $ \problem ->
         createNewConstraint ctx origin (problem, mempty)
       freeCtx <- getFreeCtx (Proxy @builtin)
-      throwError $ TypingError $ FailedUnificationConstraints $ FailedUnificationConstraintsError freeCtx finalFailedConstraints
+      throwError $ FailedUnificationConstraints $ FailedUnificationConstraintsError freeCtx finalFailedConstraints
 
 createNewConstraint ::
   (MonadUnify builtin m) =>
@@ -396,7 +396,7 @@ pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies attemptedSolutio
       | m == solvingMetaID =
           -- If `i` is inside the term we're trying to unify it with then error.
           -- Unsure if this should be a user or a developer error.
-          compilerDeveloperError $
+          developerError $
             "Meta variable"
               <+> pretty m
               <+> "found in own solution"

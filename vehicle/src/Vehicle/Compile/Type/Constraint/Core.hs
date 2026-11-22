@@ -12,7 +12,6 @@ where
 
 import Data.Bifunctor (Bifunctor (..))
 import Data.Map (fromListWith)
-import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -26,11 +25,11 @@ import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Bound.Context.Generic
 
 malformedConstraintError ::
-  (PrintableBuiltin builtin, MonadCompile m) =>
+  (PrintableBuiltin builtin) =>
   WithContext (InstanceConstraint builtin) ->
   m a
 malformedConstraintError c =
-  compilerDeveloperError $ "Malformed auxiliary constraint:" <+> prettyVerbose c
+  developerError $ "Malformed auxiliary constraint:" <+> prettyVerbose c
 
 -- | Create a new unification constraint as a subgoal of an existing instance constraint.
 createInstanceUnification ::

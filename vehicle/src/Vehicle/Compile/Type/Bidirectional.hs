@@ -218,7 +218,7 @@ inferExpr e = do
       if currentRelevance == Relevant && relevanceOf binder == Irrelevant
         then do
           let varName = fromMaybe "<unknown>" $ nameOf binder
-          throwError $ TypingError $ RelevantUseOfIrrelevantVariable $ RelevantUseOfIrrelevantVariableError (Proxy @builtin) p varName
+          throwError $ RelevantUseOfIrrelevantVariable $ RelevantUseOfIrrelevantVariableError (Proxy @builtin) p varName
         else do
           let liftedCheckedType = liftDBIndices (Lv $ unIx i + 1) (typeOf binder)
           return (BoundVar p i, liftedCheckedType)
@@ -450,7 +450,7 @@ solveArgInsertionProblem ctx problem@ArgInsertionProblem {..} = do
               -- Otherwise we're truely stuck and we error.
               | otherwise -> do
                   let boundCtx = toNamedBoundCtx ctx
-                  throwError $ TypingError $ FunctionTypeMismatch $ FunctionTypeMismatchError boundCtx originalFun currentExpectedType uncheckedArgs
+                  throwError $ FunctionTypeMismatch $ FunctionTypeMismatchError boundCtx originalFun currentExpectedType uncheckedArgs
 
 forceApplicationHeadType ::
   (MonadTypeChecker builtin m) =>
@@ -486,7 +486,7 @@ checkArgsAgainstPiType ctx problem@ArgInsertionProblem {..} binder resultType
         [] -> return (Nothing, uncheckedArgs)
         (arg : remainingArgs)
           | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
-          | isExplicit binder -> throwError $ TypingError $ MissingExplicitArg $ MissingExplicitArgError (toNamedBoundCtx ctx) binder arg
+          | isExplicit binder -> throwError $ MissingExplicitArg $ MissingExplicitArgError (toNamedBoundCtx ctx) binder arg
           | otherwise -> return (Nothing, uncheckedArgs)
 
       -- Calculate what the new checked arg should be, create a fresh meta
@@ -539,7 +539,7 @@ instantiateArgForNonExplicitBinder ::
 instantiateArgForNonExplicitBinder boundCtx p (fun, funArgs, funType) binder = do
   let binderType = typeOf binder
   checkedExpr <- case visibilityOf binder of
-    Explicit {} -> compilerDeveloperError "Should not be instantiating Arg for explicit Binder"
+    Explicit {} -> developerError "Should not be instantiating Arg for explicit Binder"
     Implicit {} -> freshMetaExpr p binderType (relevanceOf binder) boundCtx
     Instance {} -> do
       let origin =

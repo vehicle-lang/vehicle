@@ -2,6 +2,8 @@ module Vehicle.Compile.Print.Error.Typing
   ( typingErrorDetails,
     prettyIdentName,
     unsupportedAnnotationTypeDescription,
+    githubIssues,
+    implementationLimitation,
   )
 where
 
@@ -128,6 +130,25 @@ typingErrorDetails = \case
             <+> ".",
         fix = Just "add more type annotations"
       }
+  QuantifiedIfCondition ctx ->
+    VehicleUserError
+      { provenance = Just $ provenanceOf ctx,
+        problem = "cannot currently use quantifiers in `if` conditions.",
+        fix = Just $ implementationLimitation Nothing
+      }
+
+githubIssues :: Doc a
+githubIssues = "https://github.com/vehicle-lang/vehicle/issues/"
+
+implementationLimitation :: Maybe Int -> Doc a
+implementationLimitation issue =
+  "This is a limitation of the current implementation rather than a fundamental problem."
+    <+> case issue of
+      Nothing -> "If you would like this to be fixed, please open an issue at" <+> squotes githubIssues
+      Just issueNumber ->
+        "If you would like this to be fixed, please comment at"
+          <+> squotes (githubIssues <+> pretty issueNumber)
+          <> "."
 
 --------------------------------------------------------------------------------
 -- Individual errors
