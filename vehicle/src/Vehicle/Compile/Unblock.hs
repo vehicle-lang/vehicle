@@ -132,7 +132,7 @@ unblockBoolTensorValue actions value = showEntry value $ do
     VBoolTensorReduceOr args -> unblockReduceTensor unblock (forceEval evalReduceOrTensor) args
     VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (unblockIndexValue actions) (evalCompareIndex op) args
     VBoolTensorCompareNat (op, args) -> unblockOp2 (unblockNatValue actions) (evalCompareNat op) args
-    VBoolTensorTensorAt args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
+    VBoolTensorTensorAt args -> unblockAtTensor actions (return . IfLeaf) unblock (unblockIndexValue actions) args
     VBoolTensorVectorAt args -> unblockAtVector unblock (unblockVectorValue actions) (unblockIndexValue actions) args
     VBoolTensorForeach args -> unblockForeachTensor actions args
     VBoolTensorFoldList args -> unblockFoldList actions args
@@ -171,7 +171,7 @@ unblockRatTensorValue actions@UnblockingActions {..} expr =
       VRatTensorBoundVar v spine -> unblockBoundVar unblock v spine
       VNetworkApplication n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
       VParameterOrDataset ident -> unblockDatasetOrParameter unblock ident
-      VRatAtTensor args -> unblockAtTensor unblock unblock (unblockIndexValue actions) args
+      VRatAtTensor args -> unblockAtTensor actions unblock unblock (unblockIndexValue actions) args
       VRatAtVector args -> unblockAtVector unblock (unblockVectorValue actions) (unblockIndexValue actions) args
       VRatForeach args -> unblockForeachTensor actions args
       VRatTensorTranspose args -> unblockTransposeTensor unblock args
@@ -348,12 +348,19 @@ unblockReduceTensor unblockArg evalFn (TensorReductionArgs ds xs) = do
 
 unblockAtTensor ::
   (MonadUnblock m) =>
+  UnblockingActions m ->
   TypeUnblockingFunction (Thunk Builtin) m ->
   TypeUnblockingFunction (Thunk Builtin) m ->
   TypeUnblockingFunction (Thunk Builtin) m ->
   OperationUnblockingFunction AtTensorArgs (Thunk Builtin) m
-unblockAtTensor unblock unblockTensor unblockIndex (AtTensorArgs tElem d ds xs i) = do
-  xs' <- unblockTensor xs
+unblockAtTensor actions unblock unblockTensor unblockIndex (AtTensorArgs tElem d ds xs i) = do
+  fxs <- forceThunk xs
+  xs' <- case fxs of
+    -- Optimisation: unblock a bound tensor variable to its stack of child variables without
+    -- unblocking every element, as only one of them is about to be selected.
+    -- The selected element is then unblocked by `unblock` below.
+    VBoundVar v [] -> unblockBoundVar actions (return . IfLeaf) v []
+    _ -> unblockTensor xs
   i' <- unblockIndex i
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->

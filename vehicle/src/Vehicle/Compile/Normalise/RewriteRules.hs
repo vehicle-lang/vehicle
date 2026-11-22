@@ -35,7 +35,8 @@ type RewritableBuiltin builtin =
     BuiltinHasBoolLiterals builtin,
     HasTensorLiterals ForcedValue builtin,
     HasLiftableTensorOperations ForcedValue Thunk builtin,
-    BuiltinHasRatType builtin
+    BuiltinHasRatType builtin,
+    BuiltinHasBoolType builtin
   )
 
 type MonadRewrite builtin m =
@@ -64,7 +65,54 @@ forceAndRewriteTensor value = do
     (getExpr accessReduceAddRat -> Just args) -> rewriteReduceAddTensor args
     (getExpr accessReduceMulRat -> Just args) -> rewriteReduceMulTensor args
     (getExpr accessNotTensor -> Just args) -> rewriteNotTensor args
+    (getExpr accessIf -> Just args) -> rewriteIf args
     _ -> return forcedValue
+
+-----------------------------------------------------------------------------
+-- If
+
+-- | If the condition of an `if` is closed (e.g. depends only on index literals)
+-- then select the branch now, rather than leaving the `if` to be unblocked
+-- (and the surrounding tensor expression to be split up element-wise) later.
+rewriteIf ::
+  (MonadRewrite builtin m) =>
+  IfArgs (Thunk builtin) ->
+  m (ForcedValue builtin)
+rewriteIf (IfArgs t c e1 e2) = do
+  fc <- forceAndRewriteCondition c
+  let args = IfArgs t (Forced fc) e1 e2
+  evalResult <- evalIf args
+  case evalResult of
+    Evaluated branch -> forceAndRewriteTensor branch
+    Unevaluable {} -> return $ mkExpr accessIf args
+
+-- | Cheaply decides conditions built from comparisons of index/nat literals.
+forceAndRewriteCondition ::
+  forall builtin m.
+  (MonadRewrite builtin m) =>
+  Thunk builtin ->
+  m (ForcedValue builtin)
+forceAndRewriteCondition c = do
+  fc <- forceAndRewriteTensor c
+  case fc of
+    (getExpr accessCompareIndex -> Just (op, args)) ->
+      force =<< forceEvaluation (accessArgsForOp accessCompareIndex op) (evalCompareIndex op) args
+    (getExpr accessCompareNat -> Just (op, args)) ->
+      force =<< forceEvaluation (accessArgsForOp accessCompareNat op) (evalCompareNat op) args
+    (getExpr accessCompareRatTensor -> Just (op, TensorComparisonArgs pDims rDims xs ys)) -> do
+      xs' <- Forced <$> forceAndRewriteTensor xs
+      ys' <- Forced <$> forceAndRewriteTensor ys
+      let args = TensorComparisonArgs pDims rDims xs' ys'
+      force =<< forceEvaluation (accessArgsForOp accessCompareRatTensor op) (evalCompareRatTensor op) args
+    (getExpr accessAndTensor -> Just (TensorOp2Args ds x y)) -> do
+      x' <- Forced <$> forceAndRewriteCondition x
+      y' <- Forced <$> forceAndRewriteCondition y
+      force =<< evalOrReconstructAnd (TensorOp2Args ds x' y')
+    (getExpr accessOrTensor -> Just (TensorOp2Args ds x y)) -> do
+      x' <- Forced <$> forceAndRewriteCondition x
+      y' <- Forced <$> forceAndRewriteCondition y
+      force =<< evalOrReconstructOr (TensorOp2Args ds x' y')
+    _ -> return fc
 
 forceAndRewriteDims ::
   forall builtin m.

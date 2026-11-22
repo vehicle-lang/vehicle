@@ -34,7 +34,7 @@
 
 ### Solver backend
 
-* Removed quadratic blow-up in compilation time and query-plan size when the same network is applied multiple times.
+* Removed quadratic blow-up in compilation time and query-plan size when the same network is applied multiple times and for specs containing evaluable `if` statements.
 
 * Optimised solver backend, reducing compilation time by ~40% and memory requirements by ~30%.
 

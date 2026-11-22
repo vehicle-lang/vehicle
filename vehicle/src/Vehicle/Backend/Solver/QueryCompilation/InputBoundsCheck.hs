@@ -11,6 +11,7 @@ import Data.Either (partitionEithers)
 import Data.Foldable (fold)
 import Data.List (isPrefixOf)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
@@ -248,19 +249,26 @@ combineBounds Partial {..} = do
         let duplicatedBounds = concatMap (propagateBound equalitiesByVar) inputSliceBounds
 
         logDebugM MaxDetail $ do
-          duplicatedBoundsDoc <- prettyBounds (toTensorBounds duplicatedBounds)
+          duplicatedBoundsDoc <- prettyBounds (combineSliceBounds duplicatedBounds)
           return $ "Bounds duplicated via input equalities:" <> lineIndent duplicatedBoundsDoc
 
         return $ inputSliceBounds <> duplicatedBounds
 
-  return $ toTensorBounds allBounds
+  return $ combineSliceBounds allBounds
+
+combineSliceBounds :: [(SliceLocation, SliceBounds RatTensor)] -> Map NetworkInputTensorVariable (TensorBounds RatTensor)
+combineSliceBounds allSliceBounds = Map.map mkTensorBounds boundsByVariable
   where
-    toTensorBounds :: [(SliceLocation, SliceBounds RatTensor)] -> Map NetworkInputTensorVariable (TensorBounds RatTensor)
-    toTensorBounds allSliceBounds =
-      Map.fromListWith (flip andBounds) $
-        [ (locationVariable, TensorBounds (singleNestedSliceBound bounds locationShape locationIndices))
-          | (SliceLocation {..}, bounds) <- allSliceBounds
-        ]
+    -- Group the slice bounds by the variable they constrain.
+    boundsByVariable :: Map NetworkInputTensorVariable (NonEmpty (SliceLocation, SliceBounds RatTensor))
+    boundsByVariable = do
+      let boundPairs = [(locationVariable location, (location, bounds) :| []) | (location, bounds) <- allSliceBounds]
+      NonEmpty.reverse <$> Map.fromListWith (<>) boundPairs
+
+    mkTensorBounds :: NonEmpty (SliceLocation, SliceBounds RatTensor) -> TensorBounds RatTensor
+    mkTensorBounds variableBounds@((firstLocation, _) :| _) = do
+      let indicesAndBounds = [(locationIndices location, bounds) | (location, bounds) <- NonEmpty.toList variableBounds]
+      TensorBounds $ nestedSliceBoundsFromList (locationShape firstLocation) indicesAndBounds
 
 -- | Performs a breadth-first search along the equalities starting from the
 -- location of the bound, and returns the corresponding bound for every new
