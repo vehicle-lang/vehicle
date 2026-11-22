@@ -555,11 +555,10 @@ elabRecordAcc e field = do
 elabDifferentiate :: (MonadElab m) => B.TokDelta -> B.Expr -> B.Name -> m (V.Expr Builtin)
 elabDifferentiate delta expr field = do
   deltaProv <- mkProvenance delta
+  fieldProv <- mkProvenance field
+  let p = V.fillInProvenance (deltaProv :| [fieldProv])
   expr' <- elabExpr expr
   field' <- elabRecordFieldName field
-
-  let p = V.fillInProvenance (deltaProv :| [V.provenanceOf expr', V.provenanceOf field'])
-
   return $ V.Differentiate p expr' field'
 
 elabBasicBinder ::
