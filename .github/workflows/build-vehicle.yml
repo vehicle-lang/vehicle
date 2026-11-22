@@ -29,7 +29,7 @@ jobs:
               extra-args: ""
               extra-args-test-golden: ""
         include:
-          # Build with GHC 9.14
+          # GHC 9.14 (newest)
           - os:
               name: Linux
               type: ubuntu-latest
@@ -40,9 +40,8 @@ jobs:
                 version: "3.16.1.0"
                 project-file: "cabal.project"
                 extra-args: ""
-                # TODO: Migrate testVerifier to a Haskell executable for portability.
                 extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
-          # Build with GHC 9.12
+          # GHC 9.12
           - os:
               name: Linux
               type: ubuntu-latest
@@ -53,35 +52,8 @@ jobs:
                 version: "3.14.2.0"
                 project-file: "cabal.project"
                 extra-args: ""
-                # TODO: Migrate testVerifier to a Haskell executable for portability.
                 extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
-          # Build with GHC 9.10
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.10.3"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project"
-                extra-args: ""
-                # TODO: Migrate testVerifier to a Haskell executable for portability.
-                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
-          # Build with GHC 9.8
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.8.4"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project"
-                extra-args: ""
-                # TODO: Migrate testVerifier to a Haskell executable for portability.
-                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
-          # Build with GHC 9.4
+          # GHC 9.4 (oldest)
           - os:
               name: Linux
               type: ubuntu-latest
