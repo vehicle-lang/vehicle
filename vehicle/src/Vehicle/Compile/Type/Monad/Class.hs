@@ -1,6 +1,7 @@
 module Vehicle.Compile.Type.Monad.Class where
 
 import Control.Monad (foldM, unless)
+import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans.Class (lift)
@@ -16,7 +17,7 @@ import Data.Sequence (Seq, (><), (|>))
 import Data.Sequence qualified as Seq
 import GHC.Stack (HasCallStack)
 import Prettyprinter (fill)
-import Vehicle.Compile.Error (MonadCompile)
+import Vehicle.Compile.Error (TypingError)
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
@@ -101,7 +102,7 @@ emptyTypeCheckerState instanceDatabase importedModules = do
 -- The type-checking monad class
 
 -- | The type-checking monad.
-class (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin, Ord builtin) => MonadTypeChecker builtin m where
+class (MonadLogger m, MonadError (TypingError builtin) m, MonadFreeContext builtin m, NormalisableBuiltin builtin, Ord builtin) => MonadTypeChecker builtin m where
   getTypeCheckerState :: m (TypeCheckerState builtin)
   modifyTypeCheckerState :: (TypeCheckerState builtin -> TypeCheckerState builtin) -> m ()
 
@@ -154,10 +155,6 @@ getFreshName _typ = do
   nameID <- getsTypeCheckerDeclState @builtin freshNameState
   modifyTypeCheckerDeclState @builtin (\state -> state {freshNameState = nameID + 1})
   return $ layoutAsText $ "_x" <> pretty nameID
-
-clearFreshNames :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
-clearFreshNames _proxy =
-  modifyTypeCheckerDeclState @builtin (\state -> state {freshNameState = 0})
 
 getMetaVariableCtx :: (MonadTypeChecker builtin m) => m (MetaVariableContext builtin)
 getMetaVariableCtx = getsTypeCheckerDeclState metaVariableCtx
@@ -430,7 +427,7 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
 
 -- | Creates an expression that abstracts over all bound variables
 makeMetaExpr ::
-  (MonadCompile m) =>
+  (Monad m) =>
   Provenance ->
   MetaID ->
   BoundCtx (Type builtin) ->
@@ -465,9 +462,12 @@ prettyMeta _ meta = fill 3 . prettyMetaInternal meta <$> getMetaType @builtin me
 prettyMetaInternal :: (PrintableBuiltin builtin) => MetaID -> Type builtin -> Doc a
 prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 
-clearMetaCtx :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
-clearMetaCtx _ = do
-  logDebug MaxDetail "Clearing meta-variable context"
+-- | Resets all the state associated with the declaration currently being
+-- checked, i.e. the current declaration, the meta-variable context, the
+-- constraints and the fresh name supply.
+resetDeclState :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
+resetDeclState _ = do
+  logDebug MaxDetail "Resetting declaration state"
   modifyTypeCheckerState @builtin $ \state -> do
     state
       { currentDeclState = emptyTypeCheckerDeclState

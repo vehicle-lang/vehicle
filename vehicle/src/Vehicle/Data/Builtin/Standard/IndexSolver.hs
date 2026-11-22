@@ -69,7 +69,7 @@ solveInDomain c [value, typ] = do
             else
               if not (MetaSet.null sizeBlockingMetas)
                 then return $ Just sizeBlockingMetas
-                else throwError $ TypingError $ FailedIndexConstraintTooBig ctx n sizeLowerBound
+                else throwError $ FailedIndexConstraintTooBig ctx n sizeLowerBound
         _ -> return $ blockOnMetas blockingMetas2
     _ -> return $ blockOnMetas blockingMetas1
   where
@@ -106,7 +106,7 @@ findLowerBound ctx value size = go size
           return (0, mempty)
         _
           | MetaSet.null blockingMetas ->
-              throwError $ TypingError $ FailedIndexConstraintUnknown ctx value size
+              throwError $ FailedIndexConstraintUnknown ctx value size
           | otherwise -> return (0, blockingMetas)
 
 --------------------------------------------------------------------------------

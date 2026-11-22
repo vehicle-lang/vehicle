@@ -33,7 +33,7 @@ module Vehicle.Compile.Type.Monad
     TelescopeType (..),
     instantiateTelescope,
     -- Other
-    clearMetaCtx,
+    resetDeclState,
     logUnsolvedUnknowns,
     findFirstConstraint,
     checkAllConstraintsSolved,
@@ -43,15 +43,14 @@ module Vehicle.Compile.Type.Monad
 where
 
 import Control.Monad (unless, when)
-import Control.Monad.Except (MonadError (..), runExceptT)
-import Control.Monad.Trans.Except (ExceptT)
+import Control.Monad.Except (MonadError (..))
 import Data.Foldable (toList)
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
 import Data.Sequence (Seq, (><), pattern Empty, pattern (:<|))
 import Data.Sequence qualified as Seq
-import Vehicle.Compile.Error (CompileError (..), TypingError (..), compilerDeveloperError)
+import Vehicle.Compile.Error (CompileError (..), MonadCompile, TypingError (..))
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
@@ -68,35 +67,36 @@ import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Variable.Bound.Context.Generic
 
 runTypeCheckerTInitially ::
-  (Monad m, TypableBuiltin builtin) =>
+  (MonadCompile m, TypableBuiltin builtin, PrintableBuiltin builtin, Show builtin) =>
   InstanceDatabase builtin ->
   ImportedModuleContext builtin ->
   TypeCheckerT builtin m a ->
   m (a, ModuleTypingInterface builtin, FreeCtx builtin)
 runTypeCheckerTInitially builtinInstances importedCtx e = do
   let state = emptyTypeCheckerState builtinInstances importedCtx
-  (result, internalState) <- runTypeCheckerT state e
-  return (result, currentModuleInterface internalState, currentFreeCtx internalState)
+  outcome <- runTypeCheckerT state e
+  case outcome of
+    Left err -> throwError $ TypingErrors $ pure err
+    Right (result, internalState) ->
+      return (result, currentModuleInterface internalState, currentFreeCtx internalState)
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
 runTypeCheckerTHypothetically ::
   forall builtin m a.
   (MonadTypeChecker builtin m) =>
-  TypeCheckerT builtin (ExceptT CompileError m) a ->
-  m (Either CompileError (a, TypeCheckerState builtin))
+  TypeCheckerT builtin m a ->
+  m (Either (TypingError builtin) (a, TypeCheckerState builtin))
 runTypeCheckerTHypothetically e = do
   callDepth <- getCallDepth
   state <- getTypeCheckerState
-  result <- runExceptT $ runTypeCheckerT state e
+  result <- runTypeCheckerT state e
   case result of
     Right value -> return $ Right value
-    Left err -> case err of
-      DevError {} -> throwError err
-      _ -> do
-        -- If we errored then reset the call depth so logging is not disrupted.
-        setCallDepth callDepth
-        return $ Left err
+    Left err -> do
+      -- If we errored then reset the call depth so logging is not disrupted.
+      setCallDepth callDepth
+      return $ Left err
 
 -- | Accepts the hypothetical outcome of the type-checker.
 adoptHypotheticalState :: (MonadTypeChecker builtin m) => TypeCheckerState builtin -> m ()
@@ -243,12 +243,12 @@ findValidInstanceHead ::
 findValidInstanceHead declProv candidate = do
   let expr = candidateExpr candidate
   case findInstanceGoalHead expr of
-    Left _err -> throwError $ TypingError $ InvalidInstanceHead declProv expr
+    Left _err -> throwError $ InvalidInstanceHead declProv expr
     Right instanceHead -> case instanceHead of
       Left typeClassIdent -> do
         typeClassDecl <- getDecl (Proxy @builtin) typeClassIdent
         unless (isTypeClassDecl typeClassDecl) $ do
-          throwError $ TypingError $ NonTypeClassInstanceHead (Proxy @builtin) declProv typeClassIdent
+          throwError $ NonTypeClassInstanceHead (Proxy @builtin) declProv typeClassIdent
         return instanceHead
       Right _builtin -> return instanceHead
 
@@ -264,7 +264,7 @@ solveMeta meta solution solutionCtx = do
   maybeExistingSolution <- getMetaSolution @builtin meta
   case maybeExistingSolution of
     Just existing ->
-      compilerDeveloperError $
+      developerError $
         "meta-variable"
           <+> pretty meta
           <+> "already solved as"
@@ -404,7 +404,7 @@ checkAllConstraintsSolved _ getConstraints toConstraint = do
     [] -> return ()
     (c : cs) -> do
       let failedConstraints = mapObject toConstraint <$> (c :| cs)
-      throwError $ TypingError $ UnsolvedConstraints failedConstraints
+      throwError $ UnsolvedConstraints failedConstraints
 
 data TelescopeType
   = InstanceTelescope
@@ -425,7 +425,7 @@ instantiateTelescope telescopeType createFreshInstance boundCtx = \case
 
     newArg <- case visibilityOf piBinder of
       Explicit {} -> case telescopeType of
-        InstanceTelescope -> compilerDeveloperError "Should not have an explicit argument in instance goal telescope"
+        InstanceTelescope -> developerError "Should not have an explicit argument in instance goal telescope"
         RecordTelescope -> freshMetaExpr binderProvenance binderType binderRelevance boundCtx
       Implicit {} ->
         freshMetaExpr binderProvenance binderType binderRelevance boundCtx
