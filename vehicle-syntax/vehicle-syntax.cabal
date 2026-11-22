@@ -47,11 +47,6 @@ custom-setup
     , Cabal     >=2.0.0.2 && <3.14
     , filepath  >=1
 
-flag ghc-debug
-  description: Add ghc-debug instrumentation
-  manual:      True
-  default:     False
-
 flag optimise-heavily
   default:     False
   description: Enable some expensive optimisations when compiling Vehicle.
@@ -82,10 +77,6 @@ common common-language
 common common-library
   import:      common-language
 
-  if flag(ghc-debug)
-    build-depends: ghc-debug-stub >=0.3 && <0.5
-    cpp-options:   -DghcDebug
-
   if flag(optimise-heavily)
     cpp-options: -DoptimiseHeavily
     ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
@@ -107,7 +98,6 @@ library
     Vehicle.Syntax.Token
 
   other-modules:
-    Vehicle.Syntax.Debug
     Vehicle.Syntax.External.ErrM
     Vehicle.Syntax.External.Layout
     Vehicle.Syntax.External.Lex
