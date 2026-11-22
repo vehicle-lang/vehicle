@@ -34,6 +34,8 @@
 
 ### Solver backend
 
+* Removed quadratic blow-up in compilation time and query-plan size when the same network is applied multiple times.
+
 * Optimised solver backend, reducing compilation time by ~40% and memory requirements by ~30%.
 
 * The files generated for tensors of properties no longer contain the special character `!` in their names, e.g. `robust!0-query1.txt` is now `robust-0-query1.txt`.

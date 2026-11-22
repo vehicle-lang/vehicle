@@ -16,6 +16,7 @@ import Prettyprinter (brackets)
 import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
+import Vehicle.Compile.Normalise.Force (forceThunk)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkIOType, NetworkModality, NetworkName, networkInputType)
 import Vehicle.Data.Assertion
@@ -65,10 +66,63 @@ toListOfApplications metaNetworkApps = do
   let flattenNetworkApps (name, apps) = fmap (name,) (NonEmpty.toList apps)
   concatMap flattenNetworkApps $ Map.toList metaNetworkApps
 
+-- | A conservative, purely syntactic representation of the argument
+-- of a network application, used to detect when two applications of the same
+-- network are guaranteed to be applied to the same input.
+--
+-- Two applications with distinct keys may still be semantically equal; these
+-- are caught later on by `eliminateRedundantApplications`.
+data NetworkArgKey
+  = KeyBoundVar !Lv
+  | KeyFreeVar !Identifier ![NetworkArgKey]
+  | KeyBuiltin !Builtin ![NetworkArgKey]
+  deriving stock (Eq, Ord)
+
+-- | Computes a conservative syntactic key for the argument of a network
+-- application. Returns `Nothing` if the argument contains anything outside of
+-- the supported fragment.
+networkArgCacheKey ::
+  forall m.
+  (MonadQueryStructure m) =>
+  Thunk Builtin ->
+  m (Maybe NetworkArgKey)
+networkArgCacheKey = go
+  where
+    go :: Thunk Builtin -> m (Maybe NetworkArgKey)
+    go thunk = do
+      value <- forceThunk thunk
+      case value of
+        VBoundVar lv [] -> return $ Just (KeyBoundVar lv)
+        VBuiltin b spine -> fmap (KeyBuiltin b) <$> goSpine spine
+        VFreeVar ident spine -> fmap (KeyFreeVar ident) <$> goSpine spine
+        _ -> return Nothing
+
+    goSpine :: UnforcedSpine Builtin -> m (Maybe [NetworkArgKey])
+    goSpine [] = return $ Just []
+    goSpine (a : as) = do
+      maybeKey <- go (argExpr a)
+      case maybeKey of
+        Nothing -> return Nothing
+        Just key -> fmap (key :) <$> goSpine as
+
+-- | The information needed to reuse an existing network application.
+data CachedNetworkApplication = CachedNetworkApplication
+  { cachedInputVariable :: !NetworkInputTensorVariable,
+    cachedOutputExpr :: !(Thunk Builtin),
+    cachedInputEquality :: !(Thunk Builtin)
+  }
+
+-- | The equalities between the input variables of network applications and the
+-- values they are applied to. These are indexed by the input variable so that
+-- the equality for an application that is reused multiple times is only
+-- emitted once per scope, and so that they are ordered by creation.
+type NetworkInputEqualities = Map NetworkInputTensorVariable (Thunk Builtin)
+
 data GlobalCtx = GlobalCtx
   { userTensorVariables :: !(Set UserSliceVariable),
     networkTensorVariables :: !(Map NetworkInputTensorVariable NetworkOutputTensorVariable),
-    networkApplications :: !NetworkApplications
+    networkApplications :: !NetworkApplications,
+    networkApplicationCache :: !(Map (NetworkName, NetworkArgKey) CachedNetworkApplication)
   }
 
 emptyGlobalCtx :: GlobalCtx
@@ -76,7 +130,8 @@ emptyGlobalCtx =
   GlobalCtx
     { networkTensorVariables = mempty,
       userTensorVariables = mempty,
-      networkApplications = mempty
+      networkApplications = mempty,
+      networkApplicationCache = mempty
     }
 
 addUserVarToGlobalContext ::
@@ -129,7 +184,7 @@ addNetworkApplicationToGlobalCtx ::
   Name ->
   NetworkContextInfo ->
   Thunk Builtin ->
-  m (Thunk Builtin, Thunk Builtin)
+  m (NetworkInputTensorVariable, Thunk Builtin, Thunk Builtin)
 addNetworkApplicationToGlobalCtx name networkInfo arg = do
   -- Can't current track network application provenance
   let p = mempty
@@ -164,7 +219,7 @@ addNetworkApplicationToGlobalCtx name networkInfo arg = do
         ..
       }
 
-  return (Forced inputVarExpr, Forced outputVarExpr)
+  return (coerce inputVar, Forced inputVarExpr, Forced outputVarExpr)
 
 createSubstitutionForVariable ::
   forall m variable.

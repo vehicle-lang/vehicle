@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Main where
@@ -10,23 +9,6 @@ import System.Exit (ExitCode (..), exitWith)
 import System.IO (stderr)
 import Vehicle (mainWithArgsAndExitCode)
 import Vehicle.Prelude (MonadStdIO (..))
-
-#ifdef ghcDebug
-import GHC.Debug.Stub (withGhcDebug)
-#endif
-
---------------------------------------------------------------------------------
--- Main function with ghc-debug instrumentation
-
-#ifdef ghcDebug
-{-# INLINE maybeWithGhcDebug #-}
-maybeWithGhcDebug :: IO () -> IO ()
-maybeWithGhcDebug = withGhcDebug
-#else
-{-# INLINE maybeWithGhcDebug #-}
-maybeWithGhcDebug :: IO () -> IO ()
-maybeWithGhcDebug = id
-#endif
 
 instance MonadStdIO IO where
   {-# INLINE writeStdout #-}
@@ -43,11 +25,10 @@ instance MonadStdIO IO where
   writeStderrLn = TextIO.hPutStrLn stderr
 
 main :: IO ()
-main =
-  maybeWithGhcDebug $ do
-    args <- getArgs
-    exitCode <- mainWithArgsAndExitCode args
-    exitWith (toExitCode exitCode)
+main = do
+  args <- getArgs
+  exitCode <- mainWithArgsAndExitCode args
+  exitWith (toExitCode exitCode)
   where
     toExitCode :: Int -> ExitCode
     toExitCode exitCode

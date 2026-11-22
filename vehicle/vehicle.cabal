@@ -35,11 +35,6 @@ source-repository head
   type:     git
   location: https://github.com/vehicle-lang/vehicle
 
-flag ghc-debug
-  description: Add ghc-debug instrumentation
-  manual:      True
-  default:     False
-
 flag release-build
   description: Marks this as an official release build
   manual:      True
@@ -88,10 +83,6 @@ common common-language
 common common-library
   import: common-language
 
-  if flag(ghc-debug)
-    build-depends: ghc-debug-stub >=0.3 && <0.5
-    cpp-options:   -DghcDebug
-
   if flag(release-build)
     cpp-options: -DreleaseBuild
 
@@ -102,9 +93,6 @@ common common-library
 common common-executable
   import:      common-language
   ghc-options: -threaded
-
-  if flag(ghc-debug)
-    ghc-options: -rtsopts -with-rtsopts=-N
 
 common common-test
   import:      common-language
@@ -314,7 +302,6 @@ library
     Vehicle.Data.Variable.Free.Context.Class
     Vehicle.Data.Variable.Free.Context.Core
     Vehicle.Data.Variable.Free.Context.Instance
-    Vehicle.Debug
     Vehicle.LSP.Config
     Vehicle.LSP.Handlers
     Vehicle.LSP.Monad
