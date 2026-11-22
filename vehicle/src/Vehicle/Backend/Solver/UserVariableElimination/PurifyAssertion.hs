@@ -204,6 +204,7 @@ purifyForeachTensor args actions _incrDims = do
 purifyAtTensor :: AtTensorArgs (Thunk Builtin) -> PurifyFn m
 purifyAtTensor args actions incrDims = do
   unblockAtTensor
+    actions
     (purifyExpr actions incrDims)
     (purifyExpr actions (incrDims + 1))
     (unblockIndexValue actions)

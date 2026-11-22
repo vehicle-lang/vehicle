@@ -170,6 +170,34 @@ singleNestedSliceBound bounds shape indices = case (shape, indices) of
     NestedSliceBounds emptyBounds (Just childBounds)
   _ -> developerError "Malformed shape and indices"
 
+-- | Builds the nested bounds for a collection of slice bounds in one pass.
+-- Equivalent to `foldr1 andBounds . map (\(is, b) -> singleNestedSliceBound b shape is)`
+-- but linear rather than quadratic in the number of slices.
+nestedSliceBoundsFromList ::
+  TensorShape ->
+  [(TensorIndices, SliceBounds expr)] ->
+  NestedSliceBounds expr
+nestedSliceBoundsFromList shape entries = do
+  -- Bounds with no remaining indices apply to this slice, the rest apply
+  -- to the child slice given by their first index.
+  let boundsOnThisSlice = [bounds | ([], bounds) <- entries]
+  let boundsOnChildren = [(i, (is, bounds)) | (i : is, bounds) <- entries]
+
+  let childBounds = case (shape, boundsOnChildren) of
+        (_, []) -> Nothing
+        (d : ds, _) -> do
+          -- Group the bounds by child index. `fromListWith (<>)` prepends each new
+          -- bound to the group, hence the `reverse` to restore the original order.
+          let boundsByChild = reverse <$> Map.fromListWith (<>) [(i, [entry]) | (i, entry) <- boundsOnChildren]
+          let mkChildBounds i = maybe emptyBounds (nestedSliceBoundsFromList ds) (Map.lookup i boundsByChild)
+          Just $ map mkChildBounds [0 .. d - 1]
+        ([], _) -> developerError "Malformed shape and indices"
+
+  NestedSliceBounds
+    { sliceBounds = foldr andBounds emptyBounds boundsOnThisSlice,
+      childSliceBounds = childBounds
+    }
+
 instance IsBounds NestedSliceBounds expr where
   emptyBounds =
     NestedSliceBounds
