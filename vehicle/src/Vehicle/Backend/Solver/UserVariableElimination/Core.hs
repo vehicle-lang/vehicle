@@ -80,7 +80,7 @@ data NetworkArgKey
 
 -- | Computes a conservative syntactic key for the argument of a network
 -- application. Returns `Nothing` if the argument contains anything outside of
--- the supported fragment, or is too large.
+-- the supported fragment.
 networkArgCacheKey ::
   forall m.
   (MonadQueryStructure m) =>
