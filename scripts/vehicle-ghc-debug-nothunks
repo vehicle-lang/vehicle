@@ -1,2 +1,0 @@
-#!/bin/sh
-cabal --project-file=cabal.project.ghc-debug run vehicle:exe:vehicle -- $@
