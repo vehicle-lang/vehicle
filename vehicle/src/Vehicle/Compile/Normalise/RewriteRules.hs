@@ -260,16 +260,33 @@ rewriteAtTensor args@(AtTensorArgs _tElem _d ds t index) =
   where
     go :: Thunk builtin -> m (ForcedValue builtin)
     go value = logRewrite getNameContext mkAt "at" value $ do
-      rewrittenValue <- forceAndRewriteTensor value
-      let maybeResult =
-            goOp1 rewrittenValue liftableTensorOp1s
-              <|> goOp2 rewrittenValue liftableTensorOp2s
-              <|> goForeach rewrittenValue
-      case maybeResult of
+      forcedValue <- forceThunk value
+      maybeStackResult <- goStack forcedValue
+      case maybeStackResult of
         Just result -> result
         Nothing -> do
-          evalResult <- forceEvaluation accessAtTensor evalAtTensor $ args {atTensor = Forced rewrittenValue}
-          forceThunk evalResult
+          rewrittenValue <- forceAndRewriteTensor (Forced forcedValue)
+          let maybeResult =
+                goOp1 rewrittenValue liftableTensorOp1s
+                  <|> goOp2 rewrittenValue liftableTensorOp2s
+                  <|> goForeach rewrittenValue
+          case maybeResult of
+            Just result -> result
+            Nothing -> do
+              evalResult <- forceEvaluation accessAtTensor evalAtTensor $ args {atTensor = Forced rewrittenValue}
+              forceThunk evalResult
+
+    -- If the tensor is already a stack and the index is a literal, then select
+    -- the element before rewriting, so as to avoid rewriting the other elements
+    -- of the stack.
+    goStack :: ForcedValue builtin -> m (Maybe (m (ForcedValue builtin)))
+    goStack forcedTensor = case getExpr accessStackTensor forcedTensor of
+      Nothing -> return Nothing
+      Just stackArgs -> do
+        forcedIndex <- forceThunk index
+        return $ case forcedIndex of
+          IIndexLiteral i _ -> Just $ forceAndRewriteTensor (stackElements stackArgs !! i)
+          _ -> Nothing
 
     goOp1 :: ForcedValue builtin -> [TensorOpEvalData ForcedValue Thunk TensorOp1Args builtin] -> Maybe (m (ForcedValue builtin))
     goOp1 forcedTensor = \case
