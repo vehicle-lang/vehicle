@@ -3,8 +3,10 @@
 module Vehicle.Compile.Error
   ( VehicleUserError (..),
     VehicleError,
-    CompileError (..),
+    FrontendError (..),
+    BackendError (..),
     ParseError (..),
+    ScopeError (..),
     TypingError (..),
     MultiPropertyTraveralError (..),
     RecordMatch (..),
@@ -17,16 +19,16 @@ module Vehicle.Compile.Error
     UninferableParameter,
     UnboundedIndices,
     ParseLocation,
-    MonadCompile,
+    MonadFrontend,
+    MonadBackend,
     BlockingReason (..),
     Diagnosis (..),
-    compilerDeveloperError,
     unsupportedTensorLikeQuantifier,
   )
 where
 
 import Control.Exception (IOException)
-import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Except (MonadError)
 import Data.Aeson (ToJSON, genericToJSON)
 import Data.Aeson.Types (ToJSON (..))
 import Data.List.NonEmpty (NonEmpty)
@@ -51,12 +53,48 @@ import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
--- Compilation monad
+-- Compilation monads
 
-type MonadCompile m =
+-- | The monad in which the front end of the compiler (parsing, scope-checking
+-- and type-checking) is run.
+type MonadFrontend m =
   ( MonadLogger m,
-    MonadError CompileError m
+    MonadError FrontendError m
   )
+
+-- | The monad in which the back end of the compiler is run.
+type MonadBackend m =
+  ( MonadLogger m,
+    MonadError BackendError m
+  )
+
+--------------------------------------------------------------------------------
+-- Parsing error
+
+-- | Errors thrown during parsing
+data ParseError
+  = RawParseError String
+  | FunctionWithMismatchedNames Provenance Identifier Identifier
+  | -- Annotations
+    UnannotatedAbstractDef Provenance Identifier
+  | MultiplyAnnotatedDef Provenance Identifier (Doc Void) (Doc Void)
+  | TypeDefWithAnnotation Provenance Identifier (Doc Void)
+  | FunctionDefWithRecordAnnotation Provenance Identifier (Doc Void)
+  | RecordDefWithFunctionAnnotation Provenance Identifier (Doc Void)
+  | AbstractDefWithNonAbstractAnnotation Provenance Identifier (Doc Void)
+  | NonAbstractDefWithAbstractAnnotation Provenance Identifier (Doc Void)
+  | AnnotationWithNoDef Provenance Name
+  | -- Annotation options
+    InvalidAnnotationOption Provenance Name Name [Name]
+  | InvalidAnnotationOptionValue Provenance Name Text
+  | MissingAnnotationOption Provenance Text Name
+  | DuplicateAnnotationOption Provenance Text Name
+  | -- Other
+    UnknownBuiltin Provenance Text
+  | MissingVariables Provenance Name
+  | UnchainableComparisons Provenance ComparisonOp ComparisonOp
+  | UnknownSupportsOperation Provenance String
+  deriving stock (Show)
 
 --------------------------------------------------------------------------------
 -- Scoping errors
@@ -71,6 +109,18 @@ data RecordMatch = RecordMatch
 
 instance Pretty RecordMatch where
   pretty = pretty . show
+
+-- | Errors thrown during scope checking
+data ScopeError
+  = UnboundName Provenance Name [Name]
+  | UnboundRecordAccessor Provenance Name [Name]
+  | DeclarationDeclarationShadowing Provenance (Either FieldName Name) Identifier
+  | DeclarationBoundShadowing Provenance Name
+  | UnmatchedRecord Provenance [FieldName] (Maybe (Identifier, RecordMatch))
+  | -- Unsupported @tensor records
+    ZeroFieldTensorLike DeclProvenance
+  | ParameterisedTensorLike DeclProvenance
+  deriving stock (Show)
 
 --------------------------------------------------------------------------------
 -- Typing errors
@@ -142,54 +192,30 @@ type MissingResource = (ExternalResource, DeclProvenance)
 type UninferableParameter = DeclProvenance
 
 --------------------------------------------------------------------------------
--- Sugaring error
-
-data ParseError
-  = -- Parse errors
-    RawParseError String
-  | FunctionWithMismatchedNames Provenance Identifier Identifier
-  | -- Annotations
-    UnannotatedAbstractDef Provenance Identifier
-  | MultiplyAnnotatedDef Provenance Identifier (Doc Void) (Doc Void)
-  | TypeDefWithAnnotation Provenance Identifier (Doc Void)
-  | FunctionDefWithRecordAnnotation Provenance Identifier (Doc Void)
-  | RecordDefWithFunctionAnnotation Provenance Identifier (Doc Void)
-  | AbstractDefWithNonAbstractAnnotation Provenance Identifier (Doc Void)
-  | NonAbstractDefWithAbstractAnnotation Provenance Identifier (Doc Void)
-  | AnnotationWithNoDef Provenance Name
-  | -- Annotation options
-    InvalidAnnotationOption Provenance Name Name [Name]
-  | InvalidAnnotationOptionValue Provenance Name Text
-  | MissingAnnotationOption Provenance Text Name
-  | DuplicateAnnotationOption Provenance Text Name
-  | -- Other
-    UnknownBuiltin Provenance Text
-  | MissingVariables Provenance Name
-  | UnchainableComparisons Provenance ComparisonOp ComparisonOp
-  | UnknownSupportsOperation Provenance String
-  deriving stock (Show)
-
---------------------------------------------------------------------------------
 -- Compilation errors
 
 type ParseLocation = (ModulePath, FilePath)
 
-data CompileError
-  = DevError UnAnnDoc
-  | -- Parse errors
+-- | Errors thrown by the front end of the compiler, i.e. parsing,
+-- scope-checking and type-checking.
+data FrontendError
+  = -- Parse errors
     ParseError ParseLocation ParseError
-  | -- Scoping errors.
-    UnboundName Provenance Name [Name]
-  | UnboundRecordAccessor Provenance Name [Name]
-  | DeclarationDeclarationShadowing Provenance (Either FieldName Name) Identifier
-  | DeclarationBoundShadowing Provenance Name
-  | MissingRequestedDeclarations (NonEmpty Name)
-  | UnmatchedRecord Provenance [FieldName] (Maybe (Identifier, RecordMatch))
+  | -- Scoping errors
+    ScopeError ScopeError
   | -- Type checking errors. The type-checker can report multiple errors at
     -- once, and so this carries a non-empty list of them.
     forall builtin.
     (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, Show builtin) =>
     TypingErrors (NonEmpty (TypingError builtin))
+  | -- Declaration filtering errors
+    MissingRequestedDeclarations (NonEmpty Name)
+
+deriving stock instance Show FrontendError
+
+-- | Errors thrown by the back end of the compiler.
+data BackendError
+  = DevError UnAnnDoc
   | -- Resource loading errors
     ResourcesNotProvided (NonEmpty MissingResource)
   | ResourceIOError DeclProvenance ExternalResource IOException
@@ -214,8 +240,6 @@ data CompileError
   | ParameterValueInvalidNat DeclProvenance Int
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParametersUninferrable (NonEmpty UninferableParameter)
-  | -- Unsupported tensor record
-    ZeroFieldTensorLike DeclProvenance
   | -- Query backend
     NoPropertiesFound
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Diagnosis (Quantifier, Provenance, PolarityProvenance))
@@ -239,7 +263,7 @@ data CompileError
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance
 
-deriving stock instance Show CompileError
+deriving stock instance Show BackendError
 
 -- | The result of attempting to locate the original source of an error that
 -- was detected during compilation, but whose root cause can only be found by
@@ -248,7 +272,7 @@ data Diagnosis a
   = -- | No diagnosis has been attempted yet.
     Undiagnosed
   | -- | Diagnosis was attempted but itself failed with the given error.
-    DiagnosisFailed CompileError
+    DiagnosisFailed FrontendError
   | -- | Diagnosis succeeded and found the original source.
     Diagnosed a
   deriving (Show)
@@ -259,14 +283,6 @@ data BlockingReason
   | BlockingVar Lv
 
 deriving stock instance Show BlockingReason
-
---------------------------------------------------------------------------------
--- Some useful developer errors
-
--- | Should be used in preference to `developerError` whenever in the error
--- monad, as unlike the latter this method does not prevent logging.
-compilerDeveloperError :: (MonadError CompileError m) => UnAnnDoc -> m b
-compilerDeveloperError message = throwError $ DevError message
 
 --------------------------------------------------------------------------------
 -- The final error type

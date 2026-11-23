@@ -52,7 +52,7 @@ import Vehicle.Verify.Specification.IO
 -- solver and outputs them. We need to output them as they are generated as
 -- otherwise storing all the queries can result in an out-of-memory errors.
 compileToQueries ::
-  (MonadStdIO m, MonadCompile m) =>
+  (MonadStdIO m, MonadBackend m) =>
   QueryFormat ->
   Prog Builtin ->
   Resources ->
@@ -105,7 +105,7 @@ data CompilationSettings = CompilationSettings
   }
 
 compileProg ::
-  (MonadStdIO m, MonadCompile m) =>
+  (MonadStdIO m, MonadBackend m) =>
   CompilationSettings ->
   Prog Builtin ->
   m [(Name, MultiProperty PropertyAddress)]
@@ -114,7 +114,7 @@ compileProg settings (Main decls) =
     compileDecls settings decls
 
 compileDecls ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadStdIO m, MonadBackend m, MonadFreeContext Builtin m) =>
   CompilationSettings ->
   [Decl Builtin] ->
   m [(Name, MultiProperty PropertyAddress)]
@@ -137,7 +137,7 @@ compileDecls settings = \case
       return $ maybeToList property ++ properties
 
 compilePropertyDecl ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadStdIO m, MonadBackend m, MonadFreeContext Builtin m) =>
   CompilationSettings ->
   DeclProvenance ->
   Type Builtin ->
@@ -154,7 +154,7 @@ compilePropertyDecl settings prov typ body = do
 
 -- | Compiles an individual property of type `Bool`
 compileSingleProperty ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadStdIO m, MonadBackend m, MonadFreeContext Builtin m) =>
   CompilationSettings ->
   DeclProvenance ->
   PropertyAddress ->
@@ -189,7 +189,7 @@ type MonadCompileQuery m =
   ( MonadPropertyStructure m,
     MonadSupply QueryID m,
     MonadStdIO m,
-    MonadError CompileError m
+    MonadError BackendError m
   )
 
 -- | Compiles the top-level structure of a property until it hits the first quantifier.
@@ -276,7 +276,7 @@ compileNot args = do
   compileQueries =<< runFreshNameBoundContextT (lowerNot topLevelUnblockingActions args)
 
 compileQuantifiedQuerySet ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError BackendError m) =>
   Bool ->
   Either (QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin)) (QuantifyRecordArgs (Thunk Builtin) (Closure Builtin)) ->
   m PropertyPlan
@@ -291,7 +291,7 @@ compileQuantifiedQuerySet isPropertyNegated args =
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError BackendError m) =>
   Thunk Builtin ->
   m PropertyPlan
 compileUnquantifiedQuerySet value =
@@ -302,7 +302,7 @@ compileUnquantifiedQuerySet value =
       compileQuerySetPartitions globalCtx False maybePartitions
 
 compileQuerySetPartitions ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadTensorBoundContext m, MonadStdIO m, MonadError CompileError m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadTensorBoundContext m, MonadStdIO m, MonadError BackendError m) =>
   GlobalCtx ->
   QuerySetNegationStatus ->
   MaybeTrivial Partitions ->
@@ -334,10 +334,10 @@ topLevelUnblockingActions =
     }
 
 handlePropertyCompileError ::
-  (MonadIO m, MonadCompile m) =>
+  (MonadIO m, MonadBackend m) =>
   CompilationSettings ->
   DeclProvenance ->
-  CompileError ->
+  BackendError ->
   m a
 handlePropertyCompileError CompilationSettings {..} declProv err = do
   let formatID = queryFormatID queryFormat
@@ -346,14 +346,14 @@ handlePropertyCompileError CompilationSettings {..} declProv err = do
     UnsupportedAlternatingQuantifiers _ _ Undiagnosed -> diagnoseAlternatingQuantifiers formatID originalProg declProv
     _ -> return err
 
-showTopLevelEntry :: (MonadCompile m) => Thunk Builtin -> m ()
+showTopLevelEntry :: (MonadLogger m) => Thunk Builtin -> m ()
 showTopLevelEntry v = do
   logDebugM MaxDetail $ do
     let vDoc = prettyFriendly (WithContext v emptyNamedCtx)
     return $ "top-elim-enter" <+> vDoc
   incrCallDepth
 
-showTopLevelExit :: (MonadCompile m) => MaybeTrivial a -> m (MaybeTrivial a)
+showTopLevelExit :: (MonadLogger m) => MaybeTrivial a -> m (MaybeTrivial a)
 showTopLevelExit v = do
   decrCallDepth
   logDebugM MaxDetail $ do

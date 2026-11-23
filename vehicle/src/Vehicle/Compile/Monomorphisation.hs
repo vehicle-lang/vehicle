@@ -29,7 +29,6 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as Set (member, unions)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Data.Builtin.Interface.Print
@@ -54,7 +53,7 @@ import Vehicle.Data.Hashing ()
 -- by Wen et al is a good starting point.
 monomorphise ::
   forall m builtin.
-  (MonadCompile m, Hashable builtin, PrintableBuiltin builtin) =>
+  (MonadLogger m, Hashable builtin, PrintableBuiltin builtin) =>
   Prog builtin ->
   DeclarationFilter builtin ->
   m (Prog builtin)
@@ -78,7 +77,7 @@ type CandidateApplications builtin = Map Identifier (NonEmpty [Arg builtin])
 type SubsitutionSolutions builtin = Map Identifier (Type builtin, HashMap [Arg builtin] Identifier)
 
 type MonadCollect builtin m =
-  ( MonadCompile m,
+  ( MonadLogger m,
     MonadState (CandidateApplications builtin) m,
     MonadWriter (SubsitutionSolutions builtin) m,
     Hashable builtin,
@@ -270,7 +269,7 @@ collectReferences decl =
 -- Forward pass - insert the monorphised identifiers
 
 type MonadInsert builtin m =
-  ( MonadCompile m,
+  ( MonadLogger m,
     MonadReader (SubsitutionSolutions builtin) m,
     Hashable builtin,
     PrintableBuiltin builtin

@@ -421,8 +421,8 @@ eliminateTensorAssertion op (TensorComparisonArgs _pDims rDims xs ys) = do
           let stackExpr = Forced $ mkExpr accessStackTensor (StackTensorArgs (Forced IBoolType) d d0Arg stackElements)
           let result = Forced $ mkExpr accessReduceAnd (TensorReductionArgs (Forced $ mkDims [n]) stackExpr)
           return result
-        _ -> compilerDeveloperError ("unexpected dimension" <+> prettyVerbose d)
-    _ -> compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose rDims)
+        _ -> developerError ("unexpected dimension" <+> prettyVerbose d)
+    _ -> developerError ("unexpected dimensions" <+> prettyVerbose rDims)
 
 toComparison ::
   (MonadNorm Builtin m) =>
@@ -478,8 +478,8 @@ networkEqualitiesToPartition = go mempty
 -- the query compilation process, where the original source of the problem
 -- can be located by re-analysing the original program.
 throwUndiagnosed ::
-  (MonadPropertyStructure m, MonadError CompileError m) =>
-  (QueryFormatID -> DeclProvenance -> Diagnosis a -> CompileError) ->
+  (MonadPropertyStructure m, MonadError BackendError m) =>
+  (QueryFormatID -> DeclProvenance -> Diagnosis a -> BackendError) ->
   m b
 throwUndiagnosed mkError = do
   PropertyMetaData {..} <- ask

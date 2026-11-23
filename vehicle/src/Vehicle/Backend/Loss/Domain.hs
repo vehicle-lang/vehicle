@@ -53,7 +53,7 @@ type UserVariableConstraint = Assertion TensorValueLinearExpr
 
 type UserVariableConstraintTree = BooleanExpr UserVariableConstraint
 
-findAndAttachQuantifierBounds :: (MonadCompile m) => Prog Builtin -> m (Prog Builtin)
+findAndAttachQuantifierBounds :: (MonadBackend m) => Prog Builtin -> m (Prog Builtin)
 findAndAttachQuantifierBounds (Main decls) =
   logCompilerPass LossBounds $
     runFreshFreeContextT (Proxy @Builtin) $ do
@@ -61,7 +61,7 @@ findAndAttachQuantifierBounds (Main decls) =
       logDebug MidDetail $ prettyFriendly prog
       return prog
 
-processDecls :: (MonadCompile m, MonadFreeContext Builtin m) => [Decl Builtin] -> m [Decl Builtin]
+processDecls :: (MonadBackend m, MonadFreeContext Builtin m) => [Decl Builtin] -> m [Decl Builtin]
 processDecls = \case
   [] -> return []
   d : ds -> do
@@ -69,7 +69,7 @@ processDecls = \case
     ds' <- addDeclToContext d $ processDecls ds
     return $ d' : ds'
 
-processDecl :: (MonadCompile m, MonadFreeContext Builtin m) => Decl Builtin -> m (Decl Builtin)
+processDecl :: (MonadBackend m, MonadFreeContext Builtin m) => Decl Builtin -> m (Decl Builtin)
 processDecl decl =
   logCompilerSection2 MaxDetail ("searching" <+> quotePretty (identifierOf decl)) $
     case decl of
@@ -80,7 +80,7 @@ processDecl decl =
         return $ DefFunction p n b t e'
 
 type MonadDomain m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadReader DeclProvenance m,
     MonadFreeContext Builtin m,
     MonadTensorBoundContext m
@@ -453,7 +453,7 @@ compileBoolValue value = logEntryAndExit value $ do
     VQuantifyRatTensor args -> do
       tell $ Any True
       compileQuantifierInternal mempty args
-    VQuantifyRecord _args -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
+    VQuantifyRecord _args -> developerError "Non top-level record quantifiers are not supported yet"
     -------------------
     -- Blocked cases --
     -------------------

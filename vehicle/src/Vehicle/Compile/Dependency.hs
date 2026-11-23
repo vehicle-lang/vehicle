@@ -21,7 +21,6 @@ import Data.Set (Set)
 import Data.Set qualified as Set (difference, fromList, notMember, toList)
 import Data.Tree qualified as Tree
 import GHC.Arr ((!))
-import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard
 
@@ -127,7 +126,7 @@ completelyUnusedDeclarations decls = do
 -- Pruning
 
 pruneUnusedDeclarations ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   (Decl Builtin -> Bool) ->
   Prog Builtin ->
   m (Prog Builtin)
