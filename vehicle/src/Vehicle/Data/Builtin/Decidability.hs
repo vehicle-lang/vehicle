@@ -38,17 +38,15 @@ data TensorTypeClassField
   | FieldQuantifyInList Quantifier
   | FieldForeachTensor
   | FieldAtTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance Hashable TensorTypeClassField
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 data VectorTypeClassField
   = FieldFromVectorLiteral
   | FieldForeachVector
   | FieldAtVector
-  deriving (Eq, Ord, Show, Generic)
-
-instance Hashable VectorTypeClassField
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 data DecidabilityBuiltinTypeClass
   = IsTensorType
@@ -56,18 +54,16 @@ data DecidabilityBuiltinTypeClass
   | HasTensorTypeClassField TensorTypeClassField
   | HasVectorTypeClassField VectorTypeClassField
   | ValidPropertyType
-  deriving (Eq, Ord, Show, Generic)
-
-instance Hashable DecidabilityBuiltinTypeClass
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 data DecidabilityBuiltinTypeClassOp
   = TensorTypeTC
   | VectorTypeTC
   | TensorTypeClassFieldTC TensorTypeClassField
   | VectorTypeClassFieldTC VectorTypeClassField
-  deriving (Eq, Ord, Show, Generic)
-
-instance Hashable DecidabilityBuiltinTypeClassOp
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 -- | Constructors for types in the language. The types and type-classes
 -- are viewed as constructors for `Type`.
@@ -90,29 +86,26 @@ data DecidabilityBuiltinFunction
   | -- Taken from DerivedFunctions
     PropQuantifyIndex Quantifier
   | PropQuantifyInList Quantifier
-  deriving (Eq, Ord, Show, Generic)
-
-instance Hashable DecidabilityBuiltinFunction
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 newtype DecidabilityBuiltinConstructor
   = DecBoolTensor BoolTensor
-  deriving (Eq, Show, Ord, Generic)
-
-instance Hashable DecidabilityBuiltinConstructor
+  deriving stock (Eq, Show, Ord, Generic)
+  deriving anyclass (Hashable)
 
 -- | The builtin types after translation to loss functions (missing all builtins
 -- that involve the Bool type).
 data DecidabilityBuiltin
-  = StandardBuiltinType BuiltinType
+  = StandardBuiltinConstructor BuiltinConstructor
   | StandardBuiltinFunction BuiltinFunction
-  | StandardBuiltinConstructor BuiltinConstructor
+  | StandardBuiltinType BuiltinType
   | StandardBuiltinDerivedFunction DerivedFunction
   | DecidabilityBuiltinTypeClass DecidabilityBuiltinTypeClass
   | DecidabilityBuiltinTypeClassOp DecidabilityBuiltinTypeClassOp
   | DecidabilityBuiltinFunction DecidabilityBuiltinFunction
-  deriving (Show, Ord, Eq, Generic)
-
-instance Hashable DecidabilityBuiltin
+  deriving stock (Show, Ord, Eq, Generic)
+  deriving anyclass (Hashable)
 
 --------------------------------------------------------------------------------
 -- Accessors

@@ -25,7 +25,8 @@ import Vehicle.Prelude
 import Prelude hiding (null)
 
 newtype MetaSet = MetaSet IntSet
-  deriving (Show, Eq, Semigroup, Monoid)
+  deriving stock (Show, Eq)
+  deriving newtype (Semigroup, Monoid)
 
 instance Pretty MetaSet where
   pretty = pretty . toList

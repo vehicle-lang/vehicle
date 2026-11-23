@@ -1,5 +1,5 @@
 module Vehicle.Compile.Print.Error
-  ( formatCompileError,
+  ( FormattableError (..),
     prettyCompileError,
     logCompileError,
     multipleNetworkErrorMessages,
@@ -8,7 +8,7 @@ module Vehicle.Compile.Print.Error
 where
 
 import Control.Monad.Except (ExceptT, runExceptT)
-import Control.Monad.Identity (Identity)
+import Control.Monad.Identity (Identity (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe)
@@ -35,25 +35,24 @@ import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (FreeContextT, runFreshFreeContextT)
-import Vehicle.Prelude.Logging (SilentLoggerT, runSilentLogger)
 
 --------------------------------------------------------------------------------
 -- User errors
 
 logCompileError ::
-  (MonadLogger m) =>
-  ExceptT CompileError m a ->
-  m (Either CompileError a)
+  (MonadLogger m, FormattableError e) =>
+  ExceptT e m a ->
+  m (Either e a)
 logCompileError x = do
   e' <- runExceptT x
   case e' of
-    Left err -> logDebug MinDetail (pretty (formatCompileError err))
+    Left err -> logDebug MinDetail (pretty (formatError err))
     Right _ -> return ()
   return e'
 
-prettyCompileError :: Bool -> CompileError -> Doc a
+prettyCompileError :: (FormattableError e) => Bool -> e -> Doc a
 prettyCompileError outputAsJSON err = do
-  let vehicleUserError = formatCompileError err
+  let vehicleUserError = formatError err
   if outputAsJSON
     then prettyAsJSON vehicleUserError
     else pretty vehicleUserError
@@ -61,323 +60,21 @@ prettyCompileError outputAsJSON err = do
 --------------------------------------------------------------------------------
 -- Meaningful error classes
 
-formatCompileError :: CompileError -> VehicleError
-formatCompileError = \case
-  ----------------------
-  -- Developer errors --
-  ----------------------
+-- | Errors that can be formatted into a user-facing error message.
+class FormattableError e where
+  formatError :: e -> VehicleError
 
-  DevError text ->
-    VehicleUserError
-      { provenance = Nothing,
-        problem = text,
-        fix = Nothing
-      }
-  -------------
-  -- Parsing --
-  -------------
+instance FormattableError FrontendError where
+  formatError = frontendErrorDetails
 
-  ParseError _module parseError -> case parseError of
-    RawParseError text ->
-      VehicleUserError
-        { provenance = Nothing,
-          problem = pretty text,
-          fix = Nothing
-        }
-    UnannotatedAbstractDef p name ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "no definition provided for the declaration"
-              <+> prettyIdentName name
-              <> ".",
-          fix =
-            Just $
-              "either provide a definition for"
-                <+> prettyIdentName name
-                <+> "or mark it as an external resource by adding an appropriate annotation, i.e."
-                <+> pretty NetworkDef
-                <> ","
-                  <+> pretty DatasetDef
-                  <+> "or"
-                  <+> pretty (ParameterDef NonInferable)
-                <> "."
-        }
-    MultiplyAnnotatedDef p name ann1 ann2 ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "declaration"
-              <+> prettyIdentName name
-              <+> "cannot simultaneously be annotated with both"
-              <+> squotes ann1
-              <+> "and"
-              <+> squotes ann2
-              <> ".",
-          fix =
-            Just "remove one of annotations."
-        }
-    AbstractDefWithNonAbstractAnnotation p name ann ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "missing definition for"
-              <+> ann
-              <+> prettyIdentName name
-              <> ".",
-          fix =
-            Just $
-              "add a definition for"
-                <+> prettyIdentName name
-                <> "."
-        }
-    TypeDefWithAnnotation p name ann ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "cannot add a"
-              <+> ann
-              <+> "annotation to type definition"
-              <+> prettyIdentName name
-              <> ".",
-          fix =
-            Just $
-              "remove the"
-                <+> ann
-                <+> "annotation"
-                <> "."
-        }
-    FunctionDefWithRecordAnnotation p name ann ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "cannot add a"
-              <+> ann
-              <+> "annotation to function definition"
-              <+> prettyIdentName name
-              <> ".",
-          fix =
-            Just $
-              "either remove the"
-                <+> ann
-                <+> "annotation or convert"
-                <+> pretty name
-                <+> "into a record definition."
-        }
-    RecordDefWithFunctionAnnotation p name ann ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "cannot add a"
-              <+> ann
-              <+> "annotation to record definition"
-              <+> prettyIdentName name
-              <> ".",
-          fix =
-            Just $
-              "either remove the"
-                <+> ann
-                <+> "annotation or convert"
-                <+> prettyIdentName name
-                <+> "into a function definition."
-        }
-    NonAbstractDefWithAbstractAnnotation p name ann ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "The declaration"
-              <+> prettyIdentName name
-              <+> "should not have a definition"
-              <+> "as it has been marked with a"
-              <+> ann
-              <+> "annotation.",
-          fix =
-            Just $
-              "either remove the definition for"
-                <+> prettyIdentName name
-                <+> "or remove the"
-                <+> ann
-                <+> "annotation."
-        }
-    AnnotationWithNoDef p ann ->
-      VehicleUserError
-        { provenance = Just p,
-          problem = "unattached annotation" <+> quotePretty ann,
-          fix = Just "either attach the annotation to a declaration or remove it entirely"
-        }
-    FunctionWithMismatchedNames p name1 name2 ->
-      VehicleUserError
-        { provenance = Just p,
-          problem = "mismatch in function declaration names:" <+> prettyIdentName name1 <+> "and" <+> prettyIdentName name2 <> ".",
-          fix = Just "ensure the function definition has the same name as the declaration it follows."
-        }
-    MissingVariables p symbol ->
-      VehicleUserError
-        { provenance = Just p,
-          problem = "expected at least one variable name after" <+> quotePretty symbol,
-          fix = Just $ "add one or more names after" <+> quotePretty symbol
-        }
-    UnchainableComparisons p prevOrder currentOrder ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "cannot chain"
-              <+> quotePretty prevOrder
-              <+> "and"
-              <+> quotePretty currentOrder,
-          fix = Just "split chained orders into a conjunction"
-        }
-    InvalidAnnotationOption p annotationName parameterName suggestions ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "unknown option"
-              <+> quotePretty parameterName
-              <+> "for"
-              <+> quotePretty annotationName
-              <+> "annotation.",
-          fix =
-            case suggestions of
-              [] -> Nothing
-              (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
-        }
-    InvalidAnnotationOptionValue p parameterName parameterValue ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "unable to parse the value"
-              <+> squotes (pretty parameterValue)
-              <+> "for option"
-              <+> quotePretty parameterName,
-          fix = Nothing
-        }
-    DuplicateAnnotationOption p annotation name ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "the annotation"
-              <+> quotePretty annotation
-              <+> "has multiple copies of the option"
-              <+> quotePretty name,
-          fix = Just $ "remove all but one of the instances of" <+> quotePretty name
-        }
-    MissingAnnotationOption p annotation name ->
-      VehicleUserError
-        { provenance = Just p,
-          problem =
-            "the annotation"
-              <+> quotePretty annotation
-              <+> "is missing the option"
-              <+> quotePretty name,
-          fix = Just $ "add a value for the option" <+> quotePretty name
-        }
-    UnknownBuiltin p symbol ->
-      VehicleUserError
-        { provenance = Just p,
-          problem = "Unknown symbol" <+> quotePretty symbol,
-          fix =
-            Just $
-              "Please consult the documentation for a description"
-                <+> "of Vehicle syntax"
-        }
-    UnknownSupportsOperation p name ->
-      VehicleUserError
-        { provenance = Just p,
-          problem = "unknown record operation" <+> quotePretty name,
-          fix = Just $ do
-            let supportedOperations = fmap pretty (enumerate @DerivableRecordOperation)
-            "Please use one of the supported operations:" <> line <> prettyMultiLineList supportedOperations
-        }
-  -------------
-  -- Scoping --
-  -------------
-  MissingRequestedDeclarations names ->
-    VehicleUserError
-      { provenance = Nothing,
-        -- TODO can use Levenschtein distance to search contexts/builtins
-        problem =
-          "Requested to compile the declaration"
-            <+> quotePretty (NonEmpty.head names)
-            <+> "but no declarations exist with that name in the specification.",
-        fix =
-          Just
-            "check the spelling of the names and that the correct specification is being used."
-      }
-  UnboundName p name suggestions ->
-    VehicleUserError
-      { provenance = Just p,
-        problem = "The name" <+> quotePretty name <+> "is not in scope",
-        fix =
-          if null suggestions
-            then Nothing
-            else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
-      }
-  UnboundRecordAccessor p name suggestions ->
-    VehicleUserError
-      { provenance = Just p,
-        problem = "No record with field" <+> quotePretty name <+> "in scope",
-        fix =
-          if null suggestions
-            then Nothing
-            else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
-      }
-  DeclarationDeclarationShadowing p name _matching ->
-    VehicleUserError
-      { provenance = Just p,
-        problem = "multiple" <+> typDoc <+> "with the name" <+> quotePretty name,
-        fix = Just "remove or rename the duplicate definitions"
-      }
-    where
-      typDoc = either (const "record fields declared") (const "declarations") name
-  DeclarationBoundShadowing p name ->
-    VehicleUserError
-      { provenance = Just p,
-        problem =
-          "cannot re-use the name"
-            <+> quotePretty name
-            <+> "as a local variable because there is already a declaration with that name.",
-        fix = Just "rename either the original declaration or this variable"
-      }
-  UnmatchedRecord p fields maybeBestMatch -> case maybeBestMatch of
-    Nothing ->
-      VehicleUserError
-        { provenance = Just p,
-          problem = "Unable to find a record declaration with matching fields.",
-          fix = Just $ "declare a record with the fields:" <> lineIndent (vsep $ fmap pretty fields)
-        }
-    Just (ident, RecordMatch {..}) -> do
-      VehicleUserError
-        { provenance = Just p,
-          problem = "Unable to find a record declaration with matching fields.",
-          fix =
-            Just $
-              "it seems likely that the intension is to construct a"
-                <+> quotePretty (nameOf ident)
-                <+> "record."
-                <+> "If so, then "
-                <> suggestionDoc
-        }
-      where
-        mispellingDoc = (["fix the mispellings:" <> lineIndent (vsep (fmap (\(actual, expected) -> pretty actual <+> "->" <+> pretty expected) mispellings)) | not (null mispellings)])
-        missingDoc = (["add the missing fields:" <> lineIndent (vsep $ fmap pretty missingFields) | not (null missingFields)])
-        extraDoc = (["remove the unneeded fields:" <> lineIndent (vsep $ fmap pretty extraFields) | not (null extraFields)])
-        suggestionDocs = mispellingDoc <> missingDoc <> extraDoc
-        suggestionDoc = concatWith (\a b -> a <> line <> "and" <+> b) suggestionDocs
-  ------------
-  -- Typing --
-  ------------
+instance FormattableError BackendError where
+  formatError = backendErrorDetails
 
-  TypingError t -> typingErrorDetails t
-  QuantifiedIfCondition ctx ->
-    VehicleUserError
-      { provenance = Just $ provenanceOf ctx,
-        problem = "cannot currently use quantifiers in `if` conditions.",
-        fix = Just $ implementationLimitation Nothing
-      }
+backendErrorDetails :: BackendError -> VehicleError
+backendErrorDetails = \case
   ---------------
   -- Resources --
   ---------------
-
   ResourcesNotProvided ((resourceType, (ident, p)) :| _) ->
     VehicleUserError
       { provenance = Just p,
@@ -445,7 +142,6 @@ formatCompileError = \case
       }
     where
       entity = if resourceType == Parameter then "value" else "file"
-
   -- Network errors
   NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
     VehicleUserError
@@ -511,8 +207,8 @@ formatCompileError = \case
         fix = Just $ datasetDimensionsFix "dimensions" ident file
       }
     where
-      run :: NameBoundContextT (FreeContextT Builtin (SilentLoggerT Identity)) a -> a
-      run = runSilentLogger . runFreshFreeContextT (Proxy @Builtin) . runFreshNameBoundContextT
+      run :: NameBoundContextT (FreeContextT Builtin Identity) a -> a
+      run = runIdentity . runFreshFreeContextT (Proxy @Builtin) . runFreshNameBoundContextT
 
       dimensionsOf :: UnforcedType Builtin -> Maybe Int
       dimensionsOf typ = do
@@ -724,16 +420,6 @@ formatCompileError = \case
               <+> "be used as the dimension of a dataset"
               <+> "(networks will be supported later)."
       }
-  -- TensorLike errors
-  ZeroFieldTensorLike (ident, p) ->
-    VehicleUserError
-      { provenance = Just p,
-        problem =
-          "annotating the record"
-            <+> quotePretty ident
-            <+> "with @tensor is not currently supported as it has no fields.",
-        fix = Just "remove the @tensor annotation or add fields to the record."
-      }
   --------------------
   -- Backend errors --
   --------------------
@@ -778,8 +464,9 @@ formatCompileError = \case
     where
       causeDoc :: Doc a
       causeDoc = case cause of
-        Left err -> line <> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
-        Right (q, pq, pp) ->
+        Undiagnosed -> mempty
+        DiagnosisFailed err -> line <> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
+        Diagnosed (q, pq, pp) ->
           "In particular:"
             <> line
             <> indent 2 (prettyPolarityProvenance pq q pp)
@@ -801,8 +488,9 @@ formatCompileError = \case
     where
       causeDoc :: Doc a
       causeDoc = case cause of
-        Left err -> line <> errorInSubsystemMessage "locate the original source of the non-linearity" err
-        Right source -> case source of
+        Undiagnosed -> mempty
+        DiagnosisFailed err -> line <> errorInSubsystemMessage "locate the original source of the non-linearity" err
+        Diagnosed source -> case source of
           LinearTimesLinear opProv lhs rhs ->
             "In particular the multiplication in"
               <+> pretty opProv
@@ -1031,31 +719,347 @@ datasetDimensionsFix feature ident file =
     <+> quotePretty (takeFileName file)
     <+> "is in the format you were expecting."
 
-errorInSubsystemMessage :: Doc a -> CompileError -> Doc a
+frontendErrorDetails :: FrontendError -> VehicleError
+frontendErrorDetails = \case
+  -------------
+  -- Parsing --
+  -------------
+
+  ParseError _module parseError -> parseErrorDetails parseError
+  -------------
+  -- Scoping --
+  -------------
+  ScopeError scopeError -> scopeErrorDetails scopeError
+  ------------
+  -- Typing --
+  ------------
+  -- TODO: report all of the errors rather than just the first.
+  TypingErrors (t :| _) -> typingErrorDetails t
+  ---------------------------
+  -- Declaration filtering --
+  ---------------------------
+  MissingRequestedDeclarations names ->
+    VehicleUserError
+      { provenance = Nothing,
+        -- TODO can use Levenschtein distance to search contexts/builtins
+        problem =
+          "Requested to compile the declaration"
+            <+> quotePretty (NonEmpty.head names)
+            <+> "but no declarations exist with that name in the specification.",
+        fix =
+          Just
+            "check the spelling of the names and that the correct specification is being used."
+      }
+
+parseErrorDetails :: ParseError -> VehicleError
+parseErrorDetails = \case
+  RawParseError text ->
+    VehicleUserError
+      { provenance = Nothing,
+        problem = pretty text,
+        fix = Nothing
+      }
+  UnannotatedAbstractDef p name ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "no definition provided for the declaration"
+            <+> prettyIdentName name
+            <> ".",
+        fix =
+          Just $
+            "either provide a definition for"
+              <+> prettyIdentName name
+              <+> "or mark it as an external resource by adding an appropriate annotation, i.e."
+              <+> pretty NetworkDef
+              <> ","
+                <+> pretty DatasetDef
+                <+> "or"
+                <+> pretty (ParameterDef NonInferable)
+              <> "."
+      }
+  MultiplyAnnotatedDef p name ann1 ann2 ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "declaration"
+            <+> prettyIdentName name
+            <+> "cannot simultaneously be annotated with both"
+            <+> squotes ann1
+            <+> "and"
+            <+> squotes ann2
+            <> ".",
+        fix =
+          Just "remove one of annotations."
+      }
+  AbstractDefWithNonAbstractAnnotation p name ann ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "missing definition for"
+            <+> ann
+            <+> prettyIdentName name
+            <> ".",
+        fix =
+          Just $
+            "add a definition for"
+              <+> prettyIdentName name
+              <> "."
+      }
+  TypeDefWithAnnotation p name ann ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "cannot add a"
+            <+> ann
+            <+> "annotation to type definition"
+            <+> prettyIdentName name
+            <> ".",
+        fix =
+          Just $
+            "remove the"
+              <+> ann
+              <+> "annotation"
+              <> "."
+      }
+  FunctionDefWithRecordAnnotation p name ann ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "cannot add a"
+            <+> ann
+            <+> "annotation to function definition"
+            <+> prettyIdentName name
+            <> ".",
+        fix =
+          Just $
+            "either remove the"
+              <+> ann
+              <+> "annotation or convert"
+              <+> pretty name
+              <+> "into a record definition."
+      }
+  RecordDefWithFunctionAnnotation p name ann ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "cannot add a"
+            <+> ann
+            <+> "annotation to record definition"
+            <+> prettyIdentName name
+            <> ".",
+        fix =
+          Just $
+            "either remove the"
+              <+> ann
+              <+> "annotation or convert"
+              <+> prettyIdentName name
+              <+> "into a function definition."
+      }
+  NonAbstractDefWithAbstractAnnotation p name ann ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "The declaration"
+            <+> prettyIdentName name
+            <+> "should not have a definition"
+            <+> "as it has been marked with a"
+            <+> ann
+            <+> "annotation.",
+        fix =
+          Just $
+            "either remove the definition for"
+              <+> prettyIdentName name
+              <+> "or remove the"
+              <+> ann
+              <+> "annotation."
+      }
+  AnnotationWithNoDef p ann ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "unattached annotation" <+> quotePretty ann,
+        fix = Just "either attach the annotation to a declaration or remove it entirely"
+      }
+  FunctionWithMismatchedNames p name1 name2 ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "mismatch in function declaration names:" <+> prettyIdentName name1 <+> "and" <+> prettyIdentName name2 <> ".",
+        fix = Just "ensure the function definition has the same name as the declaration it follows."
+      }
+  MissingVariables p symbol ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "expected at least one variable name after" <+> quotePretty symbol,
+        fix = Just $ "add one or more names after" <+> quotePretty symbol
+      }
+  UnchainableComparisons p prevOrder currentOrder ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "cannot chain"
+            <+> quotePretty prevOrder
+            <+> "and"
+            <+> quotePretty currentOrder,
+        fix = Just "split chained orders into a conjunction"
+      }
+  InvalidAnnotationOption p annotationName parameterName suggestions ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "unknown option"
+            <+> quotePretty parameterName
+            <+> "for"
+            <+> quotePretty annotationName
+            <+> "annotation.",
+        fix =
+          case suggestions of
+            [] -> Nothing
+            (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
+      }
+  InvalidAnnotationOptionValue p parameterName parameterValue ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "unable to parse the value"
+            <+> squotes (pretty parameterValue)
+            <+> "for option"
+            <+> quotePretty parameterName,
+        fix = Nothing
+      }
+  DuplicateAnnotationOption p annotation name ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "the annotation"
+            <+> quotePretty annotation
+            <+> "has multiple copies of the option"
+            <+> quotePretty name,
+        fix = Just $ "remove all but one of the instances of" <+> quotePretty name
+      }
+  MissingAnnotationOption p annotation name ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "the annotation"
+            <+> quotePretty annotation
+            <+> "is missing the option"
+            <+> quotePretty name,
+        fix = Just $ "add a value for the option" <+> quotePretty name
+      }
+  UnknownBuiltin p symbol ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "Unknown symbol" <+> quotePretty symbol,
+        fix =
+          Just $
+            "Please consult the documentation for a description"
+              <+> "of Vehicle syntax"
+      }
+  UnknownSupportsOperation p name ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "unknown record operation" <+> quotePretty name,
+        fix = Just $ do
+          let supportedOperations = fmap pretty (enumerate @DerivableRecordOperation)
+          "Please use one of the supported operations:" <> line <> prettyMultiLineList supportedOperations
+      }
+
+scopeErrorDetails :: ScopeError -> VehicleError
+scopeErrorDetails = \case
+  UnboundName p name suggestions ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "The name" <+> quotePretty name <+> "is not in scope",
+        fix =
+          if null suggestions
+            then Nothing
+            else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
+      }
+  UnboundRecordAccessor p name suggestions ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "No record with field" <+> quotePretty name <+> "in scope",
+        fix =
+          if null suggestions
+            then Nothing
+            else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
+      }
+  DeclarationDeclarationShadowing p name _matching ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "multiple" <+> typDoc <+> "with the name" <+> quotePretty name,
+        fix = Just "remove or rename the duplicate definitions"
+      }
+    where
+      typDoc = either (const "record fields declared") (const "declarations") name
+  DeclarationBoundShadowing p name ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "cannot re-use the name"
+            <+> quotePretty name
+            <+> "as a local variable because there is already a declaration with that name.",
+        fix = Just "rename either the original declaration or this variable"
+      }
+  UnmatchedRecord p fields maybeBestMatch -> case maybeBestMatch of
+    Nothing ->
+      VehicleUserError
+        { provenance = Just p,
+          problem = "Unable to find a record declaration with matching fields.",
+          fix = Just $ "declare a record with the fields:" <> lineIndent (vsep $ fmap pretty fields)
+        }
+    Just (ident, RecordMatch {..}) -> do
+      VehicleUserError
+        { provenance = Just p,
+          problem = "Unable to find a record declaration with matching fields.",
+          fix =
+            Just $
+              "it seems likely that the intension is to construct a"
+                <+> quotePretty (nameOf ident)
+                <+> "record."
+                <+> "If so, then "
+                <> suggestionDoc
+        }
+      where
+        mispellingDoc = (["fix the mispellings:" <> lineIndent (vsep (fmap (\(actual, expected) -> pretty actual <+> "->" <+> pretty expected) mispellings)) | not (null mispellings)])
+        missingDoc = (["add the missing fields:" <> lineIndent (vsep $ fmap pretty missingFields) | not (null missingFields)])
+        extraDoc = (["remove the unneeded fields:" <> lineIndent (vsep $ fmap pretty extraFields) | not (null extraFields)])
+        suggestionDocs = mispellingDoc <> missingDoc <> extraDoc
+        suggestionDoc = concatWith (\a b -> a <> line <> "and" <+> b) suggestionDocs
+  ZeroFieldTensorLike (ident, p) ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "annotating the record"
+            <+> quotePretty ident
+            <+> "with @tensor is not currently supported as it has no fields.",
+        fix = Just "remove the @tensor annotation or add fields to the record."
+      }
+  ParameterisedTensorLike (_ident, p) ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "Annotating parameterised records with"
+            <+> pretty AnnTensor
+            <+> "is not currently implemented",
+        fix =
+          Just $
+            "please open an issue on the"
+              <+> "Vehicle issue tracker to discuss adding support."
+      }
+
+errorInSubsystemMessage :: Doc a -> FrontendError -> Doc a
 errorInSubsystemMessage task err =
   "Unfortunately while trying to"
     <+> task
     <> ","
       <+> "the following error was encountered:"
     <> line
-    <> indent 2 (pretty (formatCompileError err))
+    <> indent 2 (pretty (formatError err))
     <> line
     <> "Please report this as an issue on Github"
       <+> parens githubIssues
     <> line
-
-githubIssues :: Doc a
-githubIssues = "https://github.com/vehicle-lang/vehicle/issues/"
-
-implementationLimitation :: Maybe Int -> Doc a
-implementationLimitation issue =
-  "This is a limitation of the current implementation rather than a fundamental problem."
-    <+> case issue of
-      Nothing -> "If you would like this to be fixed, please open an issue at" <+> squotes githubIssues
-      Just issueNumber ->
-        "If you would like this to be fixed, please comment at"
-          <+> squotes (githubIssues <+> pretty issueNumber)
-          <> "."
 
 prettyResource :: ExternalResource -> Identifier -> Doc a
 prettyResource resourceType ident =

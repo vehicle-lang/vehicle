@@ -170,11 +170,11 @@ specificationCacheIndexFileName folder =
 propertyPlanFileName :: FilePath -> PropertyAddress -> FilePath
 propertyPlanFileName folder propertyAddress =
   folder
-    </> layoutAsString (pretty propertyAddress)
+    </> calculatePropertyFilePrefix propertyAddress
       <.> propertyVerificationPlanFileExtension
 
 propertyResultFileName :: FilePath -> PropertyAddress -> FilePath
 propertyResultFileName folder propertyAddress =
   folder
-    </> layoutAsString (pretty propertyAddress)
+    </> calculatePropertyFilePrefix propertyAddress
       <.> propertyVerificationResultFileExtension

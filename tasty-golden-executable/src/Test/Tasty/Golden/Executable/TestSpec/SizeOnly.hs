@@ -19,7 +19,8 @@ import Test.Tasty.Options (IsOption (..), safeRead)
 newtype SizeOnlyExtensions = SizeOnlyExtensions
   { fileExtensions :: [FilePath]
   }
-  deriving (Eq, Show, Semigroup, Monoid)
+  deriving stock (Eq, Show)
+  deriving newtype (Semigroup, Monoid)
 
 instance FromJSON SizeOnlyExtensions where
   parseJSON :: Value -> Parser SizeOnlyExtensions

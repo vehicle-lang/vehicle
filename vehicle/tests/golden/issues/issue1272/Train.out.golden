@@ -3,4 +3,12 @@ VehicleLoss = {trueElement = - infinity, falseElement = infinity, pointwiseNegat
 
 @property;
 p : (Tensor Real -> Tensor Real) -> Tensor Real;
-p classifier = VehicleLoss.pointwiseNegation nil (search [2] (const -infinity [2]) (const infinity [2]) (\x -> VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseDisjunction nil (VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseGreaterEqualThan nil (x ! 0) (x ! 1))) (VehicleLoss.pointwiseGreaterEqualThan nil (classifier x) 0.5))))
+p f = VehicleLoss.pointwiseNegation nil (search [2] (const -infinity [2]) (const infinity [2]) (\x -> VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseDisjunction nil (VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseGreaterEqualThan nil (x ! 0) (x ! 1))) (VehicleLoss.pointwiseGreaterEqualThan nil (f x) 0.5))))
+
+@property;
+q : (Tensor Real -> Tensor Real) -> Tensor Real;
+q f = VehicleLoss.pointwiseNegation nil (search [2] (const -infinity [2]) (const infinity [2]) (\x -> VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseDisjunction nil (VehicleLoss.pointwiseNegation nil (VehicleLoss.reduceConjunction [2] (foreach i. VehicleLoss.pointwiseLessEqualThan nil (x ! 0) (x ! i)))) (VehicleLoss.pointwiseGreaterEqualThan nil (f x) 0.5))))
+
+@property;
+r : (Tensor Real -> Tensor Real) -> Tensor Real;
+r f = VehicleLoss.pointwiseNegation nil (search [2] (const -infinity [2]) (const infinity [2]) (\x -> search [2] (const -infinity [2]) (const infinity [2]) (\y -> VehicleLoss.pointwiseNegation nil (VehicleLoss.pointwiseDisjunction nil (VehicleLoss.pointwiseNegation nil (VehicleLoss.reduceConjunction [2] (foreach i. VehicleLoss.pointwiseLessEqualThan nil (x ! i) (y ! 0)))) (VehicleLoss.pointwiseGreaterEqualThan nil (f x) (f y))))))

@@ -12,7 +12,6 @@ where
 
 import Data.Bifunctor (Bifunctor (..))
 import Data.Map (fromListWith)
-import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -26,11 +25,11 @@ import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Bound.Context.Generic
 
 malformedConstraintError ::
-  (PrintableBuiltin builtin, MonadCompile m) =>
+  (PrintableBuiltin builtin) =>
   WithContext (InstanceConstraint builtin) ->
   m a
 malformedConstraintError c =
-  compilerDeveloperError $ "Malformed auxiliary constraint:" <+> prettyVerbose c
+  developerError $ "Malformed auxiliary constraint:" <+> prettyVerbose c
 
 -- | Create a new unification constraint as a subgoal of an existing instance constraint.
 createInstanceUnification ::
@@ -85,11 +84,12 @@ instantiateInstanceConstraintSolution ::
   Expr builtin ->
   m ()
 instantiateInstanceConstraintSolution (WithContext (Resolve origin meta _ _ _) ctx) solution = do
-  metaInfo <- getMetaInfo meta
+  maybeExistingSolution <- getMetaSolution @builtin meta
   let boundCtx = boundContextOf ctx
-  case metaSolution metaInfo of
+  case maybeExistingSolution of
     Nothing -> solveMeta meta solution boundCtx
     Just existingSolution -> do
+      metaInfo <- getMetaInfo meta
       logDebug MaxDetail ("solved" <+> pretty meta <+> "as" <+> prettyVerbose solution)
       logDebug MaxDetail (indent 2 ("however" <+> pretty meta <+> "=" <+> prettyVerbose (unnormalised existingSolution) <+> "already so unifying"))
       let abstractedSolution = abstractOverCtx (metaCtx metaInfo) solution

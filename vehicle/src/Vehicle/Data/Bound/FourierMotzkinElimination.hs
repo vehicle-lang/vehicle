@@ -145,7 +145,7 @@ fourierMotzkinTensorBoundsElimination (fullKnownPrefix, remainingShape) TensorBo
         _ -> developerError $ "malformed tensor prefix" <+> pretty fullKnownPrefix
 
 fourierMotzkinSliceBoundsElimination ::
-  (MonadCompile m, MonadReadableNameContext m) =>
+  (MonadLogger m, MonadReadableNameContext m) =>
   SliceBounds LinearExpression ->
   m (MaybeTrivial (ConjunctAll (Inequality LinearExpression)))
 fourierMotzkinSliceBoundsElimination (SliceBounds lower upper) = do

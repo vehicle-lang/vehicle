@@ -1,6 +1,7 @@
 module Vehicle.Compile.Scope.Core
   ( ScopableBuiltin (..),
     MonadScope,
+    ScopeT,
     ModuleInterface,
     runMonadScopeT,
     addNewDecl,
@@ -21,6 +22,7 @@ where
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT, asks, runReaderT)
 import Control.Monad.State (MonadState (..), StateT (..))
+import Control.Monad.Trans.Except (ExceptT, runExceptT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (maximumBy)
 import Data.List (elemIndex)
@@ -41,7 +43,7 @@ import Vehicle.Libraries.StandardLibrary (isBuiltinModule)
 
 class (PrintableBuiltin builtin, Ord builtin) => ScopableBuiltin builtin where
   generateAuxiliaryRecordDefinitions ::
-    (MonadCompile m) =>
+    (MonadLogger m, MonadError ScopeError m) =>
     Provenance ->
     Identifier ->
     Maybe DefRecordSort ->
@@ -54,25 +56,32 @@ class (PrintableBuiltin builtin, Ord builtin) => ScopableBuiltin builtin where
 -- Scope checking over declarations
 
 type MonadScope builtin m =
-  ( MonadCompile m,
+  ( MonadLogger m,
+    MonadError ScopeError m,
     ScopableBuiltin builtin,
     MonadReader (ModulePath, ImportedModuleContext builtin) m,
     MonadState (ModuleScopingInterface builtin) m
   )
 
+-- | The concrete monad used for scope checking declarations.
+type ScopeT builtin m =
+  ReaderT
+    (ModulePath, ImportedModuleContext builtin)
+    (StateT (ModuleScopingInterface builtin) (ExceptT ScopeError m))
+
 runMonadScopeT ::
-  (MonadCompile m) =>
+  (Monad m) =>
   ModulePath ->
   ImportedModuleContext builtin ->
-  ReaderT (ModulePath, ImportedModuleContext builtin) (StateT (ModuleScopingInterface builtin) m) a ->
-  m (a, ModuleScopingInterface builtin)
-runMonadScopeT modulePath importedCtx action = do
-  runStateT (runReaderT action (modulePath, importedCtx)) emptyModuleScopingInterface
+  ScopeT builtin m a ->
+  m (Either ScopeError (a, ModuleScopingInterface builtin))
+runMonadScopeT modulePath importedCtx action =
+  runExceptT $ runStateT (runReaderT action (modulePath, importedCtx)) emptyModuleScopingInterface
 
 -- | Called when parsing a record definition field-by-field so that
 -- earlier fields are in scope for later fields.
 addNewRecordDefField ::
-  (MonadState (ModuleScopingInterface builtin) m, MonadCompile m) =>
+  (MonadState (ModuleScopingInterface builtin) m, MonadError ScopeError m) =>
   Identifier ->
   Telescope builtin ->
   FieldName ->
@@ -136,7 +145,8 @@ data LocalCtx builtin = LocalCtx
   }
 
 type MonadScopeExpr builtin m =
-  ( MonadCompile m,
+  ( MonadLogger m,
+    MonadError ScopeError m,
     ScopableBuiltin builtin,
     MonadState (ModuleScopingInterface builtin) m,
     MonadReader (LocalCtx builtin) m

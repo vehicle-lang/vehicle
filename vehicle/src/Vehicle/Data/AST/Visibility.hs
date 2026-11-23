@@ -22,7 +22,8 @@ data Visibility
     Implicit InsertedByCompiler
   | -- | Inferred via instance search/type class resolution
     Instance InsertedByCompiler
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
+  deriving anyclass (NFData, ToJSON, Serialize)
 
 instance Eq Visibility where
   Explicit {} == Explicit {} = True
@@ -37,17 +38,11 @@ instance Ord Visibility where
   Instance {} <= Instance {} = True
   _ <= _ = False
 
-instance NFData Visibility
-
 instance Hashable Visibility where
   hashWithSalt s = \case
     Explicit {} -> s + 1
     Implicit {} -> s + 2
     Instance {} -> s + 3
-
-instance ToJSON Visibility
-
-instance Serialize Visibility
 
 instance Pretty Visibility where
   pretty = \case

@@ -9,18 +9,20 @@ copyright:       © Wen Kokke
 category:        Testing
 build-type:      Simple
 tested-with:
-  GHC ==9.2.8
-   || ==9.4.8
+  GHC ==9.4.8
    || ==9.6.5
    || ==9.8.4
    || ==9.10.3
    || ==9.12.2
+   || ==9.14.1
 
 extra-doc-files: CHANGELOG.md
 
 common common-language
   default-language:   Haskell2010
   default-extensions:
+    DeriveAnyClass
+    DerivingStrategies
     FlexibleContexts
     GADTs
     ImportQualifiedPost
@@ -42,7 +44,6 @@ library
     General.Extra.Aeson
     General.Extra.Diff
     General.Extra.File
-    General.Extra.NonEmpty
     General.Extra.Option
     Test.Tasty.Golden.Executable.Error
     Test.Tasty.Golden.Executable.Runner
@@ -60,7 +61,7 @@ library
     , aeson                 >=2.1.1   && <2.3
     , aeson-pretty          >=0.8.9   && <0.9
     , array                 >=0.5.4   && <0.6
-    , base                  >=4.13    && <5
+    , base                  >=4.17    && <5
     , bytestring            >=0.10.12 && <0.12
     , containers            >=0.5     && <1
     , Diff                  >=0.4.1   && <0.5

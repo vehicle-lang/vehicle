@@ -8,6 +8,7 @@ module Vehicle.Compile.Type.Meta.Map
     mapMaybe,
     insert,
     insertWith,
+    delete,
     filter,
     partition,
     keys,
@@ -33,7 +34,8 @@ import Prelude hiding (filter, lookup, map)
 -- Meta substitution
 
 newtype MetaMap a = MetaMap (IntMap a)
-  deriving (Show, Semigroup, Monoid, Foldable, Traversable, Functor)
+  deriving stock (Show, Traversable)
+  deriving newtype (Semigroup, Monoid, Foldable, Functor)
 
 singleton :: MetaID -> a -> MetaMap a
 singleton m e = coerce (IntMap.singleton (coerce m) e)
@@ -66,6 +68,9 @@ insertWith ::
   MetaMap a ->
   MetaMap a
 insertWith f m e s = coerce (IntMap.insertWith f (coerce m) e (coerce s))
+
+delete :: MetaID -> MetaMap a -> MetaMap a
+delete (MetaID m) (MetaMap s) = MetaMap (IntMap.delete m s)
 
 unions :: [MetaMap a] -> MetaMap a
 unions xs = MetaMap (IntMap.unions (fmap coerce xs))

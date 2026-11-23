@@ -11,7 +11,7 @@ import Control.Monad (void)
 import Control.Monad.Error.Class
 import Control.Monad.IO.Class
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..), MonadTrans (..), StateT (..), evalStateT, gets, mapStateT, modify)
+import Control.Monad.State.Strict (MonadState (..), MonadTrans (..), StateT (..), evalStateT, gets, mapStateT, modify)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkModality (..))
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadNameContext (..), MonadReadableNameContext (..), getBinderDepth)
@@ -26,7 +26,7 @@ import Vehicle.Prelude.IO qualified as VIO
 newtype TensorBoundContextT m a = TensorBoundContextT
   { unTensorBoundContextT :: StateT NestedTensorVariableCtx m a
   }
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
 
 -- | Runs a computation in the tensor context monad allowing you to keep track
 -- of all variables including tensor variables and their children.

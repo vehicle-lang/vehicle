@@ -25,6 +25,8 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Serialize as Serialize (Get, Putter, Serialize (..), getListOf, putListOf)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -40,7 +42,7 @@ import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Prettyprinter (Doc, Pretty (pretty))
 
 data VehicleLang = External | Internal
-  deriving (Show)
+  deriving stock (Show)
 
 -- | A textual representation of a Vehicle module.
 type ModuleText = Text
@@ -213,19 +215,20 @@ findAndDeleteElem p = go id
 traverseAndPair :: (Applicative m, Traversable f) => (a -> m b) -> f a -> m (f (a, b))
 traverseAndPair f = traverse (\x -> (x,) <$> f x)
 
+-- | Finds and removes the first element satisfying the predicate,
+-- preserving the order of the remaining elements.
+findAndDeleteSeqElem :: (a -> Bool) -> Seq a -> Maybe (a, Seq a)
+findAndDeleteSeqElem p xs = do
+  i <- Seq.findIndexL p xs
+  x <- Seq.lookup i xs
+  return (x, Seq.deleteAt i xs)
+
 -- | Used to distinguish between inputs and outputs of neural networks.
 data InputOrOutput
   = Input
   | Output
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData InputOrOutput
-
-instance ToJSON InputOrOutput
-
-instance FromJSON InputOrOutput
-
-instance Hashable InputOrOutput
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON, Hashable)
 
 instance Pretty InputOrOutput where
   pretty = \case

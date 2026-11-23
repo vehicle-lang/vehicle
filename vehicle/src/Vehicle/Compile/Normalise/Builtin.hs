@@ -7,7 +7,7 @@ import Data.Ratio
 import Data.Vector qualified as Vector
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Core.BasicOperations (ComparisonOp, comparisonOp)
+import Vehicle.Data.Builtin.Core.BasicOperations (ComparisonOp (..), comparisonOp)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.Interface
@@ -269,6 +269,12 @@ evalNot ::
   EvalSimple expr thunk TensorOp1Args builtin m
 evalNot = evalTensorOp1 accessNotTensor accessBoolTensorLiteral not
 
+evalOrReconstructNot ::
+  (MonadNormBuiltin m, HasBoolExpr expr thunk builtin, NormalisableExpr expr thunk builtin m) =>
+  TensorOp1Args (thunk builtin) ->
+  m (thunk builtin)
+evalOrReconstructNot = forceEvaluation accessNotTensor evalNot
+
 -----------------------------------------------------------------------------
 -- And
 
@@ -277,6 +283,12 @@ evalAnd ::
   EvalSimple expr thunk TensorOp2Args builtin m
 evalAnd = evalTensorOp2 accessAndTensor accessBoolTensorLiteral (&&) (Just True) (Just True) (Just False) (Just False)
 
+evalOrReconstructAnd ::
+  (MonadNormBuiltin m, HasBoolExpr expr thunk builtin, NormalisableExpr expr thunk builtin m) =>
+  TensorOp2Args (thunk builtin) ->
+  m (thunk builtin)
+evalOrReconstructAnd = forceEvaluation accessAndTensor evalAnd
+
 -----------------------------------------------------------------------------
 -- Or
 
@@ -284,6 +296,12 @@ evalOr ::
   (MonadNormBuiltin m, HasBoolExpr expr thunk builtin) =>
   EvalSimple expr thunk TensorOp2Args builtin m
 evalOr = evalTensorOp2 accessOrTensor accessBoolTensorLiteral (||) (Just False) (Just False) (Just True) (Just True)
+
+evalOrReconstructOr ::
+  (MonadNormBuiltin m, HasBoolExpr expr thunk builtin, NormalisableExpr expr thunk builtin m) =>
+  TensorOp2Args (thunk builtin) ->
+  m (thunk builtin)
+evalOrReconstructOr = forceEvaluation accessOrTensor evalOr
 
 -----------------------------------------------------------------------------
 -- Implies
@@ -484,9 +502,15 @@ evalTransposeTensor (TransposeTensorArgs _ inputDims tensor) = do
                   elems
               )
 
+type EvalAppendListConstraints expr thunk builtin m =
+  ( MonadNormBuiltin m,
+    PrintableBuiltin builtin,
+    BuiltinHasListLiterals builtin,
+    NormalisableExpr expr thunk builtin m
+  )
+
 evalAppendList ::
-  forall m expr thunk builtin.
-  (MonadNormBuiltin m, PrintableBuiltin builtin, BuiltinHasListLiterals builtin, NormalisableExpr expr thunk builtin m) =>
+  (EvalAppendListConstraints expr thunk builtin m) =>
   EvalSimple expr thunk AppendListArgs builtin m
 evalAppendList (AppendListArgs t xs ys) = do
   fxs <- force xs
@@ -495,9 +519,15 @@ evalAppendList (AppendListArgs t xs ys) = do
     (_, INil _) -> return $ Evaluated $ exprToThunk fxs
     (INil _, _) -> return $ Evaluated $ exprToThunk fys
     (ICons _ x xs', _) -> do
-      recAppend <- forceEvaluation accessAppendList evalAppendList $ AppendListArgs t xs' ys
+      recAppend <- forceEvalAppendList $ AppendListArgs t xs' ys
       return $ Evaluated $ exprToThunk $ ICons t x recAppend
     _ -> return $ Unevaluable []
+
+forceEvalAppendList ::
+  (EvalAppendListConstraints expr thunk builtin m) =>
+  AppendListArgs (thunk builtin) ->
+  m (thunk builtin)
+forceEvalAppendList = forceEvaluation accessAppendList evalAppendList
 
 -----------------------------------------------------------------------------
 -- Rational tensors
@@ -662,13 +692,17 @@ evalStackTensorWithPrimitives tensorLits (StackTensorArgs _t d ds xs) = do
 -----------------------------------------------------------------------------
 -- Const
 
-evalConstTensor ::
-  forall expr thunk builtin m.
+type EvalConstTensorConstraints expr thunk builtin m =
   ( MonadNormBuiltin m,
     NormalisableExpr expr thunk builtin m,
     HasTensorLiterals expr builtin,
     BuiltinHasNatLiterals builtin,
     HasTensorExpr expr thunk builtin
+  )
+
+evalConstTensor ::
+  forall expr thunk builtin m.
+  ( EvalConstTensorConstraints expr thunk builtin m
   ) =>
   EvalSimple expr thunk ConstTensorArgs builtin m
 evalConstTensor (ConstTensorArgs _t xs ds) = do
@@ -698,6 +732,15 @@ evalConstTensor (ConstTensorArgs _t xs ds) = do
           _ -> developerError "Non-zero dimensional tensor argument for ConstTensor"
         Nothing -> go dims fxs prims
 
+evalOrReconstructConst ::
+  (EvalConstTensorConstraints expr thunk builtin m) =>
+  ConstTensorArgs (thunk builtin) ->
+  m (thunk builtin)
+evalOrReconstructConst = forceEvaluation accessConstTensor evalConstTensor
+
+-----------------------------------------------------------------------------
+-- Foreach
+
 evalForeachVector ::
   forall m expr thunk builtin.
   (MonadLogger m, NormalisableExpr expr thunk builtin m, HasTensorLiterals expr builtin, HasVectorExpr expr thunk builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin) =>
@@ -714,72 +757,103 @@ evalIterate ::
   forall m expr thunk builtin.
   (MonadLogger m, NormalisableExpr expr thunk builtin m, HasNatExpr expr thunk builtin, BuiltinHasIterate builtin) =>
   EvalSimple expr thunk IterateArgs builtin m
-evalIterate (IterateArgs t f n e) = do
-  fn <- force @expr n
-  case fn of
-    INatLiteral 0 -> return $ Evaluated e
+evalIterate (IterateArgs t f n e remainingArgs) = do
+  iterateCount <- force @expr n
+  case iterateCount of
+    INatLiteral 0 -> Evaluated . exprToThunk <$> forceApp e remainingArgs
     INatLiteral v -> do
       let recFn = exprToThunk $ mkBuiltin accessIterateBuiltin () [t, explicit f, explicit (exprToThunk $ INatLiteral (v - 1))]
-      Evaluated . exprToThunk <$> forceApp f [explicit recFn, explicit e]
-    _ -> return $ Unevaluable [fn]
+      Evaluated . exprToThunk <$> forceApp f (explicit recFn : explicit e : remainingArgs)
+    _ -> return $ Unevaluable [iterateCount]
 
+-- | Evaluates `compareRatTensor op {pDims} {rDims} xs ys` where `xs` and `ys`
+-- have shape `pDims ++ rDims`. The result is a boolean tensor of shape `pDims`
+-- whose elements are true iff the comparison holds for every element of the
+-- corresponding sub-tensors of shape `rDims`.
 evalCompareRatTensor ::
   forall expr thunk builtin m.
-  (MonadNormBuiltin m, HasBoolExpr expr thunk builtin, BuiltinHasBoolType builtin, HasRatExpr expr thunk builtin, PrintableBuiltin builtin) =>
+  (MonadNormBuiltin m, HasBoolExpr expr thunk builtin, BuiltinHasBoolType builtin, HasRatExpr expr thunk builtin, PrintableBuiltin builtin, HasTensorLiterals expr builtin) =>
   ComparisonOp ->
   EvalSimple expr thunk TensorComparisonArgs builtin m
-evalCompareRatTensor op (TensorComparisonArgs pointwiseDims rDims xs ys) = do
-  fpDims <- force pointwiseDims
-  case fpDims of
-    IDimNil -> do
-      let mkFun (TensorOp2Args ds x y) = mkExpr accessCompareRatTensor (op, TensorComparisonArgs (exprToThunk IDimNil) ds x y)
-      let pointwiseArgs = TensorOp2Args rDims xs ys
-      evalHeteroTensorOp2 mkFun accessRatTensorLiteral accessBoolTensorLiteral (comparisonOp op) Nothing Nothing Nothing Nothing pointwiseArgs
-    IDimCons pDim pDims -> do
-      fxs <- force xs
-      fys <- force ys
-
-      let compareElements us vs = do
-            let subcompare x y = exprToThunk $ mkExpr accessCompareRatTensor (op, TensorComparisonArgs pDims rDims x y)
-            let newElements = zipWith subcompare us vs
-            let stackArgs = StackTensorArgs (exprToThunk IBoolType) pDim pDims newElements
-            Evaluated <$> forceEvaluation accessStackTensor (evalStackTensorWithPrimitives [Wrapper accessBoolTensorLiteral]) stackArgs
-      let mkConstElements n args = replicate n (exprToThunk $ mkExpr accessConstTensor $ args {constDims = pDims})
-
-      case (fxs, fys) of
-        -- Const, Const
-        (getExpr accessConstTensor -> Just cxs, getExpr accessConstTensor -> Just cys) -> do
-          let newConstValue = exprToThunk $ mkExpr accessCompareRatTensor (op, TensorComparisonArgs (exprToThunk IDimNil) (exprToThunk IDimNil) (constValue cxs) (constValue cys))
-          return $ Evaluated $ exprToThunk $ mkExpr accessConstTensor $ ConstTensorArgs {constType = exprToThunk IBoolType, constValue = newConstValue, constDims = pDims}
-        -- Lit , Lit
-        (getExpr accessRatTensorLiteral -> Just vxs, getExpr accessRatTensorLiteral -> Just vys) -> do
-          compareElements (unstackExpr vxs) (unstackExpr vys)
-        -- Stack , Stack
-        (getExpr accessStackTensor -> Just vxs, getExpr accessStackTensor -> Just vys) -> do
-          compareElements (stackElements vxs) (stackElements vys)
-        -- Const , Lit
-        (getExpr accessConstTensor -> Just vxs, getExpr accessRatTensorLiteral -> Just vys) -> do
-          compareElements (mkConstElements (length $ unstackExpr vys) vxs) (unstackExpr vys)
-        -- Lit , Const
-        (getExpr accessRatTensorLiteral -> Just vxs, getExpr accessConstTensor -> Just vys) -> do
-          compareElements (unstackExpr vxs) (mkConstElements (length $ unstackExpr vxs) vys)
-        -- Stack , Lit
-        (getExpr accessStackTensor -> Just vxs, getExpr accessRatTensorLiteral -> Just vys) -> do
-          compareElements (stackElements vxs) (unstackExpr vys)
-        -- Lit , Stack
-        (getExpr accessRatTensorLiteral -> Just vxs, getExpr accessStackTensor -> Just vys) -> do
-          compareElements (unstackExpr vxs) (stackElements vys)
-        -- Stack , Const
-        (getExpr accessStackTensor -> Just vxs, getExpr accessConstTensor -> Just vys) -> do
-          compareElements (stackElements vxs) (mkConstElements (length $ stackElements vxs) vys)
-        -- Const , Stack
-        (getExpr accessConstTensor -> Just vxs, getExpr accessStackTensor -> Just vys) -> do
-          compareElements (mkConstElements (length $ stackElements vys) vxs) (stackElements vys)
-        _ -> return $ Unevaluable []
-    _ -> return $ Unevaluable []
+evalCompareRatTensor op (TensorComparisonArgs pDims rDims xs ys) = do
+  fpDims <- force pDims
+  frDims <- force rDims
+  fxs <- force xs
+  fys <- force ys
+  let unevaluable = return $ Unevaluable [fpDims, frDims, fxs, fys]
+  case (fpDims, frDims) of
+    -- Base case: Literals can be compared directly once there are no pointwise dimensions left.
+    (IDimNil, _)
+      | Just vxs <- getExpr accessRatTensorLiteral fxs,
+        Just vys <- getExpr accessRatTensorLiteral fys ->
+          return $ Evaluated $ exprToThunk $ IBoolLiteral $ compareTensor (comparisonOp op) vxs vys
+    -- Otherwise split off the outermost reduction dimension and conjoin the
+    -- results of comparing the elements. This is only done if one of the
+    -- arguments is already a stack, as otherwise we would needlessly blow up
+    -- the size of the expression.
+    (IDimNil, IDimCons d rDims') | isStack fxs || isStack fys -> do
+      maybeElements <- splitArgs d rDims' fxs fys
+      case maybeElements of
+        Nothing -> unevaluable
+        Just (us, vs) -> do
+          results <- zipWithM (compareElements nil rDims') us vs
+          Evaluated <$> foldM conjoin (exprToThunk $ IBoolLiteral True) results
+    -- Otherwise split off the outermost pointwise dimension and stack the
+    -- results of comparing the elements.
+    (IDimCons d pDims', _) -> do
+      elemDims <- forceEvalAppendList (AppendListArgs (exprToThunk INatType) pDims' rDims)
+      maybeElements <- splitArgs d elemDims fxs fys
+      case maybeElements of
+        Nothing -> unevaluable
+        Just (us, vs) -> do
+          results <- zipWithM (compareElements pDims' rDims) us vs
+          let stackArgs = StackTensorArgs (exprToThunk IBoolType) d pDims' results
+          Evaluated <$> forceEvaluation accessStackTensor evalStackTensor stackArgs
+    -- Constant tensors can be compared by comparing their values.
+    _
+      | Just x <- constantValue fxs,
+        Just y <- constantValue fys -> do
+          value <- compareElements nil nil x y
+          return $ Evaluated $ case fpDims of
+            IDimNil -> value
+            _ -> exprToThunk $ mkExpr accessConstTensor $ ConstTensorArgs (exprToThunk IBoolType) value pDims
+    _ -> unevaluable
   where
-    unstackExpr :: Tensor ExtendedRational -> [thunk builtin]
-    unstackExpr t = exprToThunk . mkExpr accessRatTensorLiteral <$> unstack t
+    nil :: thunk builtin
+    nil = exprToThunk IDimNil
+
+    compareElements :: thunk builtin -> thunk builtin -> thunk builtin -> thunk builtin -> m (thunk builtin)
+    compareElements ps rs x y =
+      forceEvaluation (applyAccessor accessCompareRatTensor op) (evalCompareRatTensor op) (TensorComparisonArgs ps rs x y)
+
+    conjoin :: thunk builtin -> thunk builtin -> m (thunk builtin)
+    conjoin x y = evalOrReconstructAnd $ TensorOp2Args nil x y
+
+    isStack :: expr builtin -> Bool
+    isStack = isJust . getExpr accessStackTensor
+
+    -- The scalar value of a tensor whose elements are all equal.
+    constantValue :: expr builtin -> Maybe (thunk builtin)
+    constantValue = \case
+      (getExpr accessConstTensor -> Just c) -> Just $ constValue c
+      (getExpr accessRatTensorLiteral -> Just (ConstantTensor _ v)) -> Just $ exprToThunk $ mkExpr accessRatTensorLiteral $ ZeroDimTensor v
+      _ -> Nothing
+
+    -- Splits both arguments along their outermost dimension `d`, where the
+    -- resulting elements have dimensions `elemDims`.
+    splitArgs :: thunk builtin -> thunk builtin -> expr builtin -> expr builtin -> m (Maybe ([thunk builtin], [thunk builtin]))
+    splitArgs d elemDims x y = do
+      fd <- force d
+      return $ case fd of
+        INatLiteral n -> (,) <$> split n elemDims x <*> split n elemDims y
+        _ -> Nothing
+
+    split :: Int -> thunk builtin -> expr builtin -> Maybe [thunk builtin]
+    split n elemDims = \case
+      (getExpr accessRatTensorLiteral -> Just t) -> Just $ exprToThunk . mkExpr accessRatTensorLiteral <$> unstack t
+      (getExpr accessStackTensor -> Just s) -> Just $ stackElements s
+      (getExpr accessConstTensor -> Just c) -> Just $ replicate n $ exprToThunk $ mkExpr accessConstTensor $ c {constDims = elemDims}
+      _ -> Nothing
 
 -----------------------------------------------------------------------------
 -- Where

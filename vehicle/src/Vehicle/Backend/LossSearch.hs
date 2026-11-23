@@ -37,17 +37,17 @@ import Vehicle.Verify.Specification (Property, QuerySet (..))
 -- witness for the overall property
 data BooleanTree
   = BooleanTree Provenance Identifier (Property Name)
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 type MonadSearch m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadFreeContext Builtin m
   )
 
 -- Returns a list of boolean trees, a list of decls which will not be converted into loss
 -- (boolean expressions), and a Prog of all decls which will be converted into loss
 convertToSearchTree ::
-  (MonadCompile m) =>
+  (MonadBackend m) =>
   Prog Builtin ->
   m ([BooleanTree], [Decl Builtin], Prog Builtin)
 convertToSearchTree (Main ds) = do
@@ -155,7 +155,7 @@ reconstructQueryDisjunct p ident sort typ liftedData = do
 -- Returns a Thunk representing a quantified expression, and
 -- a Thunk representing a unquantified expression with VLam(s) around it
 reconstructExpr ::
-  ( MonadCompile m,
+  ( MonadLogger m,
     MonadFreeContext Builtin m,
     MonadNameContext m
   ) =>

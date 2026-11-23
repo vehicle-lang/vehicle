@@ -24,9 +24,8 @@ data PolarityProvenance
   | NegateProvenance Provenance PolarityProvenance
   | LHSImpliesProvenance Provenance PolarityProvenance
   | PolFunctionProvenance Provenance PolarityProvenance FunctionPosition
-  deriving (Generic)
-
-instance Serialize PolarityProvenance
+  deriving stock (Generic)
+  deriving anyclass (Serialize)
 
 instance Show PolarityProvenance where
   show _x = ""
@@ -52,11 +51,8 @@ data Polarity
     MixedParallel PolarityProvenance PolarityProvenance
   | -- | Stores the type and provenance of the top-most quantifier first.
     MixedSequential Quantifier Provenance PolarityProvenance
-  deriving (Eq, Ord, Generic, Show)
-
-instance NFData Polarity
-
-instance Serialize Polarity
+  deriving stock (Eq, Ord, Generic, Show)
+  deriving anyclass (NFData, Serialize)
 
 instance Pretty Polarity where
   pretty = \case
@@ -85,13 +81,8 @@ data PolarityRelation
   | IfPolarity
   | MaxPolarity
   | FunctionPolarity FunctionPosition
-  deriving (Eq, Ord, Generic, Show)
-
-instance Serialize PolarityRelation
-
-instance NFData PolarityRelation
-
-instance Hashable PolarityRelation
+  deriving stock (Eq, Ord, Generic, Show)
+  deriving anyclass (Serialize, NFData, Hashable)
 
 instance Pretty PolarityRelation where
   pretty = \case
@@ -111,7 +102,7 @@ data PolarityBuiltin
   | PolarityFunction BuiltinFunction
   | Polarity Polarity
   | PolarityRelation PolarityRelation
-  deriving (Show, Ord, Eq, Generic)
+  deriving stock (Show, Ord, Eq, Generic)
 
 instance Pretty PolarityBuiltin where
   pretty = \case

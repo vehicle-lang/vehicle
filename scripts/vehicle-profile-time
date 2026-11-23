@@ -40,7 +40,7 @@ PROFILE_FILE="$PROFILING_PREFIX.prof"
 PROFILE_HTML="$PROFILE_FILE.html"
 
 # Build vehicle in heap profiling mode with the given options.
-CABAL_BUILD="cabal -v1 --project-file=cabal.project.profile-time build vehicle:exe:vehicle"
+CABAL_BUILD="cabal -v1 --project-file=cabal.project.profile-time --builddir=dist-profile-time build vehicle:exe:vehicle"
 [ ! -s "$fail" ] && ($CABAL_BUILD || echo > "$fail")
 
 # On interrupt, kill Vehicle and reset trap.
@@ -53,7 +53,7 @@ trap _on_interrupt INT
 
 # Run vehicle in heap profiling mode with the given options.
 RTSOPTS="+RTS -po$PROFILING_PREFIX -p -RTS"
-CABAL_RUN="cabal -v0 --project-file=cabal.project.profile-time run vehicle:exe:vehicle -- $* $RTSOPTS"
+CABAL_RUN="cabal -v0 --project-file=cabal.project.profile-time --builddir=dist-profile-time run vehicle:exe:vehicle -- $* $RTSOPTS"
 if [ ! -s "$fail" ]; then
     echo "$CABAL_RUN"
     $CABAL_RUN || echo > "$fail" &

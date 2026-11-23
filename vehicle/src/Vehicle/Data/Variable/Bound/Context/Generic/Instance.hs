@@ -19,7 +19,7 @@ import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext 
 newtype BoundContextT expr m a = BoundContextT
   { unBoundContextT :: ReaderT (BoundCtx expr) m a
   }
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
 
 type BoundContext expr a = BoundContextT expr Identity a
 
@@ -82,5 +82,8 @@ instance (Monad m) => MonadReadableNameContext (BoundContextT expr m) where
 instance (Monad m) => MonadBoundContext expr (BoundContextT expr m) where
   addBinderToContext binder cont = BoundContextT $ do
     local (binder :) (unBoundContextT cont)
+
+  dropBindersFromContext _ n cont = BoundContextT $ do
+    local (drop n) (unBoundContextT cont)
 
   getBoundCtx _ = BoundContextT ask

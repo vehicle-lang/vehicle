@@ -8,7 +8,7 @@ import Data.Text qualified as T
 -- | Position tokens in BNFC generated grammars are represented by a pair of a
 --  position and the text token.
 newtype Token = Tk ((Int, Int), Text)
-  deriving (Eq, Ord, Show, Read)
+  deriving stock (Eq, Ord, Show, Read)
 
 pattern Token :: (Int, Int) -> Text -> Token
 pattern Token {pos, sym} = Tk (pos, sym)

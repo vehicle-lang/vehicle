@@ -13,7 +13,7 @@ type MonadQueryCompilation m =
   ( MonadReader (PropertyMetaData, GlobalCtx) m,
     MonadReadableTensorBoundContext m,
     MonadReadableNameContext m,
-    MonadCompile m
+    MonadBackend m
   )
 
 lookupCorrespondingOutputVar ::

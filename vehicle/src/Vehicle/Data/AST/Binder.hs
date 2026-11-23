@@ -26,11 +26,8 @@ data BinderNamingForm
     OnlyName Name Provenance
   | -- | Only type appears (e.g. {{HasEq A}})
     OnlyType
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData BinderNamingForm
-
-instance Serialize BinderNamingForm
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance Hashable BinderNamingForm where
   -- We deliberately ignore the binder naming form when hashing
@@ -42,6 +39,12 @@ instance HasName BinderNamingForm (Maybe Name) where
     NameAndType name _ -> Just name
     OnlyName name _ -> Just name
     OnlyType -> Nothing
+
+instance HasProvenance BinderNamingForm where
+  provenanceOf = \case
+    NameAndType _ p -> p
+    OnlyName _ p -> p
+    OnlyType -> mempty
 
 mapBindingNamingFormName :: (Name -> Name) -> BinderNamingForm -> BinderNamingForm
 mapBindingNamingFormName f = \case
@@ -63,16 +66,11 @@ data BinderDisplayForm = BinderDisplayForm
   { namingForm :: BinderNamingForm,
     foldingForm :: BinderFoldingForm
   }
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData BinderDisplayForm
-
-instance Hashable BinderDisplayForm
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 instance HasName BinderDisplayForm (Maybe Name) where
   nameOf = nameOf . namingForm
-
-instance Serialize BinderDisplayForm
 
 --------------------------------------------------------------------------------
 -- Binders
@@ -94,11 +92,8 @@ data GenericBinder expr = Binder
     -- Usually (but not always) its type.
     binderValue :: expr
   }
-  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
-
-instance (NFData expr) => NFData (GenericBinder expr)
-
-instance (Serialize expr) => Serialize (GenericBinder expr)
+  deriving stock (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, Serialize)
 
 instance (HasProvenance expr) => HasProvenance (GenericBinder expr) where
   provenanceOf Binder {..} = do

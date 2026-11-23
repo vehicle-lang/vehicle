@@ -3,8 +3,10 @@
 module Vehicle.Compile.Error
   ( VehicleUserError (..),
     VehicleError,
-    CompileError (..),
+    FrontendError (..),
+    BackendError (..),
     ParseError (..),
+    ScopeError (..),
     TypingError (..),
     MultiPropertyTraveralError (..),
     RecordMatch (..),
@@ -17,15 +19,16 @@ module Vehicle.Compile.Error
     UninferableParameter,
     UnboundedIndices,
     ParseLocation,
-    MonadCompile,
+    MonadFrontend,
+    MonadBackend,
     BlockingReason (..),
-    compilerDeveloperError,
+    Diagnosis (..),
     unsupportedTensorLikeQuantifier,
   )
 where
 
 import Control.Exception (IOException)
-import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Except (MonadError)
 import Data.Aeson (ToJSON, genericToJSON)
 import Data.Aeson.Types (ToJSON (..))
 import Data.List.NonEmpty (NonEmpty)
@@ -50,101 +53,27 @@ import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
--- Compilation monad
+-- Compilation monads
 
-type MonadCompile m =
+-- | The monad in which the front end of the compiler (parsing, scope-checking
+-- and type-checking) is run.
+type MonadFrontend m =
   ( MonadLogger m,
-    MonadError CompileError m
+    MonadError FrontendError m
+  )
+
+-- | The monad in which the back end of the compiler is run.
+type MonadBackend m =
+  ( MonadLogger m,
+    MonadError BackendError m
   )
 
 --------------------------------------------------------------------------------
--- Scoping errors
+-- Parsing error
 
-data RecordMatch = RecordMatch
-  { sharedFields :: [FieldName],
-    mispellings :: [(FieldName, FieldName)],
-    missingFields :: [FieldName],
-    extraFields :: [FieldName]
-  }
-  deriving (Show)
-
-instance Pretty RecordMatch where
-  pretty = pretty . show
-
---------------------------------------------------------------------------------
--- Typing errors
-
-data MissingExplicitArgError builtin = MissingExplicitArgError
-  { _ctx :: NamedBoundCtx,
-    explicitBinder :: Binder builtin,
-    nonExplicitArg :: Arg builtin
-  }
-  deriving (Show)
-
-data RelevantUseOfIrrelevantVariableError builtin = RelevantUseOfIrrelevantVariableError
-  { _proxy :: Proxy builtin,
-    _provenance :: Provenance,
-    irrelevantVariableName :: Name
-  }
-  deriving (Show)
-
-data FunctionTypeMismatchError builtin = FunctionTypeMismatchError
-  { _ctx :: NamedBoundCtx,
-    originalFunction :: Expr builtin,
-    currentExpectedType :: Expr builtin,
-    currentUncheckedArgs :: [Arg builtin]
-  }
-  deriving (Show)
-
-data FailedUnificationConstraintsError builtin = FailedUnificationConstraintsError
-  { _freeCtx :: FreeCtx builtin,
-    failedConstraints :: NonEmpty (WithContext (UnificationConstraint builtin))
-  }
-  deriving (Show)
-
-data FailedInstanceConstraintError builtin = FailedInstanceConstraintError
-  { _freeCtx :: FreeCtx builtin,
-    failedConstraint :: WithContext (InstanceConstraint builtin),
-    exploredCandidates :: [(WithContext (InstanceCandidate builtin), UnAnnDoc)]
-  }
-  deriving (Show)
-
--- | Errors thrown during type-checking
-data TypingError builtin
-  = MissingExplicitArg (MissingExplicitArgError builtin)
-  | FunctionTypeMismatch (FunctionTypeMismatchError builtin)
-  | RelevantUseOfIrrelevantVariable (RelevantUseOfIrrelevantVariableError builtin)
-  | FailedUnificationConstraints (FailedUnificationConstraintsError builtin)
-  | FailedInstanceConstraint (FailedInstanceConstraintError builtin)
-  | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
-  | FailedIndexConstraintUnknown (ConstraintContext builtin) (ThunkWithMetas builtin) (UnforcedTypeWithMetas builtin)
-  | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
-  | UnsolvedMetas (Proxy builtin) (NonEmpty (MetaID, Provenance))
-  | InvalidInstanceHead DeclProvenance (Expr builtin)
-  | NonTypeClassInstanceHead (Proxy builtin) DeclProvenance Identifier
-  deriving (Show)
-
---------------------------------------------------------------------------------
--- MultiPropertyTraveralError
-
-data MultiPropertyTraveralError
-  = UnsupportedVectorDimension (Thunk Builtin)
-  | UnsupportedVectorValue (ForcedValue Builtin)
-  | UnsupportedTensorDimensions (Thunk Builtin)
-  | UnreducableTensorValue (ForcedValue Builtin)
-  | UnreducableType (Thunk Builtin)
-  deriving (Show)
-
-type MissingResource = (ExternalResource, DeclProvenance)
-
-type UninferableParameter = DeclProvenance
-
---------------------------------------------------------------------------------
--- Sugaring error
-
+-- | Errors thrown during parsing
 data ParseError
-  = -- Parse errors
-    RawParseError String
+  = RawParseError String
   | FunctionWithMismatchedNames Provenance Identifier Identifier
   | -- Annotations
     UnannotatedAbstractDef Provenance Identifier
@@ -165,29 +94,128 @@ data ParseError
   | MissingVariables Provenance Name
   | UnchainableComparisons Provenance ComparisonOp ComparisonOp
   | UnknownSupportsOperation Provenance String
-  deriving (Show)
+  deriving stock (Show)
+
+--------------------------------------------------------------------------------
+-- Scoping errors
+
+data RecordMatch = RecordMatch
+  { sharedFields :: [FieldName],
+    mispellings :: [(FieldName, FieldName)],
+    missingFields :: [FieldName],
+    extraFields :: [FieldName]
+  }
+  deriving stock (Show)
+
+instance Pretty RecordMatch where
+  pretty = pretty . show
+
+-- | Errors thrown during scope checking
+data ScopeError
+  = UnboundName Provenance Name [Name]
+  | UnboundRecordAccessor Provenance Name [Name]
+  | DeclarationDeclarationShadowing Provenance (Either FieldName Name) Identifier
+  | DeclarationBoundShadowing Provenance Name
+  | UnmatchedRecord Provenance [FieldName] (Maybe (Identifier, RecordMatch))
+  | -- Unsupported @tensor records
+    ZeroFieldTensorLike DeclProvenance
+  | ParameterisedTensorLike DeclProvenance
+  deriving stock (Show)
+
+--------------------------------------------------------------------------------
+-- Typing errors
+
+data MissingExplicitArgError builtin = MissingExplicitArgError
+  { _ctx :: NamedBoundCtx,
+    explicitBinder :: Binder builtin,
+    nonExplicitArg :: Arg builtin
+  }
+  deriving stock (Show)
+
+data RelevantUseOfIrrelevantVariableError builtin = RelevantUseOfIrrelevantVariableError
+  { _proxy :: Proxy builtin,
+    _provenance :: Provenance,
+    irrelevantVariableName :: Name
+  }
+  deriving stock (Show)
+
+data FunctionTypeMismatchError builtin = FunctionTypeMismatchError
+  { _ctx :: NamedBoundCtx,
+    originalFunction :: Expr builtin,
+    currentExpectedType :: Expr builtin,
+    currentUncheckedArgs :: [Arg builtin]
+  }
+  deriving stock (Show)
+
+data FailedUnificationConstraintsError builtin = FailedUnificationConstraintsError
+  { _freeCtx :: FreeCtx builtin,
+    failedConstraints :: NonEmpty (WithContext (UnificationConstraint builtin))
+  }
+  deriving stock (Show)
+
+data FailedInstanceConstraintError builtin = FailedInstanceConstraintError
+  { _freeCtx :: FreeCtx builtin,
+    failedConstraint :: WithContext (InstanceConstraint builtin),
+    exploredCandidates :: [(WithContext (InstanceCandidate builtin), UnAnnDoc)]
+  }
+  deriving stock (Show)
+
+-- | Errors thrown during type-checking
+data TypingError builtin
+  = MissingExplicitArg (MissingExplicitArgError builtin)
+  | FunctionTypeMismatch (FunctionTypeMismatchError builtin)
+  | RelevantUseOfIrrelevantVariable (RelevantUseOfIrrelevantVariableError builtin)
+  | FailedUnificationConstraints (FailedUnificationConstraintsError builtin)
+  | FailedInstanceConstraint (FailedInstanceConstraintError builtin)
+  | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
+  | FailedIndexConstraintUnknown (ConstraintContext builtin) (ThunkWithMetas builtin) (UnforcedTypeWithMetas builtin)
+  | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
+  | UnsolvedMetas (Proxy builtin) (NonEmpty (MetaID, Provenance))
+  | InvalidInstanceHead DeclProvenance (Expr builtin)
+  | NonTypeClassInstanceHead (Proxy builtin) DeclProvenance Identifier
+  | QuantifiedIfCondition (ConstraintContext builtin)
+  deriving stock (Show)
+
+--------------------------------------------------------------------------------
+-- MultiPropertyTraveralError
+
+data MultiPropertyTraveralError
+  = UnsupportedVectorDimension (Thunk Builtin)
+  | UnsupportedVectorValue (ForcedValue Builtin)
+  | UnsupportedTensorDimensions (Thunk Builtin)
+  | UnreducableTensorValue (ForcedValue Builtin)
+  | UnreducableType (Thunk Builtin)
+  deriving stock (Show)
+
+type MissingResource = (ExternalResource, DeclProvenance)
+
+type UninferableParameter = DeclProvenance
 
 --------------------------------------------------------------------------------
 -- Compilation errors
 
 type ParseLocation = (ModulePath, FilePath)
 
-data CompileError
-  = DevError UnAnnDoc
-  | -- Parse errors
+-- | Errors thrown by the front end of the compiler, i.e. parsing,
+-- scope-checking and type-checking.
+data FrontendError
+  = -- Parse errors
     ParseError ParseLocation ParseError
-  | -- Scoping errors.
-    UnboundName Provenance Name [Name]
-  | UnboundRecordAccessor Provenance Name [Name]
-  | DeclarationDeclarationShadowing Provenance (Either FieldName Name) Identifier
-  | DeclarationBoundShadowing Provenance Name
-  | MissingRequestedDeclarations (NonEmpty Name)
-  | UnmatchedRecord Provenance [FieldName] (Maybe (Identifier, RecordMatch))
-  | -- Type checking errors
+  | -- Scoping errors
+    ScopeError ScopeError
+  | -- Type checking errors. The type-checker can report multiple errors at
+    -- once, and so this carries a non-empty list of them.
     forall builtin.
     (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, Show builtin) =>
-    TypingError (TypingError builtin)
-  | -- Resource loading errors
+    TypingErrors (NonEmpty (TypingError builtin))
+  | -- Declaration filtering errors
+    MissingRequestedDeclarations (NonEmpty Name)
+
+deriving stock instance Show FrontendError
+
+-- | Errors thrown by the back end of the compiler.
+data BackendError
+  = -- Resource loading errors
     ResourcesNotProvided (NonEmpty MissingResource)
   | ResourceIOError DeclProvenance ExternalResource IOException
   | UnsupportedResourceFormat DeclProvenance ExternalResource String
@@ -211,18 +239,15 @@ data CompileError
   | ParameterValueInvalidNat DeclProvenance Int
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParametersUninferrable (NonEmpty UninferableParameter)
-  | -- Unsupported tensor record
-    ZeroFieldTensorLike DeclProvenance
   | -- Query backend
     NoPropertiesFound
-  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
+  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Diagnosis (Quantifier, Provenance, PolarityProvenance))
   | DuplicateQuantifierNames DeclProvenance Name
-  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearityProof)
+  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Diagnosis NonLinearityProof)
   | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Thunk Builtin)]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (UnforcedBinder Builtin) (UnforcedType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
   | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, NetworkIOType, Thunk Builtin, [Lv], UnboundedIndices))
-  | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
   | -- Loss backend errors
     UnknownDifferentiableLogic Name [Name]
   | UnreducableDifferentiableLogic DeclProvenance
@@ -237,22 +262,26 @@ data CompileError
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance
 
-deriving instance Show CompileError
+deriving stock instance Show BackendError
+
+-- | The result of attempting to locate the original source of an error that
+-- was detected during compilation, but whose root cause can only be found by
+-- re-analysing the original program (e.g. with a type-checking subsystem).
+data Diagnosis a
+  = -- | No diagnosis has been attempted yet.
+    Undiagnosed
+  | -- | Diagnosis was attempted but itself failed with the given error.
+    DiagnosisFailed FrontendError
+  | -- | Diagnosis succeeded and found the original source.
+    Diagnosed a
+  deriving (Show)
 
 data BlockingReason
   = BlockingNetwork Identifier
   | BlockingDatasetOrParameter Identifier
   | BlockingVar Lv
 
-deriving instance Show BlockingReason
-
---------------------------------------------------------------------------------
--- Some useful developer errors
-
--- | Should be used in preference to `developerError` whenever in the error
--- monad, as unlike the latter this method does not prevent logging.
-compilerDeveloperError :: (MonadError CompileError m) => UnAnnDoc -> m b
-compilerDeveloperError message = throwError $ DevError message
+deriving stock instance Show BlockingReason
 
 --------------------------------------------------------------------------------
 -- The final error type
@@ -263,7 +292,7 @@ data VehicleUserError a = VehicleUserError
     problem :: a,
     fix :: Maybe a
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 type VehicleError = VehicleUserError UnAnnDoc
 

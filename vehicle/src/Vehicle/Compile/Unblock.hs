@@ -19,6 +19,7 @@ module Vehicle.Compile.Unblock
     unblockTensorOp2,
     unblockTensorOp1,
     unblockRecordAcc,
+    unblockSliceVariable,
     noUnblocking,
     forceEval,
   )
@@ -39,8 +40,12 @@ import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (IfTree (..), elimIfTree, forIfTreeM)
 import Vehicle.Data.Code.ForcedValue
+import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Tensor (HasShape (..))
 import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Bound.Context.Tensor (MonadReadableTensorBoundContext, lookupNestedSliceVariable)
+import Vehicle.Data.Variable.Bound.Level (SliceVariable, VariableLike (..), childVariablesOf)
 import Vehicle.Data.Variable.Free.Context.Class
 
 --------------------------------------------------------------------------------
@@ -127,8 +132,8 @@ unblockBoolTensorValue actions value = showEntry value $ do
     VBoolTensorReduceOr args -> unblockReduceTensor unblock (forceEval evalReduceOrTensor) args
     VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (unblockIndexValue actions) (evalCompareIndex op) args
     VBoolTensorCompareNat (op, args) -> unblockOp2 (unblockNatValue actions) (evalCompareNat op) args
-    VBoolTensorTensorAt args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
-    VBoolTensorVectorAt args -> unblockAtVector unblock (unblockIndexValue actions) args
+    VBoolTensorTensorAt args -> unblockAtTensor actions (return . IfLeaf) unblock (unblockIndexValue actions) args
+    VBoolTensorVectorAt args -> unblockAtVector unblock (unblockVectorValue actions) (unblockIndexValue actions) args
     VBoolTensorForeach args -> unblockForeachTensor actions args
     VBoolTensorFoldList args -> unblockFoldList actions args
     VBoolTensorParameter ident -> unblockDatasetOrParameter actions unblock ident
@@ -166,8 +171,8 @@ unblockRatTensorValue actions@UnblockingActions {..} expr =
       VRatTensorBoundVar v spine -> unblockBoundVar unblock v spine
       VNetworkApplication n args -> unblockNetworkApp unblock (unblockRecordValue actions) n args
       VParameterOrDataset ident -> unblockDatasetOrParameter unblock ident
-      VRatAtTensor args -> unblockAtTensor (return . IfLeaf) unblock (unblockIndexValue actions) args
-      VRatAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
+      VRatAtTensor args -> unblockAtTensor actions unblock unblock (unblockIndexValue actions) args
+      VRatAtVector args -> unblockAtVector unblock (unblockVectorValue actions) (unblockIndexValue actions) args
       VRatForeach args -> unblockForeachTensor actions args
       VRatTensorTranspose args -> unblockTransposeTensor unblock args
       VRatTensorRecordAcc typ value fieldName args -> unblockRecordAcc actions typ value fieldName args
@@ -200,7 +205,7 @@ unblockIndexValue actions value = showEntry value $ do
     VIndexLiteral {} -> return $ IfLeaf value
     VIndexParameter ident -> unblockDatasetOrParameter actions (unblockIndexValue actions) ident
     VIndexIf args -> unblockIf (unblockIndexValue actions) args
-    VIndexAtVector args -> unblockAtVector (unblockVectorValue actions) (unblockIndexValue actions) args
+    VIndexAtVector args -> unblockAtVector (unblockIndexValue actions) (unblockVectorValue actions) (unblockIndexValue actions) args
     VIndexRecordAcc typ record field spine -> unblockRecordAcc actions typ record field spine
     VIndexBoundVar v spine -> unblockBoundVar actions (unblockIndexValue actions) v spine
 
@@ -214,6 +219,7 @@ unblockNatValue actions value = showEntry value $ do
     VNatIf ifArgs -> unblockIf (unblockNatValue actions) ifArgs
     VNatAdd args -> unblockOp2 (unblockNatValue actions) evalAddNat args
     VNatMul args -> unblockOp2 (unblockNatValue actions) evalMulNat args
+    VNatAtVector args -> unblockAtVector (unblockNatValue actions) (unblockVectorValue actions) (unblockIndexValue actions) args
     VNatBoundVar v spine -> unblockBoundVar actions (unblockNatValue actions) v spine
     VNatParameter ident -> unblockDatasetOrParameter actions (unblockNatValue actions) ident
 
@@ -225,7 +231,7 @@ unblockVectorValue actions value = showEntry value $ do
   case toVectorValue forcedValue of
     VVectorLiteral {} -> return $ IfLeaf $ Forced forcedValue
     VVectorIf args -> unblockIf (unblockVectorValue actions) args
-    VVectorAt args -> unblockAtVector (unblockVectorValue actions) (unblockVectorValue actions) args
+    VVectorAt args -> unblockAtVector (unblockVectorValue actions) (unblockVectorValue actions) (unblockIndexValue actions) args
     VVectorForeach args -> unblockForeachVector actions args
     VVectorBoundVar v spine -> unblockBoundVar actions (unblockVectorValue actions) v spine
     VVectorDataset ident -> unblockDatasetOrParameter actions (unblockVectorValue actions) ident
@@ -342,12 +348,19 @@ unblockReduceTensor unblockArg evalFn (TensorReductionArgs ds xs) = do
 
 unblockAtTensor ::
   (MonadUnblock m) =>
+  UnblockingActions m ->
   TypeUnblockingFunction (Thunk Builtin) m ->
   TypeUnblockingFunction (Thunk Builtin) m ->
   TypeUnblockingFunction (Thunk Builtin) m ->
   OperationUnblockingFunction AtTensorArgs (Thunk Builtin) m
-unblockAtTensor unblock unblockTensor unblockIndex (AtTensorArgs tElem d ds xs i) = do
-  xs' <- unblockTensor xs
+unblockAtTensor actions unblock unblockTensor unblockIndex (AtTensorArgs tElem d ds xs i) = do
+  fxs <- forceThunk xs
+  xs' <- case fxs of
+    -- Optimisation: unblock a bound tensor variable to its stack of child variables without
+    -- unblocking every element, as only one of them is about to be selected.
+    -- The selected element is then unblocked by `unblock` below.
+    VBoundVar v [] -> unblockBoundVar actions (return . IfLeaf) v []
+    _ -> unblockTensor xs
   i' <- unblockIndex i
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->
@@ -358,14 +371,15 @@ unblockAtVector ::
   (MonadUnblock m) =>
   TypeUnblockingFunction (Thunk Builtin) m ->
   TypeUnblockingFunction (Thunk Builtin) m ->
+  TypeUnblockingFunction (Thunk Builtin) m ->
   OperationUnblockingFunction AtVectorArgs (Thunk Builtin) m
-unblockAtVector unblockVector unblockIndex (AtVectorArgs tElem d xs i) = do
+unblockAtVector unblockElem unblockVector unblockIndex (AtVectorArgs tElem d xs i) = do
   xs' <- unblockVector xs
   i' <- unblockIndex i
   forIfTreeM xs' $ \xs'' ->
     forIfTreeM i' $ \i'' ->
-      IfLeaf <$> do
-        forceEval evalAtVector $ AtVectorArgs tElem d xs'' i''
+      unblockElem
+        =<< forceEval evalAtVector (AtVectorArgs tElem d xs'' i'')
 
 unblockRecordAcc ::
   (MonadUnblock m) =>
@@ -456,7 +470,32 @@ unblockConstTensor unblockValue actions (ConstTensorArgs t x ds) = do
   forIfTreeM x' $ \x'' ->
     forIfTreeM ds' $ \ds'' ->
       IfLeaf <$> do
-        forceEvaluation accessConstTensor evalConstTensor $ ConstTensorArgs t x'' ds''
+        evalOrReconstructConst $ ConstTensorArgs t x'' ds''
+
+-- | Given a variable `x`:
+--   - if not a tensor variable errors
+--   - if an element variable then returns `x`
+--   - if not an element variable then unblocks `[x!0, x!1, ..., x!n]
+unblockSliceVariable ::
+  (MonadUnblock m, MonadReadableTensorBoundContext m) =>
+  TypeUnblockingFunction (Thunk Builtin) m ->
+  SliceVariable ->
+  m (IfTree (Thunk Builtin) (Thunk Builtin))
+unblockSliceVariable unblock var = do
+  nestedVar <- lookupNestedSliceVariable var
+  case (childVariablesOf nestedVar, shapeOf nestedVar) of
+    (Nothing, []) -> return $ IfLeaf $ Forced $ Forced.VBoundVar (toLv var) []
+    (Just childVars, d : ds) ->
+      unblock $
+        Forced $
+          mkExpr accessStackTensor $
+            StackTensorArgs
+              { stackType = Forced IRatType,
+                stackFirstDim = Forced $ INatLiteral d,
+                stackRemainingDims = Forced $ mkDims ds,
+                stackElements = flip map childVars $ \v -> Forced $ Forced.VBoundVar (toLv v) []
+              }
+    _ -> developerError "mismatched children and shape"
 
 --------------------------------------------------------------------------------
 -- Unblocking operations

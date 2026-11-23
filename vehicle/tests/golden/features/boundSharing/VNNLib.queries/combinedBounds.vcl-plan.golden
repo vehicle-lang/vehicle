@@ -1,0 +1,255 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "g₀[output]!0",
+                  "g₀[output]",
+                  "g₀[input]!1!2",
+                  "g₀[input]!1!1",
+                  "g₀[input]!1!0",
+                  "g₀[input]!1",
+                  "g₀[input]!0!2",
+                  "g₀[input]!0!1",
+                  "g₀[input]!0!0",
+                  "g₀[input]!0",
+                  "g₀[input]",
+                  "f₀[output]!0",
+                  "f₀[output]",
+                  "f₀[input]!1!2",
+                  "f₀[input]!1!1",
+                  "f₀[input]!1!0",
+                  "f₀[input]!1",
+                  "f₀[input]!0!2",
+                  "f₀[input]!0!1",
+                  "f₀[input]!0!0",
+                  "f₀[input]!0",
+                  "f₀[input]",
+                  "x!1!2",
+                  "x!1!1",
+                  "x!1!0",
+                  "x!1",
+                  "x!0!2",
+                  "x!0!1",
+                  "x!0!0",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "g_Y[0]": 30,
+                  "g_X[1, 2]": 28,
+                  "g_X[1, 1]": 27,
+                  "g_X[1, 0]": 26,
+                  "g_X[0, 2]": 24,
+                  "g_X[0, 1]": 23,
+                  "g_X[0, 0]": 22,
+                  "f_Y[0]": 19,
+                  "f_X[1, 2]": 17,
+                  "f_X[1, 1]": 16,
+                  "f_X[1, 0]": 15,
+                  "f_X[0, 2]": 13,
+                  "f_X[0, 1]": 12,
+                  "f_X[0, 0]": 11
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2,
+                            3
+                          ]
+                        },
+                        "nestedStartingVariable": 9
+                      },
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
+                        "nestedStartingVariable": 18
+                      },
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2,
+                            3
+                          ]
+                        },
+                        "nestedStartingVariable": 20
+                      },
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            1
+                          ]
+                        },
+                        "nestedStartingVariable": 29
+                      },
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": {
+                          "tag": "UniModal",
+                          "contents": [
+                            2,
+                            3
+                          ]
+                        },
+                        "nestedStartingVariable": 0
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              2,
+                              3
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": {
+                "tag": "QueryAddress",
+                "queryID": 1,
+                "property": {
+                  "tag": "PropertyAddress",
+                  "propertyName": "combinedBounds",
+                  "propertyIndices": []
+                }
+              },
+              "metaNetwork": [
+                [
+                  "f",
+                  {
+                    "networkType": {
+                      "networkOutputType": {
+                        "tag": "UniModal",
+                        "contents": {
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              1
+                            ],
+                            "baseType": []
+                          }
+                        }
+                      },
+                      "networkInputType": {
+                        "tag": "UniModal",
+                        "contents": {
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              2,
+                              3
+                            ],
+                            "baseType": []
+                          }
+                        }
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  },
+                  1
+                ],
+                [
+                  "g",
+                  {
+                    "networkType": {
+                      "networkOutputType": {
+                        "tag": "UniModal",
+                        "contents": {
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              1
+                            ],
+                            "baseType": []
+                          }
+                        }
+                      },
+                      "networkInputType": {
+                        "tag": "UniModal",
+                        "contents": {
+                          "tag": "TensorIOType",
+                          "contents": {
+                            "dimensions": [
+                              2,
+                              3
+                            ],
+                            "baseType": []
+                          }
+                        }
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  },
+                  1
+                ]
+              ]
+            }
+          ]
+        },
+        "negated": true
+      }
+    }
+  }
+}

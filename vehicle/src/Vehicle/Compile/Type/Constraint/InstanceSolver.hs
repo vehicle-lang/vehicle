@@ -10,7 +10,7 @@ import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
-import Vehicle.Compile.Print.Error (formatCompileError)
+import Vehicle.Compile.Print.Error.Typing (typingErrorDetails)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Core
@@ -86,13 +86,12 @@ solveInstanceGoal constraint (candidates, failedCandidates) depth goal = do
       freeCtx <- getFreeCtx (Proxy @builtin)
       finalConstraint <- substMetaVariables constraint
       throwError $
-        TypingError $
-          FailedInstanceConstraint $
-            FailedInstanceConstraintError
-              { _freeCtx = freeCtx,
-                failedConstraint = finalConstraint,
-                exploredCandidates = failedCandidates <> unsuccessfulCandidates
-              }
+        FailedInstanceConstraint $
+          FailedInstanceConstraintError
+            { _freeCtx = freeCtx,
+              failedConstraint = finalConstraint,
+              exploredCandidates = failedCandidates <> unsuccessfulCandidates
+            }
 
     -- Otherwise there are still multiple valid candidates so we're forced to block.
     _ -> do
@@ -222,7 +221,7 @@ checkCandidate constraint goal depth candidate = do
 
     case result of
       Left err -> do
-        let vehicleUserError = formatCompileError err
+        let vehicleUserError = typingErrorDetails err
         logDebug MaxDetail $ line <> "Rejecting" <+> candidateDoc <+> "as a possibility"
         logDebug MaxDetail $ indent 2 (pretty vehicleUserError) <> line
         return $ Left (candidate, problem vehicleUserError)

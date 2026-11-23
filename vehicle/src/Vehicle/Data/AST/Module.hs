@@ -13,11 +13,8 @@ import Vehicle.Data.AST.Name (ModulePath)
 newtype ImportStatement = ImportStatement
   { importPath :: ModulePath
   }
-  deriving (Show, Generic)
-
-instance NFData ImportStatement
-
-instance Serialize ImportStatement
+  deriving stock (Show, Generic)
+  deriving anyclass (NFData, Serialize)
 
 --------------------------------------------------------------------------------
 -- Module
@@ -29,11 +26,8 @@ data GenericModule expr = Module
     -- | List of declarations.
     moduleDeclarations :: [GenericDecl expr]
   }
-  deriving (Show, Functor, Foldable, Traversable, Generic)
-
-instance (NFData expr) => NFData (GenericModule expr)
-
-instance (Serialize expr) => Serialize (GenericModule expr)
+  deriving stock (Show, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, Serialize)
 
 mapModuleDecls ::
   (GenericDecl expr1 -> GenericDecl expr2) ->

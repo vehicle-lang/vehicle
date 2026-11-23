@@ -3,14 +3,15 @@ module Vehicle.Data.Variable.Bound.Context.Tensor.Class where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Trans.Writer.CPS qualified as CPS
 import Control.Monad.Writer.Strict
 import Data.Coerce (coerce)
+import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Resource (NetworkModality)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.ForcedValue (UnforcedBinder)
-import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Core
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
@@ -33,6 +34,9 @@ class (MonadReadableNameContext m) => MonadReadableTensorBoundContext m where
 instance (Monoid w, MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (WriterT w m) where
   getNestedVariableCtx = lift getNestedVariableCtx
 
+instance (Monoid w, MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (CPS.WriterT w m) where
+  getNestedVariableCtx = lift getNestedVariableCtx
+
 instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (ReaderT w m) where
   getNestedVariableCtx = lift getNestedVariableCtx
 
@@ -45,20 +49,13 @@ instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext 
 instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (SupplyT e m) where
   getNestedVariableCtx = lift getNestedVariableCtx
 
-instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext (MaybeTrivialT m) where
-  getNestedVariableCtx = lift getNestedVariableCtx
-
 getCompleteNamedCtx :: (MonadReadableTensorBoundContext m) => m CompleteNamedBoundCtx
-getCompleteNamedCtx = do
-  NestedTensorVariableCtx _ ctx <- getNestedVariableCtx
-  return ctx
+getCompleteNamedCtx = nestedVariableCtxNames <$> getNestedVariableCtx
 
 -- | Returns the context as if none of the slice variables that represent
 -- sub-tensors existed.
 getShrunkenContext :: (MonadReadableTensorBoundContext m) => m (BoundCtx ())
-getShrunkenContext = do
-  NestedTensorVariableCtx ctx _ <- getNestedVariableCtx
-  return $ fmap fst ctx
+getShrunkenContext = originalCtx <$> getNestedVariableCtx
 
 lookupNestedSliceVariable ::
   (MonadReadableTensorBoundContext m, SliceVariableLike variable) =>
@@ -84,7 +81,7 @@ lookupNestedTensorVariable ::
   variable ->
   m NestedSliceVariable
 lookupNestedTensorVariable var = do
-  NestedTensorVariableCtx ctx _ <- getNestedVariableCtx
+  ctx <- nestedVariableCtx <$> getNestedVariableCtx
   return $ findVar ctx
   where
     findVar :: GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> NestedSliceVariable
@@ -98,18 +95,14 @@ lookupNestedTensorVariable var = do
 -- | Given a set of variables representing the slices of a given set of tensors
 -- returns the set of tensor variables that those slices are taken from.
 lookupParentTensorVariables ::
-  (MonadLogger m, MonadReadableTensorBoundContext m) =>
-  Set SliceVariable ->
+  (MonadLogger m, MonadReadableTensorBoundContext m, VariableLike var) =>
+  Set var ->
   m (Set TensorVariable)
 lookupParentTensorVariables sliceVars = do
   ctx <- getNestedVariableCtx
-  let result = findCorrespondingVariableInOriginalCtx ctx sliceVars
-  return $ Set.fromList $ fmap extractTensorVar result
-  where
-    extractTensorVar :: (OriginalLv, Maybe NestedSliceVariable) -> TensorVariable
-    extractTensorVar = \case
-      (_, Nothing) -> developerError "was expecting only tensor variables"
-      (_, Just var) -> coerce $ nestedStartingVariable var
+  let lookupTensorVar var = snd $ lookupInNestedVariableIndex ctx (toLv var)
+  let tensorVars = mapMaybe lookupTensorVar (Set.toList sliceVars)
+  return $ Set.fromList $ fmap (coerce . nestedStartingVariable) tensorVars
 
 lookupParentTensorVariable ::
   (MonadReadableTensorBoundContext m, SliceVariableLike variable) =>
@@ -117,9 +110,8 @@ lookupParentTensorVariable ::
   m NestedSliceVariable
 lookupParentTensorVariable var = do
   ctx <- getNestedVariableCtx
-  -- TODO turn this into a binary search for added efficiency?
-  case findCorrespondingVariableInOriginalCtx ctx (Set.singleton $ toLv var) of
-    [(_, Just v)] -> return v
+  case lookupInNestedVariableIndex ctx (toLv var) of
+    (_, Just v) -> return v
     _ -> developerError "Missing variable"
 
 -- | Takes a level and looks up if it represents some slice of a tensor. If it
@@ -148,6 +140,11 @@ instance (Monoid w, MonadTensorBoundContext m) => MonadTensorBoundContext (Write
   addTensorBinderToContextLocally dims binder = mapWriterT (addTensorBinderToContextLocally dims binder)
   addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
 
+instance (Monoid w, MonadTensorBoundContext m) => MonadTensorBoundContext (CPS.WriterT w m) where
+  addNonTensorBinderToContext = CPS.mapWriterT . addNonTensorBinderToContext
+  addTensorBinderToContextLocally dims binder = CPS.mapWriterT (addTensorBinderToContextLocally dims binder)
+  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
+
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (ReaderT w m) where
   addNonTensorBinderToContext = mapReaderT . addNonTensorBinderToContext
   addTensorBinderToContextLocally dims binder = mapReaderT (addTensorBinderToContextLocally dims binder)
@@ -166,9 +163,4 @@ instance (MonadTensorBoundContext m) => MonadTensorBoundContext (StateT e m) whe
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (SupplyT e m) where
   addNonTensorBinderToContext = mapSupplyT . addNonTensorBinderToContext
   addTensorBinderToContextLocally dims binder = mapSupplyT (addTensorBinderToContextLocally dims binder)
-  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
-
-instance (MonadTensorBoundContext m) => MonadTensorBoundContext (MaybeTrivialT m) where
-  addNonTensorBinderToContext = mapMaybeTrivialT . addNonTensorBinderToContext
-  addTensorBinderToContextLocally dims binder = mapMaybeTrivialT (addTensorBinderToContextLocally dims binder)
   addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)

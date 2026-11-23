@@ -6,14 +6,13 @@ where
 
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Data.Builtin.Interface.Print
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCodeFromProg ::
-  (MonadCompile m, PrintableBuiltin builtin) =>
+  (MonadLogger m, PrintableBuiltin builtin) =>
   (Type builtin -> Bool, Expr builtin -> Bool) ->
   Prog builtin ->
   m (Prog builtin)

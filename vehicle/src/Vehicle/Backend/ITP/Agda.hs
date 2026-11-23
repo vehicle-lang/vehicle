@@ -46,7 +46,7 @@ data AgdaOptions = AgdaOptions
     moduleName :: Maybe String
   }
 
-compileProgToAgda :: (MonadCompile m) => Prog DecidabilityBuiltin -> AgdaOptions -> m (Doc a)
+compileProgToAgda :: (MonadBackend m) => Prog DecidabilityBuiltin -> AgdaOptions -> m (Doc a)
 compileProgToAgda prog options =
   logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal prog
@@ -93,7 +93,7 @@ agdaOutputFormat =
 -- Debug functions
 
 type MonadAgdaCompile m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadNameContext m
   )
 
@@ -150,7 +150,7 @@ data Dependency
   | PropEquality
   | RelNullary
   | RelNullaryDecidable
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty Dependency where
   pretty = \case
@@ -311,7 +311,7 @@ annotateInfixAppWithResultPrecedence dependencies argumentPrecedence resultPrece
 -- | Inserts infix args into the correct positions
 --
 -- e.g. insertInfixArgs (Just "B") "if_then_else_" [a, b] = B.if a then b else_
-insertInfixArgs :: (MonadCompile m) => Maybe Code -> Text -> [Code] -> m Code
+insertInfixArgs :: (MonadLogger m) => Maybe Code -> Text -> [Code] -> m Code
 insertInfixArgs qual rawOp as = do
   let components = go qual rawOp as
   return $ hsep components
@@ -637,8 +637,7 @@ compileBuiltinFunction p f args = case f of
   ConstTensor -> annotateApp [DataTensor] Nothing "constTensor" args
   QuantifyRatTensor q -> compileQuantifierFunction q args
   QuantifyRecord q -> compileQuantifierFunction q args
-  AtTensor ->
-    annotateInfixAppWithResultPrecedence [DataTensor] 6 (-1) Nothing "_!_" args
+  AtTensor -> annotateInfixAppWithResultPrecedence [DataTensor] 6 (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
   ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args

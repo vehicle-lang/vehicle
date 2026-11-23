@@ -11,7 +11,7 @@ import Data.Foldable (traverse_)
 import Data.Proxy (Proxy (..))
 import Data.Text (Text, pack)
 import GHC.Generics
-import Vehicle.Compile.Error (CompileError (MultiPropertyTraveralError), MultiPropertyTraveralError (..))
+import Vehicle.Compile.Error (BackendError (MultiPropertyTraveralError), MultiPropertyTraveralError (..))
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.Normalise.Force
 import Vehicle.Compile.Prelude hiding (Dataset, Network, Parameter, datasets, name, networks, parameters)
@@ -38,13 +38,13 @@ data ListOptions = ListOptions
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 list :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ListOptions -> IO ()
-list loggingSettings outputAsJSON ListOptions {..} =
-  runCompileMonad loggingSettings outputAsJSON $ do
-    -- Type check the program
-    typedProg <-
+list loggingSettings outputAsJSON ListOptions {..} = do
+  -- Type check the program
+  typedProg <-
+    runCompileMonad loggingSettings outputAsJSON $
       typeCheckUserProg $
         TypeCheckOptions
           { specification = specification,
@@ -52,6 +52,7 @@ list loggingSettings outputAsJSON ListOptions {..} =
             declarationsToCompile = mempty
           }
 
+  runCompileMonad loggingSettings outputAsJSON $ do
     -- Expand any of the provided resources as the set of properties may be
     -- dependent on e.g. dataset size. Note that not all resources have
     -- to be provided, so we don't check the list of missing resources.
@@ -74,21 +75,21 @@ data SpecificationSummary = SpecificationSummary
     parameters :: [ParameterSummary],
     properties :: [PropertySummary]
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data NetworkSummary = NetworkSummary
   { provenance :: Provenance,
     name :: Text,
     typeText :: Text
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data DatasetSummary = DatasetSummary
   { provenance :: Provenance,
     name :: Text,
     typeText :: Text
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data ParameterSummary = ParameterSummary
   { provenance :: Provenance,
@@ -96,7 +97,7 @@ data ParameterSummary = ParameterSummary
     typeText :: Text,
     inferable :: Bool
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data PropertySummary = PropertySummary
   { provenance :: Provenance,
@@ -104,7 +105,7 @@ data PropertySummary = PropertySummary
     typeText :: Text,
     quantifiedVariables :: Maybe (MultiProperty [QuantifiedVariableSummary])
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data QuantifiedVariableSummary = QuantifiedVariableSummary
   { provenance :: Provenance,
@@ -112,7 +113,7 @@ data QuantifiedVariableSummary = QuantifiedVariableSummary
     typeText :: Text,
     quantifier :: Quantifier
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 instance ToJSON SpecificationSummary where
   toJSON = genericToJSON jsonOptions

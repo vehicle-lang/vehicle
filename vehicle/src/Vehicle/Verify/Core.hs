@@ -5,6 +5,7 @@ module Vehicle.Verify.Core where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
 import Data.Bifunctor qualified
+import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text, unpack)
@@ -14,7 +15,7 @@ import System.FilePath ((<.>), (</>))
 import Vehicle.Compile.Resource
 import Vehicle.Data.Assertion (InequalityRelation (..), Relation (..))
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Tensor (RatTensor, TensorIndices, TensorShape, showTensorIndices)
+import Vehicle.Data.Tensor (RatTensor, TensorIndices, TensorShape)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -24,13 +25,8 @@ data NetworkContextInfo = NetworkContextInfo
   { networkFilepath :: FilePath,
     networkType :: NetworkType
   }
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData NetworkContextInfo
-
-instance ToJSON NetworkContextInfo
-
-instance FromJSON NetworkContextInfo
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 -- | A list of neural networks used in a given query.
 -- The last `int` refers to the number of times it is applied.
@@ -62,11 +58,8 @@ type QuerySetNegationStatus = Bool
 data QueryResult witness
   = SAT (Maybe witness)
   | UnSAT
-  deriving (Show, Functor, Foldable, Traversable, Generic)
-
-instance (FromJSON witness) => FromJSON (QueryResult witness)
-
-instance (ToJSON witness) => ToJSON (QueryResult witness)
+  deriving stock (Show, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
 instance (Pretty witness) => Pretty (QueryResult witness) where
   pretty = \case
@@ -91,25 +84,20 @@ data PropertyAddress = PropertyAddress
   { propertyName :: PropertyName,
     propertyIndices :: TensorIndices
   }
-  deriving (Eq, Show, Generic)
-
-instance NFData PropertyAddress
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (NFData, FromJSON)
 
 instance ToJSON PropertyAddress where
   toJSON = genericToJSON jsonOptions
 
-instance FromJSON PropertyAddress
-
 instance Pretty PropertyAddress where
   pretty (PropertyAddress name indices) =
-    concatWith (\a b -> a <> "!" <> b) (pretty name : fmap pretty indices)
+    concatWith (\a b -> a <> "!" <> b) (pretty name : fmap pretty (reverse indices))
 
+-- | The prefix used for all files generated for the property.
 calculatePropertyFilePrefix :: PropertyAddress -> FilePath
-calculatePropertyFilePrefix (PropertyAddress propertyName indices) = do
-  let indexStr
-        | null indices = ""
-        | otherwise = showTensorIndices indices
-  unpack propertyName <> indexStr
+calculatePropertyFilePrefix (PropertyAddress propertyName indices) =
+  intercalate "-" (unpack propertyName : fmap show (reverse indices))
 
 --------------------------------------------------------------------------------
 -- Addresses
@@ -122,14 +110,11 @@ data QueryAddress = QueryAddress
   { property :: PropertyAddress,
     queryID :: QueryID
   }
-  deriving (Eq, Show, Generic)
-
-instance NFData QueryAddress
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (NFData, FromJSON)
 
 instance ToJSON QueryAddress where
   toJSON = genericToJSON jsonOptions
-
-instance FromJSON QueryAddress
 
 instance Pretty QueryAddress where
   pretty (QueryAddress property queryID) = pretty property <+> brackets (pretty queryID)
@@ -151,7 +136,7 @@ data QueryRelation
   | LtRel
   | GeRel
   | GtRel
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)
 
 instance Pretty QueryRelation where
   pretty = \case
@@ -186,24 +171,18 @@ flipQueryRel = \case
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
   = UserVariableAssignment [(Name, UserVariableValue)]
-  deriving (Generic)
+  deriving stock (Generic)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Pretty UserVariableAssignment where
   pretty (UserVariableAssignment assignments) =
     vsep (fmap pretty assignments)
 
-instance ToJSON UserVariableAssignment
-
-instance FromJSON UserVariableAssignment
-
 data UserVariableValue
   = TensorValue RatTensor
   | RecordValue (NonEmpty (Name, RatTensor))
-  deriving (Show, Generic, Eq)
-
-instance ToJSON UserVariableValue
-
-instance FromJSON UserVariableValue
+  deriving stock (Show, Generic, Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Pretty UserVariableValue where
   pretty t = case t of

@@ -28,7 +28,6 @@
         within:
           [
             Main,
-            Vehicle.Debug,
             Vehicle.Prelude.IO,
             Vehicle.Syntax.Internal.Test,
             Vehicle.Syntax.Internal.ErrM,

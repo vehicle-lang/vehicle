@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Vehicle.Libraries.StandardLibrary
-  ( standardLibrary,
+  ( getStandardLibrary,
     standardLibraryName,
     standardLibraryContent,
     standardLibraryBuiltinModulePath,
@@ -30,6 +30,7 @@ module Vehicle.Libraries.StandardLibrary
   )
 where
 
+import Control.Monad.IO.Class (MonadIO)
 import Data.Bifunctor (Bifunctor (..))
 import Data.FileEmbed (embedFile, makeRelativeToProject)
 import Data.Map (fromList, keys)
@@ -157,10 +158,12 @@ standardLibraryContent =
       -- (standardLibraryBuiltinModulePath $ Just DecidabilityTypes, $(makeRelativeToProject "lib/Builtins/Decidability.vcl" >>= embedFile))
       ]
 
-standardLibrary :: Library
-standardLibrary =
-  Library
-    { libraryName = standardLibraryName,
-      libraryVersion = preciseVehicleVersion,
-      libraryModules = keys standardLibraryContent
-    }
+getStandardLibrary :: (MonadIO m) => m Library
+getStandardLibrary = do
+  key <- getPreciseVehicleVersion
+  return $
+    Library
+      { libraryName = standardLibraryName,
+        libraryVersion = key,
+        libraryModules = keys standardLibraryContent
+      }

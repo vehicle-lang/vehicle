@@ -2,6 +2,8 @@ module Vehicle.Compile.Print.Error.Typing
   ( typingErrorDetails,
     prettyIdentName,
     unsupportedAnnotationTypeDescription,
+    githubIssues,
+    implementationLimitation,
   )
 where
 
@@ -17,6 +19,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
+import Vehicle.Compile.Type.Meta.Variable (emptyMetaVariableContext)
 import Vehicle.Data.Builtin.Core (BuiltinType (..))
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.ForcedValue
@@ -24,7 +27,6 @@ import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Free.Context (FreeContextT, runFreeContextT)
-import Vehicle.Prelude.Logging (SilentLoggerT, runSilentLoggerT)
 import Prelude hiding (pi)
 
 typingErrorDetails ::
@@ -128,6 +130,22 @@ typingErrorDetails = \case
             <+> ".",
         fix = Just "add more type annotations"
       }
+  QuantifiedIfCondition ctx ->
+    VehicleUserError
+      { provenance = Just $ provenanceOf ctx,
+        problem = "cannot currently use quantifiers in `if` conditions.",
+        fix = Just $ implementationLimitation Nothing
+      }
+
+implementationLimitation :: Maybe Int -> Doc a
+implementationLimitation issue =
+  "This is a limitation of the current implementation rather than a fundamental problem."
+    <+> case issue of
+      Nothing -> "If you would like this to be fixed, please open an issue at" <+> squotes githubIssues
+      Just issueNumber ->
+        "If you would like this to be fixed, please comment at"
+          <+> squotes (githubIssues <+> pretty issueNumber)
+          <> "."
 
 --------------------------------------------------------------------------------
 -- Individual errors
@@ -445,7 +463,7 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
     instantiateTelescope ctx typ arguments = do
       let (forcedType, _) =
             runNorm freeEnv $
-              MetaSubstitution.forceThunkWithMetas (toNamedBoundCtx ctx) mempty typ
+              MetaSubstitution.forceThunkWithMetas (toNamedBoundCtx ctx) emptyMetaVariableContext typ
       case (forcedType, arguments) of
         (VPi binder _, [])
           | isExplicit binder ->
@@ -496,8 +514,8 @@ prettyUnificationConstraintOriginExpr ::
 prettyUnificationConstraintOriginExpr ctx expr =
   prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
 
-runNorm :: FreeCtx builtin -> FreeContextT builtin (SilentLoggerT Identity) b -> b
-runNorm freeCtx = fst . runIdentity . runSilentLoggerT . runFreeContextT freeCtx
+runNorm :: FreeCtx builtin -> FreeContextT builtin Identity b -> b
+runNorm freeCtx = runIdentity . runFreeContextT freeCtx
 
 unsupportedAnnotationTypeDescription ::
   forall builtin a.

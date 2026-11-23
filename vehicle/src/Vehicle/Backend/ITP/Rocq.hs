@@ -55,7 +55,7 @@ data RocqOptions = RocqOptions
 currentPhase :: Doc ()
 currentPhase = "compilation to Rocq"
 
-compileProgToRocq :: (MonadCompile m) => Prog DecidabilityBuiltin -> RocqOptions -> m (Doc a)
+compileProgToRocq :: (MonadBackend m) => Prog DecidabilityBuiltin -> RocqOptions -> m (Doc a)
 compileProgToRocq prog options =
   logCompilerSection2 MinDetail currentPhase $ do
     programDoc <- runFreshNameBoundContextT $ compileProg options prog
@@ -121,7 +121,7 @@ data Dependency
   | RequireImport Library
   | Import RocqModule
   | Open Scope
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty Dependency where
   pretty = \case
@@ -137,7 +137,7 @@ data Mathcomp
   | IntervalInference
   | Reals
   | Rstruct
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty Mathcomp where
   pretty = \case
@@ -149,7 +149,7 @@ instance Pretty Mathcomp where
 
 data Library
   = ConstructiveReals
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty Library where
   pretty = \case
@@ -158,7 +158,7 @@ instance Pretty Library where
 data VehicleModule
   = VehicleUtils
   | VehicleValidate
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty VehicleModule where
   pretty = \case
@@ -167,7 +167,7 @@ instance Pretty VehicleModule where
 
 data RocqModule
   = OrderDef
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty RocqModule where
   pretty = \case
@@ -177,7 +177,7 @@ data Scope
   = RingScope
   | OrderScope
   | FormScope
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty Scope where
   pretty = \case
@@ -282,7 +282,7 @@ insertNotationArgs rawOp as = concatWith (<>) <$> go rawOp
 -- Monad stack
 
 type MonadRocqCompile m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadNameContext m
   )
 
@@ -663,7 +663,7 @@ compileQuantifierFunction :: (MonadRocqCompile m) => Quantifier -> [Arg Decidabi
 compileQuantifierFunction q args = case reverse args of
   (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
   _ ->
-    compilerDeveloperError $
+    developerError $
       "compilation of quantifier" <+> quotePretty q <+> "with args" <+> prettyVerbose args <+> "to Rocq unsupported"
 
 compileTypeLevelQuantifier ::
@@ -790,7 +790,7 @@ data ComparisonDomain
   = CIndex
   | CNat
   | CRatTensor
-  deriving (Eq)
+  deriving stock (Eq)
 
 compileComparison :: (MonadRocqCompile m) => ComparisonDomain -> ComparisonOp -> [Arg DecidabilityBuiltin] -> m Code
 compileComparison domain op = do

@@ -176,17 +176,18 @@ delabModalities binder
 
 delabTypeBinder :: (MonadDelab m) => V.Binder V.Builtin -> m B.TypeBinder
 delabTypeBinder b = case V.binderNamingForm b of
-  V.OnlyName {} ->
-    developerError
-      "Should not be delaborating an `OnlyName` binder to a `TypeBinder`"
+  -- There is no syntax for a named binder in a function type without its
+  -- type, so we always display the type.
+  V.OnlyName {} -> B.BasicTypeBinder <$> delabM b
   V.NameAndType {} -> B.BasicTypeBinder <$> delabM b
   V.OnlyType {} -> do
     let modalities = delabModalities b
     typ <- delabM (V.binderValue b)
     return $ case (V.visibilityOf b, modalities) of
       (V.Explicit, []) -> B.ExplicitTypeBinder typ
-      (V.Explicit, _m : _ms) -> B.ExplicitTypeBinder typ -- B.ExplicitTypeBinderMods m ms typ
-      (V.Implicit {}, _) -> B.ImplicitTypeBinder modalities typ
+      (V.Explicit, m : ms) -> B.ExplicitTypeBinderMods m ms typ
+      (V.Implicit {}, []) -> B.ImplicitTypeBinder typ
+      (V.Implicit {}, m : ms) -> B.ImplicitTypeBinderMods m ms typ
       (V.Instance {}, _) -> B.InstanceTypeBinder modalities typ
 
 delabLetBinding :: (MonadDelab m) => (V.Binder V.Builtin, V.Expr V.Builtin) -> m B.LetDecl
@@ -369,23 +370,11 @@ delabIf args@[arg1, arg2, arg3]
       return $ B.If tokIf e1 tokThen e2 tokElse e3
 delabIf args = cheatDelabPretty V.If args
 
-delabTelescope :: (MonadDelab m) => V.Binder V.Builtin -> V.Expr V.Builtin -> m ([B.NameBinder], B.Expr)
-delabTelescope binder body = do
-  let (foldedBinders, foldedBody) = foldPiBinders binder body
-  binders' <- traverse delabNameBinder (binder : foldedBinders)
-  body' <- delabM foldedBody
-  return (binders', body')
-
--- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: (MonadDelab m) => V.Binder V.Builtin -> V.Expr V.Builtin -> m B.Expr
-delabPi binder body = case V.binderNamingForm binder of
-  V.OnlyType -> do
-    binder' <- delabTypeBinder binder
-    body' <- delabM body
-    return $ B.Fun binder' tokArrow body'
-  _ -> do
-    (binders', body') <- delabTelescope binder body
-    return $ B.ForallT tokForallT binders' body'
+delabPi binder body = do
+  binder' <- delabTypeBinder binder
+  body' <- delabM body
+  return $ B.Fun binder' tokArrow body'
 
 -- | Collapses let expressions into a sequence of let declarations
 delabLet :: (MonadDelab m) => V.Expr V.Builtin -> V.Binder V.Builtin -> V.Expr V.Builtin -> m B.Expr

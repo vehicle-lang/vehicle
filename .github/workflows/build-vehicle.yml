@@ -2,23 +2,32 @@ name: Build vehicle
 
 on:
   workflow_call:
+    inputs:
+      deps-only:
+        description: "Only build and cache dependencies; skip building and testing Vehicle."
+        required: false
+        default: false
+        type: boolean
+      quick:
+        description: "Only build and test on Linux with the primary GHC version."
+        required: false
+        default: false
+        type: boolean
 
 defaults:
   run:
     shell: sh
 
 jobs:
+  # The primary configuration, which always runs. Its steps are shared with
+  # `build-vehicle-extra` below through the `build-steps` YAML anchor.
   build-vehicle:
     strategy:
       matrix:
         os:
           - name: "Linux"
             type: ubuntu-latest
-          - name: "macOS"
-            type: "macos-latest"
-          - name: "Windows"
-            type: "windows-latest"
-        haskell:
+        haskell: &primary-haskell
           - ghc:
               version: "9.6.5"
             cabal:
@@ -26,117 +35,21 @@ jobs:
               project-file: "cabal.project"
               extra-args: ""
               extra-args-test-golden: ""
-        include:
-          # Build with GHC 9.12
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.12.2"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project"
-                extra-args: ""
-                # TODO: Migrate testVerifier to a Haskell executable for portability.
-                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
-          # Build with GHC 9.10
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.10.3"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project"
-                extra-args: ""
-                # TODO: Migrate testVerifier to a Haskell executable for portability.
-                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
-          # Build with GHC 9.8
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.8.4"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project"
-                extra-args: ""
-                # TODO: Migrate testVerifier to a Haskell executable for portability.
-                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
-          # Build with GHC 9.4
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.4.8"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project"
-                extra-args: ""
-                extra-args-test-golden: ""
-          # Build with GHC 9.2
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.2.8"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project"
-                extra-args: ""
-                extra-args-test-golden: ""
-          # Build with -fnothunks:
-          # 30-01-2025:
-          # Disabled while not using NoThunks
-          # - os:
-          #     name: Linux
-          #     type: ubuntu-latest
-          #   haskell:
-          #     ghc:
-          #       version: "9.6.5"
-          #     cabal:
-          #       version: "3.14.2.0"
-          #       project-file: "cabal.project.nothunks"
-          #       extra-args: "-fnothunks"
-          #       extra-args-test-golden: ""
-          # 20-12-2022:
-          # This test is disabled because -fghc-debug requires two threads, which triggers #342.
-          # Build with -fghc-debug:
-          # - os:
-          #     name: Linux
-          #     type: ubuntu-latest
-          #   haskell:
-          #     ghc:
-          #       version: "9.6.5"
-          #     cabal:
-          #       version: "3.14.2.0"
-          #       project-file: "cabal.project.ghc-debug"
-          #       extra-args: "-fghc-debug"
-          # 20-12-2022:
-          # This test is disabled because -fghc-debug requires two threads, which triggers #342.
-          # Build with -fghc-debug and -fnothunks:
-          # - os:
-          #     name: Linux
-          #     type: ubuntu-latest
-          #   haskell:
-          #     ghc:
-          #       version: "9.6.5"
-          #     cabal:
-          #       version: "3.14.2.0"
-          #       project-file: "cabal.project.ghc-debug.nothunks"
-          #       extra-args: "-fghc-debug -fnothunks"
 
     name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.haskell.ghc.version }} ${{ matrix.haskell.cabal.extra-args }}
     runs-on: ${{ matrix.os.type }}
 
-    steps:
+    steps: &build-steps
       - name: 📥 Checkout
         uses: actions/checkout@v7
+
+      # GHC 9.4.8 is configured to link with the gold linker (`ld.gold`),
+      # which is no longer bundled with `binutils` from Ubuntu 26.04 onwards.
+      - name: 🛠️ Install gold linker
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils-gold
 
       - name: 🛠️ Install Haskell
         uses: haskell-actions/setup@v2
@@ -147,6 +60,7 @@ jobs:
 
       - name: 🛠️ Configure
         run: |
+          cabal update
           cabal configure --project-file=${{ matrix.haskell.cabal.project-file }}
           cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
 
@@ -155,7 +69,7 @@ jobs:
         if: ${{ !env.ACT }}
         id: cache-haskell
         env:
-          key: ${{ matrix.os.name }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+          key: ${{ matrix.os.name }}-${{ runner.arch }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store }}
           key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
@@ -173,6 +87,7 @@ jobs:
           key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
 
       - name: 🧪 Test Vehicle
+        if: ${{ !inputs.deps-only }}
         run: |
           cabal test                                                \
             vehicle:test:unit-tests                                 \
@@ -181,19 +96,84 @@ jobs:
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}
 
+          # LSP tests are disabled until the language server is more stable.
+          #
+          # cabal test                                                \
+          #   vehicle:test:lsp-tests                                  \
+          #   --test-show-details=always                              \
+          #   --test-option=--color=always                            \
+          #   --project-file=${{ matrix.haskell.cabal.project-file }} \
+          #   ${{ matrix.haskell.cabal.extra-args }}
+
           cabal test                                                \
             vehicle:test:golden-tests                               \
             --test-show-details=always                              \
             --test-option=--color=always                            \
-            --test-option=--num-threads=1                           \
             --project-file=${{ matrix.haskell.cabal.project-file }} \
             ${{ matrix.haskell.cabal.extra-args }}                  \
             ${{ matrix.haskell.cabal.extra-args-test-golden }}
         shell: sh
 
       - name: 🏗️ Build the Vehicle .exe
+        if: ${{ !inputs.deps-only }}
         run: |
           cabal build                                                \
             vehicle:exe:vehicle                                      \
             --project-file=${{ matrix.haskell.cabal.project-file }}  \
             ${{ matrix.haskell.cabal.extra-args }}
+
+  # The remaining configurations, which are skipped in quick mode.
+  build-vehicle-extra:
+    if: ${{ !inputs.quick }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - name: "macOS"
+            # macos-15 rather than macos-latest until actions/runner-images#14940 is fixed; see https://github.com/haskell/cabal/pull/12468.
+            type: macos-15
+          - name: "Windows"
+            type: "windows-latest"
+        haskell: *primary-haskell
+        include:
+          # GHC 9.14 (newest)
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "9.14.1"
+              cabal:
+                version: "3.16.1.0"
+                project-file: "cabal.project"
+                extra-args: ""
+                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
+          # GHC 9.12
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "9.12.2"
+              cabal:
+                version: "3.14.2.0"
+                project-file: "cabal.project"
+                extra-args: ""
+                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
+          # GHC 9.4 (oldest)
+          - os:
+              name: Linux
+              type: ubuntu-latest
+            haskell:
+              ghc:
+                version: "9.4.8"
+              cabal:
+                version: "3.14.2.0"
+                project-file: "cabal.project"
+                extra-args: ""
+                extra-args-test-golden: ""
+
+    name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.haskell.ghc.version }} ${{ matrix.haskell.cabal.extra-args }}
+    runs-on: ${{ matrix.os.type }}
+
+    steps: *build-steps

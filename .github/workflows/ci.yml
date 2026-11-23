@@ -1,9 +1,10 @@
 name: CI
 
 on:
+  # Commits on `dev` are not tested on push, as they have already been tested
+  # in the merge queue (see `merge_group` below). The dependency caches on
+  # `dev` are instead refreshed by `warm-caches.yml`.
   push:
-    branches:
-      - dev
     tags:
       - "v*"
   pull_request:
@@ -24,19 +25,32 @@ defaults:
     shell: sh
 
 jobs:
+  ################################################################################
+  # Build and test
+  #
+  # On pull requests, only build and test on Linux with the primary GHC version.
+  # The full matrix and the integration tests run in the merge queue.
+  ################################################################################
+
   build-vehicle:
     uses: ./.github/workflows/build-vehicle.yml
+    with:
+      quick: ${{ github.event_name == 'pull_request' }}
 
   build-vehicle-python:
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/build-vehicle-python.yml
 
   test-integration-isabelle:
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/test-integration-isabelle.yml
 
   test-integration-rocq:
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/test-integration-rocq.yml
 
   test-integration-agda:
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/test-integration-agda.yml
 
   test-integration-bumpver:
@@ -51,11 +65,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dieghernan/cff-validator@v5
 
-  # NOTE: This job is disabled because Marabou reliably runs out of memory.
-  #
-  # test-integration-marabou:
-  #   uses: ./.github/workflows/test-integration-marabou.yml
-
   test-integration-ormolu:
     runs-on: ubuntu-latest
     steps:
@@ -63,6 +72,41 @@ jobs:
       - uses: mrkkrp/ormolu-action@v15
         with:
           version: "0.7.1.0"
+
+  ################################################################################
+  # Summary check
+  #
+  # This is the only check that branch protection should require. It passes
+  # when every job above has either passed or been deliberately skipped, so it
+  # works for both pull requests and the merge queue.
+  ################################################################################
+
+  all-green:
+    name: All checks passed
+    if: always()
+    needs:
+      - build-vehicle
+      - build-vehicle-python
+      - test-integration-isabelle
+      - test-integration-rocq
+      - test-integration-agda
+      - test-integration-bumpver
+      - test-integration-citation-cff
+      - test-integration-ormolu
+    runs-on: ubuntu-latest
+    steps:
+      - name: ✅ Check that every job passed
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
+          # These jobs only run in the merge queue and on release tags, so they
+          # are expected to be skipped on pull requests (and nowhere else).
+          allowed-skips: >-
+            ${{
+              github.event_name == 'pull_request'
+              && 'build-vehicle-python, test-integration-isabelle, test-integration-rocq, test-integration-agda'
+              || '[]'
+            }}
 
   ################################################################################
   # Publish package to GitHub Releases
@@ -76,7 +120,6 @@ jobs:
       - build-vehicle
       - build-vehicle-python
       - test-integration-bumpver
-      # - test-integration-marabou
       - test-integration-ormolu
 
     permissions:

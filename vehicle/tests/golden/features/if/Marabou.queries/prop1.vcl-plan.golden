@@ -9,10 +9,6 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "f₁[output]!0",
-                  "f₁[output]",
-                  "f₁[input]!0",
-                  "f₁[input]",
                   "f₀[output]!0",
                   "f₀[output]",
                   "f₀[input]!0",
@@ -57,80 +53,6 @@
                         "nestedStartingVariable": 3
                       },
                       "AllDimensions"
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
-                        },
-                        "nestedStartingVariable": 7
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              1
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            3,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
-                        },
-                        "nestedStartingVariable": 5
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              1
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            1,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
                     ]
                   },
                   {
@@ -216,10 +138,6 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "f₁[output]!0",
-                  "f₁[output]",
-                  "f₁[input]!0",
-                  "f₁[input]",
                   "f₀[output]!0",
                   "f₀[output]",
                   "f₀[input]!0",
@@ -264,80 +182,6 @@
                         "nestedStartingVariable": 3
                       },
                       "AllDimensions"
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
-                        },
-                        "nestedStartingVariable": 7
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              1
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            3,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            1
-                          ]
-                        },
-                        "nestedStartingVariable": 5
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              1
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            1,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
                     ]
                   },
                   {

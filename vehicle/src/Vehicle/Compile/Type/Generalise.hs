@@ -8,10 +8,11 @@ where
 
 import Control.Monad (forM, forM_, void)
 import Data.Data (Proxy (..))
-import Data.Foldable (foldlM)
+import Data.Foldable (foldlM, toList)
 import Data.Graph (graphFromEdges, topSort)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Maybe (fromMaybe)
+import Data.Sequence qualified as Seq
 import Data.Text qualified as Text
 import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
@@ -22,6 +23,7 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
+import Vehicle.Compile.Type.Meta.Variable (unsolvedMetaInfos)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
@@ -70,8 +72,8 @@ removeAllDependencies decl = do
   logCompilerSection2 MaxDetail "removing dependencies of unsolved metas" $ do
     -- Remove meta dependencies
     metaVariableCtx <- getMetaVariableCtx @builtin
-    let hasDepedendencies metaInfo = isNothing (metaSolution metaInfo) && not (null $ metaCtx metaInfo)
-    let metasToRemove = MetaMap.filter hasDepedendencies metaVariableCtx
+    let hasDependencies metaInfo = not (null $ metaCtx metaInfo)
+    let metasToRemove = MetaMap.filter hasDependencies (unsolvedMetaInfos metaVariableCtx)
     orderedMetasToRemove <- orderMetasByTypeDependencies metasToRemove
     forM_ orderedMetasToRemove $ \(meta, metaInfo) -> do
       logCompilerSection2 MaxDetail ("removing dependencies of" <+> pretty meta) $ do
@@ -88,8 +90,8 @@ removeAllDependencies decl = do
     mergedInstanceConstraints <- mergeInstanceConstraints newInstanceConstraints
     mergedAuxiliaryInstanceConstraints <- mergeInstanceConstraints newAuxiliaryInstanceConstraints
 
-    setInstanceConstraints mergedInstanceConstraints
-    setAuxiliaryInstanceConstraints mergedAuxiliaryInstanceConstraints
+    setInstanceConstraints (Seq.fromList mergedInstanceConstraints)
+    setAuxiliaryInstanceConstraints (Seq.fromList mergedAuxiliaryInstanceConstraints)
 
   -- Substitute through the new metas variables through the types of the meta variables
   logCompilerSection2 MaxDetail "substituting metas through solution" $ do
@@ -124,16 +126,19 @@ removeInstanceDependencies c@(WithContext constraint ctx) =
     return result
 
 mergeInstanceConstraints ::
-  forall builtin m.
-  (MonadGeneralise builtin m) =>
-  [WithContext (InstanceConstraint builtin)] ->
+  forall t builtin m.
+  (Foldable t, MonadGeneralise builtin m) =>
+  t (WithContext (InstanceConstraint builtin)) ->
   m [WithContext (InstanceConstraint builtin)]
 mergeInstanceConstraints constraints = do
-  substitutedConstraintsByMeta <- forM constraints $ \(WithContext constraint ctx) -> do
-    updatedConstraint <- updateSolutionMeta constraint
-    return (instanceSolution updatedConstraint, WithContext updatedConstraint ctx :| [])
+  -- Group the constraints by solution meta.
+  let insertConstraint acc (WithContext constraint ctx) = do
+        updatedConstraint <- updateSolutionMeta constraint
+        let entry = WithContext updatedConstraint ctx :| []
+        return $ MetaMap.insertWith (<>) (instanceSolution updatedConstraint) entry acc
+  substitutedConstraintsByMeta <- foldlM insertConstraint mempty constraints
 
-  let constraintsBySolutionMeta = MetaMap.toList $ MetaMap.fromListWith (<>) substitutedConstraintsByMeta
+  let constraintsBySolutionMeta = MetaMap.toList substitutedConstraintsByMeta
   mergedConstraints <- forM constraintsBySolutionMeta $ \(_meta, masterConstraint :| otherConstraints) -> do
     let getGoal = goalExpr . instanceGoal . objectIn
     let mainGoal = getGoal masterConstraint
@@ -177,7 +182,7 @@ generaliseOverUnsolvedMetas ::
   m (Decl builtin)
 generaliseOverUnsolvedMetas decl = do
   metaVariableCtx <- getMetaVariableCtx @builtin
-  let unsolvedMetas = MetaMap.filter (isNothing . metaSolution) metaVariableCtx
+  let unsolvedMetas = unsolvedMetaInfos metaVariableCtx
   sortedUnsolvedMetas <- sortMetasByTypeDependencies unsolvedMetas
 
   unsolvedInstanceConstraints <- getActiveInstanceConstraints
@@ -186,7 +191,7 @@ generaliseOverUnsolvedMetas decl = do
   setAuxiliaryInstanceConstraints @builtin mempty
 
   let unsolvedConstraints = unsolvedInstanceConstraints <> unsolvedAuxInstanceConstraints
-  let unsolvedConstraintMetas = MetaMap.fromList $ fmap ((\c -> (instanceSolution c, c)) . objectIn) unsolvedConstraints
+  let unsolvedConstraintMetas = MetaMap.fromList $ fmap ((\c -> (instanceSolution c, c)) . objectIn) (toList unsolvedConstraints)
 
   let p = provenanceOf decl
   binders <- traverse (createBinderForMeta unsolvedConstraintMetas p) (zip [1 ..] sortedUnsolvedMetas)
@@ -198,7 +203,7 @@ generaliseOverUnsolvedMetas decl = do
 sortMetasByTypeDependencies ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
-  MetaVariableContext builtin ->
+  MetaMap (MetaInfo builtin) ->
   m [MetaID]
 sortMetasByTypeDependencies unsolvedMetas = do
   logCompilerSection2 MaxDetail "sorting generalisable constraints" $ do
@@ -282,7 +287,7 @@ solveInTermsOfNewMetaWithDependencies ::
   MetaInfo builtin ->
   BoundCtx (Type builtin) ->
   m MetaID
-solveInTermsOfNewMetaWithDependencies meta (MetaInfo p typ relevance oldCtx _) newCtx = do
+solveInTermsOfNewMetaWithDependencies meta (MetaInfo p typ relevance oldCtx) newCtx = do
   substType <- substMetaVariablesAt (toNamedBoundCtx oldCtx) typ
   (newMeta, newMetaExpr) <- freshMeta p substType relevance newCtx
   solveMeta meta newMetaExpr newCtx

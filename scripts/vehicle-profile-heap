@@ -51,7 +51,7 @@ EVENTLOG_FILE="$PROFILING_PREFIX$HEAP_PROFILE_TYPE.eventlog"
 EVENTLOG_HTML="$EVENTLOG_FILE.html"
 
 # Build vehicle in heap profiling mode with the given options.
-CABAL_BUILD="cabal -v1 --project-file=cabal.project.profile-heap build vehicle:exe:vehicle"
+CABAL_BUILD="cabal -v1 --project-file=cabal.project.profile-heap --builddir=dist-profile-heap build vehicle:exe:vehicle"
 
 [ ! -s "$fail" ] && ($CABAL_BUILD || echo > "$fail")
 
@@ -65,7 +65,7 @@ trap _on_interrupt INT
 
 # Run vehicle in heap profiling mode with the given options.
 RTSOPTS="+RTS -po$PROFILING_PREFIX -ol$EVENTLOG_FILE -s -l ${HEAP_PROFILE_TYPE} -RTS"
-CABAL_RUN="cabal -v0 $PROFILING_OPT --project-file=cabal.project.profile-heap run vehicle:exe:vehicle -- $* $RTSOPTS"
+CABAL_RUN="cabal -v0 $PROFILING_OPT --project-file=cabal.project.profile-heap --builddir=dist-profile-heap run vehicle:exe:vehicle -- $* $RTSOPTS"
 if [ ! -s "$fail" ]; then
     echo "$CABAL_RUN"
     $CABAL_RUN || echo > "$fail" &

@@ -23,7 +23,7 @@ import Data.Aeson.Types
 import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy.Char8 qualified as ByteString (unpack)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Text (intercalate, pack)
+import Data.Text (pack)
 import Data.Text.Lazy qualified as LazyText
 import GHC.Generics (Generic)
 import Prettyprinter (fill)
@@ -77,7 +77,8 @@ data MultiPropertySummary = MultiPropertySummary
     numberTimedOut :: Int,
     numberErrored :: Int
   }
-  deriving (Generic)
+  deriving stock (Generic)
+  deriving anyclass (ToJSON)
 
 instance Semigroup MultiPropertySummary where
   s1 <> s2 =
@@ -97,8 +98,6 @@ instance Monoid MultiPropertySummary where
         numberErrored = 0
       }
 
-instance ToJSON MultiPropertySummary
-
 makeMultiPropertyStatus :: PropertyStatus -> MultiPropertySummary
 makeMultiPropertyStatus status = case status of
   PropertyErrored (_, SolverTimedOut) -> mempty {numberTimedOut = 1}
@@ -114,9 +113,8 @@ makeMultiPropertyStatus status = case status of
 newtype QuerySummary = QuerySummary
   { satisfied :: Bool
   }
-  deriving (Generic)
-
-instance ToJSON QuerySummary
+  deriving stock (Generic)
+  deriving anyclass (ToJSON)
 
 --------------------------------------------------------------------------------
 -- Implementations
@@ -150,7 +148,7 @@ incrementQueryCount = modify (second (+ 1))
 newtype TextReporterT m a = TextReporterT
   { unTextReporterT :: (ReaderT (Maybe (ProgressBar ())) (StateT SharedState m)) a
   }
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
 
 getProgressBar :: Maybe (ProgressBar ()) -> ProgressBar ()
 getProgressBar = \case
@@ -218,8 +216,8 @@ instance (MonadStdIO m) => MonadStdIO (TextReporterT m) where
   writeStderr = lift . writeStderr
 
 createProgressBar :: (MonadStdIO m) => PropertyAddress -> Int -> m (ProgressBar ())
-createProgressBar (PropertyAddress name indices) numberOfQueries = do
-  let propertyName = LazyText.fromStrict $ intercalate "!" (name : fmap (pack . show) indices)
+createProgressBar propertyAddress numberOfQueries = do
+  let propertyName = LazyText.fromStrict $ layoutAsText $ pretty propertyAddress
   let style =
         defStyle
           { stylePrefix = msg ("  " <> propertyName),
@@ -312,7 +310,7 @@ textMultiPropertyComplete name MultiPropertySummary {..} = do
 newtype JSONReporterT m a = JSONReporterT
   { unJSONReporterT :: StateT SharedState m a
   }
-  deriving (Functor, Applicative, Monad)
+  deriving newtype (Functor, Applicative, Monad)
 
 runJSONProgressReporterT :: (MonadStdIO m) => JSONReporterT m a -> m a
 runJSONProgressReporterT fn = do
@@ -397,7 +395,7 @@ data ProgressEvent
   | QueryFinish QueryAddress Bool
   | QueryError QueryAddress String
   | VerificationFinish
-  deriving (Generic)
+  deriving stock (Generic)
 
 instance ToJSON ProgressEvent where
   toJSON = genericToJSON jsonOptions

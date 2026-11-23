@@ -8,7 +8,7 @@ module Vehicle.Compile.Type.Constraint.UnificationSolver
   )
 where
 
-import Control.Monad (forM)
+import Control.Monad (forM, void)
 import Control.Monad.Except (MonadError (..))
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
@@ -98,7 +98,7 @@ solveUnificationConstraint (WithContext (Unify origin e1 e2) ctx) = do
       finalFailedConstraints <- forM failedProblems $ \problem ->
         createNewConstraint ctx origin (problem, mempty)
       freeCtx <- getFreeCtx (Proxy @builtin)
-      throwError $ TypingError $ FailedUnificationConstraints $ FailedUnificationConstraintsError freeCtx finalFailedConstraints
+      throwError $ FailedUnificationConstraints $ FailedUnificationConstraintsError freeCtx finalFailedConstraints
 
 createNewConstraint ::
   (MonadUnify builtin m) =>
@@ -396,14 +396,14 @@ pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies attemptedSolutio
       | m == solvingMetaID =
           -- If `i` is inside the term we're trying to unify it with then error.
           -- Unsure if this should be a user or a developer error.
-          compilerDeveloperError $
+          developerError $
             "Meta variable"
               <+> pretty m
               <+> "found in own solution"
               <+> squotes (prettyVerbose attemptedSolution)
       | otherwise = do
-          metaInfo <- getMetaInfo m
-          case metaSolution metaInfo of
+          maybeSolution <- getMetaSolution m
+          case maybeSolution of
             Just solution -> do
               forceApplicationWithMetas (toNamedBoundCtx ctx) (normalised solution) spine
             Nothing -> do
@@ -412,8 +412,8 @@ pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies attemptedSolutio
               if sharedDependencies /= jDeps
                 then do
                   -- We first recursive prune the type of the meta-variable
-                  metaType <- getMetaType m
-                  prunedMetaType <- pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies (Unforced (boundContextToEnv ctx) metaType)
+                  metaType <- getInstantiatedMetaType m spine
+                  prunedMetaType <- pruneMetaDependencies ctx solvingMetaID solvingMetaDependencies metaType
                   let unnormalisedPrunedMetaType = unnormalise (boundCtxLv ctx) prunedMetaType
                   -- And then create a new meta-variable recursively.
                   createMetaWithRestrictedDependencies ctx m unnormalisedPrunedMetaType sharedDependencies remainingSpine
@@ -434,6 +434,26 @@ getNormMetaDependencies meta spine = do
         _ -> developerError $ "Meta variable" <+> pretty meta <+> "has non-index arg"
   let lvs = fmap getLv forcedDeps
   return (lvs, remainingArgs)
+
+-- | Gets the type of the meta-variable when applied to the provided spine.
+-- Note that the type of the meta-variable lives in the meta-variable's own
+-- context, and therefore we must instantiate the variables in that context
+-- with the corresponding arguments in the spine, in order to obtain the type
+-- in the current context.
+getInstantiatedMetaType ::
+  forall builtin m.
+  (MonadUnify builtin m) =>
+  MetaID ->
+  UnforcedSpineWithMetas builtin ->
+  m (ThunkWithMetas builtin)
+getInstantiatedMetaType meta spine = do
+  metaType <- getMetaType meta
+  metaCtx <- getMetaCtx (Proxy @builtin) meta
+  let depArgs = take (length metaCtx) spine
+  -- The context is ordered innermost variable first whereas the spine is
+  -- ordered outermost argument first, hence the `reverse`.
+  let env = BoundEnv $ zip (fmap void metaCtx) (reverse (fmap argExpr depArgs))
+  return $ Unforced env metaType
 
 createMetaWithRestrictedDependencies ::
   forall builtin m.

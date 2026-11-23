@@ -8,10 +8,13 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Coerce (coerce)
 import Data.Either (partitionEithers)
-import Data.Foldable (foldlM)
+import Data.Foldable (fold)
+import Data.List (isPrefixOf)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Vehicle.Backend.Solver.QueryCompilation.Core (MonadQueryCompilation)
 import Vehicle.Backend.Solver.UserVariableElimination.Core
@@ -21,12 +24,14 @@ import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkModality (..), NetworkName)
+import Vehicle.Data.Assertion (NormalisedRelation (..), Relation (..))
 import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsEliminationWithErrors)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.MaybeTrivial (MonadMaybeTrivial (..))
-import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorShape)
+import Vehicle.Data.Code.LinearExpr (LinearExpr (..))
+import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
+import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorIndices, TensorShape, at, isTensorOfAll, mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadReadableTensorBoundContext, getCompleteNamedCtx, lookupParentTensorVariable)
 import Vehicle.Data.Variable.Bound.Level
@@ -40,24 +45,27 @@ import Vehicle.Verify.QueryFormat.Interface (QueryFormat (..))
 
 -- | Checks for presence of under-constrained input variables.
 findInputVariableBounds ::
-  (MonadQueryCompilation m, MonadMaybeTrivial m) =>
+  (MonadQueryCompilation m) =>
   NetworkApplications ->
   ConjunctAll LinearAssertion ->
-  m (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor)
+  m (MaybeTrivial (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor))
 findInputVariableBounds metaNetworkApps constraints = do
   logCompilerSection2 MaxDetail "network variable bounds checks" $
     runMonadBoundsT metaNetworkApps $ do
-      -- Search through the list of constraints for bounds
-      boundedAssertions <- findBoundsInConjuncts constraints
+      -- Search through the list of constraints for bounds and equalities
+      partiallyBoundedAssertions <- findBoundsInConjuncts constraints
+
+      -- Duplicate bounds across equal input variables and then combine them
+      bounds <- combineBounds partiallyBoundedAssertions
+      let assertions = remainingAssertions partiallyBoundedAssertions
 
       logDebugM MaxDetail $ do
-        let Partial bounds assertions = boundedAssertions
         assertionsDoc <- prettyFriendlyInCtx assertions
         boundsDoc <- prettyBounds bounds
         return $ "Found bounds:" <> lineIndent boundsDoc <> line <> "remaining assertions:" <> lineIndent assertionsDoc
 
       -- Check that all bounds present
-      checkAllBoundsPresent boundedAssertions
+      checkAllBoundsPresent bounds assertions
 
 --------------------------------------------------------------------------------
 -- MonadSearch
@@ -76,7 +84,7 @@ isNetworkTensorInputVar (_, _, networkNames) var = do
     else Nothing
 
 type MonadBounds m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadReader BoundsState m,
     MonadReadableTensorBoundContext m
   )
@@ -98,20 +106,33 @@ runMonadBoundsT networkApps action = do
 --------------------------------------------------------------------------------
 -- Bounds
 
+-- | The location of a slice of a network input tensor.
+data SliceLocation = SliceLocation
+  { locationVariable :: NetworkInputTensorVariable,
+    locationShape :: TensorShape,
+    locationIndices :: TensorIndices
+  }
+  deriving stock (Eq, Ord)
+
+-- | An equality between two slices of network input tensors.
+type SliceEquality = (SliceLocation, SliceLocation)
+
+-- | The bounds found so far. The bounds on each slice are kept separate
+-- (rather than being immediately combined into a `TensorBounds` per variable)
+-- so that they can be duplicated across any equalities between input
+-- variables before they are combined.
 data PartiallyBoundedAssertions = Partial
-  { variableBounds :: Map NetworkInputTensorVariable (TensorBounds RatTensor),
+  { inputSliceBounds :: [(SliceLocation, SliceBounds RatTensor)],
+    inputEqualities :: [SliceEquality],
     remainingAssertions :: [LinearAssertion]
   }
 
-andPartiallyBoundedAssertions ::
-  (MonadBounds m) =>
-  PartiallyBoundedAssertions ->
-  PartiallyBoundedAssertions ->
-  m PartiallyBoundedAssertions
-andPartiallyBoundedAssertions (Partial bounds1 assertions1) (Partial bounds2 assertions2) = do
-  let newVariableBounds = Map.unionWith andBounds bounds1 bounds2
-  let newAssertions = assertions1 <> assertions2
-  return $ Partial newVariableBounds newAssertions
+instance Semigroup PartiallyBoundedAssertions where
+  Partial bounds1 equalities1 assertions1 <> Partial bounds2 equalities2 assertions2 =
+    Partial (bounds1 <> bounds2) (equalities1 <> equalities2) (assertions1 <> assertions2)
+
+instance Monoid PartiallyBoundedAssertions where
+  mempty = Partial mempty mempty mempty
 
 prettyBounds ::
   forall m a.
@@ -133,27 +154,44 @@ findBoundsInConjuncts ::
   (MonadBounds m) =>
   ConjunctAll LinearAssertion ->
   m PartiallyBoundedAssertions
-findBoundsInConjuncts conjuncts = do
-  ConjunctAll (b :| bs) <- traverse findBoundsInAssertion conjuncts
-  foldlM andPartiallyBoundedAssertions b bs
+findBoundsInConjuncts conjuncts = fold <$> traverse findBoundsInAssertion conjuncts
 
 findBoundsInAssertion ::
   (MonadBounds m) =>
   LinearAssertion ->
   m PartiallyBoundedAssertions
-findBoundsInAssertion assertion = do
-  maybeTensorBounds <- tryToConvertToTensorBounds lookupCorrespondingInputVar assertion
-  return $ case maybeTensorBounds of
-    Nothing ->
-      Partial
-        { variableBounds = mempty,
-          remainingAssertions = [assertion]
-        }
-    Just (var, bounds) ->
-      Partial
-        { variableBounds = Map.singleton (coerce var) bounds,
-          remainingAssertions = mempty
-        }
+findBoundsInAssertion assertion@(NormalisedRelation rel (Sparse coefficients constant)) = do
+  let unchanged = mempty {remainingAssertions = [assertion]}
+  case Map.toList coefficients of
+    -- Bounds of the form `c*x + b REL 0`
+    [(var, coeff)] -> do
+      maybeLocation <- lookupInputVarLocation var
+      return $ case maybeLocation of
+        Nothing -> unchanged
+        Just location -> do
+          let bounds = convertToSliceBounds rel coeff (mapTensor (\v -> -v / coeff) constant)
+          mempty {inputSliceBounds = [(location, bounds)]}
+    -- Equalities of the form `c*x - c*y == 0`. Note that the equality is
+    -- kept in the list of remaining assertions as it still needs to be
+    -- passed to the solver.
+    [(var1, coeff1), (var2, coeff2)]
+      | rel == OEq && coeff1 == -coeff2 && constant `isTensorOfAll` 0 -> do
+          maybeLocation1 <- lookupInputVarLocation var1
+          maybeLocation2 <- lookupInputVarLocation var2
+          return $ case (maybeLocation1, maybeLocation2) of
+            (Just location1, Just location2) -> unchanged {inputEqualities = [(location1, location2)]}
+            _ -> unchanged
+    _ -> return unchanged
+
+lookupInputVarLocation ::
+  (MonadBounds m) =>
+  SliceVariable ->
+  m (Maybe SliceLocation)
+lookupInputVarLocation var = do
+  maybeInfo <- lookupCorrespondingInputVar var
+  return $ case maybeInfo of
+    Nothing -> Nothing
+    Just VariableInfo {..} -> Just $ SliceLocation (coerce parentVariable) parentShape indices
 
 lookupCorrespondingInputVar ::
   (MonadBounds m) =>
@@ -175,13 +213,115 @@ lookupCorrespondingInputVar var = do
           }
 
 --------------------------------------------------------------------------------
+-- Bound duplication
+
+-- | Nearly all solvers require that each input variable is bounded. In
+-- scenarios where a single user variable is used as input to two networks, e.g.
+--
+--   forall v . 0 <= v <= 1 => f v <= g v
+--
+-- the generated query will by default only have bounds attached to one input:
+--
+--   0 <= fx0 <= 1 and
+--   fx0 == gx0 and
+--   fy0 <= gy0
+--
+-- This function duplicates any bounds across the equalities between distinct
+-- inputs, e.g. for the above it will add the extra bounds:
+--
+--   0 <= gx0 <= 1
+--
+-- This includes the cases where equalities occur at a higher dimension
+-- than the bounds, and where they occur at a lower dimension than the bounds.
+-- The resulting bounds are then combined into a single `TensorBounds` per
+-- input variable.
+combineBounds ::
+  (MonadBounds m) =>
+  PartiallyBoundedAssertions ->
+  m (Map NetworkInputTensorVariable (TensorBounds RatTensor))
+combineBounds Partial {..} = do
+  allBounds <-
+    if null inputEqualities
+      then return inputSliceBounds
+      else do
+        let symmetricEqualities = concatMap (\(l1, l2) -> [(l1, l2), (l2, l1)]) inputEqualities
+        let equalitiesByVar = Map.fromListWith (<>) [(locationVariable l1, [(l1, l2)]) | (l1, l2) <- symmetricEqualities]
+        let duplicatedBounds = concatMap (propagateBound equalitiesByVar) inputSliceBounds
+
+        logDebugM MaxDetail $ do
+          duplicatedBoundsDoc <- prettyBounds (combineSliceBounds duplicatedBounds)
+          return $ "Bounds duplicated via input equalities:" <> lineIndent duplicatedBoundsDoc
+
+        return $ inputSliceBounds <> duplicatedBounds
+
+  return $ combineSliceBounds allBounds
+
+combineSliceBounds :: [(SliceLocation, SliceBounds RatTensor)] -> Map NetworkInputTensorVariable (TensorBounds RatTensor)
+combineSliceBounds allSliceBounds = Map.map mkTensorBounds boundsByVariable
+  where
+    -- Group the slice bounds by the variable they constrain.
+    boundsByVariable :: Map NetworkInputTensorVariable (NonEmpty (SliceLocation, SliceBounds RatTensor))
+    boundsByVariable = do
+      let boundPairs = [(locationVariable location, (location, bounds) :| []) | (location, bounds) <- allSliceBounds]
+      NonEmpty.reverse <$> Map.fromListWith (<>) boundPairs
+
+    mkTensorBounds :: NonEmpty (SliceLocation, SliceBounds RatTensor) -> TensorBounds RatTensor
+    mkTensorBounds variableBounds@((firstLocation, _) :| _) = do
+      let indicesAndBounds = [(locationIndices location, bounds) | (location, bounds) <- NonEmpty.toList variableBounds]
+      TensorBounds $ nestedSliceBoundsFromList (locationShape firstLocation) indicesAndBounds
+
+-- | Performs a breadth-first search along the equalities starting from the
+-- location of the bound, and returns the corresponding bound for every new
+-- slice reached.
+--
+-- If an equality is at the same or a higher dimension than the current bound
+-- then the bound is translated to the corresponding sub-slice of the other side
+-- of the equality. If the equality is at a lower dimension than the bound then
+-- the bound is restricted to the part of the slice covered by the equality.
+propagateBound ::
+  Map NetworkInputTensorVariable [SliceEquality] ->
+  (SliceLocation, SliceBounds RatTensor) ->
+  [(SliceLocation, SliceBounds RatTensor)]
+propagateBound equalities (startLocation, startBounds) =
+  go (Set.singleton startLocation) [(startLocation, startBounds)]
+  where
+    go _ [] = []
+    go visited ((location, bounds) : queue) = do
+      let relevantEqualities = Map.findWithDefault [] (locationVariable location) equalities
+      let neighbours = mapMaybe (step location bounds) relevantEqualities
+      let newNeighbours = Map.toList $ Map.fromList $ filter (\(l, _) -> l `Set.notMember` visited) neighbours
+      let newVisited = foldr (Set.insert . fst) visited newNeighbours
+      newNeighbours <> go newVisited (queue <> newNeighbours)
+
+    step ::
+      SliceLocation ->
+      SliceBounds RatTensor ->
+      SliceEquality ->
+      Maybe (SliceLocation, SliceBounds RatTensor)
+    step location bounds (location1, location2)
+      -- The equality is at the same or a higher dimension than the bound.
+      | locationIndices location1 `isPrefixOf` indices = do
+          let remainingIndices = drop (length (locationIndices location1)) indices
+          let newIndices = locationIndices location2 <> remainingIndices
+          Just (location2 {locationIndices = newIndices}, bounds)
+      -- The equality is at a lower dimension than the bound.
+      | indices `isPrefixOf` locationIndices location1 = do
+          let remainingIndices = drop (length indices) (locationIndices location1)
+          let newBounds = mapSliceBounds (\t -> foldl at t remainingIndices) bounds
+          Just (location2, newBounds)
+      | otherwise = Nothing
+      where
+        indices = locationIndices location
+
+--------------------------------------------------------------------------------
 -- Bound checking
 
 checkAllBoundsPresent ::
-  (MonadBounds m, MonadMaybeTrivial m) =>
-  PartiallyBoundedAssertions ->
-  m (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor)
-checkAllBoundsPresent (Partial allPartialbounds assertions) = do
+  (MonadBounds m) =>
+  Map NetworkInputTensorVariable (TensorBounds RatTensor) ->
+  [LinearAssertion] ->
+  m (MaybeTrivial (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor))
+checkAllBoundsPresent allPartialbounds assertions = do
   (PropertyMetaData {..}, _, inputVariableMapping) <- ask
   lv <- getBinderDepth
 
@@ -214,15 +354,16 @@ checkAllBoundsPresent (Partial allPartialbounds assertions) = do
 
   let boundsUnsatisfiable = not (all isSatisfiable domains)
   if boundsUnsatisfiable
-    then trivial False
+    then return $ Trivial False
     else case assertions of
-      [] -> trivial True
+      [] -> return $ Trivial True
       a : as ->
         return $
-          BoundedAssertions
-            { variableBounds = boundedVariables,
-              assertions = ConjunctAll (a :| as)
-            }
+          NonTrivial $
+            BoundedAssertions
+              { variableBounds = boundedVariables,
+                assertions = ConjunctAll (a :| as)
+              }
 
 findUnboundedVariables :: Lv -> NetworkApplicationInfo -> [Lv]
 findUnboundedVariables ctxSize appInfo = do

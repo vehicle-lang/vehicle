@@ -1,4 +1,5 @@
 import json
+import sys
 from typing import Optional, Sequence
 
 from .._ast._decode import DecodeError, decode
@@ -22,12 +23,10 @@ def check_output(
     """
     Execute a Vehicle command and capture its output.
 
-    Uses PTY-based output capture to handle C-level stdout from the Haskell RTS.
-
     :param args: The command-line arguments to pass to Vehicle.
     :return: A tuple of (exit_code, stdout, stderr, log_file_content).
     """
-    return Session().__enter__().check_output_pty(args)
+    return Session().__enter__().check_output(args)
 
 
 def execute_command(
@@ -36,12 +35,18 @@ def execute_command(
     """
     Execute a Vehicle command and return its output.
 
+    Any warnings produced by Vehicle are printed to stderr.
+
     :param args: The command-line arguments to pass to Vehicle.
     :return: The output of the Vehicle command, or None if it failed.
     :raises VehicleInternalError: If the Vehicle command fails to execute.
     :raises VehicleUserError: If the Vehicle command executes but returns a non-zero exit code, indicating a user error in the specification.
     """
-    exit_code, out, err, _ = check_output(args)
+    exit_code, out, err, log = check_output(args)
+
+    if log is not None:
+        print(log, file=sys.stderr)
+
     if exit_code != 0:
         if err is None:
             raise VehicleInternalError("Vehicle command failed with no error message")

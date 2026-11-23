@@ -13,8 +13,10 @@ import Control.Monad.Except (ExceptT, MonadError (..))
 import Control.Monad.IO.Class
 import Control.Monad.Identity (Identity)
 import Control.Monad.Reader (MonadReader (..), ReaderT)
-import Control.Monad.State (MonadState (..), StateT, evalStateT, mapStateT)
+import Control.Monad.State qualified as Lazy
+import Control.Monad.State.Strict (MonadState (..), StateT, evalStateT, mapStateT)
 import Control.Monad.Trans (MonadTrans (..))
+import Control.Monad.Trans.Writer.CPS qualified as CPS
 import Control.Monad.Writer.Strict (WriterT)
 import Vehicle.Prelude.IO
 
@@ -24,7 +26,7 @@ class (Monad m) => MonadSupply s m where
 newtype SupplyT s m a = SupplyT
   { unsupplyT :: StateT [s] m a
   }
-  deriving (Functor, Applicative, Monad, MonadTrans)
+  deriving newtype (Functor, Applicative, Monad, MonadTrans)
 
 runSupplyT :: (Monad m) => [s] -> SupplyT s m a -> m a
 runSupplyT xs (SupplyT m) = evalStateT m xs
@@ -47,10 +49,16 @@ instance (Monad m) => MonadSupply s (SupplyT s m) where
 instance (MonadSupply t m) => MonadSupply t (StateT s m) where
   demand = lift demand
 
+instance (MonadSupply t m) => MonadSupply t (Lazy.StateT s m) where
+  demand = lift demand
+
 instance (MonadSupply t m) => MonadSupply t (ReaderT s m) where
   demand = lift demand
 
 instance (Monoid w, MonadSupply t m) => MonadSupply t (WriterT w m) where
+  demand = lift demand
+
+instance (Monoid w, MonadSupply t m) => MonadSupply t (CPS.WriterT w m) where
   demand = lift demand
 
 instance (MonadSupply t m) => MonadSupply t (ExceptT e m) where

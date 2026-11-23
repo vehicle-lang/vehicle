@@ -14,10 +14,9 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Bifunctor (Bifunctor (..))
-import Data.ByteString.Lazy qualified as BIO
+import Data.ByteString (fromStrict, toStrict)
 import Data.Map qualified as Map
 import Data.Text (Text)
-import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory, (</>))
 import Vehicle.Libraries.Core
@@ -52,7 +51,7 @@ getLibraryPath name = do
 readLibraryFile :: (MonadIO m) => FilePath -> m (Either UnAnnDoc Library)
 readLibraryFile libraryFolder = runExceptT $ do
   let libraryFile = calculateLibraryFilePath libraryFolder
-  errorOrByteString <- liftIO $ catch (Right <$> BIO.readFile libraryFile) (\(e :: IOException) -> return $ Left e)
+  errorOrByteString <- liftIO $ catch (Right <$> lockedReadFile libraryFile) (\(e :: IOException) -> return $ Left e)
   case errorOrByteString of
     Left err ->
       throwError $
@@ -60,7 +59,7 @@ readLibraryFile libraryFolder = runExceptT $ do
           <+> quotePretty libraryFile
           <+> ":"
           <> lineIndent (pretty $ show err)
-    Right byteString -> case decode byteString of
+    Right byteString -> case decode $ fromStrict byteString of
       Nothing ->
         throwError $
           "Unabled to decode library file"
@@ -75,21 +74,24 @@ installLibrary library@Library {..} libraryContent = do
     libraryFolder <- getLibraryPath name
     liftIO $ createDirectoryIfMissing True libraryFolder
 
-    -- Write the library info file out
-    let libraryInfoFile = calculateLibraryFilePath libraryFolder
-    let libraryInfoFileContent = encodePretty library
-    liftIO $ BIO.writeFile libraryInfoFile libraryInfoFileContent
-
     -- Write the modules in the library out
     forM_ (Map.toList libraryContent) $
       installModule libraryFolder
+
+    -- Write the library info file out. This MUST happen after the modules
+    -- have been written, as the presence of an info file is what
+    -- other (possibly concurrent) Vehicle processes use to decide that the
+    -- library is fully installed and its modules can be read.
+    let libraryInfoFile = calculateLibraryFilePath libraryFolder
+    let libraryInfoFileContent = toStrict $ encodePretty library
+    liftIO $ lockedWriteFile libraryInfoFile libraryInfoFileContent
 
 installModule :: (MonadIO m, MonadLogger m) => FilePath -> (ModulePath, Text) -> m ()
 installModule libraryFolder (modul, content) = do
   let libraryContentFile = calculateModuleFilePath libraryFolder modul
   logDebug MidDetail $ "Installing" <+> quotePretty modul <+> "to" <+> quotePretty libraryContentFile
   liftIO $ createDirectoryIfMissing True (takeDirectory libraryContentFile)
-  liftIO $ TIO.writeFile libraryContentFile content
+  liftIO $ lockedWriteTextFile libraryContentFile content
 
 -- | Checks that the library is up-to-date and if not, installs the latest one.
 ensureLatestVersionOfLibraryInstalled ::

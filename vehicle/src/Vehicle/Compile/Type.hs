@@ -6,9 +6,9 @@ where
 import Control.Monad (forM, when)
 import Control.Monad.Except (MonadError (..))
 import Data.IntSet qualified as IntSet
-import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
+import Data.Sequence qualified as Seq
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Dependency (completelyUnusedDeclarations)
@@ -35,7 +35,7 @@ import Vehicle.Data.Code.ModuleInterface
 -- Interface
 
 typeCheckModuleDecls ::
-  (MonadCompile m, HasTypeSystem builtin) =>
+  (MonadFrontend m, HasTypeSystem builtin) =>
   ModulePath ->
   InstanceDatabase builtin ->
   ImportedModuleContext builtin ->
@@ -49,11 +49,13 @@ typeCheckModuleDecls modulePath instances importedCtx decls = do
             | otherwise = mempty
       typeCheckDecls unusedDecls decls
 
-typeCheckDecls :: (TCM builtin m) => Set Identifier -> [Decl Builtin] -> m [Decl builtin]
+typeCheckDecls :: forall builtin m. (TCM builtin m) => Set Identifier -> [Decl Builtin] -> m [Decl builtin]
 typeCheckDecls unusedDecls = \case
   [] -> return []
   d : ds -> do
-    typedDecl <- typeCheckDecl d (identifierOf d `Set.member` unusedDecls)
+    let isUnused = identifierOf d `Set.member` unusedDecls
+    result <- recoverDecl (typeCheckDecl d isUnused)
+    typedDecl <- either throwError return result
     checkedDecls <- addTypedDeclToContext typedDecl $ typeCheckDecls unusedDecls ds
     return $ typedDecl : checkedDecls
 
@@ -77,9 +79,9 @@ typeCheckDecl uncheckedDecl isUnused =
       DefFunction p n s t e -> typeCheckFunctionDef p n s t e isUnused
       DefRecord p n s t f o -> typeCheckRecordDef p n s t f o isUnused
     checkAllUnknownsSolved (Proxy @builtin)
+    resetDeclState (Proxy @builtin)
     finalDecl <- substMetaVariables decl
     logCompilerPassOutput $ prettyExternal finalDecl
-    setCurrentDecl @builtin Nothing
 
     return finalDecl
 
@@ -155,7 +157,12 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
 
       logUnsolvedUnknowns (Proxy @builtin)
 
-      generaliseOverUnsolvedMetasAndConstraints checkedDecl1
+      -- Unused declarations should not be generalised, as there are no
+      -- applications from which monomorphisation could later work out the
+      -- values of the generalised arguments.
+      if isUnused
+        then return checkedDecl1
+        else generaliseOverUnsolvedMetasAndConstraints checkedDecl1
 
 typeCheckRecordDef ::
   forall builtin m.
@@ -209,6 +216,25 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
       NetworkDef -> restrictDeclType RestrictedNetwork decl defType
       BuiltinDef {} -> return defType
 
+-- | Runs the type-checking of a single declaration, catching any typing errors.
+-- If a typing error is thrown then the type-checker's state (including the
+-- free context and the instance database) is restored to what it was before
+-- the declaration was checked, and the error is returned.
+recoverDecl ::
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
+  m (Decl builtin) ->
+  m (Either (TypingError builtin) (Decl builtin))
+recoverDecl action = do
+  callDepth <- getCallDepth
+  state <- getTypeCheckerState @builtin
+  (Right <$> action) `catchError` \err -> do
+    -- The logging call depth is not restored when an error is thrown.
+    setCallDepth callDepth
+    modifyTypeCheckerState (const state)
+    resetDeclState (Proxy @builtin)
+    return $ Left err
+
 -------------------------------------------------------------------------------
 -- Constraint solving
 
@@ -225,7 +251,7 @@ solveConstraints proxy = logCompilerSection2 MaxDetail "constraint solving" $ do
       -- We try and priortise resolving the cast constraints first (e.g. HasTensor, IsNatLiteral)
       -- as it produces far better error messages for the user.
       instanceConstraints <- getActiveInstanceConstraints @builtin
-      let sortedInstanceConstraints = sortOn (not . isCastConstraint . goalHead . instanceGoal . objectIn) instanceConstraints
+      let sortedInstanceConstraints = Seq.sortOn (not . isCastConstraint . goalHead . instanceGoal . objectIn) instanceConstraints
       setInstanceConstraints sortedInstanceConstraints
 
     loopOverConstraints :: (TCM builtin m) => Int -> m ()
@@ -286,10 +312,6 @@ checkAllUnknownsSolved proxy = do
   checkAllConstraintsSolved proxy getActiveConstraints id
   -- Then check all meta-variables have been solved.
   checkAllMetasSolved proxy
-  -- Then clear the meta-ctx
-  clearMetaCtx proxy
-  -- ...and the fresh names
-  clearFreshNames proxy
 
 checkAllMetasSolved :: forall builtin m. (MonadTypeChecker builtin m, Eq builtin, NormalisableBuiltin builtin) => Proxy builtin -> m ()
 checkAllMetasSolved proxy = do
@@ -305,7 +327,7 @@ checkAllMetasSolved proxy = do
               return (meta, origin)
           )
       logUnsolvedUnknowns proxy
-      throwError $ TypingError $ UnsolvedMetas proxy metasAndOrigins
+      throwError $ UnsolvedMetas proxy metasAndOrigins
 
 bidirectionalPassDoc :: Doc a
 bidirectionalPassDoc = "bidirectional pass over"

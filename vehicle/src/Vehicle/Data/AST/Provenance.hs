@@ -5,8 +5,6 @@ module Vehicle.Data.AST.Provenance
     HasProvenance (..),
     expandProvenance,
     fillInProvenance,
-
-    -- * Exported for 'Vehicle.Data.AST.Instances.NoThunks'
     Position (..),
     Range (..),
   )
@@ -36,7 +34,8 @@ data Position = Position
   { posLine :: Int,
     posColumn :: Int
   }
-  deriving (Eq, Ord, Generic)
+  deriving stock (Eq, Ord, Generic)
+  deriving anyclass (Serialize)
 
 instance ToJSON Position where
   toJSON =
@@ -50,8 +49,6 @@ instance Show Position where
 
 instance Pretty Position where
   pretty (Position l c) = "Line" <+> pretty l <+> "Column" <+> pretty c
-
-instance Serialize Position
 
 -- | Get the starting position of a token.
 tkPosition :: (IsToken a) => a -> Position
@@ -70,7 +67,8 @@ data Range = Range
   { start :: Position,
     end :: Position
   }
-  deriving (Show, Eq, Generic)
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (Serialize)
 
 instance Ord Range where
   Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e2)
@@ -94,8 +92,6 @@ instance Pretty Range where
           <> pretty (posColumn p2)
       else pretty p1 <+> "-" <+> pretty p2
 
-instance Serialize Range
-
 expandRange :: (Int, Int) -> Range -> Range
 expandRange (l, r) (Range {..}) =
   Range (alterColumn (\x -> x - l) start) (alterColumn (+ r) end)
@@ -107,7 +103,8 @@ data Provenance = Provenance
   { range :: Range,
     file :: FilePath
   }
-  deriving (Generic)
+  deriving stock (Generic)
+  deriving anyclass (Serialize)
 
 instance ToJSON Provenance where
   toJSON (Provenance (Range start end) _) =
@@ -133,8 +130,6 @@ instance Ord Provenance where
 
 instance Hashable Provenance where
   hashWithSalt s _p = s
-
-instance Serialize Provenance
 
 instance Pretty Provenance where
   pretty (Provenance origin file) = "file" <+> squotes (pretty (takeFileName file)) <+> "at" <+> pretty origin

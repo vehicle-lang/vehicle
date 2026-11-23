@@ -6,9 +6,9 @@ import Control.Monad.Except (ExceptT)
 import Debug.Trace (trace)
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (Assertion, testCase)
-import Vehicle.Compile.Error (CompileError)
+import Vehicle.Compile.Error (BackendError)
 import Vehicle.Compile.Print.Error
-  ( formatCompileError,
+  ( FormattableError (..),
     logCompileError,
   )
 import Vehicle.Prelude
@@ -21,11 +21,11 @@ import Vehicle.Prelude.Warning (groupWarnings)
 --------------------------------------------------------------------------------
 -- Test settings monad
 
-unitTestCase :: String -> ExceptT CompileError (SilentLoggerT IO) Assertion -> TestTree
+unitTestCase :: String -> ExceptT BackendError (LoggerT IO) Assertion -> TestTree
 unitTestCase testName errorOrAssertionWithLogs =
   testCase testName (traceLogs errorOrAssertionWithLogs)
   where
-    traceLogs :: ExceptT CompileError (SilentLoggerT IO) Assertion -> Assertion
+    traceLogs :: ExceptT BackendError (LoggerT IO) Assertion -> Assertion
     traceLogs e = do
       let e' = logCompileError e
       (v, warnings) <- runSilentLoggerT e'
@@ -34,5 +34,5 @@ unitTestCase testName errorOrAssertionWithLogs =
               then v
               else trace (showCompileWarnings $ groupWarnings warnings) v
       case result of
-        Left x -> developerError $ pretty $ formatCompileError x
+        Left x -> developerError $ pretty $ formatError x
         Right y -> y

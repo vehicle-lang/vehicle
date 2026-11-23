@@ -13,15 +13,8 @@ import Prettyprinter (Pretty (..))
 data Relevance
   = Relevant
   | Irrelevant
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData Relevance
-
-instance Hashable Relevance
-
-instance ToJSON Relevance
-
-instance Serialize Relevance
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (NFData, Hashable, ToJSON, Serialize)
 
 instance Semigroup Relevance where
   Relevant <> Relevant = Relevant

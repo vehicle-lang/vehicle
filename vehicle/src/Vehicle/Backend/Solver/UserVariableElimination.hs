@@ -7,14 +7,15 @@ module Vehicle.Backend.Solver.UserVariableElimination
   )
 where
 
--- Needed as Applicative is exported by Prelude in GHC 9.6 and above.
 import Control.Applicative (Applicative (..))
-import Control.Monad (forM)
+import Control.Monad (forM, forM_)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
-import Control.Monad.State (MonadState (..))
-import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
+import Control.Monad.State (MonadState (..), gets, modify)
+import Control.Monad.Trans.Writer.CPS (runWriterT)
+import Control.Monad.Writer.Class (MonadWriter (..))
 import Data.Map qualified as Map
+import Data.Set (Set)
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
 import Vehicle.Backend.Solver.UserVariableElimination.LinearExpr (LinearityError (..), compileLinearAssertion)
@@ -33,7 +34,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Scope.Records (constructFromTensorFreeVar, constructToTensorFreeVar)
-import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..))
+import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..), unblockSliceVariable)
 import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Interface
@@ -43,12 +44,12 @@ import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Context.Name (getFreshTensorBinderName, getNameContext, prettyFriendlyInCtx)
-import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStackedChildren)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields, getRecordProvenance)
 import Vehicle.Verify.Core
-import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
+import Vehicle.Verify.QueryFormat (QueryFormat (..), QueryFormatID, supportsStrictInequalities)
 import Vehicle.Verify.Specification (CompilationStep (..))
+-- Needed as Applicative is exported by Prelude in GHC 9.6 and above.
 import Prelude hiding (Applicative (..))
 
 eliminateExistsRecord ::
@@ -157,7 +158,7 @@ eliminateExistless value = do
 -- of assertions implicitly existentially quantified by a set of network
 -- input/output variables.
 compileBoolExpr ::
-  (MonadQueryStructure m, MonadWriter [Thunk Builtin] m) =>
+  (MonadQueryStructure m, MonadWriter NetworkInputEqualities m) =>
   Thunk Builtin ->
   m (MaybeTrivial Partitions)
 compileBoolExpr value = do
@@ -169,8 +170,8 @@ compileBoolExpr value = do
     ----------------
     VBoolLiteral b -> return $ Trivial b
     VCompareRatTensor (op, args) -> purifyAndCompileAssertion op args
-    VQuantifyRatTensor (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
-    VQuantifyRecord (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
+    VQuantifyRatTensor (Forall, _) -> throwUndiagnosed UnsupportedAlternatingQuantifiers
+    VQuantifyRecord (Forall, _) -> throwUndiagnosed UnsupportedAlternatingQuantifiers
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VImplies args -> compileBoolExpr $ elimImplies args
@@ -238,7 +239,7 @@ compilePurifiedAssertion (op, args@(TensorComparisonArgs _pDims dims xs ys)) = d
     Right assertion -> do
       return $ Right assertion
     Left NonLinearity ->
-      throwError catchableUnsupportedNonLinearConstraint
+      throwUndiagnosed UnsupportedNonLinearConstraint
     Left (UnexpectedExpr e) ->
       developerError ("unexpected expression" <+> prettyVerbose e)
     Left (TrivialExpr b) ->
@@ -261,7 +262,7 @@ findVariableFromLevel = return . SliceVariable
 
 type MonadQuantifierBody m =
   ( MonadQueryStructure m,
-    MonadWriter [Thunk Builtin] m
+    MonadWriter NetworkInputEqualities m
   )
 
 unblockingActions ::
@@ -282,7 +283,7 @@ unblockQuantifiedBoundVar ::
   m (IfTree (Thunk Builtin) (Thunk Builtin))
 unblockQuantifiedBoundVar unblock lv spine = case spine of
   _ : _ -> unexpectedExprError "purification" "bound var with non-empty spine"
-  [] -> unblock =<< replaceTensorVariableWithStackedChildren (SliceVariable lv)
+  [] -> unblockSliceVariable unblock (SliceVariable lv)
 
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
@@ -295,16 +296,64 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
   let typ = networkType networkInfo
 
-  -- The low-level network representation works over tensors
-  -- Create two tensors representing the network input and output
-  (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
+  -- Reuse an existing application of the same network to a syntactically
+  -- identical input if there is one, otherwise create a new one.
+  maybeKey <- networkArgCacheKey arg
+  maybeCached <- case maybeKey of
+    Nothing -> return Nothing
+    Just key -> gets (Map.lookup (name, key) . networkApplicationCache)
+
+  CachedNetworkApplication {..} <- case maybeCached of
+    Just cached -> do
+      logDebug MaxDetail "reusing-existing-network-application"
+      return cached
+    Nothing -> do
+      newApp <- createNetworkApplication name networkInfo arg
+      forM_ maybeKey $ \key ->
+        modify $ \ctx -> ctx {networkApplicationCache = Map.insert (name, key) newApp (networkApplicationCache ctx)}
+      return newApp
+
+  -- Note that even if the application is reused, the input equality must be
+  -- emitted again as we may be in a different scope to the one in which it
+  -- was originally created.
+  tell (Map.singleton cachedInputVariable cachedInputEquality)
 
   -- If our network outputs a tensorisable, convert our output expression to a record
   transformedOutputVarExpr <- case networkOutputType typ of
     UniModal (RecordIOType (NetworkRecordType _ recordTyp _ _)) -> do
-      Forced <$> forceFreeVar (constructFromTensorFreeVar recordTyp) [explicit outputVarExpr]
+      Forced <$> forceFreeVar (constructFromTensorFreeVar recordTyp) [explicit cachedOutputExpr]
     MultiModal _ -> error "Multimodal IO is not implemented yet"
-    _ -> return outputVarExpr
+    _ -> return cachedOutputExpr
+
+  logDebugM MaxDetail $ do
+    inputEqualityDoc <- prettyFriendlyInCtx cachedInputEquality
+    replacementExprDoc <- prettyFriendlyInCtx transformedOutputVarExpr
+    return $
+      "note-input-equality" <+> inputEqualityDoc
+        <> line
+        <> "replace-expr" <+> replacementExprDoc
+
+  case networkOutputType typ of
+    -- Unblock depending on the type of the output expression from our network
+    UniModal (RecordIOType (NetworkRecordType {})) -> unblockFnRecord transformedOutputVarExpr
+    UniModal (TensorIOType (NetworkTensorType {})) -> unblockFnTensor transformedOutputVarExpr
+    MultiModal _ -> error "Multimodal IO is not implemented yet"
+
+-- | Creates a new network application, returning the variable representing
+-- its input, the expression representing its output and the equality between
+-- the input variable and the value the network is applied to.
+createNetworkApplication ::
+  (MonadQueryStructure m) =>
+  Name ->
+  NetworkContextInfo ->
+  Thunk Builtin ->
+  m CachedNetworkApplication
+createNetworkApplication name networkInfo arg = do
+  let typ = networkType networkInfo
+
+  -- The low-level network representation works over tensors
+  -- Create two tensors representing the network input and output
+  (inputVar, inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
 
   -- Create our input equality in terms of tensors (as record equality just converts to tensor equality anyway)
   -- If our network input is a tensorisable, i.e. arg is tensorisable, convert it to a tensor
@@ -326,21 +375,7 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
             }
         )
 
-  tell [inputEquality]
-
-  logDebugM MaxDetail $ do
-    inputEqualityDoc <- prettyFriendlyInCtx inputEquality
-    replacementExprDoc <- prettyFriendlyInCtx transformedOutputVarExpr
-    return $
-      "note-input-equality" <+> inputEqualityDoc
-        <> line
-        <> "replace-expr" <+> replacementExprDoc
-
-  case networkOutputType typ of
-    -- Unblock depending on the type of the output expression from our network
-    UniModal (RecordIOType (NetworkRecordType {})) -> unblockFnRecord transformedOutputVarExpr
-    UniModal (TensorIOType (NetworkTensorType {})) -> unblockFnTensor transformedOutputVarExpr
-    MultiModal _ -> error "Multimodal IO is not implemented yet"
+  return $ CachedNetworkApplication inputVar outputVarExpr inputEquality
 
 --------------------------------------------------------------------------------
 -- Elimination operations
@@ -386,8 +421,8 @@ eliminateTensorAssertion op (TensorComparisonArgs _pDims rDims xs ys) = do
           let stackExpr = Forced $ mkExpr accessStackTensor (StackTensorArgs (Forced IBoolType) d d0Arg stackElements)
           let result = Forced $ mkExpr accessReduceAnd (TensorReductionArgs (Forced $ mkDims [n]) stackExpr)
           return result
-        _ -> compilerDeveloperError ("unexpected dimension" <+> prettyVerbose d)
-    _ -> compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose rDims)
+        _ -> developerError ("unexpected dimension" <+> prettyVerbose d)
+    _ -> developerError ("unexpected dimensions" <+> prettyVerbose rDims)
 
 toComparison ::
   (MonadNorm Builtin m) =>
@@ -409,39 +444,46 @@ toComparison (op, TensorOp2Args dims xs ys) = do
 
 networkEqualitiesToPartition ::
   (MonadQueryStructure m) =>
-  [Thunk Builtin] ->
+  NetworkInputEqualities ->
   m (MaybeTrivial Partitions)
-networkEqualitiesToPartition networkEqualities = do
-  logDebugM MaxDetail $ do
-    networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
-    return $ vsep networkEqDocs <> line
+networkEqualitiesToPartition = go mempty
+  where
+    -- Takes the set of input variables whose equalities have already been included.
+    -- This is used to avoid including the equality for reused applications twice.
+    go ::
+      (MonadQueryStructure m) =>
+      Set NetworkInputTensorVariable ->
+      NetworkInputEqualities ->
+      m (MaybeTrivial Partitions)
+    go processed equalities = do
+      let networkEqualities = Map.elems equalities
+      logDebugM MaxDetail $ do
+        networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
+        return $ vsep networkEqDocs <> line
 
-  results <- forM networkEqualities $ \equality -> do
-    (partitions, newNetworkEqualities) <- runWriterT (compileBoolExpr equality)
-    if null newNetworkEqualities
-      then return partitions
-      else andTrivial andPartitions partitions <$> networkEqualitiesToPartition newNetworkEqualities
+      let newProcessed = processed <> Map.keysSet equalities
+      results <- forM networkEqualities $ \equality -> do
+        (partitions, newNetworkEqualities) <- runWriterT (compileBoolExpr equality)
+        let unprocessedEqualities = Map.withoutKeys newNetworkEqualities newProcessed
+        if null unprocessedEqualities
+          then return partitions
+          else andTrivial andPartitions partitions <$> go newProcessed unprocessedEqualities
 
-  return $ foldr (andTrivial andPartitions) (Trivial True) results
+      return $ foldr (andTrivial andPartitions) (Trivial True) results
 
 --------------------------------------------------------------------------------
 -- Vector operations preservation
 
--- | Constructs a temporary error with no real fields. This should be recaught
--- and populated higher up the query compilation process.
-catchableUnsupportedAlternatingQuantifiersError :: CompileError
-catchableUnsupportedAlternatingQuantifiersError =
-  UnsupportedAlternatingQuantifiers x x x
-  where
-    x = developerError "Evaluating temporary quantifier error"
-
--- | Constructs a temporary error with no real fields. This should be recaught
--- and populated higher up the query compilation process.
-catchableUnsupportedNonLinearConstraint :: CompileError
-catchableUnsupportedNonLinearConstraint =
-  UnsupportedNonLinearConstraint x x x
-  where
-    x = developerError "Evaluating temporary quantifier error"
+-- | Throws an error that is not yet diagnosed. This should be caught higher up
+-- the query compilation process, where the original source of the problem
+-- can be located by re-analysing the original program.
+throwUndiagnosed ::
+  (MonadPropertyStructure m, MonadError BackendError m) =>
+  (QueryFormatID -> DeclProvenance -> Diagnosis a -> BackendError) ->
+  m b
+throwUndiagnosed mkError = do
+  PropertyMetaData {..} <- ask
+  throwError $ mkError (queryFormatID queryFormat) propertyProvenance Undiagnosed
 
 showEntry :: (MonadQueryStructure m) => Thunk Builtin -> m ()
 showEntry v = do

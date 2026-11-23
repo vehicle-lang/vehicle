@@ -4,7 +4,6 @@ module Vehicle.Data.Builtin.Linearity.Solver
 where
 
 import Data.Maybe (mapMaybe)
-import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
@@ -148,9 +147,9 @@ powLinearityOp p l1 l2 = case (l1, l2) of
 -- Other
 
 getTypeClass ::
-  (MonadCompile m) =>
+  (Monad m) =>
   InstanceGoal LinearityBuiltin ->
   m (LinearityRelation, UnforcedSpineWithMetas LinearityBuiltin)
 getTypeClass = \case
   (InstanceGoal [] (Right (LinearityRelation tc)) args) -> return (tc, args)
-  _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."
+  _ -> developerError "Unexpected non-type-class instance argument found."

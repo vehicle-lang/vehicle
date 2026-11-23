@@ -53,7 +53,7 @@ data IsabelleOptions = IsabelleOptions
 currentPhase :: Doc ()
 currentPhase = "compilation to Isabelle"
 
-compileProgToIsabelle :: (MonadCompile m) => Prog DecidabilityBuiltin -> IsabelleOptions -> m (Doc a)
+compileProgToIsabelle :: (MonadBackend m) => Prog DecidabilityBuiltin -> IsabelleOptions -> m (Doc a)
 compileProgToIsabelle (Main ds) options =
   logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal (Main ds)
@@ -148,7 +148,7 @@ logExit e = do
 
 data Dependency
   = RequireImport Library
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 data LocaleDef
   = NetworkDefStatement Code Code
@@ -183,7 +183,7 @@ data Library
   | VehicleTensorSubtensor
   | VehicleTensorScalarMult
   | VehicleUtils
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance Pretty Library where
   pretty = \case
@@ -342,7 +342,7 @@ binderBrackets _topLevel Instance {} = braces . braces
 -- Monad stack
 
 type MonadIsabelleCompile m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadNameContext m
   )
 
@@ -907,9 +907,9 @@ compileBuiltin isOutType localeAssms b args = case b of
       developerError $
         "compilation of builtin" <+> quotePretty b <+> "to Isabelle unsupported"
 
-    unsupportedArgsError :: (MonadIsabelleCompile m) => m a
+    unsupportedArgsError :: a
     unsupportedArgsError = do
-      compilerDeveloperError $
+      developerError $
         "compilation of"
           <+> quotePretty b
           <+> "with args"
@@ -1007,7 +1007,7 @@ data ComparisonDomain
   = CIndex
   | CNat
   | CRatTensor
-  deriving (Eq)
+  deriving stock (Eq)
 
 compileComparison :: (MonadIsabelleCompile m) => [LocaleDef] -> ComparisonDomain -> ComparisonOp -> [Arg DecidabilityBuiltin] -> m Code
 compileComparison localeAssms domain op = do

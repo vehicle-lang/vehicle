@@ -12,18 +12,11 @@ data ExtendedRational
   = NegInfinity
   | Finite Rational
   | PosInfinity
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData ExtendedRational
-
-instance Hashable ExtendedRational
-
-instance Serialize ExtendedRational
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, Hashable, Serialize, FromJSON)
 
 instance ToJSON ExtendedRational where
   toJSON = genericToJSON jsonOptions
-
-instance FromJSON ExtendedRational
 
 instance Pretty ExtendedRational where
   pretty = \case

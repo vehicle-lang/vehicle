@@ -17,21 +17,14 @@ import Vehicle.Prelude.Error (developerError)
 -- Record field names
 
 data FieldName = FieldName Provenance Name
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
+  deriving anyclass (NFData, Serialize, Hashable, ToJSON)
 
 instance Eq FieldName where
   FieldName _ n1 == FieldName _ n2 = n1 == n2
 
 instance Ord FieldName where
   FieldName _ n1 <= FieldName _ n2 = n1 <= n2
-
-instance NFData FieldName
-
-instance Serialize FieldName
-
-instance Hashable FieldName
-
-instance ToJSON FieldName
 
 instance Pretty FieldName where
   pretty (FieldName _ name) = pretty name

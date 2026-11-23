@@ -3,27 +3,27 @@
 --------------------------------------------------------------------------------
 
 -- Implementation of the `:` syntax
-typeAnn : forallT (t : Type) . t -> t
+typeAnn : (t : Type) -> t -> t
 typeAnn t a = a
 
 --------------------------------------------------------------------------------
 -- Bool
 --------------------------------------------------------------------------------
 
-forallInList : (A -> Bool) -> List A -> Bool
+forallInList : (a -> Bool) -> List a -> Bool
 forallInList f xs = fold (\x y -> x and y) True (map f xs)
 
-existsInList : (A -> Bool) -> List A -> Bool
+existsInList : (a -> Bool) -> List a -> Bool
 existsInList f xs = fold (\x y -> x or y) False (map f xs)
 
 --------------------------------------------------------------------------------
 -- Index
 --------------------------------------------------------------------------------
 
-existsIndex : forallT {n} . (Index n -> Bool) -> Bool
+existsIndex : {n : Nat} -> (Index n -> Bool) -> Bool
 existsIndex f = reduceOr (foreach i . f i)
 
-forallIndex : forallT {n} . (Index n -> Bool) -> Bool
+forallIndex : {n : Nat} -> (Index n -> Bool) -> Bool
 forallIndex f = reduceAnd (foreach i . f i)
 
 --------------------------------------------------------------------------------

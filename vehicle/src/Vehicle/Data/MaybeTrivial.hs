@@ -1,15 +1,10 @@
 module Vehicle.Data.MaybeTrivial where
 
 import Control.DeepSeq (NFData)
-import Control.Monad (ap)
-import Control.Monad.Except (MonadError (..))
 import Control.Monad.Identity (Identity (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT)
-import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
-import Vehicle.Prelude (Doc, MonadStdIO (..), Pretty (..))
-import Vehicle.Prelude.Supply
+import Vehicle.Prelude (Doc, Pretty (..))
 
 --------------------------------------------------------------------------------
 -- Triviality
@@ -19,13 +14,8 @@ import Vehicle.Prelude.Supply
 data MaybeTrivial a
   = Trivial !Bool
   | NonTrivial !a
-  deriving (Show, Generic, Foldable, Traversable)
-
-instance (NFData a) => NFData (MaybeTrivial a)
-
-instance (ToJSON a) => ToJSON (MaybeTrivial a)
-
-instance (FromJSON a) => FromJSON (MaybeTrivial a)
+  deriving stock (Show, Generic, Foldable, Traversable)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance Functor MaybeTrivial where
   fmap f = \case
@@ -49,6 +39,23 @@ trivialElim f g = \case
 bindMaybeTrivial :: MaybeTrivial a -> (a -> MaybeTrivial b) -> MaybeTrivial b
 bindMaybeTrivial (NonTrivial x) f = f x
 bindMaybeTrivial (Trivial b) _ = Trivial b
+
+-- | Monadic version of `bindMaybeTrivial`: runs the continuation only if the
+-- result of the first computation is non-trivial, otherwise short-circuits
+-- with the trivial result.
+--
+-- IMPORTANT: this should not be used in contexts where the results are
+-- either conjuncted or disjuncted together, as it simply returns the trivial
+-- result rather than combining them together appropriately!
+bindNonTrivial :: (Monad m) => m (MaybeTrivial a) -> (a -> m (MaybeTrivial b)) -> m (MaybeTrivial b)
+bindNonTrivial action f = do
+  result <- action
+  case result of
+    Trivial b -> return (Trivial b)
+    NonTrivial a -> f a
+{-# INLINE bindNonTrivial #-}
+
+infixl 1 `bindNonTrivial`
 
 flattenTrivial :: MaybeTrivial (MaybeTrivial a) -> MaybeTrivial a
 flattenTrivial x = bindMaybeTrivial x id
@@ -84,72 +91,3 @@ andTrivialM f x y = case (x, y) of
 
 andTrivial :: (a -> a -> a) -> MaybeTrivial a -> MaybeTrivial a -> MaybeTrivial a
 andTrivial f x y = runIdentity (andTrivialM (\u v -> return $ f u v) x y)
-
---------------------------------------------------------------------------------
--- Triviality typeclass
-
--- | IMPORTANT: this monad should not be used in contexts where the results are
--- either conjuncted or disjuncted together, as this monad will simply return
--- the trivial result rather than combine them together appropriately!
-class (Monad m) => MonadMaybeTrivial m where
-  trivial :: Bool -> m a
-  nonTrivial :: a -> m a
-
-instance (MonadMaybeTrivial m) => MonadMaybeTrivial (ReaderT a m) where
-  trivial = lift . trivial
-  nonTrivial = lift . nonTrivial
-
---------------------------------------------------------------------------------
--- Triviality monad
-
-newtype MaybeTrivialT m a = MaybeTrivialT
-  { -- | IMPORTANT: this monad should not be used in contexts where the results are
-    -- either conjuncted or disjuncted together, as this monad will simply return
-    -- the trivial result rather than combine them together appropriately!
-    runMaybeTrivialT :: m (MaybeTrivial a)
-  }
-  deriving (Functor)
-
-mapMaybeTrivialT ::
-  (m (MaybeTrivial a) -> n (MaybeTrivial b)) ->
-  MaybeTrivialT m a ->
-  MaybeTrivialT n b
-mapMaybeTrivialT f = MaybeTrivialT . f . runMaybeTrivialT
-
-instance (Monad m) => Applicative (MaybeTrivialT m) where
-  pure = MaybeTrivialT . return . NonTrivial
-  (<*>) = ap
-
-instance (Monad m) => Monad (MaybeTrivialT m) where
-  action >>= f = MaybeTrivialT $ do
-    result <- runMaybeTrivialT action
-    case result of
-      Trivial b -> return (Trivial b)
-      NonTrivial a -> runMaybeTrivialT (f a)
-
-instance MonadTrans MaybeTrivialT where
-  lift = MaybeTrivialT . fmap NonTrivial
-
-instance (Monad m) => MonadMaybeTrivial (MaybeTrivialT m) where
-  trivial = MaybeTrivialT . pure . Trivial
-  nonTrivial = MaybeTrivialT . pure . NonTrivial
-
-instance (MonadError e m) => MonadError e (MaybeTrivialT m) where
-  throwError = lift . throwError
-  catchError m f = MaybeTrivialT (catchError (runMaybeTrivialT m) (runMaybeTrivialT . f))
-
-instance (MonadIO m) => MonadIO (MaybeTrivialT m) where
-  liftIO = lift . liftIO
-
-instance (MonadStdIO m) => MonadStdIO (MaybeTrivialT m) where
-  writeStdout = lift . writeStdout
-  writeStderr = lift . writeStderr
-  writeStdoutLn = lift . writeStdoutLn
-  writeStderrLn = lift . writeStderrLn
-
-instance (MonadSupply t m) => MonadSupply t (MaybeTrivialT m) where
-  demand = lift demand
-
-instance (MonadReader e m) => MonadReader e (MaybeTrivialT m) where
-  ask = lift ask
-  local = mapMaybeTrivialT . local

@@ -1,7 +1,6 @@
 module Vehicle.Compile.Type.System where
 
 import Data.Proxy (Proxy)
-import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
@@ -90,7 +89,7 @@ monomorphisationError b args = do
 data AuxiliaryConstraintProgress builtin
   = Stuck MetaSet
   | Progress [WithContext (UnificationConstraint builtin)] [WithContext (InstanceConstraint builtin)]
-  deriving (Show)
+  deriving stock (Show)
 
 handleAuxiliaryConstraintProgress ::
   (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
@@ -113,7 +112,7 @@ instance Semigroup (AuxiliaryConstraintProgress builtin) where
   Progress u1 r1 <> Progress u2 r2 = Progress (u1 <> u2) (r1 <> r2)
 
 blockOn ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   MetaSet ->
   m (Maybe (AuxiliaryConstraintProgress builtin))
 blockOn metas

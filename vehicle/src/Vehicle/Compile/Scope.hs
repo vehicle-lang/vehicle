@@ -7,6 +7,7 @@ module Vehicle.Compile.Scope
 where
 
 import Control.Monad (forM)
+import Control.Monad.Except (MonadError (..))
 import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
@@ -15,7 +16,6 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
 import Vehicle.Data.AST.Expr.Desugared qualified as S
-import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Universe (UniverseLevel (..))
 
@@ -23,17 +23,20 @@ import Vehicle.Data.Universe (UniverseLevel (..))
 -- Decl scoping
 
 scopeModuleDecls ::
-  (MonadCompile m, ScopableBuiltin builtin) =>
+  (MonadFrontend m, ScopableBuiltin builtin) =>
   ModulePath ->
   ImportedModuleContext builtin ->
   [S.Decl builtin] ->
   m ([Decl builtin], ModuleScopingInterface builtin)
 scopeModuleDecls modulePath initialState decls = do
   logCompilerPass Scoping $ do
-    runMonadScopeT modulePath initialState $ do
+    result <- runMonadScopeT modulePath initialState $ do
       concat <$> traverse scopeDecl decls
+    case result of
+      Left err -> throwError $ ScopeError err
+      Right value -> return value
 
-scopeDecl :: (MonadScope builtin m, PrintableBuiltin builtin) => S.Decl builtin -> m [Decl builtin]
+scopeDecl :: (MonadScope builtin m) => S.Decl builtin -> m [Decl builtin]
 scopeDecl decl =
   logCompileDecl "scoping" decl $ do
     scopedDecls <- case decl of
@@ -41,9 +44,13 @@ scopeDecl decl =
         t' <- runMonadScopeExprT $ scopeExpr t
         return [DefAbstract p ident r t']
       DefFunction p ident anns t e -> do
-        t' <- runMonadScopeExprT $ scopeExpr =<< generaliseType t
+        t' <-
+          if isAnnotatedAsProperty anns
+            then return t
+            else runMonadScopeExprT $ generaliseType t
+        t'' <- runMonadScopeExprT $ scopeExpr =<< generaliseType t'
         e' <- runMonadScopeExprT $ scopeExpr e
-        return [DefFunction p ident anns t' e']
+        return [DefFunction p ident anns t'' e']
       DefRecord p ident sort telescope fields supports -> do
         (telescope', fields') <- runMonadScopeExprT $ scopeRecordDefinition ident telescope fields
         auxiliaryDeclarations <- generateAuxiliaryRecordDefinitions p ident sort telescope' fields' supports

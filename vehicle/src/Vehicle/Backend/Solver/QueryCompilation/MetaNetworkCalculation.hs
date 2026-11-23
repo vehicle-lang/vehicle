@@ -1,20 +1,20 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
 module Vehicle.Backend.Solver.QueryCompilation.MetaNetworkCalculation
   ( calculateMetaNetworkApplications,
   )
 where
 
-import Control.Monad (forM, unless)
+import Control.Monad (foldM, forM, unless)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
+import Control.Monad.Trans.Writer.CPS (runWriterT)
+import Control.Monad.Writer.Class (MonadWriter (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (Coercible, coerce)
+import Data.Containers.ListUtils (nubOrd)
 import Data.DisjointSet (DisjointSet)
 import Data.DisjointSet qualified as DisjointSet
 import Data.Either (lefts)
-import Data.List (sort, transpose)
+import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -39,35 +39,20 @@ import Vehicle.Verify.QueryFormat (QueryFormat (..))
 import Vehicle.Verify.Specification (CompilationStep (..))
 
 calculateMetaNetworkApplications ::
-  (MonadQueryCompilation m, MonadMaybeTrivial m) =>
+  (MonadQueryCompilation m) =>
   ConjunctAll LinearAssertion ->
-  m (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep])
+  m (MaybeTrivial (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep]))
 calculateMetaNetworkApplications assertions = do
   (eliminationResult, compilationSteps) <- runWriterT $ eliminateRedundantApplications assertions
   case eliminationResult of
-    Trivial b -> trivial b
+    Trivial b -> return $ Trivial b
     NonTrivial newAssertions -> do
       networkApps <- calculateMetaNetworkApps newAssertions
       checkIfMetaNetworkSupported networkApps
-      nonTrivial (networkApps, newAssertions, compilationSteps)
+      return $ NonTrivial (networkApps, newAssertions, compilationSteps)
 
 --------------------------------------------------------------------------------
 -- Redundant network applications
-
--- | A mapping from the current variable at some position in the tensor back
--- to the original variable that represents the whole tensor
---   e.g. { (x_00 -> x), (y_00 -> y), (z_00 -> z) }
-type TensorVariableMapping = Map NestedSliceVariable NetworkInputTensorVariable
-
-childTensorVariableMappings :: TensorVariableMapping -> Maybe [TensorVariableMapping]
-childTensorVariableMappings mapping = do
-  let us = Map.toList mapping
-  let vs = mapM (\(u, v) -> fmap (,v) (childVariablesOf u)) us
-  case vs of
-    Nothing -> Nothing
-    Just zs -> Just $ do
-      let xs = transpose $ fmap (\(u, v) -> fmap (,v) u) zs
-      fmap Map.fromList xs
 
 type EquivalenceClasses = DisjointSet (Either NetworkInputTensorVariable RatTensor)
 
@@ -90,12 +75,22 @@ eliminateRedundantApplications assertions =
     logEqualitiesFound equalities
 
     applicationsByNetwork <- Map.toList <$> getNetworkApplications
+
+    -- Only compute the equivalence classes of the slice variables if there is
+    -- some network with more than one application, as otherwise there is
+    -- nothing to eliminate.
+    let hasMultipleApplications = any (\(_, apps) -> length apps > 1) applicationsByNetwork
+    sliceClasses <-
+      if hasMultipleApplications
+        then calculateSliceEquivalenceClasses equalities
+        else return DisjointSet.empty
+
     equivalenceClasses <- forM applicationsByNetwork $ \(networkName, applications) ->
       logCompilerSection2 MaxDetail ("checking applications of network" <+> quotePretty networkName) $ do
         logDebug MaxDetail $ pretty (length applications) <+> "application found" <> line
         if length applications == 1
           then return mempty
-          else calculateNetworkTensorInputEquivalenceClasses networkName equalities applications
+          else calculateNetworkTensorInputEquivalenceClasses sliceClasses applications
 
     logDebugM MaxDetail $ do
       classesDoc <- traverse prettyEquivalenceClasses equivalenceClasses
@@ -111,12 +106,19 @@ eliminateRedundantApplications assertions =
     let resultingAssertions =
           if Map.null subst
             then NonTrivial assertions
-            else eliminateTrivialConjunctions $ fmap (eliminateVarsInComparison subst) assertions
+            else removeDuplicateConjuncts <$> eliminateTrivialConjunctions (fmap (eliminateVarsInComparison subst) assertions)
 
     logDebugM MaxDetail $ do
       assertionsDoc <- prettyFriendlyInCtx resultingAssertions
       return $ "Result:" <> lineIndent assertionsDoc
     return resultingAssertions
+
+-- | Removes duplicate assertions, which may be created when substituting
+-- away redundant network applications (e.g. if `g₀[input] == f₀[input]` and
+-- `g₁[input] == f₀[input]` then substituting `g₁` with `g₀` will duplicate
+-- the former).
+removeDuplicateConjuncts :: ConjunctAll LinearAssertion -> ConjunctAll LinearAssertion
+removeDuplicateConjuncts (ConjunctAll (x :| xs)) = ConjunctAll (x :| nubOrd (filter (/= x) xs))
 
 -- | Finds equality assertions of the form `a - b == 0` (i.e. `a == b`)
 isSimpleVariableEquality :: LinearAssertion -> Maybe SimpleEquality
@@ -128,75 +130,90 @@ isSimpleVariableEquality = \case
       _ -> Nothing
   _ -> Nothing
 
+-- | The equivalence classes of slice variables and constants implied by the
+-- simple equalities in a query.
+type SliceEquivalenceClasses = DisjointSet (Either SliceVariable RatTensor)
+
+-- | Calculates the equivalence classes of slice variables implied by the
+-- provided equalities. Note:
+--
+--   1. The equalities may relate the inputs and outputs of any network, so
+--      equalities are found transitively via the variables of other networks,
+--      e.g. `g₀[input] == f₀[input]` and `g₁[input] == f₀[input]` imply
+--      `g₀[input] == g₁[input]`.
+--
+--   2. The classes are closed downwards, i.e. if two tensors are equal then
+--      so are their corresponding slices, and if a tensor is equal to a
+--      constant then each of its slices is equal to the corresponding slice of
+--      the constant.
+calculateSliceEquivalenceClasses ::
+  (MonadQueryCompilation m) =>
+  [SimpleEquality] ->
+  m SliceEquivalenceClasses
+calculateSliceEquivalenceClasses = foldM addEquality DisjointSet.empty
+  where
+    addEquality ::
+      (MonadQueryCompilation m) =>
+      SliceEquivalenceClasses ->
+      SimpleEquality ->
+      m SliceEquivalenceClasses
+    addEquality classes (v1, value) = do
+      nestedVar1 <- lookupNestedSliceVariable v1
+      case value of
+        Left v2 -> do
+          nestedVar2 <- lookupNestedSliceVariable v2
+          return $ unionVariables nestedVar1 nestedVar2 classes
+        Right constant ->
+          return $ unionConstant nestedVar1 constant classes
+
+    unionVariables :: NestedSliceVariable -> NestedSliceVariable -> SliceEquivalenceClasses -> SliceEquivalenceClasses
+    unionVariables x y classes = do
+      let newClasses = DisjointSet.union (Left (toSliceVar x)) (Left (toSliceVar y)) classes
+      case (childVariablesOf x, childVariablesOf y) of
+        (Just xs, Just ys) -> foldr (uncurry unionVariables) newClasses (zip xs ys)
+        _ -> newClasses
+
+    unionConstant :: NestedSliceVariable -> RatTensor -> SliceEquivalenceClasses -> SliceEquivalenceClasses
+    unionConstant x constant classes = do
+      let newClasses = DisjointSet.union (Left (toSliceVar x)) (Right constant) classes
+      let constantSlices = unstack constant
+      case childVariablesOf x of
+        Just xs -> foldr (uncurry unionConstant) newClasses (zip xs constantSlices)
+        _ -> newClasses
+
+-- | Partitions the applications of a network into classes whose inputs are
+-- known to be equal. Two inputs are equal if they are in the same equivalence
+-- class, or if all of their corresponding slices are equal.
 calculateNetworkTensorInputEquivalenceClasses ::
   forall m.
   (MonadQueryCompilation m) =>
-  Name ->
-  [SimpleEquality] ->
+  SliceEquivalenceClasses ->
   NonEmpty NetworkApplicationInfo ->
   m EquivalenceClasses
-calculateNetworkTensorInputEquivalenceClasses networkName equalities applications = do
-  let inputVariables = inputVariable <$> NonEmpty.toList applications
-  let initialEquivalenceClasses = DisjointSet.fromLists (fmap (\v -> [Left v]) inputVariables)
-  initialTensorVariableMapping <- forM inputVariables $ \inputVar -> do
-    parentVar <- lookupNestedTensorVariable inputVar
-    return (parentVar, inputVar)
-  go mempty initialEquivalenceClasses (Map.fromList initialTensorVariableMapping)
+calculateNetworkTensorInputEquivalenceClasses sliceClasses applications = do
+  inputVariables <- forM (NonEmpty.toList applications) $ \app -> do
+    let inputVar = inputVariable app
+    nestedVar <- lookupNestedTensorVariable inputVar
+    return (inputVar, nestedVar)
+  let classes = foldl addToClass [] inputVariables
+  return $ DisjointSet.fromLists (fmap (fmap (Left . fst)) classes)
   where
-    go :: TensorIndices -> EquivalenceClasses -> TensorVariableMapping -> m EquivalenceClasses
-    go tensorIndices equivalenceClasses tensorVariableMapping = logCompilerSection2 MaxDetail ("search for tensor element input equalities for variable" <+> squotes (pretty networkName <> pretty (showTensorIndices (reverse tensorIndices)))) $ do
-      -- Calculate the equivalence classes from the equalities you can find at this level
-      expandedEquivalenceClasses <- expandEquivalenceClasses equalities tensorVariableMapping equivalenceClasses
+    addToClass ::
+      [[(NetworkInputTensorVariable, NestedSliceVariable)]] ->
+      (NetworkInputTensorVariable, NestedSliceVariable) ->
+      [[(NetworkInputTensorVariable, NestedSliceVariable)]]
+    addToClass [] v = [[v]]
+    addToClass (c : cs) v = case c of
+      (_, representative) : _ | areEqual representative (snd v) -> (c <> [v]) : cs
+      _ -> c : addToClass cs v
 
-      logDebugM MaxDetail $ do
-        classesDoc <- prettyEquivalenceClasses expandedEquivalenceClasses
-        return $ "equivalenceClasses:" <> lineIndent classesDoc
-
-      if DisjointSet.sets expandedEquivalenceClasses == 1
-        then do
-          logDebug MaxDetail "all applications found to be equal"
-          return expandedEquivalenceClasses
-        else do
-          -- Recursively calculate the equivalence classes you can find at the next level down.
-          let maybeChildren = childTensorVariableMappings tensorVariableMapping
-          case maybeChildren of
-            Nothing -> return expandedEquivalenceClasses
-            Just childMappings -> intersectEquivalenceClasses <$> forM (zip childMappings [0 ..]) (\(m, i) -> go (i : tensorIndices) expandedEquivalenceClasses m)
-
-expandEquivalenceClasses ::
-  (MonadLogger m) =>
-  [SimpleEquality] ->
-  Map NestedSliceVariable NetworkInputTensorVariable ->
-  EquivalenceClasses ->
-  m EquivalenceClasses
-expandEquivalenceClasses equalities variables equivalenceClasses = return $ foldr processEquality equivalenceClasses equalities
-  where
-    tensorVariableMap :: Map SliceVariable NetworkInputTensorVariable
-    tensorVariableMap = Map.mapKeys toSliceVar variables
-
-    processEquality ::
-      SimpleEquality ->
-      EquivalenceClasses ->
-      EquivalenceClasses
-    processEquality (v1, value) classes = case (Map.lookup v1 tensorVariableMap, value) of
-      (Nothing, _) -> classes
-      (Just iv1, Right v) -> DisjointSet.union (Left iv1) (Right v) classes
-      (Just iv1, Left v2) -> case Map.lookup v2 tensorVariableMap of
-        (Just iv2) -> DisjointSet.union (Left iv1) (Left iv2) classes
-        Nothing -> classes
-
--- | Takes a list of intersection equivalence classes and returns the
--- intersection of the equivalence classes.
-intersectEquivalenceClasses :: [EquivalenceClasses] -> EquivalenceClasses
-intersectEquivalenceClasses [] = developerError "Cannot have empty equivalence classes"
-intersectEquivalenceClasses (c : cs) = foldr intersect c cs
-  where
-    intersect :: EquivalenceClasses -> EquivalenceClasses -> EquivalenceClasses
-    intersect xs ys = do
-      let u = cartesianProduct Set.intersection (DisjointSet.toSets xs) (DisjointSet.toSets ys)
-      case DisjointSet.fromSets u of
-        Nothing -> developerError "Non-disjoint sets accidentally created"
-        Just result -> result
+    areEqual :: NestedSliceVariable -> NestedSliceVariable -> Bool
+    areEqual x y
+      | toSliceVar x == toSliceVar y = True
+      | DisjointSet.equivalent (Left (toSliceVar x)) (Left (toSliceVar y)) sliceClasses = True
+      | otherwise = case (childVariablesOf x, childVariablesOf y) of
+          (Just xs, Just ys) -> and (zipWith areEqual xs ys)
+          _ -> False
 
 createSubstitutionFromEquivalenceClasses ::
   (MonadQueryCompilation m, MonadWriter [CompilationStep] m) =>

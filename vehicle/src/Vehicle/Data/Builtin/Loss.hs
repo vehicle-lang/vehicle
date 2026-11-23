@@ -39,12 +39,11 @@ data LossBuiltin (mode :: LossMode)
   | LossBuiltinCast LossBuiltinCast
   | LossBuiltinTypeClass LossBuiltinTypeClass
   | LossBuiltinTypeClassOp LossBuiltinTypeClassOp
-  deriving (Show, Eq, Ord, Generic)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty (LossBuiltin mode) where
   pretty = pretty . show
-
-instance Hashable (LossBuiltin mode)
 
 --------------------------------------------------------------------------------
 -- Builtin types
@@ -53,13 +52,12 @@ instance Hashable (LossBuiltin mode)
 -- are viewed as constructors for `Type`.
 data LossBuiltinType
   = GradientType
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinType where
   pretty = \case
     GradientType -> "GradientType"
-
-instance Hashable LossBuiltinType
 
 --------------------------------------------------------------------------------
 -- Constructor datatype
@@ -69,14 +67,13 @@ instance Hashable LossBuiltinType
 data LossBuiltinConstructor
   = WithGradients
   | WithoutGradients
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinConstructor where
   pretty = \case
     WithGradients -> "withGradients"
     WithoutGradients -> "withoutGradients"
-
-instance Hashable LossBuiltinConstructor
 
 --------------------------------------------------------------------------------
 -- Loss casts
@@ -89,14 +86,13 @@ instance Hashable LossBuiltinConstructor
 data LossBuiltinCast
   = FromBoolTensorToBoolTensor
   | FromBoolTensorToRatTensor
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinCast where
   pretty = \case
     FromBoolTensorToBoolTensor -> "fromBoolTensorToBoolTensor"
     FromBoolTensorToRatTensor -> "fromBoolTensorToRatTensor"
-
-instance Hashable LossBuiltinCast
 
 --------------------------------------------------------------------------------
 -- Loss function
@@ -104,14 +100,22 @@ instance Hashable LossBuiltinCast
 -- | Note that these additional functions are added so that they can be detected
 -- and removed with a nice user error message.
 data LossBuiltinFunction
-  = IfRatTensorWithGradients
-  deriving (Eq, Ord, Show, Generic)
+  = -- | An if operation whose conditions have gradients. This is currently
+    -- unsupported, but we use this constructor as a marker so we can throw a
+    -- reasonable error after type-checking.
+    IfWhoseConditionHasGradients
+  | -- | A `stack` whose elements each keep their own gradient.
+    StackRatTensor
+  | -- | An `if` operation whose branches each keep their own gradient.
+    IfRatTensor
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinFunction where
   pretty = \case
-    IfRatTensorWithGradients -> "ifWithGradients"
-
-instance Hashable LossBuiltinFunction
+    IfWhoseConditionHasGradients -> "ifWhoseConditionHasGradients"
+    StackRatTensor -> "stackRatTensor"
+    IfRatTensor -> "ifRatTensor"
 
 --------------------------------------------------------------------------------
 -- Type-classes
@@ -125,6 +129,7 @@ data LossBuiltinTypeClass
   | HasReduceAnd
   | HasReduceOr
   | HasIfRatTensor
+  | HasIfNonRatTensor
   | HasPointwiseRatTensorCompare ComparisonOp
   | HasReducedRatTensorCompare ComparisonOp
   | HasExists
@@ -133,7 +138,8 @@ data LossBuiltinTypeClass
   | ValidNetworkIOType
   | ValidDatasetType
   | ValidParamType
-  deriving (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinTypeClass where
   pretty = \case
@@ -147,14 +153,13 @@ instance Pretty LossBuiltinTypeClass where
     HasPointwiseRatTensorCompare op -> "HasPointwiseRatTensorCompare" <> brackets (pretty op)
     HasReducedRatTensorCompare op -> "HasReducedRatTensorCompare" <> brackets (pretty op)
     HasIfRatTensor -> "HasIfRatTensor"
+    HasIfNonRatTensor -> "HasIfNonRatTensor"
     HasExists -> "HasExists"
     MaxGradients -> "MaxGradients"
     ValidNetworkType -> "ValidNetworkType"
     ValidNetworkIOType -> "ValidNetworkIOType"
     ValidDatasetType -> "ValidDatasetType"
     ValidParamType -> "ValidParamType"
-
-instance Hashable LossBuiltinTypeClass
 
 --------------------------------------------------------------------------------
 -- Type-classes
@@ -171,7 +176,9 @@ data LossBuiltinTypeClassOp
   | CompareRatTensorReducedTCOp ComparisonOp
   | ExistsTCOp
   | IfRatTensorTCOp
-  deriving (Eq, Ord, Show, Generic)
+  | IfNonRatTensorTCOp
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinTypeClassOp where
   pretty = \case
@@ -186,8 +193,7 @@ instance Pretty LossBuiltinTypeClassOp where
     CompareRatTensorReducedTCOp op -> comparisonOpName op <> "RatTensorReducedTC"
     ExistsTCOp -> "existsTC"
     IfRatTensorTCOp -> "ifRatTensorTCOp"
-
-instance Hashable LossBuiltinTypeClassOp
+    IfNonRatTensorTCOp -> "ifNonRatTensorTCOp"
 
 --------------------------------------------------------------------------------
 -- Functions
@@ -625,6 +631,9 @@ hasExists t = lossTypeClass HasExists @@ [t]
 hasIfRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 hasIfRatTensor t = lossTypeClass HasIfRatTensor @@ [t]
 
+hasIfNonRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+hasIfNonRatTensor t = lossTypeClass HasIfNonRatTensor @@ [t]
+
 hasNot :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 hasNot t = lossTypeClass HasNot @@ [t]
 
@@ -663,3 +672,6 @@ validNetworkIOType g t = lossTypeClass ValidNetworkIOType @@ [g, t]
 
 maxGradients :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 maxGradients g1 g2 g3 = lossTypeClass MaxGradients @@ [g1, g2, g3]
+
+pattern IRatTypeWithGradients :: Expr (LossBuiltin mode)
+pattern IRatTypeWithGradients <- App (Builtin _ (StandardBuiltinType RatType)) _

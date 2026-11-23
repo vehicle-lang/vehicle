@@ -28,7 +28,7 @@ data BoundedValue value bounds = BoundedValue
   { boundedValue :: value,
     valueBounds :: bounds
   }
-  deriving (Show)
+  deriving stock (Show)
 
 instance Functor (BoundedValue value) where
   fmap f (BoundedValue var bounds) = BoundedValue var (f bounds)
@@ -84,13 +84,8 @@ data LowerBound expr = LowerBound
   { lowerBoundRel :: InequalityRelation,
     lowerBoundValue :: expr
   }
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
-
-instance (NFData expr) => NFData (LowerBound expr)
-
-instance (ToJSON expr) => ToJSON (LowerBound expr)
-
-instance (FromJSON expr) => FromJSON (LowerBound expr)
+  deriving stock (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance (HasShape expr) => HasShape (LowerBound expr) where
   shapeOf = shapeOf . lowerBoundValue
@@ -113,13 +108,8 @@ data UpperBound expr = UpperBound
   { upperBoundRel :: InequalityRelation,
     upperBoundValue :: expr
   }
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
-
-instance (NFData expr) => NFData (UpperBound expr)
-
-instance (ToJSON expr) => ToJSON (UpperBound expr)
-
-instance (FromJSON expr) => FromJSON (UpperBound expr)
+  deriving stock (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance (ConstantLike expr m) => IsBound UpperBound expr m where
   andBound (UpperBound r1 v1) (UpperBound r2 v2) = do
@@ -149,13 +139,8 @@ data SliceBounds expr = SliceBounds
   { lowerBounds :: [LowerBound expr],
     upperBounds :: [UpperBound expr]
   }
-  deriving (Show, Eq, Ord, Generic)
-
-instance (NFData expr) => NFData (SliceBounds expr)
-
-instance (ToJSON expr) => ToJSON (SliceBounds expr)
-
-instance (FromJSON expr) => FromJSON (SliceBounds expr)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
 
 instance IsBounds SliceBounds constant where
   emptyBounds = SliceBounds mempty mempty
@@ -171,7 +156,7 @@ data NestedSliceBounds expr = NestedSliceBounds
   { sliceBounds :: SliceBounds expr,
     childSliceBounds :: Maybe [NestedSliceBounds expr]
   }
-  deriving (Show, Eq, Ord)
+  deriving stock (Show, Eq, Ord)
 
 singleNestedSliceBound ::
   SliceBounds expr ->
@@ -184,6 +169,34 @@ singleNestedSliceBound bounds shape indices = case (shape, indices) of
     let childBounds = [if i == idx then singleNestedSliceBound bounds ds idxs else emptyBounds | i <- [0 .. d - 1]]
     NestedSliceBounds emptyBounds (Just childBounds)
   _ -> developerError "Malformed shape and indices"
+
+-- | Builds the nested bounds for a collection of slice bounds in one pass.
+-- Equivalent to `foldr1 andBounds . map (\(is, b) -> singleNestedSliceBound b shape is)`
+-- but linear rather than quadratic in the number of slices.
+nestedSliceBoundsFromList ::
+  TensorShape ->
+  [(TensorIndices, SliceBounds expr)] ->
+  NestedSliceBounds expr
+nestedSliceBoundsFromList shape entries = do
+  -- Bounds with no remaining indices apply to this slice, the rest apply
+  -- to the child slice given by their first index.
+  let boundsOnThisSlice = [bounds | ([], bounds) <- entries]
+  let boundsOnChildren = [(i, (is, bounds)) | (i : is, bounds) <- entries]
+
+  let childBounds = case (shape, boundsOnChildren) of
+        (_, []) -> Nothing
+        (d : ds, _) -> do
+          -- Group the bounds by child index. `fromListWith (<>)` prepends each new
+          -- bound to the group, hence the `reverse` to restore the original order.
+          let boundsByChild = reverse <$> Map.fromListWith (<>) [(i, [entry]) | (i, entry) <- boundsOnChildren]
+          let mkChildBounds i = maybe emptyBounds (nestedSliceBoundsFromList ds) (Map.lookup i boundsByChild)
+          Just $ map mkChildBounds [0 .. d - 1]
+        ([], _) -> developerError "Malformed shape and indices"
+
+  NestedSliceBounds
+    { sliceBounds = foldr andBounds emptyBounds boundsOnThisSlice,
+      childSliceBounds = childBounds
+    }
 
 instance IsBounds NestedSliceBounds expr where
   emptyBounds =
@@ -207,7 +220,7 @@ instance IsBounds NestedSliceBounds expr where
 newtype TensorBounds expr = TensorBounds
   { tensorSliceBounds :: NestedSliceBounds expr
   }
-  deriving (Eq, Ord)
+  deriving stock (Eq, Ord)
 
 instance IsBounds TensorBounds expr where
   emptyBounds =
@@ -288,7 +301,17 @@ convertToTensorBounds ::
   constant ->
   m (TensorBounds constant)
 convertToTensorBounds shape indices rel coeff bound = do
-  -- c*x + b REL 0   -> x REL (-1/c)*b
+  let sliceBounds = convertToSliceBounds rel coeff bound
+  let tensorSliceBounds = singleNestedSliceBound sliceBounds shape indices
+  return $ TensorBounds tensorSliceBounds
+
+-- | Converts `c*x + b REL 0` where `bound = (-1/c)*b` into the bounds `x REL bound`.
+convertToSliceBounds ::
+  Relation ->
+  Coefficient ->
+  constant ->
+  SliceBounds constant
+convertToSliceBounds rel coeff bound = do
   let strictness = case rel of
         OEq -> These NonStrict NonStrict
         OLt
@@ -299,9 +322,11 @@ convertToTensorBounds shape indices rel coeff bound = do
           | otherwise -> That NonStrict
 
   let maybeBounds = bimap (`LowerBound` bound) (`UpperBound` bound) strictness
-  let sliceBounds = maybeBoundsToSliceBounds maybeBounds
-  let tensorSliceBounds = singleNestedSliceBound sliceBounds shape indices
-  return $ TensorBounds tensorSliceBounds
+  maybeBoundsToSliceBounds maybeBounds
+
+mapSliceBounds :: (a -> b) -> SliceBounds a -> SliceBounds b
+mapSliceBounds f (SliceBounds lower upper) =
+  SliceBounds (fmap (fmap f) lower) (fmap (fmap f) upper)
 
 --------------------------------------------------------------------------------
 -- Domains
@@ -310,7 +335,7 @@ data Domain expr = Domain
   { lowerBound :: LowerBound expr,
     upperBound :: UpperBound expr
   }
-  deriving (Show, Functor)
+  deriving stock (Show, Functor)
 
 isSatisfiable :: Domain RatTensor -> Bool
 isSatisfiable (Domain LowerBound {..} UpperBound {..}) = do

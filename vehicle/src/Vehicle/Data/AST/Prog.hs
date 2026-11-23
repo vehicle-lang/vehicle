@@ -9,8 +9,10 @@ import Vehicle.Prelude
 newtype GenericProg expr = Main
   { programDeclarations :: [GenericDecl expr]
   }
-  deriving (Foldable, Functor, Traversable)
+  deriving stock (Foldable, Functor, Traversable)
 
+-- | `Prog builtin` is the AST for Vehicle, with `builtin` being the set of tokens the AST is made of.
+-- `Prog Builtin` is the AST after parsing, and other `builtin` types are used for the result of different transformations on the AST.
 type Prog builtin = GenericProg (Expr builtin)
 
 traverseDecls ::

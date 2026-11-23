@@ -13,6 +13,7 @@
       - [Testing](#testing)
         - [Running specific tests](#running-specific-tests)
         - [The unit tests](#the-unit-tests)
+        - [The LSP tests](#the-lsp-tests)
         - [The golden tests](#the-golden-tests)
         - [Adding golden tests](#adding-golden-tests)
         - [Updating the golden files](#updating-the-golden-files)
@@ -232,15 +233,16 @@ Ensure that you can successfully build the Vehicle compiler.
 
 The tests for the Vehicle compiler are in the `vehicle/tests/` subdirectory and use [the Tasty testing framework] as well as a custom driver for golden file tests—see `vehicle/tests/golden/Vehicle/Test/Golden.hs`.
 
-There are two test suites for the Vehicle compiler:
+There are three test suites for the Vehicle compiler:
 
 - [The unit tests](#the-unit-tests) (`unit-tests`)
+- [The LSP tests](#the-lsp-tests) (`lsp-tests`)
 - [The golden tests](#the-golden-tests) (`golden-tests`)
 
-The standard command to test the Vehicle compiler runs the unit and the compiler tests:
+The standard command to test the Vehicle compiler runs the unit, LSP, and compiler tests:
 
 ```sh
-cabal test unit-tests golden-tests --test-show-details=streaming --test-option=--color=always --test-option=--num-threads=1
+cabal test unit-tests lsp-tests golden-tests --test-show-details=streaming --test-option=--color=always
 ```
 
 This command is run on GitHub Actions whenever changes are pushed to Vehicle the default branch or an open pull request—see `.github/workflows/build-vehicle.yml`.
@@ -285,8 +287,6 @@ Test suite golden-tests: RUNNING...
 Test suite golden-tests: PASS
 ```
 
-The option `--test-option=--num-threads=1` asks the testing framework to only run one test at a time. If you omit this option, you may get some failing tests due to [#342](https://github.com/vehicle-lang/vehicle/issues/342).
-
 ##### Running specific tests
 
 You can use the option `--test-option="-p /X/"` to only run tests with `X` in their name, _e.g._, if you only want to run the tests for the wind controller example (`examples/windController/`), you can add `--test-option="-p /windController/"`:
@@ -330,12 +330,26 @@ The unit tests test properties of the internals of Vehicle, _e.g._, of the Vehic
 Run the following command:
 
 ```sh
-cabal test unit-tests --test-show-details=streaming --test-option=--color=always --test-option=--num-threads=1
+cabal test unit-tests --test-show-details=streaming --test-option=--color=always
 ```
 
 You can use `--test-option="--vehicle-logging X"` to set the logging level, where `X` is one of `NoDetail`, `MinDetail`, `MidDetail`, or `MaxDetail`. The logging levels can be found by running `vehicle --help`.
 
 These tests are specified in Haskell in `vehicle/tests/unit/`.
+
+##### The LSP tests
+
+The LSP tests use `lsp-test` to exercise the `vehicle lsp` server in an end-to-end session.
+
+Run the following command:
+
+```sh
+cabal test lsp-tests --test-show-details=streaming --test-option=--color=always
+```
+
+These tests are specified in Haskell under `vehicle/tests/LSP/`.
+
+Note: Currently the LSP tests are not run in CI as the language server is still in early development. They will be added to CI once the language server is more stable.
 
 ##### The golden tests
 
@@ -344,7 +358,7 @@ The golden tests test properties of the compiler as a whole, by running it with 
 Run the following command:
 
 ```sh
-cabal test golden-tests --test-show-details=streaming --test-option=--color=always --test-option=--num-threads=1
+cabal test golden-tests --test-show-details=streaming --test-option=--color=always
 ```
 
 These tests are specified in `test.json` files in `vehicle/tests/golden/`, _e.g._, `vehicle/tests/golden/compile/windController/test.json`:
@@ -422,38 +436,6 @@ Some golden tests require external tools, such as the MarabouVerify test above. 
 Some golden tests diff extremely large files such as `.vcl-plan`s, for which the diff isn't very meaningful.
 In order to only display the change in size for a given file type, add `--test-option="--sizeOnly=<extension>"` to the test command, where `<extension>` is the extension of the chosen file type.
 
-##### Adding golden tests
-
-To create a new golden test, you can use the `new-golden-test` command.
-
-1. Compose the Vehicle command you'd like to test, _e.g._,
-
-   ```sh
-   vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries -n controller:controller.onnx
-   ```
-
-   Use `cabal run vehicle --` rather than `vehicle` to ensure that you are building and running the current version, rather than an old installation.
-
-2. Run the Vehicle command, and check that it succeeds.
-
-3. Run the same Vehicle command, but prefixed with:
-
-   ```sh
-   cabal run new-golden-test --
-   ```
-
-   For instance:
-
-   ```sh
-   cabal run new-golden-test -- vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries -n controller:controller.onnx
-   ```
-
-   This creates or updates the `test.json` file to add the test.
-
-   You can add `--test-timeout` _before_ the Vehicle command to set a timeout for the test case.
-
-   You can add `--test-path` _before_ the Vehicle command to add the test to a particular directory, which creates or updates the `test.json` file in that directory and copies any necessary files.
-
 ##### Updating the golden files
 
 If the output of the Vehicle compiler changes, it is necessary to update the `vehicle/tests/golden/` files for the compiler tests.
@@ -467,7 +449,7 @@ The procedure for updating the golden files is:
 1. Ensure that all changes are committed.
 2. Run the following command:
    ```sh
-   cabal test golden-tests --test-option=--num-threads=1 --test-option="--accept"
+   cabal test golden-tests --test-option="--accept"
    ```
 3. Review the changes to the golden files, _e.g._, by inspecting the output of the following command:
    ```sh
@@ -540,7 +522,7 @@ Ensure that you have the source code and that you have installed GHC and Cabal.
    vehicle --version
    ```
 
-   This should print `0.28.0`.
+   This should print `0.29.0`.
 
 ### Building the Vehicle Python bindings
 
@@ -726,14 +708,14 @@ Follow the Python setup instructions above and then:
   uv build
   ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.28.0-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.29.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.28.0-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.29.0-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
@@ -778,7 +760,7 @@ uv run --extra wheel scripts/build-wheel.sh
    vehicle --version
    ```
 
-   This should print `0.28.0`.
+   This should print `0.29.0`.
 
 4. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -849,7 +831,7 @@ The procedure to create a new release is:
   Run the following command from the root of the repository:
 
   ```sh
-  cabal test all --test-option=--num-threads=1
+  cabal test all
   ```
 
   **Vehicle Python bindings tests**
@@ -934,11 +916,11 @@ The procedure to create a new release is:
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.28.0-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.28.0-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.28.0-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.28.0-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.28.0-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.29.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.29.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.29.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.29.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.29.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -959,7 +941,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.28.0>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.29.0>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

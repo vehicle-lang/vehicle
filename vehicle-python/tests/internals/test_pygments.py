@@ -8,6 +8,7 @@ import pytest
 from ..config import PYTHON_TEST_SPECS_PATH
 
 
+@pytest.mark.skip(reason="Hangs in CI when run via cibuildwheel; under investigation")  # type: ignore[untyped-decorator]
 @pytest.mark.parametrize(
     "vehicle_file",
     PYTHON_TEST_SPECS_PATH.glob("*.vcl"),

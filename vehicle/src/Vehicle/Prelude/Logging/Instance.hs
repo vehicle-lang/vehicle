@@ -5,8 +5,6 @@ module Vehicle.Prelude.Logging.Instance
     LoggingSettings (..),
     runLoggerT,
     runSilentLoggerT,
-    runSilentLogger,
-    SilentLoggerT,
     showCompileWarnings,
     OutputAsJSON,
   )
@@ -14,13 +12,10 @@ where
 
 import Control.Monad (unless, when)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Identity (Identity (..))
-import Control.Monad.RWS (MonadReader (..), MonadState (..), RWST (..), gets)
-import Control.Monad.Reader (asks)
-import Control.Monad.State (modify)
+import Control.Monad.Reader (ReaderT (..), asks)
 import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
-import Control.Monad.Writer.Strict (MonadWriter (..), WriterT (..))
 import Data.Bifunctor (Bifunctor (..))
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Text (Text, pack, unpack)
 import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Print.Warning ()
@@ -32,6 +27,7 @@ import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecifi
 
 --------------------------------------------------------------------------------
 -- Settings
+
 type OutputAsJSON = Bool
 
 data LoggingSettings = LoggingSettings
@@ -45,9 +41,9 @@ data LoggingSettings = LoggingSettings
 -- Standard logging monad
 
 data LoggingState = LoggingState
-  { currentStack :: CompilerStack,
-    currentDepth :: Int,
-    matchesTargetStack :: Bool
+  { currentStack :: !CompilerStack,
+    currentDepth :: !Int,
+    matchesTargetStack :: !Bool
   }
 
 initialLoggingState :: LoggingSettings -> LoggingState
@@ -72,40 +68,90 @@ updateLoggingState LoggingSettings {..} item oldState = do
           }
   newState
 
-newtype LoggerT m a = LoggerT
-  { unLoggerT :: RWST LoggingSettings [CompileWarning] LoggingState m a
+-- | The read-only environment of the logger. The mutable parts of the logging
+-- state are stored in `IORef`s so that the monad is a simple `ReaderT` over
+-- the underlying monad.
+data LoggerEnv = LoggerEnv
+  { loggerSettings :: !LoggingSettings,
+    -- | Cached so that checking whether logging is enabled is a single field read.
+    loggerSilent :: !Bool,
+    loggerState :: !(IORef LoggingState),
+    loggerWarnings :: !(IORef [CompileWarning])
   }
-  deriving (Functor, Applicative, Monad)
+
+newtype LoggerT m a = LoggerT
+  { unLoggerT :: ReaderT LoggerEnv m a
+  }
+  deriving newtype (Functor, Applicative, Monad)
+
+-- | Only runs the action if logging is enabled.
+unlessSilent :: (Monad m) => LoggerT m () -> LoggerT m ()
+unlessSilent action = do
+  silent <- LoggerT $ asks loggerSilent
+  unless silent action
+{-# INLINE unlessSilent #-}
+
+readLoggingState :: (MonadIO m) => LoggerT m LoggingState
+readLoggingState = LoggerT $ do
+  ref <- asks loggerState
+  liftIO $ readIORef ref
+{-# INLINE readLoggingState #-}
+
+writeLoggingState :: (MonadIO m) => LoggingState -> LoggerT m ()
+writeLoggingState newState = LoggerT $ do
+  ref <- asks loggerState
+  liftIO $ writeIORef ref newState
+{-# INLINE writeLoggingState #-}
+
+modifyLoggingState :: (MonadIO m) => (LoggingState -> LoggingState) -> LoggerT m ()
+modifyLoggingState f = LoggerT $ do
+  ref <- asks loggerState
+  liftIO $ modifyIORef' ref f
+{-# INLINE modifyLoggingState #-}
+
+-- | Updates the compiler stack for the duration of the action. When logging
+-- is disabled the stack is irrelevant and so this is just the action.
+withStackEntry :: (MonadIO m) => Either CompilerPass Identifier -> LoggerT m a -> LoggerT m a
+withStackEntry item action = do
+  silent <- LoggerT $ asks loggerSilent
+  if silent
+    then action
+    else do
+      settings <- LoggerT $ asks loggerSettings
+      oldState <- readLoggingState
+      writeLoggingState $ updateLoggingState settings item oldState
+      result <- action
+      writeLoggingState oldState
+      return result
 
 instance (MonadIO m) => MonadLogger (LoggerT m) where
-  setCallDepth x = LoggerT $ modify (\s -> s {currentDepth = x})
-  getCallDepth = LoggerT $ gets currentDepth
-  incrCallDepth = LoggerT $ modify (\s -> s {currentDepth = currentDepth s + 1})
-  decrCallDepth = LoggerT $ modify (\s -> s {currentDepth = currentDepth s - 1})
-  getDebugLevel = LoggerT $ asks loggingLevel
-  logWarning w = LoggerT $ tell [w]
-  logMessage message = LoggerT $ do
-    loggingEnabled <- gets matchesTargetStack
-    when loggingEnabled $ do
-      logAction <- asks putLogLn
-      lift $ liftIO $ logAction (pack $ show message)
-  runCompilerPass compilerPass action =
-    LoggerT $ do
-      settings <- ask
-      oldState <- get
-      put $ updateLoggingState settings (Left compilerPass) oldState
-      result <- unLoggerT action
-      put oldState
-      return result
+  setCallDepth x =
+    unlessSilent $ modifyLoggingState (\s -> s {currentDepth = x})
 
-  runCompileDecl decl action =
-    LoggerT $ do
-      settings <- ask
-      oldState <- get
-      put $ updateLoggingState settings (Right decl) oldState
-      result <- unLoggerT action
-      put oldState
-      return result
+  getCallDepth = currentDepth <$> readLoggingState
+
+  incrCallDepth =
+    unlessSilent $ modifyLoggingState (\s -> s {currentDepth = currentDepth s + 1})
+
+  decrCallDepth =
+    unlessSilent $ modifyLoggingState (\s -> s {currentDepth = currentDepth s - 1})
+
+  getDebugLevel = LoggerT $ asks (loggingLevel . loggerSettings)
+
+  logWarning w = LoggerT $ do
+    ref <- asks loggerWarnings
+    liftIO $ modifyIORef' ref (w :)
+
+  logMessage message =
+    unlessSilent $ do
+      loggingEnabled <- matchesTargetStack <$> readLoggingState
+      when loggingEnabled $ LoggerT $ do
+        logAction <- asks (putLogLn . loggerSettings)
+        liftIO $ logAction (pack $ show message)
+
+  runCompilerPass compilerPass = withStackEntry (Left compilerPass)
+
+  runCompileDecl decl = withStackEntry (Right decl)
 
 instance MonadTrans LoggerT where
   lift = LoggerT . lift
@@ -126,65 +172,46 @@ instance (MonadStdIO m) => MonadStdIO (LoggerT m) where
 instance (MonadReadSpecification m) => MonadReadSpecification (LoggerT m) where
   readSpecification = lift . readSpecification
 
-runLoudLoggerT :: (MonadIO m) => LoggingSettings -> LoggerT m a -> m (a, [CompileWarning])
-runLoudLoggerT loggingSettings (LoggerT value) = do
-  let initialState = initialLoggingState loggingSettings
-  (result, _, warnings) <- runRWST value loggingSettings initialState
-  return (result, warnings)
-
 --------------------------------------------------------------------------------
--- No logging
+-- Running the logger
 
-newtype SilentLoggerT m a = SilentLoggerT
-  { unSilentLoggerT :: WriterT [CompileWarning] m a
-  }
-  deriving (Functor, Applicative, Monad)
+runLoggerTWithWarnings ::
+  (MonadIO m) =>
+  LoggingSettings ->
+  LoggerT m a ->
+  m (a, [CompileWarning])
+runLoggerTWithWarnings loggingSettings (LoggerT value) = do
+  stateRef <- liftIO $ newIORef (initialLoggingState loggingSettings)
+  warningsRef <- liftIO $ newIORef []
+  let env =
+        LoggerEnv
+          { loggerSettings = loggingSettings,
+            loggerSilent = loggingLevel loggingSettings == NoDetail,
+            loggerState = stateRef,
+            loggerWarnings = warningsRef
+          }
+  result <- runReaderT value env
+  warnings <- liftIO $ readIORef warningsRef
+  return (result, reverse warnings)
 
-instance MonadTrans SilentLoggerT where
-  lift = SilentLoggerT . lift
-
-instance (Monad m) => MonadLogger (SilentLoggerT m) where
-  logMessage _message = return ()
-  getCallDepth = return 0
-  setCallDepth _ = return ()
-  incrCallDepth = return ()
-  decrCallDepth = return ()
-  getDebugLevel = return NoDetail
-  logWarning w = SilentLoggerT $ tell [w]
-  runCompilerPass _ a = a
-  runCompileDecl _ a = a
-
-instance (MonadIO m) => MonadIO (SilentLoggerT m) where
-  liftIO = lift . liftIO
-
-instance (MonadStdIO m) => MonadStdIO (SilentLoggerT m) where
-  writeStdout = lift . VIO.writeStdout
-  writeStderr = lift . VIO.writeStderr
-  writeStdoutLn = lift . VIO.writeStdoutLn
-  writeStderrLn = lift . VIO.writeStderrLn
-
-instance (MonadReadSpecification m) => MonadReadSpecification (SilentLoggerT m) where
-  readSpecification = lift . readSpecification
-
-runSilentLoggerT :: SilentLoggerT m a -> m (a, [CompileWarning])
-runSilentLoggerT e = runWriterT (unSilentLoggerT e)
-
-runSilentLogger :: SilentLoggerT Identity a -> a
-runSilentLogger e = fst $ runIdentity $ runSilentLoggerT e
-
---------------------------------------------------------------------------------
+-- | Runs the logger without logging, returning any warnings generated.
+runSilentLoggerT :: (MonadIO m) => LoggerT m a -> m (a, [CompileWarning])
+runSilentLoggerT =
+  runLoggerTWithWarnings $
+    LoggingSettings
+      { putLogLn = const (return ()),
+        loggingLevel = NoDetail,
+        loggingTarget = emptyStack,
+        noWarnings = True
+      }
 
 runLoggerT ::
-  (MonadStdIO m, MonadReadSpecification m) =>
+  (MonadIO m) =>
   LoggingSettings ->
-  (forall n. (MonadStdIO n, MonadLogger n, MonadReadSpecification n) => n a) ->
+  LoggerT m a ->
   m a
 runLoggerT loggingSettings@LoggingSettings {..} value = do
-  (result, warnings) <-
-    if loggingLevel == NoDetail
-      then runSilentLoggerT value
-      else runLoudLoggerT loggingSettings value
-
+  (result, warnings) <- runLoggerTWithWarnings loggingSettings value
   unless (null warnings || noWarnings) $
     liftIO $
       putLogLn $

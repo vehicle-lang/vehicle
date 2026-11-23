@@ -35,7 +35,7 @@ data Ignore = Ignore
     -- | Lines produced by the test command that should be ignored.
     ignoreLines :: IgnoreLines
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 instance Semigroup Ignore where
   (<>) :: Ignore -> Ignore -> Ignore
@@ -68,7 +68,8 @@ instance ToJSON Ignore where
 -- IgnoreFiles
 
 newtype IgnoreFiles = IgnoreFiles [FilePattern]
-  deriving (Eq, Show, Semigroup, Monoid)
+  deriving stock (Eq, Show)
+  deriving newtype (Semigroup, Monoid)
 
 ignoreFilesToIgnore :: IgnoreFiles -> Ignore
 ignoreFilesToIgnore ignoreFiles = Ignore ignoreFiles mempty
@@ -103,7 +104,8 @@ instance IsOption IgnoreFiles where
 -- IgnoreLines
 
 newtype IgnoreLines = IgnoreLines [TextPattern]
-  deriving (Eq, Show, Semigroup, Monoid)
+  deriving stock (Eq, Show)
+  deriving newtype (Semigroup, Monoid)
 
 ignoreLinesToIgnore :: IgnoreLines -> Ignore
 ignoreLinesToIgnore = Ignore mempty

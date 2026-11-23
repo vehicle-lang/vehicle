@@ -16,7 +16,7 @@ import Test.Tasty qualified as Tasty (Timeout (NoTimeout, Timeout))
 import Test.Tasty.Options (IsOption (..))
 
 newtype Timeout = Timeout {toTastyTimeout :: Tasty.Timeout}
-  deriving (Show)
+  deriving stock (Show)
 
 instance Semigroup Timeout where
   (<>) :: Timeout -> Timeout -> Timeout

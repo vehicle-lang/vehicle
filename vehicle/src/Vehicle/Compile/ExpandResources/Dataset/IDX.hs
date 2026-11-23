@@ -73,7 +73,7 @@ readIDX file decl rawDatasetType expectedType = do
           parseIDX (mkCtx parser) expectedType elems
 
 readIDXFile ::
-  (MonadCompile m, MonadIO m) =>
+  (MonadBackend m, MonadIO m) =>
   DeclProvenance ->
   FilePath ->
   m (Maybe IDXData)
@@ -84,10 +84,6 @@ readIDXFile decl file = do
     Left ioExcept -> do
       throwError $ ResourceIOError decl Dataset ioExcept
 
--- WARNING: There appears to be a pernicious bug with the
--- current version of the HLS (VSCode plugin v2.2.0, HLS v1.7.0)
--- where the below function causes the IDE to start spinning forever shortly
--- after changing things in this file. Can't currently find a workaround.
 parseIDX ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
@@ -291,10 +287,10 @@ partitionData dim dims content = do
 toTensor :: (Eq a, Vector.Unbox a) => TensorShape -> Vector a -> Tensor a
 toTensor shape values = Tensor.fromVector shape (V.convert values)
 
-variableSizeError :: (MonadCompile m) => ParseContext m a -> UnforcedType Builtin -> m b
+variableSizeError :: (MonadError BackendError m) => ParseContext m a -> UnforcedType Builtin -> m b
 variableSizeError ParseContext {..} dim =
   throwError $ DatasetVariableSizeTensor declProv expectedDatasetType dim
 
-dimensionMismatchError :: (MonadCompile m) => ParseContext m a -> m b
+dimensionMismatchError :: (MonadError BackendError m) => ParseContext m a -> m b
 dimensionMismatchError ParseContext {..} =
   throwError $ DatasetDimensionsMismatch declProv datasetFile expectedDatasetType actualDims

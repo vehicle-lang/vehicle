@@ -35,7 +35,8 @@ type RewritableBuiltin builtin =
     BuiltinHasBoolLiterals builtin,
     HasTensorLiterals ForcedValue builtin,
     HasLiftableTensorOperations ForcedValue Thunk builtin,
-    BuiltinHasRatType builtin
+    BuiltinHasRatType builtin,
+    BuiltinHasBoolType builtin
   )
 
 type MonadRewrite builtin m =
@@ -64,7 +65,54 @@ forceAndRewriteTensor value = do
     (getExpr accessReduceAddRat -> Just args) -> rewriteReduceAddTensor args
     (getExpr accessReduceMulRat -> Just args) -> rewriteReduceMulTensor args
     (getExpr accessNotTensor -> Just args) -> rewriteNotTensor args
+    (getExpr accessIf -> Just args) -> rewriteIf args
     _ -> return forcedValue
+
+-----------------------------------------------------------------------------
+-- If
+
+-- | If the condition of an `if` is closed (e.g. depends only on index literals)
+-- then select the branch now, rather than leaving the `if` to be unblocked
+-- (and the surrounding tensor expression to be split up element-wise) later.
+rewriteIf ::
+  (MonadRewrite builtin m) =>
+  IfArgs (Thunk builtin) ->
+  m (ForcedValue builtin)
+rewriteIf (IfArgs t c e1 e2) = do
+  fc <- forceAndRewriteCondition c
+  let args = IfArgs t (Forced fc) e1 e2
+  evalResult <- evalIf args
+  case evalResult of
+    Evaluated branch -> forceAndRewriteTensor branch
+    Unevaluable {} -> return $ mkExpr accessIf args
+
+-- | Cheaply decides conditions built from comparisons of index/nat literals.
+forceAndRewriteCondition ::
+  forall builtin m.
+  (MonadRewrite builtin m) =>
+  Thunk builtin ->
+  m (ForcedValue builtin)
+forceAndRewriteCondition c = do
+  fc <- forceAndRewriteTensor c
+  case fc of
+    (getExpr accessCompareIndex -> Just (op, args)) ->
+      force =<< forceEvaluation (accessArgsForOp accessCompareIndex op) (evalCompareIndex op) args
+    (getExpr accessCompareNat -> Just (op, args)) ->
+      force =<< forceEvaluation (accessArgsForOp accessCompareNat op) (evalCompareNat op) args
+    (getExpr accessCompareRatTensor -> Just (op, TensorComparisonArgs pDims rDims xs ys)) -> do
+      xs' <- Forced <$> forceAndRewriteTensor xs
+      ys' <- Forced <$> forceAndRewriteTensor ys
+      let args = TensorComparisonArgs pDims rDims xs' ys'
+      force =<< forceEvaluation (accessArgsForOp accessCompareRatTensor op) (evalCompareRatTensor op) args
+    (getExpr accessAndTensor -> Just (TensorOp2Args ds x y)) -> do
+      x' <- Forced <$> forceAndRewriteCondition x
+      y' <- Forced <$> forceAndRewriteCondition y
+      force =<< evalOrReconstructAnd (TensorOp2Args ds x' y')
+    (getExpr accessOrTensor -> Just (TensorOp2Args ds x y)) -> do
+      x' <- Forced <$> forceAndRewriteCondition x
+      y' <- Forced <$> forceAndRewriteCondition y
+      force =<< evalOrReconstructOr (TensorOp2Args ds x' y')
+    _ -> return fc
 
 forceAndRewriteDims ::
   forall builtin m.
@@ -86,7 +134,7 @@ rewriteAppendList ::
   m (ForcedValue builtin)
 rewriteAppendList args = logCompilerSection2 MaxDetail "rewrite-appendList" $ do
   args' <- traverseAppendListArgs (fmap Forced . forceAndRewriteDims) args
-  force =<< forceEvaluation accessAppendList evalAppendList args'
+  force =<< forceEvalAppendList args'
 
 -----------------------------------------------------------------------------
 -- Const
@@ -97,7 +145,7 @@ rewriteConstTensor ::
   m (ForcedValue builtin)
 rewriteConstTensor args = logCompilerSection2 MaxDetail "rewrite-const" $ do
   args' <- traverseConstTensorValue (fmap Forced . forceAndRewriteTensor) args
-  force =<< forceEvaluation accessConstTensor evalConstTensor args'
+  force =<< evalOrReconstructConst args'
 
 -----------------------------------------------------------------------------
 -- Stack
@@ -173,7 +221,7 @@ rewriteReduceAndTensor =
     rewritePointwiseComparison (op, TensorComparisonArgs pDims rDims xs ys)
       | op == Ne = return Nothing
       | otherwise = do
-          rDims' <- forceEvaluation accessAppendList evalAppendList $ AppendListArgs (Forced INatType) pDims rDims
+          rDims' <- forceEvalAppendList $ AppendListArgs (Forced INatType) pDims rDims
           let args =
                 TensorComparisonArgs
                   { tensorPointwiseDims = Forced IDimNil,
@@ -260,16 +308,33 @@ rewriteAtTensor args@(AtTensorArgs _tElem _d ds t index) =
   where
     go :: Thunk builtin -> m (ForcedValue builtin)
     go value = logRewrite getNameContext mkAt "at" value $ do
-      rewrittenValue <- forceAndRewriteTensor value
-      let maybeResult =
-            goOp1 rewrittenValue liftableTensorOp1s
-              <|> goOp2 rewrittenValue liftableTensorOp2s
-              <|> goForeach rewrittenValue
-      case maybeResult of
+      forcedValue <- forceThunk value
+      maybeStackResult <- goStack forcedValue
+      case maybeStackResult of
         Just result -> result
         Nothing -> do
-          evalResult <- forceEvaluation accessAtTensor evalAtTensor $ args {atTensor = Forced rewrittenValue}
-          forceThunk evalResult
+          rewrittenValue <- forceAndRewriteTensor (Forced forcedValue)
+          let maybeResult =
+                goOp1 rewrittenValue liftableTensorOp1s
+                  <|> goOp2 rewrittenValue liftableTensorOp2s
+                  <|> goForeach rewrittenValue
+          case maybeResult of
+            Just result -> result
+            Nothing -> do
+              evalResult <- forceEvaluation accessAtTensor evalAtTensor $ args {atTensor = Forced rewrittenValue}
+              forceThunk evalResult
+
+    -- If the tensor is already a stack and the index is a literal, then select
+    -- the element before rewriting, so as to avoid rewriting the other elements
+    -- of the stack.
+    goStack :: ForcedValue builtin -> m (Maybe (m (ForcedValue builtin)))
+    goStack forcedTensor = case getExpr accessStackTensor forcedTensor of
+      Nothing -> return Nothing
+      Just stackArgs -> do
+        forcedIndex <- forceThunk index
+        return $ case forcedIndex of
+          IIndexLiteral i _ -> Just $ forceAndRewriteTensor (stackElements stackArgs !! i)
+          _ -> Nothing
 
     goOp1 :: ForcedValue builtin -> [TensorOpEvalData ForcedValue Thunk TensorOp1Args builtin] -> Maybe (m (ForcedValue builtin))
     goOp1 forcedTensor = \case
@@ -383,7 +448,7 @@ rewriteNotTensor (TensorOp1Args dimensions tensor) =
         (getExpr accessForeachTensor -> Just args) ->
           mkExpr accessForeachTensor <$> negateForeachArgs args
         _ -> do
-          evalResult <- forceEvaluation accessNotTensor evalNot $ TensorOp1Args dims value
+          evalResult <- evalOrReconstructNot $ TensorOp1Args dims value
           forceThunk evalResult
 
     mkNot :: Thunk builtin -> Thunk builtin -> Thunk builtin
@@ -470,33 +535,38 @@ rewriteForeachTensor (ForeachTensorArgs t d ds fn) =
         let lv = boundCtxLv ctx
         let body = extendClosureWithBound closure binder lv
 
-        let createForeachArgs tElem newBody = do
+        let createForeachArgs tElem elemDims newBody = do
               let newBody' = unnormalise (lv + 1) newBody
               let newLam = mkExpr accessForcedLamC (binder, Closure (namedBoundContextToEnv ctx) newBody')
-              ForeachTensorArgs tElem d ds newLam
+              ForeachTensorArgs tElem d elemDims newLam
 
         addNameToContext binder $ do
           rewrittenBody <- forceAndRewriteTensor body
-          liftForeach ctx createForeachArgs lv d t (Forced rewrittenBody)
+          liftForeach ctx createForeachArgs lv d ds t (Forced rewrittenBody)
       _ -> unexpectedExprError "NBE" "foreachIndex"
 
 liftForeach ::
   forall builtin m.
   (MonadRewrite builtin m) =>
   NamedBoundCtx ->
-  (Thunk builtin -> Thunk builtin -> ForeachTensorArgs (Thunk builtin)) ->
+  (Thunk builtin -> Thunk builtin -> Thunk builtin -> ForeachTensorArgs (Thunk builtin)) ->
   Lv ->
+  Thunk builtin ->
   Thunk builtin ->
   Thunk builtin ->
   Thunk builtin ->
   m (ForcedValue builtin)
 liftForeach outputCtx createForeachArgs lv dim = go
   where
+    -- Note that `elemDims` are the dimensions of `body` which may differ from
+    -- the dimensions of the original body of the `foreach` (e.g. when recursing
+    -- into the arguments of a comparison which reduces over some dimensions).
     go ::
       Thunk builtin ->
       Thunk builtin ->
+      Thunk builtin ->
       m (ForcedValue builtin)
-    go typ body = logRewrite (return outputCtx) mkForeach "foreach" body $ do
+    go elemDims typ body = logRewrite (return outputCtx) (mkForeach elemDims) "foreach" body $ do
       forcedBody <- force body
       -- Try each of the following in turn until it works.
       maybeResult <-
@@ -513,13 +583,17 @@ liftForeach outputCtx createForeachArgs lv dim = go
               ]
       case maybeResult of
         Just result -> return result
-        Nothing
-          | doesNotReferenceBoundVar body -> do
-              let dims = Forced $ IDimCons dim $ Forced IDimNil
-              let constArgs = ConstTensorArgs typ body dims
-              forceThunk =<< forceEvaluation accessConstTensor evalConstTensor constArgs
-          | otherwise -> do
-              let args = createForeachArgs typ body
+        Nothing -> do
+          -- `ConstTensor` requires a scalar value so only use it if the body is zero-dimensional.
+          forcedElemDims <- force elemDims
+          case forcedElemDims of
+            IDimNil
+              | doesNotReferenceBoundVar body -> do
+                  let dims = Forced $ IDimCons dim $ Forced IDimNil
+                  let constArgs = ConstTensorArgs typ body dims
+                  forceThunk =<< evalOrReconstructConst constArgs
+            _ -> do
+              let args = createForeachArgs typ elemDims body
               maybeEvalResult <- evalForeachTensor args
               case maybeEvalResult of
                 Unevaluable {} -> return $ mkExpr accessForeachTensor args
@@ -534,7 +608,7 @@ liftForeach outputCtx createForeachArgs lv dim = go
     goOp1 body = \case
       (accessOp1, typ) : remainingOp1s -> case getExpr accessOp1 body of
         Just (TensorOp1Args ds e) -> do
-          e' <- Forced <$> go (Forced typ) e
+          e' <- Forced <$> go ds (Forced typ) e
           return $ Just $ mkExpr accessOp1 (TensorOp1Args (Forced $ IDimCons dim ds) e')
         _ -> goOp1 body remainingOp1s
       [] -> return Nothing
@@ -548,8 +622,8 @@ liftForeach outputCtx createForeachArgs lv dim = go
     goOp2 body = \case
       (accessOp2, typ) : remainingOps -> case getExpr accessOp2 body of
         Just (TensorOp2Args ds e1 e2) -> do
-          e1' <- Forced <$> go (Forced typ) e1
-          e2' <- Forced <$> go (Forced typ) e2
+          e1' <- Forced <$> go ds (Forced typ) e1
+          e2' <- Forced <$> go ds (Forced typ) e2
           let newSpine = TensorOp2Args (Forced $ IDimCons dim ds) e1' e2'
           return $ Just $ mkExpr accessOp2 newSpine
         _ -> goOp2 body remainingOps
@@ -586,8 +660,9 @@ liftForeach outputCtx createForeachArgs lv dim = go
       (accessOp, typ) : remainingOps -> do
         case getExpr accessOp body of
           Just (op, TensorComparisonArgs pDims rDims e1 e2) | op /= Ne -> do
-            e1' <- go (exprToThunk typ) e1
-            e2' <- go (exprToThunk typ) e2
+            argDims <- forceEvalAppendList (AppendListArgs (Forced INatType) pDims rDims)
+            e1' <- go argDims (exprToThunk typ) e1
+            e2' <- go argDims (exprToThunk typ) e2
             let newSpine = TensorComparisonArgs (exprToThunk $ IDimCons dim pDims) rDims (exprToThunk e1') (exprToThunk e2')
             return $ Just $ mkExpr accessOp (op, newSpine)
           _ -> goComparisons body remainingOps
@@ -602,8 +677,8 @@ liftForeach outputCtx createForeachArgs lv dim = go
               ConstTensorArgs t x (Forced $ IDimCons dim ds)
       _ -> return Nothing
 
-    mkForeach :: Thunk builtin -> Thunk builtin
-    mkForeach body = Forced $ mkExpr accessForeachTensor $ createForeachArgs (Forced IRatType) body
+    mkForeach :: Thunk builtin -> Thunk builtin -> Thunk builtin
+    mkForeach elemDims body = Forced $ mkExpr accessForeachTensor $ createForeachArgs (Forced IRatType) elemDims body
 
     doesNotReferenceBoundVar :: Thunk builtin -> Bool
     doesNotReferenceBoundVar value = lv `Set.notMember` Forced.boundVariablesIn (lv + 1) value

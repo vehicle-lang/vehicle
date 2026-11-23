@@ -101,7 +101,7 @@ data Expr builtin
       Provenance
       (Expr builtin) -- The record
       FieldName -- The field to access
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 --------------------------------------------------------------------------------
 -- The AST datatypes specialised to the Expr type

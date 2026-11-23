@@ -20,7 +20,9 @@ import Vehicle.Prelude
 newtype Ix = InnerIx
   { unIx :: Int
   }
-  deriving (Eq, Ord, Num, Enum, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving newtype (Num, Enum)
+  deriving anyclass (NFData, Hashable, Serialize)
 
 pattern Ix :: (HasCallStack) => Int -> Ix
 pattern Ix i <- InnerIx i
@@ -31,12 +33,6 @@ checkIx :: (HasCallStack) => Int -> Ix
 checkIx i
   | i < 0 = developerError $ "malformed DeBruijn index" <+> quotePretty i
   | otherwise = InnerIx i
-
-instance NFData Ix
-
-instance Hashable Ix
-
-instance Serialize Ix
 
 instance Pretty Ix where
   pretty i = "𝓲" <> pretty (unIx i)

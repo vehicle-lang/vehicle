@@ -1,6 +1,7 @@
 module Vehicle.Compile.Type.Monad.Class where
 
 import Control.Monad (foldM, unless)
+import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans.Class (lift)
@@ -10,61 +11,30 @@ import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, isJust, isNothing)
+import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
+import Data.Sequence (Seq, (><), (|>))
+import Data.Sequence qualified as Seq
 import GHC.Stack (HasCallStack)
 import Prettyprinter (fill)
-import Vehicle.Compile.Error (MonadCompile)
+import Vehicle.Compile.Error (TypingError)
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta
-  ( MetaInfo (..),
-    MetaVariableContext,
-    findMetaInfo,
-  )
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution (HasMetas, MetaSubstitutable (..), RawMetaSubstitutable (..))
 import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
+import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.ForcedValue (ForcedValueWithMetas, ThunkWithMetas, UnforcedSpineWithMetas)
+import Vehicle.Data.Code.ForcedValue (ForcedValueWithMetas, GluedExprWithMetas, ThunkWithMetas, UnforcedSpineWithMetas)
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (addDeclToContext)
 import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext)
-
---------------------------------------------------------------------------------
--- Solved meta-state
-
--- | Tracks meta-variables that have been solved in certain regions of the code.
--- Each element in the list represent one nested tracking region, with the
--- head of the list representing the most recent.
-newtype SolvedMetaState = SolvedMetaState [MetaSet]
-
-enterSolvedMetaTrackingRegion :: SolvedMetaState -> SolvedMetaState
-enterSolvedMetaTrackingRegion (SolvedMetaState state) =
-  SolvedMetaState (mempty : state)
-
-registerSolvedMeta :: MetaID -> SolvedMetaState -> SolvedMetaState
-registerSolvedMeta m (SolvedMetaState state) = SolvedMetaState $
-  case state of
-    [] -> []
-    l : ls -> MetaSet.insert m l : ls
-
-getMostRecentlySolvedMetas :: SolvedMetaState -> MetaSet
-getMostRecentlySolvedMetas (SolvedMetaState state) =
-  fromMaybe mempty (state !!? 0)
-
-exitSolvedMetaTrackingRegion :: SolvedMetaState -> SolvedMetaState
-exitSolvedMetaTrackingRegion (SolvedMetaState state) = SolvedMetaState $
-  case state of
-    [] -> []
-    [_] -> []
-    l1 : l2 : ls -> l1 <> l2 : ls
 
 --------------------------------------------------------------------------------
 -- The overall meta variable context
@@ -75,18 +45,17 @@ type FreshNameState = Int
 type DeclIsUnused = Bool
 
 data TypeCheckerDeclState builtin = TypeCheckerDeclState
-  { currentDecl :: Maybe (Decl builtin, DeclIsUnused),
+  { currentDecl :: !(Maybe (Decl builtin, DeclIsUnused)),
     -- | The origin and type of each meta variable.
     -- NB: these are stored in *reverse* order from which they were created.
-    metaVariableCtx :: MetaVariableContext builtin,
-    applicationConstraints :: [WithContext (ApplicationConstraint builtin)],
-    unificationConstraints :: [WithContext (UnificationConstraint builtin)],
-    instanceConstraints :: [WithContext (InstanceConstraint builtin)],
+    metaVariableCtx :: !(MetaVariableContext builtin),
+    applicationConstraints :: !(Seq (WithContext (ApplicationConstraint builtin))),
+    unificationConstraints :: !(Seq (WithContext (UnificationConstraint builtin))),
+    instanceConstraints :: !(Seq (WithContext (InstanceConstraint builtin))),
     -- | Instance constraints not solvable by instance class resolution
-    auxiliaryInstanceConstraints :: [WithContext (InstanceConstraint builtin)],
-    freshNameState :: FreshNameState,
-    solvedMetaState :: SolvedMetaState,
-    nextConstraintID :: ConstraintID
+    auxiliaryInstanceConstraints :: !(Seq (WithContext (InstanceConstraint builtin))),
+    freshNameState :: !FreshNameState,
+    nextConstraintID :: !ConstraintID
   }
 
 emptyTypeCheckerDeclState ::
@@ -95,23 +64,22 @@ emptyTypeCheckerDeclState ::
 emptyTypeCheckerDeclState =
   TypeCheckerDeclState
     { currentDecl = Nothing,
-      metaVariableCtx = mempty,
+      metaVariableCtx = emptyMetaVariableContext,
       applicationConstraints = mempty,
       unificationConstraints = mempty,
       instanceConstraints = mempty,
       auxiliaryInstanceConstraints = mempty,
       freshNameState = 0,
-      solvedMetaState = SolvedMetaState mempty,
       nextConstraintID = 0
     }
 
 -- | The meta-variables and constraints relating the variables currently in scope.
 data TypeCheckerState builtin = TypeCheckerState
-  { importedModules :: ImportedModuleContext builtin,
-    currentModuleInterface :: ModuleTypingInterface builtin,
-    declsByName :: Map Identifier (Decl builtin),
-    currentFreeCtx :: FreeCtx builtin,
-    currentDeclState :: TypeCheckerDeclState builtin
+  { importedModules :: !(ImportedModuleContext builtin),
+    currentModuleInterface :: !(ModuleTypingInterface builtin),
+    declsByName :: !(Map Identifier (Decl builtin)),
+    currentFreeCtx :: !(FreeCtx builtin),
+    currentDeclState :: !(TypeCheckerDeclState builtin)
   }
 
 emptyTypeCheckerState ::
@@ -134,7 +102,7 @@ emptyTypeCheckerState instanceDatabase importedModules = do
 -- The type-checking monad class
 
 -- | The type-checking monad.
-class (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin, Ord builtin) => MonadTypeChecker builtin m where
+class (MonadLogger m, MonadError (TypingError builtin) m, MonadFreeContext builtin m, NormalisableBuiltin builtin, Ord builtin) => MonadTypeChecker builtin m where
   getTypeCheckerState :: m (TypeCheckerState builtin)
   modifyTypeCheckerState :: (TypeCheckerState builtin -> TypeCheckerState builtin) -> m ()
 
@@ -188,15 +156,11 @@ getFreshName _typ = do
   modifyTypeCheckerDeclState @builtin (\state -> state {freshNameState = nameID + 1})
   return $ layoutAsText $ "_x" <> pretty nameID
 
-clearFreshNames :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
-clearFreshNames _proxy =
-  modifyTypeCheckerDeclState @builtin (\state -> state {freshNameState = 0})
-
 getMetaVariableCtx :: (MonadTypeChecker builtin m) => m (MetaVariableContext builtin)
 getMetaVariableCtx = getsTypeCheckerDeclState metaVariableCtx
 
 getNumberOfMetasCreated :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m Int
-getNumberOfMetasCreated _ = getsTypeCheckerDeclState @builtin (length . metaVariableCtx)
+getNumberOfMetasCreated _ = getsTypeCheckerDeclState @builtin (numberOfMetas . metaVariableCtx)
 
 getInstanceCandidatesFromFreeCtx ::
   (MonadTypeChecker builtin m) =>
@@ -236,31 +200,23 @@ addBuiltinTypeToDatabase builtin builtinType = do
       }
 
 -- | Track the metas solved while performing the provided computation.
--- Multiple calls can be nested arbitrarily deepily.
+-- Multiple calls can be nested arbitrarily deeply. As meta solutions are
+-- never removed, the metas solved during the computation are exactly
+-- those solved afterwards that were not solved beforehand.
 trackSolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m () -> m MetaSet
-trackSolvedMetas _ performComputation = do
-  modifySolvedMetaState enterSolvedMetaTrackingRegion
-
+trackSolvedMetas proxy performComputation = do
+  solvedBefore <- getSolvedMetas proxy
   performComputation
-
-  solvedMetas <- getsTypeCheckerDeclState @builtin (getMostRecentlySolvedMetas . solvedMetaState)
-  modifySolvedMetaState exitSolvedMetaTrackingRegion
-
-  return solvedMetas
-  where
-    modifySolvedMetaState :: (SolvedMetaState -> SolvedMetaState) -> m ()
-    modifySolvedMetaState f = modifyTypeCheckerDeclState @builtin $ \state ->
-      state
-        { solvedMetaState = f (solvedMetaState state)
-        }
+  solvedAfter <- getSolvedMetas proxy
+  return $ MetaSet.difference solvedAfter solvedBefore
 
 getIsUnblockedFn ::
   forall builtin m constraint.
   (MonadTypeChecker builtin m) =>
   m (Contextualised constraint (ConstraintContext builtin) -> Bool)
 getIsUnblockedFn = do
-  metasSolved <- getSolvedMetas (Proxy @builtin)
-  let isUnblocked = not . constraintIsBlocked metasSolved
+  metaCtx <- getMetaVariableCtx @builtin
+  let isUnblocked = not . constraintIsBlocked (isMetaSolved metaCtx)
   return isUnblocked
 
 metasIn ::
@@ -292,15 +248,13 @@ substMetaVariablesAt ctx x = do
   s <- getMetaVariableCtx
   MetaSubstitution.substMetasAt ctx s x
 
+-- | The set of solved metas. Note this is O(n).
 getSolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet
-getSolvedMetas _proxy = do
-  unsolvedMetas <- MetaMap.filter (isJust . metaSolution) <$> getMetaVariableCtx @builtin
-  return $ MetaMap.keys unsolvedMetas
+getSolvedMetas _proxy = solvedMetaIDs <$> getMetaVariableCtx @builtin
 
+-- | The set of unsolved metas. Note this is O(n).
 getUnsolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet
-getUnsolvedMetas _proxy = do
-  unsolvedMetas <- MetaMap.filter (isNothing . metaSolution) <$> getMetaVariableCtx @builtin
-  return $ MetaMap.keys unsolvedMetas
+getUnsolvedMetas _proxy = MetaMap.keys . unsolvedMetaInfos <$> getMetaVariableCtx @builtin
 
 forceThunkWithMetas ::
   (MonadTypeChecker builtin m) =>
@@ -339,19 +293,16 @@ freshMeta ::
   BoundCtx (Type builtin) ->
   m (MetaID, Expr builtin)
 freshMeta p metaType relevance boundCtx = do
-  -- Create a fresh id for the meta
-  TypeCheckerDeclState {..} <- getTypeCheckerDeclState
-  let nextMetaID = length metaVariableCtx
-  let metaID = MetaID nextMetaID
-
   -- Construct the information about the meta-variable
-  let info = MetaInfo p metaType relevance boundCtx Nothing
+  let info = MetaInfo p metaType relevance boundCtx
 
-  -- Update the meta context
+  -- Add it to the meta context, generating a fresh id
+  TypeCheckerDeclState {..} <- getTypeCheckerDeclState
+  let (metaID, newMetaVariableCtx) = addFreshMeta info metaVariableCtx
   modifyTypeCheckerDeclState $
     const $
       TypeCheckerDeclState
-        { metaVariableCtx = MetaMap.insert metaID info metaVariableCtx,
+        { metaVariableCtx = newMetaVariableCtx,
           ..
         }
 
@@ -370,7 +321,13 @@ freshMeta p metaType relevance boundCtx = do
 getMetaInfo :: (MonadTypeChecker builtin m) => MetaID -> m (MetaInfo builtin)
 getMetaInfo meta = do
   state <- getTypeCheckerDeclState
-  return $ findMetaInfo (metaVariableCtx state) meta
+  return $ lookupMetaInfo (metaVariableCtx state) meta
+
+-- | Get the solution to the meta-variable, returning `Nothing` if it is unsolved.
+getMetaSolution :: (MonadTypeChecker builtin m) => MetaID -> m (Maybe (GluedExprWithMetas builtin))
+getMetaSolution meta = do
+  state <- getTypeCheckerDeclState
+  return $ lookupMetaSolution (metaVariableCtx state) meta
 
 getMetaIndex :: [MetaInfo builtin] -> MetaID -> Int
 getMetaIndex metaInfo (MetaID m) = length metaInfo - m - 1
@@ -439,7 +396,7 @@ addTypedDeclToContext decl cont = do
 getMetasLinkedToMetasIn ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
-  [WithContext (Constraint builtin)] ->
+  Seq (WithContext (Constraint builtin)) ->
   Type builtin ->
   m MetaSet
 getMetasLinkedToMetasIn allConstraints typeOfInterest = do
@@ -447,7 +404,7 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
   metasInType <- metasIn (Proxy @builtin) typeOfInterest
   loopOverConstraints constraints metasInType
   where
-    loopOverConstraints :: [Constraint builtin] -> MetaSet -> m MetaSet
+    loopOverConstraints :: (Foldable t) => t (Constraint builtin) -> MetaSet -> m MetaSet
     loopOverConstraints constraints metas = do
       (unrelatedConstraints, newMetas) <- foldM processConstraint ([], metas) constraints
       if metas /= newMetas
@@ -470,7 +427,7 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
 
 -- | Creates an expression that abstracts over all bound variables
 makeMetaExpr ::
-  (MonadCompile m) =>
+  (Monad m) =>
   Provenance ->
   MetaID ->
   BoundCtx (Type builtin) ->
@@ -505,9 +462,12 @@ prettyMeta _ meta = fill 3 . prettyMetaInternal meta <$> getMetaType @builtin me
 prettyMetaInternal :: (PrintableBuiltin builtin) => MetaID -> Type builtin -> Doc a
 prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 
-clearMetaCtx :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
-clearMetaCtx _ = do
-  logDebug MaxDetail "Clearing meta-variable context"
+-- | Resets all the state associated with the declaration currently being
+-- checked, i.e. the current declaration, the meta-variable context, the
+-- constraints and the fresh name supply.
+resetDeclState :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
+resetDeclState _ = do
+  logDebug MaxDetail "Resetting declaration state"
   modifyTypeCheckerState @builtin $ \state -> do
     state
       { currentDeclState = emptyTypeCheckerDeclState
@@ -520,10 +480,9 @@ getSubstMetaType m = do
 
 updateMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> Type builtin -> m ()
 updateMetaType m typ = do
-  let updateInfo info = info {metaType = typ}
   modifyTypeCheckerDeclState $ \state ->
     state
-      { metaVariableCtx = MetaMap.adjust updateInfo m (metaVariableCtx state)
+      { metaVariableCtx = setMetaType m typ (metaVariableCtx state)
       }
 
 --------------------------------------------------------------------------------
@@ -546,7 +505,7 @@ createFreshConstraintCtx creationProvenance ctx = do
   cid <- generateFreshConstraintID (Proxy @builtin)
   return $ ConstraintContext cid creationProvenance unknownBlockingStatus ctx
 
-getActiveConstraints :: (MonadTypeChecker builtin m) => m [WithContext (Constraint builtin)]
+getActiveConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (Constraint builtin)))
 getActiveConstraints = do
   us <- fmap (mapObject UnificationConstraint) <$> getActiveUnificationConstraints
   as <- fmap (mapObject ApplicationConstraint) <$> getActiveApplicationConstraints
@@ -557,33 +516,33 @@ getActiveConstraints = do
 getActiveConstraintIDs :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m IntSet
 getActiveConstraintIDs _ = do
   activeConstraints <- getActiveConstraints @builtin
-  return $ IntSet.fromList $ fmap (unConstraintID . constraintID . contextOf) activeConstraints
+  return $ foldr (IntSet.insert . unConstraintID . constraintID . contextOf) mempty activeConstraints
 
-getActiveUnificationConstraints :: (MonadTypeChecker builtin m) => m [WithContext (UnificationConstraint builtin)]
+getActiveUnificationConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (UnificationConstraint builtin)))
 getActiveUnificationConstraints = getsTypeCheckerDeclState unificationConstraints
 
-getActiveApplicationConstraints :: (MonadTypeChecker builtin m) => m [WithContext (ApplicationConstraint builtin)]
+getActiveApplicationConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (ApplicationConstraint builtin)))
 getActiveApplicationConstraints = getsTypeCheckerDeclState applicationConstraints
 
-getActiveInstanceConstraints :: (MonadTypeChecker builtin m) => m [WithContext (InstanceConstraint builtin)]
+getActiveInstanceConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (InstanceConstraint builtin)))
 getActiveInstanceConstraints = getsTypeCheckerDeclState instanceConstraints
 
-getActiveAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => m [WithContext (InstanceConstraint builtin)]
+getActiveAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => m (Seq (WithContext (InstanceConstraint builtin)))
 getActiveAuxiliaryInstanceConstraints = getsTypeCheckerDeclState auxiliaryInstanceConstraints
 
-setInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
+setInstanceConstraints :: (MonadTypeChecker builtin m) => Seq (WithContext (InstanceConstraint builtin)) -> m ()
 setInstanceConstraints newConstraints = modifyTypeCheckerDeclState $ \state ->
   state {instanceConstraints = newConstraints}
 
-setApplicationConstraints :: (MonadTypeChecker builtin m) => [WithContext (ApplicationConstraint builtin)] -> m ()
+setApplicationConstraints :: (MonadTypeChecker builtin m) => Seq (WithContext (ApplicationConstraint builtin)) -> m ()
 setApplicationConstraints newConstraints = modifyTypeCheckerDeclState $ \state ->
   state {applicationConstraints = newConstraints}
 
-setUnificationConstraints :: (MonadTypeChecker builtin m) => [WithContext (UnificationConstraint builtin)] -> m ()
+setUnificationConstraints :: (MonadTypeChecker builtin m) => Seq (WithContext (UnificationConstraint builtin)) -> m ()
 setUnificationConstraints newConstraints = modifyTypeCheckerDeclState $ \state ->
   state {unificationConstraints = newConstraints}
 
-setAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
+setAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => Seq (WithContext (InstanceConstraint builtin)) -> m ()
 setAuxiliaryInstanceConstraints newConstraints = modifyTypeCheckerDeclState $ \state ->
   state {auxiliaryInstanceConstraints = newConstraints}
 
@@ -593,7 +552,7 @@ addUnificationConstraints constraints = do
     logDebug MaxDetail ("add-constraints:" <> lineIndent (vcat (fmap prettyExternal constraints)))
 
   modifyTypeCheckerDeclState $ \state ->
-    state {unificationConstraints = unificationConstraints state ++ constraints}
+    state {unificationConstraints = unificationConstraints state >< Seq.fromList constraints}
 
 addInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 addInstanceConstraints constraints = do
@@ -601,21 +560,21 @@ addInstanceConstraints constraints = do
     logDebug MaxDetail ("add-constraints:" <> lineIndent (vcat (fmap prettyExternal constraints)))
 
   modifyTypeCheckerDeclState $ \state ->
-    state {instanceConstraints = instanceConstraints state ++ constraints}
+    state {instanceConstraints = instanceConstraints state >< Seq.fromList constraints}
 
 addApplicationConstraint :: (MonadTypeChecker builtin m) => WithContext (ApplicationConstraint builtin) -> m ()
 addApplicationConstraint constraint = do
   logDebug MaxDetail ("add-constraints:" <> lineIndent (prettyExternal constraint))
 
   modifyTypeCheckerDeclState $ \state ->
-    state {applicationConstraints = applicationConstraints state ++ [constraint]}
+    state {applicationConstraints = applicationConstraints state |> constraint}
 
 addAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 addAuxiliaryInstanceConstraints constraints = do
   logDebug MaxDetail ("add-constraints:" <> lineIndent (vcat (fmap prettyExternal constraints)))
 
   modifyTypeCheckerDeclState $ \state ->
-    state {auxiliaryInstanceConstraints = auxiliaryInstanceConstraints state ++ constraints}
+    state {auxiliaryInstanceConstraints = auxiliaryInstanceConstraints state >< Seq.fromList constraints}
 
 removeInstanceConstraint ::
   (MonadTypeChecker builtin m) =>
@@ -625,13 +584,13 @@ removeInstanceConstraint ::
 removeInstanceConstraint _ idToFind = do
   TypeCheckerDeclState {..} <- getTypeCheckerDeclState
   let idOf = constraintID . contextOf
-  let result1 = findAndDeleteElem (\c -> idOf c == idToFind) instanceConstraints
+  let result1 = findAndDeleteSeqElem (\c -> idOf c == idToFind) instanceConstraints
   case result1 of
     Just (constraint, remainder) -> do
       modifyTypeCheckerDeclState (const $ TypeCheckerDeclState {instanceConstraints = remainder, ..})
       return constraint
     Nothing -> do
-      let result2 = findAndDeleteElem (\c -> idOf c == idToFind) auxiliaryInstanceConstraints
+      let result2 = findAndDeleteSeqElem (\c -> idOf c == idToFind) auxiliaryInstanceConstraints
       case result2 of
         Just (constraint, remainder) -> do
           modifyTypeCheckerDeclState (const $ TypeCheckerDeclState {auxiliaryInstanceConstraints = remainder, ..})

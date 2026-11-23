@@ -22,10 +22,10 @@ unfoldIf ::
   m (Thunk Builtin)
 unfoldIf (IfArgs _ c x y) = do
   let dims = Forced $ mkDims []
-  cAndX <- forceEvaluation accessAndTensor evalAnd (TensorOp2Args dims c x)
-  notC <- forceEvaluation accessNotTensor evalNot (TensorOp1Args dims c)
-  notCAndY <- forceEvaluation accessAndTensor evalAnd (TensorOp2Args dims notC y)
-  result <- forceEvaluation accessOrTensor evalOr (TensorOp2Args dims cAndX notCAndY)
+  cAndX <- evalOrReconstructAnd $ TensorOp2Args dims c x
+  notC <- evalOrReconstructNot (TensorOp1Args dims c)
+  notCAndY <- evalOrReconstructAnd $ TensorOp2Args dims notC y
+  result <- evalOrReconstructOr $ TensorOp2Args dims cAndX notCAndY
   logDebugM MaxDetail $ do
     nameCtx <- getNameContext
     return $ "unfold-if" <+> prettyFriendly (WithContext result nameCtx)

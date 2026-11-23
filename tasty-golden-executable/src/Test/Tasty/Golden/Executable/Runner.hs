@@ -22,6 +22,7 @@ import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Foldable (Foldable (..), for_)
 import Data.Functor ((<&>))
 import Data.List qualified as List (findIndices, splitAt, uncons)
+import Data.List.NonEmpty qualified as NonEmpty (appendList, prependList, singleton)
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Set (Set)
@@ -36,8 +37,7 @@ import Data.Text.Lazy.IO qualified as LazyIO
 import Data.Traversable (for)
 import General.Extra.Diff (isBoth, mapDiff)
 import General.Extra.File (createDirectoryRecursive, listFilesRecursive, writeFileChanged)
-import General.Extra.NonEmpty qualified as NonEmpty (appendList, prependList, singleton)
-import System.Directory (copyFile, createDirectoryIfMissing, doesFileExist, removeFile)
+import System.Directory (copyFile, copyFileWithMetadata, createDirectoryIfMissing, doesFileExist, removeFile)
 import System.FilePath (isAbsolute, isExtensionOf, makeRelative, stripExtension, takeDirectory, takeExtension, (<.>), (</>))
 import System.IO (IOMode (..), withFile)
 import System.IO.Error (isDoesNotExistError)
@@ -131,7 +131,7 @@ data TestEnvironment = TestEnvironment
 
 -- | Monad for running tests in an isolated environment.
 newtype TestT m a = TestT {unTest :: StateT TestEnvironment m a}
-  deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadCatch, MonadMask, MonadTrans)
+  deriving newtype (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadCatch, MonadMask, MonadTrans)
 
 instance (MonadWriter w m) => MonadWriter w (TestT m) where
   writer :: (MonadWriter w m) => (a, w) -> TestT m a
@@ -186,9 +186,11 @@ copyTestNeeds neededFiles = do
       let neededFileSourceAsGolden = neededFileSource <.> "golden"
       neededFileExistsAsGolden <- doesFileExist neededFileSourceAsGolden
       -- If either is successful, copy the file. Otherwise, throw an error.
+      -- We use `copyFileWithMetadata` rather than `copyFile` as it avoids
+      -- race conditions on Windows.
       if
-        | neededFileExists -> copyFile neededFileSource neededFileTargetAbsolute
-        | neededFileExistsAsGolden -> copyFile neededFileSourceAsGolden neededFileTargetAbsolute
+        | neededFileExists -> copyFileWithMetadata neededFileSource neededFileTargetAbsolute
+        | neededFileExistsAsGolden -> copyFileWithMetadata neededFileSourceAsGolden neededFileTargetAbsolute
         | otherwise -> throw $ neededFileNotFound neededFile
 
       return neededFileTarget

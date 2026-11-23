@@ -57,13 +57,13 @@ import Vehicle.Verify.Specification (Property, QuerySet (..))
 -- Public method
 --------------------------------------------------------------------------------
 
-convertToJSONProg :: (MonadCompile m) => S.Prog Builtin -> m JProg
+convertToJSONProg :: (MonadBackend m) => S.Prog Builtin -> m JProg
 convertToJSONProg prog =
   logCompilerSection2 MinDetail currentPass $ do
     runFreshNameBoundContextT $
       convertProg prog
 
-convertToJSONSearchProg :: (MonadCompile m) => ([L.BooleanTree], S.Prog Builtin) -> m JSearchProg
+convertToJSONSearchProg :: (MonadBackend m) => ([L.BooleanTree], S.Prog Builtin) -> m JSearchProg
 convertToJSONSearchProg (booleanTrees, prog) =
   logCompilerSection2 MinDetail currentPass $ do
     runFreshFreeContextT (Proxy @Builtin) $
@@ -82,33 +82,33 @@ convertFromJSONSearchProg = fromJSearchProg
 
 newtype JProg
   = Main [JDecl]
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JSearchProg = SearchMain
   { trees :: [JBooleanTree],
     program :: JProg
   }
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JBooleanTree
   = BooleanTree Provenance Name JBooleanExpr
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JBooleanExpr
   = Conjunct [JBooleanExpr]
   | Disjunct [JBooleanExpr]
   | NonTrivialQuery Bool [Name]
   | TrivialQuery Bool
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JDecl
   = DefFunction Name LHSBinderCount Bool JType JExpr
   | DefAbstract Name JSort JType
-  deriving (Generic)
+  deriving stock (Generic)
 
 data JBinder
   = Binder Provenance Name JType
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 data JType
   = Pi JType JType
@@ -120,14 +120,14 @@ data JType
   | DimensionsType
   | DimensionIndexType
   | TypeVar Name [JExpr]
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 data JSort
   = Network
   | Dataset
   | Parameter
   | Builtin
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 data JExpr
   = -- Types
@@ -179,7 +179,7 @@ data JExpr
   | DimensionCons JExpr JExpr
   | DimensionIndex Int
   | Transpose JExpr
-  deriving (Show, Generic)
+  deriving stock (Show, Generic)
 
 instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
@@ -219,7 +219,7 @@ currentPass :: Doc a
 currentPass = "conversion to JSON"
 
 type MonadJSON m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadNameContext m
   )
 
@@ -274,7 +274,7 @@ convertBooleanTree = \case
 -- General
 
 type MonadJSONExpr m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadNameContext m,
     MonadReader DeclProvenance m
   )
@@ -665,9 +665,9 @@ convertWhere = convertNonNullaryOp B.SearchRatTensor 3 $
   \(WhereTensorArgs _dims input cond value) -> do
     WhereTensor <$> convertExpr input <*> convertExpr cond <*> convertExpr value
 
-arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> [S.Arg Builtin] -> m a
+arityError :: (MonadBackend m, Pretty fn) => fn -> Arity -> [S.Arg Builtin] -> m a
 arityError fun arity explicitArgs =
-  compilerDeveloperError $
+  developerError $
     "Number of args is different from expected arity:"
       <> line
       <> indent

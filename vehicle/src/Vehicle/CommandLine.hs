@@ -8,6 +8,7 @@ module Vehicle.CommandLine
     ModeOptions (..),
     defaultGlobalOptions,
     commandLineOptionsParserInfo,
+    commandLineParserPrefs,
   )
 where
 
@@ -47,7 +48,7 @@ data Options = Options
   { globalOptions :: GlobalOptions,
     modeOptions :: Maybe ModeOptions
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 data GlobalOptions = GlobalOptions
   { version :: Bool,
@@ -57,7 +58,7 @@ data GlobalOptions = GlobalOptions
     noWarnings :: Bool,
     outputAsJSON :: OutputAsJSON
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 defaultGlobalOptions :: GlobalOptions
 defaultGlobalOptions =
@@ -78,7 +79,7 @@ data ModeOptions
   | Export ExportOptions
   | List ListOptions
   | LSP LSPOptions
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 --------------------------------------------------------------------------------
 -- List of all options
@@ -110,6 +111,14 @@ solver            = Opt "v" "solver"
 property          = Opt "y" "property"
 --  - z
 -}
+
+-- | We inline the subparsers for each mode so that global options
+-- (e.g. `--no-warnings`) can be freely interleaved with mode-specific
+-- options. With the default backtracking behaviour, an option belonging to
+-- the parent parser is only accepted after the subcommand's required
+-- options, e.g. `vehicle verify --no-warnings -s f.vcl` would fail.
+commandLineParserPrefs :: ParserPrefs
+commandLineParserPrefs = prefs subparserInline
 
 commandLineOptionsParserInfo :: ParserInfo Options
 commandLineOptionsParserInfo =
@@ -367,9 +376,14 @@ exportParser :: Parser ExportOptions
 exportParser =
   ExportOptions
     <$> itpParser
-    <*> exportCacheParser
+    <*> optional specificationParser
+    <*> declarationParser
+    <*> networkParser
+    <*> datasetParser
+    <*> parameterParser
     <*> outputParser
     <*> modulePrefixOption
+    <*> optional exportCacheParser
     <*> compileConstReals
 
 exportParserInfo :: ParserInfo ModeOptions
@@ -429,15 +443,18 @@ resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
   where
     readNL :: String -> Maybe (Text, String)
-    readNL s = case Text.splitOn (Text.pack ":") (Text.pack s) of
-      [name, val] -> Just (name, Text.unpack val)
+    -- Split on the first colon only, as the value may itself contain colons
+    -- (e.g. Windows paths such as `f:C:\path\to\network.onnx`).
+    readNL s = case Text.breakOn (Text.pack ":") (Text.pack s) of
+      (name, rest)
+        | not (Text.null name) && not (Text.null rest) -> Just (name, Text.unpack (Text.drop 1 rest))
       _ -> Nothing
 
 showVersionParser :: Parser Bool
 showVersionParser =
   switch $
     long "version"
-      <> short 'v'
+      <> short 'V'
       <> help "Show version information."
 
 redirectLogsParser :: Parser (Maybe FilePath)

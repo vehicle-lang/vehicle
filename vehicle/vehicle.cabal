@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.28.0
+version:            0.29.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -13,12 +13,12 @@ license:            BSD-3-Clause
 license-file:       LICENSE
 build-type:         Simple
 tested-with:
-  GHC ==9.2.8
-   || ==9.4.8
+  GHC ==9.4.8
    || ==9.6.5
    || ==9.8.4
    || ==9.10.3
    || ==9.12.2
+   || ==9.14.1
 
 -- Standard library
 -- Test files
@@ -35,16 +35,6 @@ source-repository head
   type:     git
   location: https://github.com/vehicle-lang/vehicle
 
-flag ghc-debug
-  description: Add ghc-debug instrumentation
-  manual:      True
-  default:     False
-
-flag nothunks
-  description: Add NoThunks instrumentation
-  manual:      True
-  default:     False
-
 flag release-build
   description: Marks this as an official release build
   manual:      True
@@ -59,10 +49,10 @@ common common-language
   default-extensions:
     ConstraintKinds
     DataKinds
-    DeriveFoldable
-    DeriveFunctor
+    DeriveAnyClass
     DeriveGeneric
     DeriveTraversable
+    DerivingStrategies
     DuplicateRecordFields
     FlexibleContexts
     FlexibleInstances
@@ -93,14 +83,6 @@ common common-language
 common common-library
   import: common-language
 
-  if flag(ghc-debug)
-    build-depends: ghc-debug-stub >=0.3 && <0.5
-    cpp-options:   -DghcDebug
-
-  if flag(nothunks)
-    build-depends: nothunks >=0.1.3 && <0.2
-    cpp-options:   -Dnothunks
-
   if flag(release-build)
     cpp-options: -DreleaseBuild
 
@@ -111,9 +93,6 @@ common common-library
 common common-executable
   import:      common-language
   ghc-options: -threaded
-
-  if flag(ghc-debug)
-    ghc-options: -rtsopts -with-rtsopts=-N
 
 common common-test
   import:      common-language
@@ -267,7 +246,6 @@ library
     Vehicle.Data.AST.Binder
     Vehicle.Data.AST.Decl
     Vehicle.Data.AST.Expr.Desugared
-    Vehicle.Data.AST.Instances.NoThunks
     Vehicle.Data.AST.Module
     Vehicle.Data.AST.Name
     Vehicle.Data.AST.Prog
@@ -324,10 +302,10 @@ library
     Vehicle.Data.Variable.Free.Context.Class
     Vehicle.Data.Variable.Free.Context.Core
     Vehicle.Data.Variable.Free.Context.Instance
-    Vehicle.Debug
     Vehicle.LSP.Config
     Vehicle.LSP.Handlers
     Vehicle.LSP.Monad
+    Vehicle.LSP.SemanticTokens
     Vehicle.LSP.State
     Vehicle.Prelude.Error
     Vehicle.Prelude.IO
@@ -337,6 +315,7 @@ library
     Vehicle.Prelude.Prettyprinter
     Vehicle.Prelude.Supply
     Vehicle.Prelude.Version
+    Vehicle.Prelude.WriterCPS
     Vehicle.Verify.Core
     Vehicle.Verify.QueryFormat.Core
     Vehicle.Verify.QueryFormat.Interface
@@ -357,12 +336,12 @@ library
     , aeson                  >=2.1.1    && <2.3
     , aeson-pretty           >=0.8.9    && <0.9
     , ansi-terminal          >=0.6      && <1.2
-    , base                   >=4.13     && <5
+    , base                   >=4.17     && <5
     , bytestring             >=0.10.12  && <0.12
     , cereal                 >=0.5      && <1
     , cereal-text            >=0.1      && <1
     , cereal-vector          >=0.2      && <1
-    , co-log                 >=0.6      && <0.7
+    , co-log                 >=0.6      && <0.8
     , co-log-core            >=0.3      && <0.4
     , containers             >=0.5      && <1
     , data-default           >=0.7      && <1
@@ -373,13 +352,13 @@ library
     , disjoint-containers    >=0.3.0    && <1
     , edit-distance          >=0.2.2    && <1
     , file-embed             >=0.0.15.0 && <0.1
+    , filelock               >=0.1.1.8  && <0.2
     , filepath               >=1.4      && <2
     , generic-data           >=1.0      && <2
-    , gitrev                 >=1.3      && <2
     , hashable               >=1.3      && <2
     , lens                   >=5.1      && <6
-    , lsp                    >=2.7.0.1  && <2.8
-    , lsp-types              >=2.3      && <2.4
+    , lsp                    >=2.7.0.1  && <2.9
+    , lsp-types              >=2.3      && <2.5
     , mnist-idx              >=0.1.3.1  && <0.2
     , mtl                    >=2.2      && <3
     , optparse-applicative   >=0.16     && <1
@@ -406,7 +385,7 @@ library
     build-depends: unix >=2.7
 
 executable vehicle
-  import:         common-library
+  import:         common-library, common-executable
   main-is:        Main.hs
   hs-source-dirs: app
   build-depends:
@@ -424,7 +403,7 @@ test-suite unit-tests
   type:          exitcode-stdio-1.0
   main-is:       tests/Unit.hs
   build-depends:
-    , base                       >=4.13 && <5
+    , base                       >=4.17 && <5
     , tasty
     , vehicle:unit-tests-common
 
@@ -461,5 +440,33 @@ test-suite golden-tests
     , tasty-golden-executable
     , vehicle
     , vehicle-syntax
+
+  build-tool-depends: vehicle:vehicle
+
+test-suite lsp-tests
+  import:             common-test
+  type:               exitcode-stdio-1.0
+  main-is:            Main.hs
+  hs-source-dirs:     tests/LSP
+  other-modules:
+    SemanticTokens.Binders
+    SemanticTokens.Common
+    SemanticTokens.Declarations
+    SemanticTokens.EdgeCases
+    SemanticTokens.Simple
+    SemanticTokens.TokenTypes
+    Session.Common
+    Session.Smoke
+    Tests
+
+  build-depends:
+    , base
+    , filepath
+    , lens
+    , lsp-test
+    , lsp-types
+    , tasty
+    , tasty-hunit
+    , temporary
 
   build-tool-depends: vehicle:vehicle

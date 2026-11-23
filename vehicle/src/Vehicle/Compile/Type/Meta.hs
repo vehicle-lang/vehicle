@@ -2,10 +2,11 @@ module Vehicle.Compile.Type.Meta
   ( MetaSet,
     MetaVariableContext,
     MetaInfo (..),
+    SolvedMetaInfo (..),
     extendMetaCtx,
     makeMetaType,
     getMetaDependencies,
-    findMetaInfo,
+    lookupMetaInfo,
     findUltimateUnsolvedMeta,
   )
 where
@@ -22,8 +23,7 @@ findUltimateUnsolvedMeta ::
   MetaID ->
   m MetaID
 findUltimateUnsolvedMeta ctx meta = do
-  let metaInfo = findMetaInfo ctx meta
-  maybeNextMeta <- case metaSolution metaInfo of
+  maybeNextMeta <- case lookupMetaSolution ctx meta of
     Just solution -> findMetaInSolution ctx $ unnormalised solution
     Nothing -> return Nothing
 
@@ -42,7 +42,7 @@ findMetaInSolution ctx = \case
   Lam _ _ body -> findMetaInSolution ctx body
   Meta _ m -> return $ Just m
   App (Meta _ m) args -> do
-    let metaInfo = findMetaInfo ctx m
+    let metaInfo = lookupMetaInfo ctx m
     return $
       if length (metaCtx metaInfo) == length args
         then return m
