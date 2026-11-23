@@ -84,7 +84,7 @@ isNetworkTensorInputVar (_, _, networkNames) var = do
     else Nothing
 
 type MonadBounds m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadReader BoundsState m,
     MonadReadableTensorBoundContext m
   )

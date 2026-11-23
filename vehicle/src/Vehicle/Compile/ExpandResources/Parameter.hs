@@ -71,24 +71,24 @@ getParameterType typ = do
     VIndexType size -> return $ ParameterIndexType size
     _ -> resourceTypingError "parameter" forcedType
 
-parseBool :: (MonadCompile m) => DeclProvenance -> String -> m (Thunk Builtin)
+parseBool :: (MonadBackend m) => DeclProvenance -> String -> m (Thunk Builtin)
 parseBool decl value = case readMaybe value of
   Just v -> return $ Forced $ IBoolLiteral v
   Nothing -> throwError $ ParameterValueUnparsable decl value BoolType
 
-parseNat :: (MonadCompile m) => DeclProvenance -> String -> m (Thunk Builtin)
+parseNat :: (MonadBackend m) => DeclProvenance -> String -> m (Thunk Builtin)
 parseNat decl value = case readMaybe value of
   Just v
     | v >= 0 -> return $ Forced $ INatLiteral v
     | otherwise -> throwError $ ParameterValueInvalidNat decl v
   Nothing -> throwError $ ParameterValueUnparsable decl value NatType
 
-parseRat :: (MonadCompile m) => DeclProvenance -> String -> m (Thunk Builtin)
+parseRat :: (MonadBackend m) => DeclProvenance -> String -> m (Thunk Builtin)
 parseRat decl value = case rational (pack value) of
   Left _err -> throwError $ ParameterValueUnparsable decl value RatType
   Right (v, _) -> return $ Forced $ IRatLiteral $ Finite v
 
-parseIndex :: (MonadCompile m) => Int -> DeclProvenance -> String -> m (Thunk Builtin)
+parseIndex :: (MonadBackend m) => Int -> DeclProvenance -> String -> m (Thunk Builtin)
 parseIndex n decl value = case readMaybe value of
   Nothing -> throwError $ ParameterValueUnparsable decl value IndexType
   Just v ->

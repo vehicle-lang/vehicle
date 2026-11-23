@@ -35,7 +35,7 @@ import Vehicle.Data.Code.ModuleInterface
 -- Interface
 
 typeCheckModuleDecls ::
-  (MonadCompile m, HasTypeSystem builtin) =>
+  (MonadFrontend m, HasTypeSystem builtin) =>
   ModulePath ->
   InstanceDatabase builtin ->
   ImportedModuleContext builtin ->

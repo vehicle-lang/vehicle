@@ -176,7 +176,7 @@ type MonadQueryStructure m =
     MonadTensorBoundContext m,
     MonadReadableNameContext m,
     MonadState GlobalCtx m,
-    MonadError CompileError m
+    MonadError BackendError m
   )
 
 addNetworkApplicationToGlobalCtx ::

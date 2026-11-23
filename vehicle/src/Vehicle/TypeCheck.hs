@@ -72,7 +72,7 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
 -- Useful functions that apply to multiple compiler passes
 
 typeCheckUserProg ::
-  (MonadReadSpecification m, MonadStdIO m, MonadCompile m) =>
+  (MonadReadSpecification m, MonadStdIO m, MonadFrontend m) =>
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
@@ -91,7 +91,7 @@ typeCheckUserProg TypeCheckOptions {..} = do
   return castFreeProg
 
 checkDeclarationNamesPresent ::
-  (MonadCompile m) =>
+  (MonadFrontend m) =>
   Prog Builtin ->
   DeclarationNames ->
   m (DeclarationFilter Builtin)
@@ -119,8 +119,8 @@ checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
       isTensorCoercionDecl d
 
 printPropertyTypes ::
-  (MonadStdIO m, MonadCompile m, PrintableBuiltin builtin) =>
-  Either CompileError (Prog builtin) ->
+  (MonadStdIO m, MonadFrontend m, PrintableBuiltin builtin) =>
+  Either FrontendError (Prog builtin) ->
   m ()
 printPropertyTypes = \case
   Left err -> throwError err
@@ -137,11 +137,12 @@ printPropertyTypes = \case
           Just $ propertyName <+> ":" <+> propertyType
         _ -> Nothing
 
+-- | Runs a compilation phase, exiting with the formatted error if it fails.
 runCompileMonad ::
-  (MonadStdIO IO) =>
+  (MonadStdIO IO, FormattableError e) =>
   LoggingSettings ->
   OutputAsJSON ->
-  ExceptT CompileError (LoggerT IO) a ->
+  ExceptT e (LoggerT IO) a ->
   IO a
 runCompileMonad loggingSettings outputAsJSON x = do
   errorOrResult <- runLoggerT loggingSettings (logCompileError x)
@@ -193,7 +194,7 @@ lookupModuleCertain userProg importedModules modulePath
         Just result -> result
 
 flattenProgram ::
-  (MonadCompile m) =>
+  (MonadFrontend m) =>
   Prog Builtin ->
   Map ModulePath [Decl Builtin] ->
   AdjacencyGraph ModulePath ->
@@ -215,7 +216,7 @@ data ModuleStack = ModuleStack
 -- directly in the underlying monad `m` via `lift`, rather than in this monad,
 -- as otherwise every operation they perform pays for the extra `ReaderT` and
 -- `StateT` layers. To enforce this, `ModuleLoaderT` deliberately has no
--- `MonadError CompileError` instance, so passes that require `MonadCompile`
+-- `MonadError FrontendError` instance, so passes that require `MonadFrontend`
 -- cannot be run in it without lifting them first.
 newtype ModuleLoaderT m a = ModuleLoaderT
   { unModuleLoaderT :: ReaderT ModuleStack (StateT ProgramContext m) a
@@ -278,7 +279,7 @@ storeModule modulePath moduleInfo =
 -- Algorithm
 
 loadUserSpecification ::
-  (MonadReadSpecification m, MonadCompile m, MonadIO m) =>
+  (MonadReadSpecification m, MonadFrontend m, MonadIO m) =>
   FilePath ->
   m (Prog Builtin, Map ModulePath [Decl Builtin], AdjacencyGraph ModulePath)
 loadUserSpecification specificationFile = do
@@ -300,7 +301,7 @@ loadUserSpecification specificationFile = do
   return (userModule, builtinModules, moduleGraph programCtx)
 
 loadLibraries ::
-  (MonadCompile m, MonadIO m) =>
+  (MonadFrontend m, MonadIO m) =>
   FilePath ->
   m (Map ModulePath FilePath)
 loadLibraries specificationFile = do
@@ -316,7 +317,7 @@ loadLibraries specificationFile = do
 -- | Loads a module into the program state and returning `True` if
 -- the module .
 loadModule ::
-  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
+  (MonadFrontend m, MonadIO m, MonadReadSpecification m) =>
   ModulePath ->
   ModuleLoaderT m ModuleInfo
 loadModule modulePath =
@@ -327,7 +328,7 @@ loadModule modulePath =
       Nothing -> loadUnloadedModule mempty modulePath
 
 loadUnloadedModule ::
-  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
+  (MonadFrontend m, MonadIO m, MonadReadSpecification m) =>
   [ImportStatement] ->
   ModulePath ->
   ModuleLoaderT m ModuleInfo
@@ -343,7 +344,7 @@ loadUnloadedModule implicitImports modulePath = do
     return moduleInfo
 
 loadCachedModule ::
-  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
+  (MonadFrontend m, MonadIO m, MonadReadSpecification m) =>
   FilePath ->
   [ImportStatement] ->
   ModuleText ->
@@ -370,7 +371,7 @@ loadCachedModule moduleFile implicitImports moduleText cachedModule = do
               }
 
 loadImports ::
-  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
+  (MonadFrontend m, MonadIO m, MonadReadSpecification m) =>
   [ImportStatement] ->
   ModuleLoaderT m (ModuleStatus, ImportedModuleContext Builtin)
 loadImports imports = do
@@ -384,7 +385,7 @@ loadImports imports = do
   return (finalStatus, importedCtx)
 
 parseAndTypeCheckModule ::
-  (MonadCompile m, MonadIO m, MonadReadSpecification m) =>
+  (MonadFrontend m, MonadIO m, MonadReadSpecification m) =>
   FilePath ->
   [ImportStatement] ->
   ModuleText ->
@@ -422,7 +423,7 @@ parseAndTypeCheckModule moduleFile implicitImports moduleText = do
 
 calculateModuleCtx ::
   forall m.
-  (MonadCompile m) =>
+  (MonadFrontend m) =>
   ImportedModuleContext Builtin ->
   [Decl Builtin] ->
   m (FreeCtx Builtin)
