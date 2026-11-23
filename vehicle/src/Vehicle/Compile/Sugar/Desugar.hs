@@ -581,10 +581,21 @@ elabTypeBinder ::
   B.TypeBinder ->
   m (V.GenericBinder expr)
 elabTypeBinder elab folded = \case
-  B.ExplicitTypeBinder t -> mkBinder elab folded mempty V.Explicit $ That t
-  B.ImplicitTypeBinder modalities t -> mkBinder elab folded modalities (V.Implicit False) $ That t
-  B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ That t
+  B.ExplicitTypeBinder t -> mkBinder elab folded mempty V.Explicit $ typeBinderNaming t
+  B.ExplicitTypeBinderMods m ms t -> mkBinder elab folded (m : ms) V.Explicit $ typeBinderNaming t
+  B.ImplicitTypeBinder t -> mkBinder elab folded mempty (V.Implicit False) $ typeBinderNaming t
+  B.ImplicitTypeBinderMods m ms t -> mkBinder elab folded (m : ms) (V.Implicit False) $ typeBinderNaming t
+  B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ typeBinderNaming t
   B.BasicTypeBinder b -> elabBasicBinder elab folded b
+
+-- | The parser cannot distinguish the named binder `(x : A)` from a bracketed
+-- annotation `x : A` (see the note in `External.cf`), so it always parses the
+-- latter. An annotated variable in binder position is therefore converted
+-- into a named binder here.
+typeBinderNaming :: B.Expr -> These B.Name B.Expr
+typeBinderNaming = \case
+  B.Ann (B.Var n) _tk t -> These n t
+  t -> That t
 
 -- re: elabCompareReduced and elabComparePointwise, even though Pointwise and Reduced Tensor Comparisons are distinct in the frontend/user syntax,
 -- the compiler moves them to a single representation, V. CompareRatTensor, that is able to handle both pointwise and reduced comparisons

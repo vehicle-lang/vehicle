@@ -185,8 +185,9 @@ delabTypeBinder b = case V.binderNamingForm b of
     typ <- delabM (V.binderValue b)
     return $ case (V.visibilityOf b, modalities) of
       (V.Explicit, []) -> B.ExplicitTypeBinder typ
-      (V.Explicit, _m : _ms) -> B.ExplicitTypeBinder typ -- B.ExplicitTypeBinderMods m ms typ
-      (V.Implicit {}, _) -> B.ImplicitTypeBinder modalities typ
+      (V.Explicit, m : ms) -> B.ExplicitTypeBinderMods m ms typ
+      (V.Implicit {}, []) -> B.ImplicitTypeBinder typ
+      (V.Implicit {}, m : ms) -> B.ImplicitTypeBinderMods m ms typ
       (V.Instance {}, _) -> B.InstanceTypeBinder modalities typ
 
 delabLetBinding :: (MonadDelab m) => (V.Binder V.Builtin, V.Expr V.Builtin) -> m B.LetDecl
