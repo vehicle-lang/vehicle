@@ -1,0 +1,42 @@
+name: Warm caches
+
+# GitHub Actions caches are scoped to the branch that saved them, and other
+# branches may only restore caches saved on their own branch or on the default
+# branch. CI runs on pull requests and in the merge queue, so the caches they
+# save are not visible to other pull requests. This workflow refreshes the
+# dependency caches on `dev` after each merge so that every pull request can
+# restore them. It does not build or test Vehicle itself, since the merge queue
+# has already tested the exact commit that lands on `dev`.
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-vehicle:
+    uses: ./.github/workflows/build-vehicle.yml
+    with:
+      deps-only: true
+
+  build-vehicle-python:
+    uses: ./.github/workflows/build-vehicle-python.yml
+    with:
+      deps-only: true
+
+  # Also covers the Cabal cache used by the Agda tests, which has the same key
+  # as the Rocq Linux job.
+  test-integration-rocq:
+    uses: ./.github/workflows/test-integration-rocq.yml
+    with:
+      deps-only: true
+
+  test-integration-isabelle:
+    uses: ./.github/workflows/test-integration-isabelle.yml
+    with:
+      deps-only: true
