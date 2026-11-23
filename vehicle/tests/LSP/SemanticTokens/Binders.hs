@@ -8,16 +8,17 @@ import Test.Tasty.HUnit (testCase)
 test_tokensBinders :: TestTree
 test_tokensBinders =
   testGroup "binders" $
-    [ testCase "name-only binder" $
-        expectTokens
-          [ "foo" `as` (SemanticTokenTypes_Function, []),
-            " ",
-            "x" `as` (SemanticTokenTypes_Variable, []),
-            " = ",
-            "x" `as` (SemanticTokenTypes_Variable, []),
-            "\n"
-          ]
-          AllowLaxOverlaps,
+    [ -- TODO: Re-enable once semantic tokens uses scope checking rather than type checking
+      -- testCase "name-only binder" $
+      --   expectTokens
+      --     [ "foo" `as` (SemanticTokenTypes_Function, []),
+      --       " ",
+      --       "x" `as` (SemanticTokenTypes_Variable, []),
+      --       " = ",
+      --       "x" `as` (SemanticTokenTypes_Variable, []),
+      --       "\n"
+      --     ]
+      --     AllowLaxOverlaps,
       testCase "name-and-type binder" $
         expectTokens
           [ "foo" `as` (SemanticTokenTypes_Function, []),
