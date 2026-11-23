@@ -24,7 +24,6 @@ position token TokAnnotation ({"@"}
 );
 
 position token TokArrow     {"->"};
-position token TokForallT   {"forallT"};
 position token TokIf        {"if"};
 position token TokThen      {"then"};
 position token TokElse      {"else"};
@@ -224,7 +223,6 @@ Type.    Expr17 ::= TokType;
 
 -- Core structure.
 Ann.       Expr   ::= Expr2 TokElemOf Expr1;
-ForallT.   Expr1  ::= TokForallT [NameBinder] "." Expr1;
 Let.       Expr2  ::= TokLet [LetDecl] "in" Expr2;
 Lam.       Expr2  ::= TokLambda [NameBinder] TokArrow Expr2;
 Fun.       Expr12 ::= TypeBinder TokArrow Expr12;
