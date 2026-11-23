@@ -55,7 +55,7 @@ data RocqOptions = RocqOptions
 currentPhase :: Doc ()
 currentPhase = "compilation to Rocq"
 
-compileProgToRocq :: (MonadCompile m) => Prog DecidabilityBuiltin -> RocqOptions -> m (Doc a)
+compileProgToRocq :: (MonadBackend m) => Prog DecidabilityBuiltin -> RocqOptions -> m (Doc a)
 compileProgToRocq prog options =
   logCompilerSection2 MinDetail currentPhase $ do
     programDoc <- runFreshNameBoundContextT $ compileProg options prog
@@ -282,7 +282,7 @@ insertNotationArgs rawOp as = concatWith (<>) <$> go rawOp
 -- Monad stack
 
 type MonadRocqCompile m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadNameContext m
   )
 
@@ -663,7 +663,7 @@ compileQuantifierFunction :: (MonadRocqCompile m) => Quantifier -> [Arg Decidabi
 compileQuantifierFunction q args = case reverse args of
   (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
   _ ->
-    compilerDeveloperError $
+    developerError $
       "compilation of quantifier" <+> quotePretty q <+> "with args" <+> prettyVerbose args <+> "to Rocq unsupported"
 
 compileTypeLevelQuantifier ::

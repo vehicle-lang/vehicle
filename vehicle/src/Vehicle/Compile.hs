@@ -89,9 +89,9 @@ declarationsOf = \case
   ITPTarget ITPOptions {..} -> declarationsToCompile
 
 compile :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> CompileOptions -> IO ()
-compile loggingSettings outputAsJSON options =
-  runCompileMonad loggingSettings outputAsJSON $ do
-    prog <-
+compile loggingSettings outputAsJSON options = do
+  prog <-
+    runCompileMonad loggingSettings outputAsJSON $
       typeCheckUserProg $
         TypeCheckOptions
           { specification = specificationOf options,
@@ -99,6 +99,7 @@ compile loggingSettings outputAsJSON options =
             declarationsToCompile = declarationsOf options
           }
 
+  runCompileMonad loggingSettings outputAsJSON $
     case options of
       LossTarget lossOptions -> compileToLossFunction lossOptions prog outputAsJSON
       QueryTarget queryOptions -> compileToQueryFormat queryOptions prog
@@ -108,7 +109,7 @@ compile loggingSettings outputAsJSON options =
 -- Backend-specific compilation functions
 
 compileToQueryFormat ::
-  (MonadCompile m, MonadStdIO m) =>
+  (MonadBackend m, MonadStdIO m) =>
   QueryOptions ->
   Prog Builtin ->
   m ()
@@ -119,7 +120,7 @@ compileToQueryFormat QueryOptions {..} typedProg = do
     compileToQueries solver typedProg resources outputFolder
 
 compileToITP ::
-  (MonadCompile m, MonadStdIO m) =>
+  (MonadBackend m, MonadStdIO m) =>
   ITPOptions ->
   Prog Builtin ->
   m ()
@@ -155,7 +156,7 @@ compileToITP ITPOptions {..} typedProg = do
 
 compileToLossFunction ::
   forall m.
-  (MonadCompile m, MonadStdIO m) =>
+  (MonadBackend m, MonadStdIO m) =>
   LossOptions ->
   Prog Builtin ->
   OutputAsJSON ->
@@ -167,7 +168,7 @@ compileToLossFunction LossOptions {..} typedProg outputAsJSON =
 
 compileToTrainingLoss ::
   forall m.
-  (MonadCompile m, MonadStdIO m) =>
+  (MonadBackend m, MonadStdIO m) =>
   DifferentiableLogicID ->
   Maybe FilePath ->
   Prog Builtin ->
@@ -185,7 +186,7 @@ compileToTrainingLoss differentiableLogicID outputFile typedProg outputAsJSON = 
 
 compileToSearchLoss ::
   forall m.
-  (MonadCompile m, MonadStdIO m) =>
+  (MonadBackend m, MonadStdIO m) =>
   DifferentiableLogicID ->
   Maybe FilePath ->
   Prog Builtin ->
@@ -203,7 +204,7 @@ compileToSearchLoss differentiableLogicID outputFile typedProg outputAsJSON = do
   writeResultToFile Nothing outputFile outputText
 
 hoistInferableParameters ::
-  (MonadCompile m, PrintableBuiltin builtin) =>
+  (MonadBackend m, PrintableBuiltin builtin) =>
   Prog builtin ->
   m (Prog builtin)
 hoistInferableParameters (Main ds) =

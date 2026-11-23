@@ -24,7 +24,7 @@ import Language.LSP.Protocol.Types as Lsp
     defaultSemanticTokensLegend,
     makeSemanticTokens,
   )
-import Vehicle.Compile.Print.Error (formatCompileError, logCompileError)
+import Vehicle.Compile.Print.Error (FormattableError (..), logCompileError)
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.AST.Prog (GenericProg (..))
 import Vehicle.Data.Builtin.Standard
@@ -89,7 +89,7 @@ collectSemanticTokens logger filePath = do
 
   case errorOrToks of
     Left err -> do
-      logger <& (layoutAsText $ pretty $ formatCompileError err) `WithSeverity` Warning
+      logger <& (layoutAsText $ pretty $ formatError err) `WithSeverity` Warning
       return $ makeLspSemanticTokens []
     Right toks ->
       return $ makeLspSemanticTokens toks

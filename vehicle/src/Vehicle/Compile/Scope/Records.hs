@@ -20,7 +20,7 @@ import Prelude hiding (pi)
 -- Expr generalisation
 
 generateBuiltinAuxiliaryRecordDefinitions ::
-  (MonadCompile m) =>
+  (MonadLogger m, MonadError ScopeError m) =>
   Provenance ->
   Identifier ->
   Maybe DefRecordSort ->
@@ -271,7 +271,7 @@ createRecordComparisonInstance p recordIdent telescope fields = do
 --------------------------------------------------------------------------------
 
 createTensorRecordConversionFunctions ::
-  (MonadCompile m) =>
+  (MonadLogger m, MonadError ScopeError m) =>
   Provenance ->
   Identifier ->
   Telescope Builtin ->
@@ -280,7 +280,7 @@ createTensorRecordConversionFunctions ::
 createTensorRecordConversionFunctions p ident telescope fields = do
   unless (null telescope) $
     throwError $
-      UnimplementedFeature p ("Annotating parameterised records with" <+> pretty AnnTensor)
+      ParameterisedTensorLike (ident, p)
 
   nonEmptyFields <- case fields of
     [] -> throwError $ ZeroFieldTensorLike (ident, p)

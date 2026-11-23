@@ -7,7 +7,7 @@ import Control.Monad (when)
 import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.Data (Proxy (..))
 import Data.Set (Set, insert, member)
-import Vehicle.Compile.Error (MonadCompile)
+import Vehicle.Compile.Error (MonadBackend)
 import Vehicle.Compile.Normalise.Force (forceThunk)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..), DecidabilityBuiltinFunction (..))
@@ -22,14 +22,14 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, r
 -- convention. This pass identifies all such defined functions and capitalises
 -- all references to them. Cannot be done during the main compilation pass as we
 -- need to be able to distinguish between free and bound variables.
-capitaliseTypeNames :: (MonadCompile m) => Prog DecidabilityBuiltin -> m (Prog DecidabilityBuiltin)
+capitaliseTypeNames :: (MonadBackend m) => Prog DecidabilityBuiltin -> m (Prog DecidabilityBuiltin)
 capitaliseTypeNames prog = runFreshFreeContextT (Proxy @DecidabilityBuiltin) $ evalStateT (cap prog) mempty
 
 --------------------------------------------------------------------------------
 -- Algorithm
 
 type MonadCapitalise m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadState (Set Identifier) m,
     MonadFreeContext DecidabilityBuiltin m
   )

@@ -50,7 +50,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
 import Data.Sequence (Seq, (><), pattern Empty, pattern (:<|))
 import Data.Sequence qualified as Seq
-import Vehicle.Compile.Error (CompileError (..), MonadCompile, TypingError (..))
+import Vehicle.Compile.Error (FrontendError (..), MonadFrontend, TypingError (..))
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
@@ -67,7 +67,7 @@ import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Variable.Bound.Context.Generic
 
 runTypeCheckerTInitially ::
-  (MonadCompile m, TypableBuiltin builtin, PrintableBuiltin builtin, Show builtin) =>
+  (MonadFrontend m, TypableBuiltin builtin, PrintableBuiltin builtin, Show builtin) =>
   InstanceDatabase builtin ->
   ImportedModuleContext builtin ->
   TypeCheckerT builtin m a ->

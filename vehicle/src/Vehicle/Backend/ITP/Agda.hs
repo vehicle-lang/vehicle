@@ -46,7 +46,7 @@ data AgdaOptions = AgdaOptions
     moduleName :: Maybe String
   }
 
-compileProgToAgda :: (MonadCompile m) => Prog DecidabilityBuiltin -> AgdaOptions -> m (Doc a)
+compileProgToAgda :: (MonadBackend m) => Prog DecidabilityBuiltin -> AgdaOptions -> m (Doc a)
 compileProgToAgda prog options =
   logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal prog
@@ -93,7 +93,7 @@ agdaOutputFormat =
 -- Debug functions
 
 type MonadAgdaCompile m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadNameContext m
   )
 
@@ -311,7 +311,7 @@ annotateInfixAppWithResultPrecedence dependencies argumentPrecedence resultPrece
 -- | Inserts infix args into the correct positions
 --
 -- e.g. insertInfixArgs (Just "B") "if_then_else_" [a, b] = B.if a then b else_
-insertInfixArgs :: (MonadCompile m) => Maybe Code -> Text -> [Code] -> m Code
+insertInfixArgs :: (MonadLogger m) => Maybe Code -> Text -> [Code] -> m Code
 insertInfixArgs qual rawOp as = do
   let components = go qual rawOp as
   return $ hsep components

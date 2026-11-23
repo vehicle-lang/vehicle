@@ -57,7 +57,7 @@ initialExpandResourcesState resources =
     }
 
 type MonadExpandResources m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadState ExpandResourcesState m,
     MonadFreeContext Builtin m
   )
@@ -214,9 +214,9 @@ noteNetwork ident details =
         ..
       }
 
-resourceTypingError :: (MonadCompile m) => Doc Void -> ForcedType Builtin -> m b
+resourceTypingError :: Doc Void -> ForcedType Builtin -> m b
 resourceTypingError doc invalidType =
-  compilerDeveloperError $
+  developerError $
     "Invalid"
       <+> doc
       <+> "type"

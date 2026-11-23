@@ -12,7 +12,6 @@ import Data.Maybe (catMaybes)
 import Data.These (These (..))
 import Data.These.Combinators (catHere, catThere)
 import Vehicle.Compile.Constants.Rational
-import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude (MonadLogger, mergeNonEmptyKeyValues, unionMaybeWith)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound
@@ -27,14 +26,14 @@ import Vehicle.Data.Variable.Bound.Level
 -- | Tries to find an equality constraint in the tree of assertions for
 -- the variable while trying to generate the minimum of disjuncts possible.
 findEqualityConstraint ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   SliceVariable ->
   LinearAssertionTree ->
   m SingleSearchResults
 findEqualityConstraint = findSingleConstraint
 
 findInequalityConstraints ::
-  (MonadCompile m, MonadReadableNameContext m) =>
+  (MonadLogger m, MonadReadableNameContext m) =>
   SliceVariable ->
   LinearAssertionTree ->
   m (DisjunctAll (SliceBounds LinearExpression, Maybe LinearAssertionTree))
@@ -51,7 +50,7 @@ type SingleSearchResults = These (DisjunctAll ConstrainedTree) LinearAssertionTr
 
 findSingleConstraint ::
   forall m.
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   SliceVariable ->
   LinearAssertionTree ->
   m SingleSearchResults
@@ -69,7 +68,7 @@ findSingleConstraint var = go
 
 disjunctSingleResults ::
   forall m.
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   DisjunctAll LinearAssertionTree ->
   DisjunctAll SingleSearchResults ->
   m SingleSearchResults
@@ -99,7 +98,7 @@ disjunctSingleResults xs (DisjunctAll results) = do
 
 conjunctSingleConstraints ::
   forall m.
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   (LinearAssertionTree -> m SingleSearchResults) ->
   ConjunctAll LinearAssertionTree ->
   m SingleSearchResults
@@ -176,7 +175,7 @@ oneResult bounds = DisjunctAll [(bounds, Nothing)]
 
 findAllBounds ::
   forall m bounds constant expr.
-  (MonadCompile m, IsBounds bounds expr, Ord (bounds expr)) =>
+  (MonadLogger m, IsBounds bounds expr, Ord (bounds expr)) =>
   (Assertion (LinearExpr SliceVariable constant) -> m (Maybe (bounds expr))) ->
   BooleanExpr (Assertion (LinearExpr SliceVariable constant)) ->
   m (BoundedTrees bounds constant expr)
@@ -194,7 +193,7 @@ findAllBounds assertionToConstraint = go
 
 findAllBoundsDisjunct ::
   forall m bounds constant expr.
-  (MonadCompile m, Ord (bounds expr)) =>
+  (MonadLogger m, Ord (bounds expr)) =>
   DisjunctAll (BoundedTrees bounds constant expr) ->
   m (BoundedTrees bounds constant expr)
 findAllBoundsDisjunct disjuncts = return $ optimiseDisjuncts $ disjunctDisjuncts disjuncts
@@ -206,7 +205,7 @@ findAllBoundsDisjunct disjuncts = return $ optimiseDisjuncts $ disjunctDisjuncts
 
 findAllBoundsConjunct ::
   forall m bounds constant expr.
-  (MonadCompile m, IsBounds bounds expr) =>
+  (MonadLogger m, IsBounds bounds expr) =>
   ConjunctAll (BoundedTrees bounds constant expr) ->
   m (BoundedTrees bounds constant expr)
 findAllBoundsConjunct conjuncts = return $ combineConjuncts conjuncts

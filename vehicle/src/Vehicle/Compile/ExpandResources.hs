@@ -28,7 +28,7 @@ import Vehicle.Prelude.Warning (CompileWarning (..))
 -- inferring the values of inferable parameters.
 expandResources ::
   forall m.
-  (MonadStdIO m, MonadCompile m) =>
+  (MonadStdIO m, MonadBackend m) =>
   Resources ->
   Prog Builtin ->
   m (Prog Builtin, NetworkContext, ResourcesIntegrityInfo, [MissingResource], [UninferableParameter])
@@ -132,7 +132,7 @@ readNetwork p ident typ = do
 -- 2nd pass - reading in resources
 
 fillInInferableParametersInProg ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   InferableParameterContext ->
   Prog Builtin ->
   m (Prog Builtin, [UninferableParameter])
@@ -140,7 +140,7 @@ fillInInferableParametersInProg ctx prog =
   runWriterT (traverseDecls (fillInInferableParametersInDecl ctx) prog)
 
 fillInInferableParametersInDecl ::
-  (MonadCompile m, MonadWriter [UninferableParameter] m) =>
+  (MonadLogger m, MonadWriter [UninferableParameter] m) =>
   InferableParameterContext ->
   Decl Builtin ->
   m (Decl Builtin)

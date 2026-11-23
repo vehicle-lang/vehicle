@@ -52,10 +52,10 @@ import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath, stan
 import Vehicle.Syntax.Parse (parseExternalModule)
 
 polarityTypeCheck ::
-  (MonadIO m, MonadCompile m) =>
+  (MonadIO m, MonadLogger m) =>
   Prog Builtin ->
   Set Identifier ->
-  m (Either CompileError (Prog PolarityBuiltin))
+  m (Either FrontendError (Prog PolarityBuiltin))
 polarityTypeCheck prog declarationsToCompile = do
   let keepUnused = if Set.null declarationsToCompile then isUserCode else (\d -> identifierOf d `Set.member` declarationsToCompile)
   monomorphisedProg <- monomorphise prog keepUnused
@@ -65,10 +65,10 @@ polarityTypeCheck prog declarationsToCompile = do
   typeCheckWithSubsystem PolarityTypes emptyInstanceDatabase instanceFreeProg
 
 linearityTypeCheck ::
-  (MonadIO m, MonadCompile m) =>
+  (MonadIO m, MonadLogger m) =>
   Prog Builtin ->
   Set Identifier ->
-  m (Either CompileError (Prog LinearityBuiltin))
+  m (Either FrontendError (Prog LinearityBuiltin))
 linearityTypeCheck prog declarationsToCompile = do
   let keepUnused = if Set.null declarationsToCompile then isUserCode else (\d -> identifierOf d `Set.member` declarationsToCompile)
   monomorphisedProg <- monomorphise prog keepUnused
@@ -78,7 +78,7 @@ linearityTypeCheck prog declarationsToCompile = do
   typeCheckWithSubsystem LinearityTypes emptyInstanceDatabase instanceFreeProg
 
 decidabilityTypeCheck ::
-  (MonadIO m, MonadCompile m) =>
+  (MonadIO m, MonadLogger m) =>
   Prog Builtin ->
   m (Prog DecidabilityBuiltin)
 decidabilityTypeCheck prog = do
@@ -92,7 +92,7 @@ decidabilityTypeCheck prog = do
   resolveInstanceArgumentsAndCasts monoDecProg
 
 gradientTypeCheck ::
-  (MonadCompile m, TypableBuiltin (LossBuiltin mode)) =>
+  (MonadLogger m, TypableBuiltin (LossBuiltin mode)) =>
   LossMode ->
   Identifier ->
   Prog Builtin ->
@@ -117,11 +117,11 @@ gradientTypeCheck lossMode differentiableLogic prog = do
   resolveInstanceArgumentsAndCasts monoDecProg
 
 typeCheckWithSubsystem ::
-  (MonadCompile m, HasTypeSystem builtin) =>
+  (MonadLogger m, HasTypeSystem builtin) =>
   SecondaryTypeSystem ->
   InstanceDatabase builtin ->
   Prog Builtin ->
-  m (Either CompileError (Prog builtin))
+  m (Either FrontendError (Prog builtin))
 typeCheckWithSubsystem typingSystem instanceCandidates prog = do
   callDepth <- getCallDepth
   logCompilerSection2 MinDetail ("typing using" <+> quotePretty typingSystem <+> "type subsystem") $ do
@@ -135,7 +135,7 @@ typeCheckWithSubsystem typingSystem instanceCandidates prog = do
         Right (decls, _, _) -> Right $ Main decls
 
 loadTypeSystemBuiltins ::
-  (MonadCompile m, HasTypeSystem builtin) =>
+  (MonadLogger m, HasTypeSystem builtin) =>
   SecondaryTypeSystem ->
   InstanceDatabase builtin ->
   m (ImportedModuleContext builtin)
@@ -167,7 +167,7 @@ loadTypeSystemBuiltins typeSystem _instanceCandidates = do
 
 resolveInstanceArgumentsAndCasts ::
   forall m builtin.
-  (MonadCompile m, Forced.NormalisableBuiltin builtin, BuiltinHasListLiterals builtin, Show builtin) =>
+  (MonadLogger m, Forced.NormalisableBuiltin builtin, BuiltinHasListLiterals builtin, Show builtin) =>
   Prog builtin ->
   m (Prog builtin)
 resolveInstanceArgumentsAndCasts (Main decls) =
@@ -249,7 +249,7 @@ unfoldInstance inst = case toHead inst of
 
 removeImplicitArgs ::
   forall m builtin.
-  (MonadCompile m, PrintableBuiltin builtin) =>
+  (MonadLogger m, PrintableBuiltin builtin) =>
   Prog builtin ->
   m (Prog builtin)
 removeImplicitArgs prog =
@@ -277,7 +277,7 @@ removeImplicitArgs prog =
       Record p ident fields -> Record p ident <$> traverseRecordFields go fields
       RecordProj p recordType record field -> RecordProj p <$> go recordType <*> go record <*> pure field
 
-parseModuleText :: (MonadCompile m) => ParseLocation -> Text -> m (S.Module Builtin)
+parseModuleText :: (MonadFrontend m) => ParseLocation -> Text -> m (S.Module Builtin)
 parseModuleText location txt = do
   case runExcept (readAndParseModule location txt) of
     Left err -> throwError $ ParseError location err
