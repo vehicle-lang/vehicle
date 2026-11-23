@@ -2,6 +2,12 @@ name: Test Isabelle
 
 on:
   workflow_call:
+    inputs:
+      deps-only:
+        description: "Only build and cache dependencies; skip building and testing Vehicle."
+        required: false
+        default: false
+        type: boolean
 
 defaults:
   run:
@@ -116,6 +122,7 @@ jobs:
           key: ${{ env.key }}
 
       - name: 🧪 Test Vehicle-Isabelle interaction
+        if: ${{ !inputs.deps-only }}
         run: |
           export PATH=$PATH:~/Isabelle/bin
           cabal test                                 \

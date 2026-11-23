@@ -5,6 +5,12 @@ name: Build vehicle-python
 
 on:
   workflow_call:
+    inputs:
+      deps-only:
+        description: "Only build and cache dependencies; skip building and testing Vehicle."
+        required: false
+        default: false
+        type: boolean
 
 defaults:
   run:
@@ -88,6 +94,7 @@ jobs:
           restore-keys: ${{ env.key }}-
 
       - name: Build wheel
+        if: ${{ !inputs.deps-only }}
         uses: pypa/cibuildwheel@v4.3.5
         with:
           package-dir: "./vehicle-python"
@@ -101,6 +108,11 @@ jobs:
           CIBW_BEFORE_ALL_LINUX: "cabal update"
           MACOSX_DEPLOYMENT_TARGET: "${{ matrix.os.arch == 'x86_64' && '10.10' || '11.0' }}"
 
+      - name: 🛠️ Install Cabal dependencies
+        if: inputs.deps-only && (matrix.os.name == 'macOS' || matrix.os.name == 'Windows') && steps.cache-haskell.outputs.cache-hit != 'true'
+        working-directory: vehicle-python
+        run: cabal build all --only-dependencies
+
       - name: 💾 Save Cabal dependencies
         uses: actions/cache/save@v6
         if: (matrix.os.name == 'macOS' || matrix.os.name == 'Windows') && steps.cache-haskell.outputs.cache-hit != 'true'
@@ -109,6 +121,7 @@ jobs:
           key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
 
       - name: Upload wheels
+        if: ${{ !inputs.deps-only }}
         uses: actions/upload-artifact@v7
         with:
           name: "wheelhouse-${{ matrix.os.plat }}-${{ matrix.os.arch }}"

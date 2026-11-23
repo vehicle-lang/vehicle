@@ -2,6 +2,12 @@ name: Test Rocq
 
 on:
   workflow_call:
+    inputs:
+      deps-only:
+        description: "Only build and cache dependencies; skip building and testing Vehicle."
+        required: false
+        default: false
+        type: boolean
 
 defaults:
   run:
@@ -104,9 +110,11 @@ jobs:
           key: ${{ steps.cache-opam.outputs.cache-primary-key }}
 
       - name: 🛠️ Install vehicle-rocq
+        if: ${{ !inputs.deps-only }}
         run: opam install -y ./vehicle-rocq
 
       - name: 🧪 Test Vehicle-Rocq interaction
+        if: ${{ !inputs.deps-only }}
         run: |
           eval $(opam env)
           cabal test                                 \
