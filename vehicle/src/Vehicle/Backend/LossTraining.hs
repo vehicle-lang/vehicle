@@ -26,7 +26,7 @@ import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, getDeclEntry, isFunctionWhoseReturnType, runFreshFreeContextT, traverseProgDecls)
 
 convertToLossTensors ::
-  (MonadCompile m) =>
+  (MonadBackend m) =>
   DifferentiableLogicID ->
   Prog Builtin ->
   m (Prog Builtin)
@@ -60,7 +60,7 @@ convertToLossTensors logicID prog = do
   expandTypeSynonymsAndDerivedBuiltins convertedProg
 
 convertBackFromLossBuiltins ::
-  (MonadCompile m) =>
+  (MonadBackend m) =>
   Prog (LossBuiltin mode) ->
   m (Prog Builtin)
 convertBackFromLossBuiltins = traverse $ traverseBuiltinsM $ \p b args -> do
@@ -95,7 +95,7 @@ convertBackFromLossBuiltins = traverse $ traverseBuiltinsM $ \p b args -> do
     StandardDerivedFunction f -> return $ normAppList (Builtin p $ DerivedFunction f) args
   where
     handleExistsWithoutGradients ::
-      (MonadCompile m) =>
+      (MonadBackend m) =>
       Provenance ->
       [Arg Builtin] ->
       m (Expr Builtin)
@@ -106,7 +106,7 @@ convertBackFromLossBuiltins = traverse $ traverseBuiltinsM $ \p b args -> do
           throwError $ QuantifierWithNoGradients p binder
         Nothing -> developerError "Malformed quantifier produced by loss backend"
 
-missingLogicError :: (MonadCompile m) => Prog Builtin -> DifferentiableLogicID -> m a
+missingLogicError :: (MonadBackend m) => Prog Builtin -> DifferentiableLogicID -> m a
 missingLogicError prog = \case
   BuiltinLogic name -> developerError $ "No logic record found for builtin logic" <+> quotePretty name
   CustomLogic name -> do
@@ -121,7 +121,7 @@ missingLogicError prog = \case
 -- | Substitutes through the definition so all derived builtins + type synonyms and
 -- removes the corresponding declarations from the program.
 expandTypeSynonymsAndDerivedBuiltins ::
-  (MonadCompile m) =>
+  (MonadBackend m) =>
   Prog Builtin ->
   m (Prog Builtin)
 expandTypeSynonymsAndDerivedBuiltins (Main decls) = do

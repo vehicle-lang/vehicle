@@ -17,7 +17,7 @@ import Data.Text (unpack)
 import GHC.Conc (forkIO)
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Vehicle.Compile.Error (CompileError (..), ParseError (..), VehicleError, provenance)
+import Vehicle.Compile.Error (FrontendError (..), ParseError (..), VehicleError, provenance)
 import Vehicle.Compile.Prelude (ModulePath, MonadStdIO, Prog, userModulePath)
 import Vehicle.Compile.Print.Error
 import Vehicle.Data.AST.Provenance qualified as P
@@ -75,7 +75,7 @@ type FileVersion = Int32
 
 data FileState = FileState
   { fileVersion :: FileVersion,
-    fileResult :: Maybe (Either CompileError (Prog Builtin))
+    fileResult :: Maybe (Either FrontendError (Prog Builtin))
   }
 
 fileUpdated ::
@@ -106,7 +106,7 @@ data Job = Job FileVersion NormalizedUri
 
 type JobQueue = TQueue Job
 
-lspTypeCheck :: (MonadReadSpecification m, MonadStdIO m) => NormalizedUri -> m (Either CompileError (Prog Builtin))
+lspTypeCheck :: (MonadReadSpecification m, MonadStdIO m) => NormalizedUri -> m (Either FrontendError (Prog Builtin))
 lspTypeCheck uri = do
   case maybeFilePath of
     Nothing ->
@@ -158,7 +158,7 @@ jobWorker (Server stateVar jobQueue resultQueue) = forever $ do
         Result
           { version = version,
             uri = uri,
-            typeError = either (Just . formatCompileError) (const Nothing) result
+            typeError = either (Just . formatError) (const Nothing) result
           }
 
 -------------

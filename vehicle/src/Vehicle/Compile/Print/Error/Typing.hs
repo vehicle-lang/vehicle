@@ -137,9 +137,6 @@ typingErrorDetails = \case
         fix = Just $ implementationLimitation Nothing
       }
 
-githubIssues :: Doc a
-githubIssues = "https://github.com/vehicle-lang/vehicle/issues/"
-
 implementationLimitation :: Maybe Int -> Doc a
 implementationLimitation issue =
   "This is a limitation of the current implementation rather than a fundamental problem."

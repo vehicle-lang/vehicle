@@ -20,7 +20,7 @@ import Prelude hiding (Applicative (..))
 -- Extraction
 
 type MonadCreateUserVar m =
-  (MonadCompile m, MonadNorm Builtin m)
+  (MonadBackend m, MonadNorm Builtin m)
 
 createUserVar ::
   (MonadCreateUserVar m) =>
@@ -35,7 +35,7 @@ createUserVar propertyProvenance namedCtx binder = do
   return varDimensions
 
 checkUserVariableNameIsUnique ::
-  (MonadCompile m) =>
+  (MonadBackend m) =>
   DeclProvenance ->
   NamedBoundCtx ->
   Name ->

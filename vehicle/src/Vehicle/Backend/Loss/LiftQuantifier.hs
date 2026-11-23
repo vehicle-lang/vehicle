@@ -36,7 +36,7 @@ type LiftedBinders = [UnforcedBinder Builtin]
 type LeafDisjunction = MaybeTrivial (DisjunctAll LiftedData)
 
 type MonadLiftQuantifiers m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadFreeContext Builtin m,
     MonadNameContext m,
     MonadReader DeclProvenance m

@@ -14,7 +14,6 @@ import Data.Map.Ordered qualified as OMap (assocs, empty, filter, member, (>|))
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
-import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Interface.Print
@@ -43,7 +42,7 @@ import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
 -- Note that the semantics of properties therefore change slightly as they
 -- are no longer guaranteed to be of type `Bool`.
 functionaliseResources ::
-  (MonadCompile m, PrintableBuiltin builtin) =>
+  (MonadLogger m, PrintableBuiltin builtin) =>
   Prog builtin ->
   m (Prog builtin)
 functionaliseResources prog =
@@ -73,7 +72,7 @@ addResourceUsage ident newArgNames FuncState {..} =
     }
 
 type MonadResource m builtin =
-  ( MonadCompile m,
+  ( MonadLogger m,
     MonadReader (FuncState builtin) m,
     PrintableBuiltin builtin
   )

@@ -55,7 +55,7 @@ getNetworkType decl networkType = do
           outputDetails <- addNameToContext binder $ tensorType Output resultType
           let networkDetails = NetworkType inputDetails outputDetails
           return networkDetails
-    _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
+    _ -> developerError "Should have caught the fact that the network type is not a function during type-checking"
   where
     gluedType :: GluedType Builtin
     gluedType =

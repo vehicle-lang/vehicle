@@ -9,7 +9,6 @@ import Data.Foldable (traverse_)
 import Data.Maybe (isNothing)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Scope.Core
 import Vehicle.Data.AST.Expr.Desugared qualified as S
@@ -57,14 +56,14 @@ registerVar p symbol = do
     tell [(p, symbol)]
 
 generaliseOverVariables ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   [GeneralisableVariable] ->
   S.Expr builtin ->
   m (S.Expr builtin)
 generaliseOverVariables vars e = fst <$> foldM generaliseOverVariable (e, mempty) vars
 
 generaliseOverVariable ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   (S.Expr builtin, Set Name) ->
   GeneralisableVariable ->
   m (S.Expr builtin, Set Name)

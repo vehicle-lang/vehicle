@@ -55,7 +55,7 @@ data ImandraOptions = ImandraOptions
 currentPhase :: Doc ()
 currentPhase = "compilation to Imandra"
 
-compileProgToImandra :: (MonadCompile m) => Prog DecidabilityBuiltin -> ImandraOptions -> m (Doc a)
+compileProgToImandra :: (MonadBackend m) => Prog DecidabilityBuiltin -> ImandraOptions -> m (Doc a)
 compileProgToImandra (Main ds) options =
   logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal (Main ds)
@@ -315,7 +315,7 @@ argBrackets parentPrecedence v e = case v of
 -- Monad stack
 
 type MonadImandraCompile m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadNameContext m,
     MonadState (Set Name) m
   )
@@ -737,9 +737,9 @@ compileBuiltin _isOutType moduleDefs b args = case b of
       developerError $
         "compilation of builtin" <+> quotePretty b <+> "to Imandra unsupported"
 
-    unsupportedArgsError :: (MonadImandraCompile m) => m a
+    unsupportedArgsError :: a
     unsupportedArgsError = do
-      compilerDeveloperError $
+      developerError $
         "compilation of"
           <+> quotePretty b
           <+> "with args"
