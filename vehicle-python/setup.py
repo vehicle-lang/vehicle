@@ -140,7 +140,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         # Cabal project files accept Haskell-style string literals for tokens,
         # which lets us safely include spaces and backslashes (Windows paths).
         def quote(value: str) -> str:
-            escaped = value.replace("\\", "\\").replace('"', '\\"')
+            escaped = value.replace("\\", "\\\\").replace('"', '\\"')
             return f'"{escaped}"'
 
         return " ".join(quote(value) for value in values)
