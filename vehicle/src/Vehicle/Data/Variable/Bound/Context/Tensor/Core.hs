@@ -1,9 +1,8 @@
 module Vehicle.Data.Variable.Bound.Context.Tensor.Core where
 
-import Data.List (sort)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Resource (NetworkModality (..))
@@ -28,45 +27,52 @@ type OriginalLv = Lv
 
 data NestedTensorVariableCtx = NestedTensorVariableCtx
   { nestedVariableCtx :: GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable),
-    nestedVariableCtxNames :: CompleteNamedBoundCtx
+    nestedVariableCtxNames :: CompleteNamedBoundCtx,
+    -- | An index for efficiently looking up which variable in the original
+    -- context a level in the nested context belongs to. Each entry is keyed
+    -- by the first level in the nested context occupied by that variable,
+    -- and stores the variable's level in the original context and, if it
+    -- is a tensor variable, the tensor variable itself.
+    nestedVariableIndex :: Map Lv (OriginalLv, Maybe NestedSliceVariable)
   }
 
 instance Pretty NestedTensorVariableCtx where
-  pretty (NestedTensorVariableCtx _ n) = pretty n <+> pretty (length n)
+  pretty (NestedTensorVariableCtx _ n _) = pretty n <+> pretty (length n)
 
 originalCtx :: NestedTensorVariableCtx -> BoundCtx ()
 originalCtx = fmap fst . nestedVariableCtx
 
 emptyNestedCtx :: NestedTensorVariableCtx
-emptyNestedCtx = NestedTensorVariableCtx mempty mempty
+emptyNestedCtx = NestedTensorVariableCtx mempty mempty mempty
 
 nestedTensorVariableCtxLength :: NestedTensorVariableCtx -> Lv
 nestedTensorVariableCtxLength = Lv . length . nestedVariableCtxNames
 
--- | Given a set of variables in the extended tensor context,
--- returns a pair consisting of the Lv of the variable in the original context
--- and the top-level tensor variable if the variable is a tensor variable.
-findCorrespondingVariableInOriginalCtx ::
-  (VariableLike var) =>
-  NestedTensorVariableCtx ->
-  Set var ->
-  [(OriginalLv, Maybe NestedSliceVariable)]
-findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx _) vars = do
-  let sortedVarList = sort (Set.toList vars)
-  go (reverse wholeCtx) sortedVarList (0, 0)
-  where
-    go :: (VariableLike var) => GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> [var] -> (OriginalLv, Lv) -> [(Lv, Maybe NestedSliceVariable)]
-    go _ [] _ = []
-    go [] (_v : _vs) _ = developerError "variables not found in nested tensor context"
-    go ((_binder, maybeTensorVar) : ctx) (v : vs) (currentOriginalLv, currentLv) = do
-      case maybeTensorVar of
-        Nothing
-          | toLv v == currentLv -> (currentOriginalLv, Nothing) : go ctx vs (currentOriginalLv + 1, currentLv + 1)
-          | otherwise -> go ctx (v : vs) (currentOriginalLv + 1, currentLv + 1)
-        Just tensorVar -> do
-          let endPoint = currentLv + Lv (numberOfSliceVariablesIn $ shapeOf tensorVar)
-          let (found, notFound) = span (\x -> toLv x < endPoint) (v : vs)
-          fmap (const (currentOriginalLv, Just tensorVar)) found ++ go ctx notFound (currentOriginalLv + 1, endPoint)
+-- | Looks up the entry of the variable in the original context that the
+-- provided level in the nested context belongs to.
+lookupInNestedVariableIndex :: NestedTensorVariableCtx -> Lv -> (OriginalLv, Maybe NestedSliceVariable)
+lookupInNestedVariableIndex ctx lv =
+  case Map.lookupLE lv (nestedVariableIndex ctx) of
+    Just (startLv, entry@(_, maybeTensorVar))
+      | lv < startLv + nestedVariableWidth maybeTensorVar -> entry
+    _ -> developerError "variables not found in nested tensor context"
+
+-- | The number of levels in the nested context occupied by a variable.
+nestedVariableWidth :: Maybe NestedSliceVariable -> Lv
+nestedVariableWidth = \case
+  Nothing -> 1
+  Just tensorVar -> Lv (numberOfSliceVariablesIn $ shapeOf tensorVar)
+
+-- | Adds a new variable to the end of the index.
+appendToNestedVariableIndex ::
+  Maybe NestedSliceVariable ->
+  Map Lv (OriginalLv, Maybe NestedSliceVariable) ->
+  Map Lv (OriginalLv, Maybe NestedSliceVariable)
+appendToNestedVariableIndex maybeTensorVar index = do
+  let (nextLv, nextOriginalLv) = case Map.lookupMax index of
+        Nothing -> (0, 0)
+        Just (startLv, (originalLv, lastVar)) -> (startLv + nestedVariableWidth lastVar, originalLv + 1)
+  Map.insert nextLv (nextOriginalLv, maybeTensorVar) index
 
 -- | Looks up a level in the tensor variable context. It returns
 --    1. The level in the original context without any slice variables.
@@ -75,17 +81,16 @@ findOriginalVariableInCtx ::
   NestedTensorVariableCtx ->
   Lv ->
   (OriginalLv, Maybe (NestedSliceVariable, SliceVariable))
-findOriginalVariableInCtx ctx lv =
-  -- TODO turn this into a binary search for added efficiency?
-  case findCorrespondingVariableInOriginalCtx ctx (Set.singleton lv) of
-    [(originalCtxLv, maybeParentVar)] -> (originalCtxLv, fmap (,SliceVariable lv) maybeParentVar)
-    _ -> developerError "could not find variable in nested context"
+findOriginalVariableInCtx ctx lv = do
+  let (originalCtxLv, maybeParentVar) = lookupInNestedVariableIndex ctx lv
+  (originalCtxLv, fmap (,SliceVariable lv) maybeParentVar)
 
 appendNonTensorVariableToNestedCtx :: GenericBinder () -> NestedTensorVariableCtx -> NestedTensorVariableCtx
-appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx) = do
+appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx index) = do
   NestedTensorVariableCtx
     { nestedVariableCtx = (binder, Nothing) : ctx,
-      nestedVariableCtxNames = fromMaybe "_" (nameOf binder) : nameCtx
+      nestedVariableCtxNames = fromMaybe "_" (nameOf binder) : nameCtx,
+      nestedVariableIndex = appendToNestedVariableIndex Nothing index
     }
 
 appendTensorVariableToNestedCtx ::
@@ -93,11 +98,12 @@ appendTensorVariableToNestedCtx ::
   NetworkModality TensorShape ->
   NestedTensorVariableCtx ->
   NestedTensorVariableCtx
-appendTensorVariableToNestedCtx binder shape (NestedTensorVariableCtx ctx nameCtx) = do
+appendTensorVariableToNestedCtx binder shape (NestedTensorVariableCtx ctx nameCtx index) = do
   let var = NestedSliceVariable shape (SliceVariable $ boundCtxLv nameCtx)
   let newCtx = (binder, Just var) : ctx
   let newNameCtx = variableNamesForAllSlices (fst $ getNamedBinderInfo binder) shape <> nameCtx
-  NestedTensorVariableCtx newCtx newNameCtx
+  let newIndex = appendToNestedVariableIndex (Just var) index
+  NestedTensorVariableCtx newCtx newNameCtx newIndex
 
 variableNamesForAllSlices :: Name -> NetworkModality TensorShape -> [Name]
 variableNamesForAllSlices parentName = \case
