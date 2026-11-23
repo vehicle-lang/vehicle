@@ -1,9 +1,10 @@
 name: CI
 
 on:
+  # Commits on `dev` are not tested on push, as they have already been tested
+  # in the merge queue (see `merge_group` below). The dependency caches on
+  # `dev` are instead refreshed by `warm-caches.yml`.
   push:
-    branches:
-      - dev
     tags:
       - "v*"
   pull_request:

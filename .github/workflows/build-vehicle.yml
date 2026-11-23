@@ -2,6 +2,12 @@ name: Build vehicle
 
 on:
   workflow_call:
+    inputs:
+      deps-only:
+        description: "Only build and cache dependencies; skip building and testing Vehicle."
+        required: false
+        default: false
+        type: boolean
 
 defaults:
   run:
@@ -117,6 +123,7 @@ jobs:
           key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
 
       - name: 🧪 Test Vehicle
+        if: ${{ !inputs.deps-only }}
         run: |
           cabal test                                                \
             vehicle:test:unit-tests                                 \
@@ -144,6 +151,7 @@ jobs:
         shell: sh
 
       - name: 🏗️ Build the Vehicle .exe
+        if: ${{ !inputs.deps-only }}
         run: |
           cabal build                                                \
             vehicle:exe:vehicle                                      \
