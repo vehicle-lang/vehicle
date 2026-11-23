@@ -3,13 +3,13 @@
 module Vehicle.Resource where
 
 import Control.Exception (IOException, catch, try)
-import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.ByteString (ByteString)
 import Data.ByteString qualified as ByteString
 import Data.Hashable (Hashable (hash))
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Map (Map, assocs)
+import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -125,19 +125,24 @@ instance Pretty ResourceIntegrityError where
 --------------------------------------------------------------------------------
 -- Hashing
 
-hashFileContents :: (MonadIO m) => FilePath -> m Int
-hashFileContents filePath = do
-  fileContents <- liftIO $ ByteString.readFile filePath
-  return $ hash fileContents
+mkResourceIntegrityInfo :: (MonadIO m) => Name -> FilePath -> ByteString -> m ResourceIntegrityInfo
+mkResourceIntegrityInfo name filePath contents = do
+  absFilePath <- liftIO $ makeAbsolute filePath
+  return $
+    ResourceIntegrityInfo
+      { name = name,
+        filePath = absFilePath,
+        fileHash = hash contents
+      }
 
 generateResourceIntegrityInfo :: (MonadStdIO m) => (Name, FilePath) -> m ResourceIntegrityInfo
 generateResourceIntegrityInfo (name, filePath) = do
-  errorOrfileHash <-
+  errorOrContents <-
     liftIO $
       try @IOException
-        (hashFileContents filePath)
+        (ByteString.readFile filePath)
 
-  case errorOrfileHash of
+  case errorOrContents of
     Left err -> do
       fatalError $
         "Error occured while reading"
@@ -145,20 +150,21 @@ generateResourceIntegrityInfo (name, filePath) = do
           <> ":"
           <> line
           <> indent 2 (pretty (show err))
-    Right fileHash -> do
-      absFilePath <- liftIO $ makeAbsolute filePath
-      return $
-        ResourceIntegrityInfo
-          { name = name,
-            filePath = absFilePath,
-            fileHash = fileHash
-          }
+    Right contents -> mkResourceIntegrityInfo name filePath contents
 
-generateResourcesIntegrityInfo :: (MonadStdIO m) => Resources -> m ResourcesIntegrityInfo
-generateResourcesIntegrityInfo Resources {..} = do
+-- | Generates the integrity information for a set of resources. The
+-- integrity information for the networks and datasets is expected to have
+-- been generated at the point at which they were read in during compilation
+-- so that the files are only read once.
+generateResourcesIntegrityInfo ::
+  (MonadStdIO m) =>
+  SpecificationLocation ->
+  [ResourceIntegrityInfo] ->
+  [ResourceIntegrityInfo] ->
+  ParameterValues ->
+  m ResourcesIntegrityInfo
+generateResourcesIntegrityInfo specification networkSummaries datasetSummaries parameters = do
   specificationSummary <- generateResourceIntegrityInfo ("specification", specification)
-  networkSummaries <- forM (assocs networks) generateResourceIntegrityInfo
-  datasetSummaries <- forM (assocs datasets) generateResourceIntegrityInfo
   return $
     ResourcesIntegrityInfo
       { specificationSummary = specificationSummary,
@@ -177,7 +183,7 @@ checkResourceIntegrity ResourceIntegrityInfo {..} = do
   maybeNewHash <-
     liftIO $
       catch @IOException
-        (Just <$> hashFileContents filePath)
+        (Just <$> hashFileContents)
         (const $ return Nothing)
 
   return $ case maybeNewHash of
@@ -185,6 +191,11 @@ checkResourceIntegrity ResourceIntegrityInfo {..} = do
     Just newFileHash
       | fileHash /= newFileHash -> ResourceAltered
       | otherwise -> ResourceUnchanged
+  where
+    hashFileContents :: (MonadIO m) => m Int
+    hashFileContents = do
+      fileContents <- liftIO $ ByteString.readFile filePath
+      return $ hash fileContents
 
 checkResourcesIntegrity ::
   (MonadIO m) =>

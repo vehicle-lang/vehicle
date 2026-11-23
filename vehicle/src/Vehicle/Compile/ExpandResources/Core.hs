@@ -1,6 +1,10 @@
 module Vehicle.Compile.ExpandResources.Core where
 
+import Control.Exception (IOException, try)
+import Control.Monad.Except (MonadError (..))
 import Control.Monad.State
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as ByteString
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Proxy (Proxy (..))
@@ -43,7 +47,11 @@ data ExpandResourcesState = ExpandResourcesState
     inferableParamCtx :: InferableParameterContext,
     nonInferableParamCtx :: ExplicitParameterContext,
     missingResources :: [MissingResource],
-    unusedResources :: Resources
+    unusedResources :: Resources,
+    -- | Integrity information for the network files read so far.
+    networkIntegrityInfo :: Map Name ResourceIntegrityInfo,
+    -- | Integrity information for the dataset files read so far.
+    datasetIntegrityInfo :: Map Name ResourceIntegrityInfo
   }
 
 initialExpandResourcesState :: Resources -> ExpandResourcesState
@@ -53,7 +61,9 @@ initialExpandResourcesState resources =
       inferableParamCtx = mempty,
       nonInferableParamCtx = mempty,
       missingResources = mempty,
-      unusedResources = resources
+      unusedResources = resources,
+      networkIntegrityInfo = mempty,
+      datasetIntegrityInfo = mempty
     }
 
 type MonadExpandResources m =
@@ -213,6 +223,28 @@ noteNetwork ident details =
       { networkCtx = Map.insert (nameOf ident) details networkCtx,
         ..
       }
+
+-- | Reads the contents of the file provided for a network or dataset,
+-- recording the resulting integrity information so that the file does not
+-- need to be read a second time in order to generate its hash.
+readResourceFile ::
+  (MonadExpandResources m, MonadIO m) =>
+  DeclProvenance ->
+  ExternalResource ->
+  FilePath ->
+  m ByteString
+readResourceFile decl@(ident, _) resourceType file = do
+  result <- liftIO $ try @IOException (ByteString.readFile file)
+  case result of
+    Left ioExcept -> throwError $ ResourceIOError decl resourceType ioExcept
+    Right contents -> do
+      info <- mkResourceIntegrityInfo (nameOf ident) file contents
+      let record = Map.insert (nameOf ident) info
+      modify $ \ExpandResourcesState {..} -> case resourceType of
+        Network -> ExpandResourcesState {networkIntegrityInfo = record networkIntegrityInfo, ..}
+        Dataset -> ExpandResourcesState {datasetIntegrityInfo = record datasetIntegrityInfo, ..}
+        Parameter -> ExpandResourcesState {..}
+      return contents
 
 resourceTypingError :: Doc Void -> ForcedType Builtin -> m b
 resourceTypingError doc invalidType =
