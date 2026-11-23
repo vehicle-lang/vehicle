@@ -131,11 +131,11 @@ writeVerificationQuery ::
   (MonadLogger m, MonadIO m, MonadStdIO m) =>
   QueryFormat ->
   FilePath ->
-  (QueryMetaData, QueryText) ->
+  (QueryAddress, QueryText) ->
   m ()
-writeVerificationQuery queryFormat verificationCache (queryMetaData, queryText) = do
+writeVerificationQuery queryFormat verificationCache (queryAddress, queryText) = do
   let queryOutputForm = queryOutputFormat queryFormat
-  let queryFilePath = calculateQueryFileName verificationCache (queryAddress queryMetaData)
+  let queryFilePath = calculateQueryFileName verificationCache queryAddress
   writeResultToFile (Just queryOutputForm) (Just queryFilePath) (pretty queryText)
 
 writePropertyResult ::

@@ -198,7 +198,7 @@ compileQueries ::
   forall m.
   (MonadCompileQuery m) =>
   Thunk Builtin ->
-  m (Property QueryMetaData)
+  m PropertyPlan
 compileQueries expr = do
   showTopLevelEntry expr
   forcedValue <- runFreshTensorBoundContextT $ forceAndRewriteTensor expr
@@ -252,7 +252,7 @@ compileQueries expr = do
   where
     unblock value = compileQueries =<< runFreshNameBoundContextT (unblockBoolExpr topLevelUnblockingActions (Forced value))
 
-compileAnd :: (MonadCompileQuery m) => TensorOp2Args (Thunk Builtin) -> m (Property QueryMetaData)
+compileAnd :: (MonadCompileQuery m) => TensorOp2Args (Thunk Builtin) -> m PropertyPlan
 compileAnd args@(TensorOp2Args _dims e1 e2) = do
   -- We need to evaluate here otherwise, we may end up compiling queries that are unnecessary
   maybeResult <- runFreshNameBoundContextT $ evalAnd args
@@ -260,7 +260,7 @@ compileAnd args@(TensorOp2Args _dims e1 e2) = do
     Unevaluable {} -> andTrivial andBoolExpr <$> compileQueries e1 <*> compileQueries e2
     Evaluated result -> compileQueries result
 
-compileOr :: (MonadCompileQuery m) => TensorOp2Args (Thunk Builtin) -> m (Property QueryMetaData)
+compileOr :: (MonadCompileQuery m) => TensorOp2Args (Thunk Builtin) -> m PropertyPlan
 compileOr args@(TensorOp2Args _dims e1 e2) = do
   -- We need to evaluate here otherwise, we may end up compiling queries that are unnecessary
   maybeResult <- runFreshNameBoundContextT $ evalOr args
@@ -271,7 +271,7 @@ compileOr args@(TensorOp2Args _dims e1 e2) = do
 compileNot ::
   (MonadCompileQuery m) =>
   TensorOp1Args (Thunk Builtin) ->
-  m (Property QueryMetaData)
+  m PropertyPlan
 compileNot args = do
   compileQueries =<< runFreshNameBoundContextT (lowerNot topLevelUnblockingActions args)
 
@@ -279,7 +279,7 @@ compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Bool ->
   Either (QuantifyRatTensorArgs (Thunk Builtin) (Closure Builtin)) (QuantifyRecordArgs (Thunk Builtin) (Closure Builtin)) ->
-  m (Property QueryMetaData)
+  m PropertyPlan
 compileQuantifiedQuerySet isPropertyNegated args =
   runFreshTensorBoundContextT $
     logCompilerSection2 MaxDetail "compilation of query set" $ do
@@ -293,7 +293,7 @@ compileQuantifiedQuerySet isPropertyNegated args =
 compileUnquantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadError CompileError m) =>
   Thunk Builtin ->
-  m (Property QueryMetaData)
+  m PropertyPlan
 compileUnquantifiedQuerySet value =
   runFreshTensorBoundContextT $ do
     let subsectionDoc = "compilation of set of unquantified queries:" <+> prettyFriendlyEmptyCtx value
@@ -306,15 +306,24 @@ compileQuerySetPartitions ::
   GlobalCtx ->
   QuerySetNegationStatus ->
   MaybeTrivial Partitions ->
-  m (Property QueryMetaData)
+  m PropertyPlan
 compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case maybePartitions of
   Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
   NonTrivial partitions -> do
     propertyMetaData <- ask
-    maybeQueries <- runReaderT (compilePartitionsToQueries partitions) (propertyMetaData, globalCtx)
-    case maybeQueries of
-      Trivial b -> return $ Trivial b
-      NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
+    maybePartitionPlans <- runReaderT (compilePartitionsToQueries partitions) (propertyMetaData, globalCtx)
+    case maybePartitionPlans of
+      Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
+      NonTrivial partitionPlans -> do
+        -- The variable context can no longer change at this point, so it can
+        -- be shared between all queries in the set.
+        vehicleVariableCtx <- getCompleteNamedCtx
+        let querySetVariables =
+              QuerySetVariables
+                { vehicleVariableCtx = vehicleVariableCtx,
+                  userVariables = userTensorVariables globalCtx
+                }
+        return $ NonTrivial $ Query $ QuerySetPlan isPropertyNegated querySetVariables partitionPlans
 
 topLevelUnblockingActions :: (Monad m) => UnblockingActions m
 topLevelUnblockingActions =

@@ -1,6 +1,5 @@
 module Vehicle.Verify.Specification
-  ( QueryMetaData (..),
-    QueryText,
+  ( QueryText,
     isNonTrivial,
     QueryID,
     QuerySet (..),
@@ -14,14 +13,14 @@ module Vehicle.Verify.Specification
     specificationPropertyNames,
     SpecificationCacheIndex (..),
     PropertyVerificationPlan (..),
+    PropertyPlan,
+    QuerySetPlan (..),
+    QuerySetVariables (..),
+    PartitionPlan (..),
+    QueryPlan (..),
+    propertyPlanSize,
     CompilationStep (..),
     ReconstructionDepth (..),
-    VariableCompilationTrace (..),
-    VariableStore (..),
-    getQueryVariables,
-    getVehicleVariableCtx,
-    getQueryVariableMap,
-    getUserVariables,
   )
 where
 
@@ -29,7 +28,6 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON (..), genericToJSON)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
-import Data.Map qualified as Map
 import Data.Set (Set)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Constants.Rational
@@ -57,62 +55,15 @@ instance Pretty ReconstructionDepth where
     OneDimension -> "1D"
 
 -- | One step in the process for transforming unreduced user variables into
--- reduced network input and output variables.
+-- reduced network input and output variables. Lists of steps are used to
+-- recreate a satisfying assignment for the user variables from the satisfying
+-- assignment for the network variables returned by the solver.
 data CompilationStep
   = SolveEquality NestedSliceVariable LinearExpression
   | SolveInequalities SliceVariable LinearBounds
   | ReconstructTensorVariable NestedSliceVariable ReconstructionDepth
   | ConvertQuantifiedTensorLike Name Name (NonEmpty Name)
   deriving stock (Show, Eq, Ord, Generic)
-  deriving anyclass (NFData, ToJSON, FromJSON)
-
--- | The steps for transforming unreduced user variables into reduced network
--- input and output varibles.
--- These are used to recreate a satisfying assignment for the user variables
--- from the satisfying assignment for the network variables spat out by the
--- solver.
--- The steps are stored in the same order they occured during compilation.
-newtype VariableCompilationTrace = Reconstruction
-  { reconstructionSteps :: [CompilationStep]
-  }
-  deriving stock (Generic)
-  deriving anyclass (NFData, ToJSON, FromJSON)
-
---------------------------------------------------------------------------------
--- Variable store
-
--- Storing the Variable is unnessary and is just for readability. We can get
--- rid of it if we switch to a non-human readable format for the .vcl-plan files.
-data VariableStore = VariableStore
-  { queryVariableMapping :: Map QueryVariable NetworkIOElementVariable,
-    vehicleVariableCtx :: CompleteNamedBoundCtx,
-    userVariables :: Set UserSliceVariable
-  }
-  deriving stock (Generic)
-  deriving anyclass (NFData, ToJSON, FromJSON)
-
-getVehicleVariableCtx :: VariableStore -> CompleteNamedBoundCtx
-getVehicleVariableCtx VariableStore {..} = vehicleVariableCtx
-
-getUserVariables :: VariableStore -> Set UserSliceVariable
-getUserVariables VariableStore {..} = userVariables
-
-getQueryVariables :: VariableStore -> [QueryVariable]
-getQueryVariables VariableStore {..} = Map.keys queryVariableMapping
-
-getQueryVariableMap :: VariableStore -> Map QueryVariable NetworkIOElementVariable
-getQueryVariableMap = queryVariableMapping
-
---------------------------------------------------------------------------------
--- Query meta data
-
-data QueryMetaData = QueryMetaData
-  { queryAddress :: !QueryAddress,
-    metaNetwork :: !MetaNetwork,
-    variableStore :: !VariableStore,
-    variableCompilationTrace :: !VariableCompilationTrace
-  }
-  deriving stock (Generic)
   deriving anyclass (NFData, ToJSON, FromJSON)
 
 --------------------------------------------------------------------------------
@@ -219,8 +170,65 @@ data SpecificationCacheIndex = SpecificationCacheIndex
 
 -- | The object that provides the required information to perform the
 -- verification of a single property within a specification.
+--
+-- To avoid duplicating information on disk, the plan mirrors the structure of
+-- compilation: information that is shared between all the queries in a query
+-- set (e.g. the variable context) or all the queries in a partition (e.g. the
+-- steps used to eliminate the user variables) is stored only once at the
+-- appropriate level.
 newtype PropertyVerificationPlan = PropertyVerificationPlan
-  { queryMetaData :: Property QueryMetaData
+  { propertyPlan :: PropertyPlan
   }
   deriving stock (Generic)
   deriving anyclass (ToJSON, FromJSON)
+
+-- | The boolean structure of a property, with a plan for each query set.
+type PropertyPlan = MaybeTrivial (BooleanExpr QuerySetPlan)
+
+-- | The plan for a set of queries arising from a single top-level quantifier.
+data QuerySetPlan = QuerySetPlan
+  { negated :: !QuerySetNegationStatus,
+    querySetVariables :: !QuerySetVariables,
+    partitions :: !(DisjunctAll PartitionPlan)
+  }
+  deriving stock (Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | The variable information that is shared between every query in a query
+-- set.
+data QuerySetVariables = QuerySetVariables
+  { vehicleVariableCtx :: !CompleteNamedBoundCtx,
+    userVariables :: !(Set UserSliceVariable)
+  }
+  deriving stock (Generic)
+  deriving anyclass (NFData, ToJSON, FromJSON)
+
+-- | The plan for the set of queries generated from a single partition.
+data PartitionPlan = PartitionPlan
+  { -- | The compilation steps shared by all queries in the partition. These are
+    -- applied after the query-specific steps during reconstruction.
+    partitionSteps :: ![CompilationStep],
+    partitionQueries :: !(DisjunctAll QueryPlan)
+  }
+  deriving stock (Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | The information that is specific to a single query.
+data QueryPlan = QueryPlan
+  { queryAddress :: !QueryAddress,
+    metaNetwork :: !MetaNetwork,
+    queryVariableMapping :: !(Map QueryVariable NetworkIOElementVariable),
+    -- | The compilation steps specific to this query. These are applied
+    -- before the partition's steps during reconstruction.
+    querySteps :: ![CompilationStep]
+  }
+  deriving stock (Generic)
+  deriving anyclass (ToJSON, FromJSON)
+
+-- | The number of queries in the property.
+propertyPlanSize :: PropertyPlan -> Int
+propertyPlanSize = \case
+  Trivial {} -> 0
+  NonTrivial p -> sum (fmap querySetPlanSize p)
+  where
+    querySetPlanSize QuerySetPlan {..} = sum (fmap (length . partitionQueries) partitions)
