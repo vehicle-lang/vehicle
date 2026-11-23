@@ -1,11 +1,15 @@
-{
-  "name": "MarabouVerify",
-  "run": "vehicle verify -s spec.vcl -v Marabou -n classify:network.onnx -d inputDataset:features.idx",
-  "needs": [
-    "spec.vcl",
-    "network.onnx",
-    "features.idx"
-  ],
-  "external": ["Marabou"],
-  "enabled": false
-}
+[
+  {
+    "name": "VNNLib",
+    "run": "vehicle compile queries -f VNNLibQueries -s spec.vcl -o VNNLib.queries/ -n classify:network.onnx -d inputDataset:features.idx",
+    "needs": [
+      "spec.vcl",
+      "network.onnx",
+      "features.idx"
+    ],
+    "produces": [
+      "VNNLib.queries/isSane-query1.txt",
+      "VNNLib.queries/isSane.vcl-plan"
+    ]
+  }
+]
