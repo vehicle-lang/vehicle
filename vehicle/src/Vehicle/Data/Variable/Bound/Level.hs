@@ -15,6 +15,7 @@ module Vehicle.Data.Variable.Bound.Level
     -- Nested variables
     NestedSliceVariable (..),
     childVariablesOf,
+    childVariablesOfNonZeroRank,
     elementVariablesOf,
     numberOfSliceVariablesIn,
     findSliceShape,
@@ -226,6 +227,13 @@ childVariablesOf (NestedSliceVariable shapeOrShapes startingVar) = case shapeOrS
         let subSize = numberOfSliceVariablesIn ds
         let calculateChildStartingVar i = SliceVariable $ toLv startingVar + Lv (1 + subSize * i)
         fmap (NestedSliceVariable (UniModal ds) . calculateChildStartingVar) [0 .. d - 1]
+
+-- | Returns the child variables of a variable that is known to have a
+-- non-zero rank.
+childVariablesOfNonZeroRank :: NestedSliceVariable -> [NestedSliceVariable]
+childVariablesOfNonZeroRank var = case childVariablesOf var of
+  Just childVars -> childVars
+  Nothing -> developerError "Expected a variable with non-zero rank"
 
 elementVariablesOf :: NestedSliceVariable -> [(NetworkIOElementVariable, TensorIndices)]
 elementVariablesOf = go mempty

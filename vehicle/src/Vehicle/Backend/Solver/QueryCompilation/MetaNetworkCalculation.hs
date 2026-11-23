@@ -3,7 +3,7 @@ module Vehicle.Backend.Solver.QueryCompilation.MetaNetworkCalculation
   )
 where
 
-import Control.Monad (foldM, forM, unless)
+import Control.Monad (forM, unless)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.Trans.Writer.CPS (runWriterT)
@@ -14,7 +14,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.DisjointSet (DisjointSet)
 import Data.DisjointSet qualified as DisjointSet
 import Data.Either (lefts)
-import Data.List (sort)
+import Data.List (foldl', sort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -83,7 +83,7 @@ eliminateRedundantApplications assertions =
     sliceClasses <-
       if hasMultipleApplications
         then calculateSliceEquivalenceClasses equalities
-        else return DisjointSet.empty
+        else return emptySliceEquivalenceClasses
 
     equivalenceClasses <- forM applicationsByNetwork $ \(networkName, applications) ->
       logCompilerSection2 MaxDetail ("checking applications of network" <+> quotePretty networkName) $ do
@@ -132,7 +132,21 @@ isSimpleVariableEquality = \case
 
 -- | The equivalence classes of slice variables and constants implied by the
 -- simple equalities in a query.
-type SliceEquivalenceClasses = DisjointSet (Either SliceVariable RatTensor)
+data SliceEquivalenceClasses = SliceEquivalenceClasses
+  { -- | The equivalence classes. These are closed downwards (see
+    -- documentation of `calculateSliceEquivalenceClasses`) but only for
+    -- slices whose rank is at least `minimumRank`.
+    sliceClasses :: DisjointSet (Either SliceVariable RatTensor),
+    -- | The minimum rank of any variable that appears in an equality.
+    minimumRank :: Int
+  }
+
+emptySliceEquivalenceClasses :: SliceEquivalenceClasses
+emptySliceEquivalenceClasses = SliceEquivalenceClasses DisjointSet.empty maxBound
+
+-- | The rank of a slice variable, i.e. the number of dimensions it has.
+rankOf :: NestedSliceVariable -> Int
+rankOf = length . shapeOf
 
 -- | Calculates the equivalence classes of slice variables implied by the
 -- provided equalities. Note:
@@ -146,40 +160,66 @@ type SliceEquivalenceClasses = DisjointSet (Either SliceVariable RatTensor)
 --      so are their corresponding slices, and if a tensor is equal to a
 --      constant then each of its slices is equal to the corresponding slice of
 --      the constant.
+--
+--   3. However, for efficiency, the downwards closure stops at the minimum
+--      rank of any variable appearing in an equality. This loses no
+--      information, as any equivalence between two slices of a lower rank
+--      can only be derived from an equivalence between their ancestors at
+--      the minimum rank. This is important as otherwise equalities between
+--      large tensors would have to be propagated to every one of their
+--      elements.
 calculateSliceEquivalenceClasses ::
   (MonadQueryCompilation m) =>
   [SimpleEquality] ->
   m SliceEquivalenceClasses
-calculateSliceEquivalenceClasses = foldM addEquality DisjointSet.empty
+calculateSliceEquivalenceClasses equalities = do
+  nestedEqualities <- forM equalities $ \(v1, value) -> do
+    nestedVar1 <- lookupNestedSliceVariable v1
+    nestedValue <- either (fmap Left . lookupNestedSliceVariable) (return . Right) value
+    return (nestedVar1, nestedValue)
+
+  let minRank = minimum (maxBound : fmap (rankOf . fst) nestedEqualities)
+  let classes = foldl' (addEquality minRank) DisjointSet.empty nestedEqualities
+  return $ SliceEquivalenceClasses classes minRank
   where
     addEquality ::
-      (MonadQueryCompilation m) =>
-      SliceEquivalenceClasses ->
-      SimpleEquality ->
-      m SliceEquivalenceClasses
-    addEquality classes (v1, value) = do
-      nestedVar1 <- lookupNestedSliceVariable v1
-      case value of
-        Left v2 -> do
-          nestedVar2 <- lookupNestedSliceVariable v2
-          return $ unionVariables nestedVar1 nestedVar2 classes
-        Right constant ->
-          return $ unionConstant nestedVar1 constant classes
+      Int ->
+      DisjointSet (Either SliceVariable RatTensor) ->
+      (NestedSliceVariable, Either NestedSliceVariable RatTensor) ->
+      DisjointSet (Either SliceVariable RatTensor)
+    addEquality minRank classes (x, value) = case value of
+      Left y -> unionVariables minRank x y classes
+      Right constant -> unionConstant minRank x constant classes
 
-    unionVariables :: NestedSliceVariable -> NestedSliceVariable -> SliceEquivalenceClasses -> SliceEquivalenceClasses
-    unionVariables x y classes = do
-      let newClasses = DisjointSet.union (Left (toSliceVar x)) (Left (toSliceVar y)) classes
-      case (childVariablesOf x, childVariablesOf y) of
-        (Just xs, Just ys) -> foldr (uncurry unionVariables) newClasses (zip xs ys)
-        _ -> newClasses
+    unionVariables ::
+      Int ->
+      NestedSliceVariable ->
+      NestedSliceVariable ->
+      DisjointSet (Either SliceVariable RatTensor) ->
+      DisjointSet (Either SliceVariable RatTensor)
+    unionVariables minRank x y classes
+      | DisjointSet.equivalent (Left (toSliceVar x)) (Left (toSliceVar y)) classes = classes
+      | rankOf x <= minRank = newClasses
+      | otherwise = do
+          let childPairs = zip (childVariablesOfNonZeroRank x) (childVariablesOfNonZeroRank y)
+          foldr (uncurry (unionVariables minRank)) newClasses childPairs
+      where
+        newClasses = DisjointSet.union (Left (toSliceVar x)) (Left (toSliceVar y)) classes
 
-    unionConstant :: NestedSliceVariable -> RatTensor -> SliceEquivalenceClasses -> SliceEquivalenceClasses
-    unionConstant x constant classes = do
-      let newClasses = DisjointSet.union (Left (toSliceVar x)) (Right constant) classes
-      let constantSlices = unstack constant
-      case childVariablesOf x of
-        Just xs -> foldr (uncurry unionConstant) newClasses (zip xs constantSlices)
-        _ -> newClasses
+    unionConstant ::
+      Int ->
+      NestedSliceVariable ->
+      RatTensor ->
+      DisjointSet (Either SliceVariable RatTensor) ->
+      DisjointSet (Either SliceVariable RatTensor)
+    unionConstant minRank x constant classes
+      | DisjointSet.equivalent (Left (toSliceVar x)) (Right constant) classes = classes
+      | rankOf x <= minRank = newClasses
+      | otherwise = do
+          let childPairs = zip (childVariablesOfNonZeroRank x) (unstack constant)
+          foldr (uncurry (unionConstant minRank)) newClasses childPairs
+      where
+        newClasses = DisjointSet.union (Left (toSliceVar x)) (Right constant) classes
 
 -- | Partitions the applications of a network into classes whose inputs are
 -- known to be equal. Two inputs are equal if they are in the same equivalence
@@ -190,7 +230,7 @@ calculateNetworkTensorInputEquivalenceClasses ::
   SliceEquivalenceClasses ->
   NonEmpty NetworkApplicationInfo ->
   m EquivalenceClasses
-calculateNetworkTensorInputEquivalenceClasses sliceClasses applications = do
+calculateNetworkTensorInputEquivalenceClasses sliceEqClasses applications = do
   inputVariables <- forM (NonEmpty.toList applications) $ \app -> do
     let inputVar = inputVariable app
     nestedVar <- lookupNestedTensorVariable inputVar
@@ -210,10 +250,11 @@ calculateNetworkTensorInputEquivalenceClasses sliceClasses applications = do
     areEqual :: NestedSliceVariable -> NestedSliceVariable -> Bool
     areEqual x y
       | toSliceVar x == toSliceVar y = True
-      | DisjointSet.equivalent (Left (toSliceVar x)) (Left (toSliceVar y)) sliceClasses = True
-      | otherwise = case (childVariablesOf x, childVariablesOf y) of
-          (Just xs, Just ys) -> and (zipWith areEqual xs ys)
-          _ -> False
+      | DisjointSet.equivalent (Left (toSliceVar x)) (Left (toSliceVar y)) (sliceClasses sliceEqClasses) = True
+      -- Slices with a rank lower than the minimum rank are only equivalent if
+      -- they are identical, so there is no point recursing into them.
+      | rankOf x <= minimumRank sliceEqClasses = False
+      | otherwise = and (zipWith areEqual (childVariablesOfNonZeroRank x) (childVariablesOfNonZeroRank y))
 
 createSubstitutionFromEquivalenceClasses ::
   (MonadQueryCompilation m, MonadWriter [CompilationStep] m) =>

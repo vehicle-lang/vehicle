@@ -75,10 +75,8 @@ lookupChildVariablesCertain ::
   variable ->
   m [SliceVariable]
 lookupChildVariablesCertain var = do
-  maybeChildVariables <- childVariablesOf <$> lookupNestedSliceVariable var
-  case maybeChildVariables of
-    Nothing -> developerError "Expecting a non-zero tensor variable"
-    Just childVars -> return $ fmap toSliceVar childVars
+  childVars <- childVariablesOfNonZeroRank <$> lookupNestedSliceVariable var
+  return $ fmap toSliceVar childVars
 
 lookupNestedTensorVariable ::
   (MonadReadableTensorBoundContext m, TensorVariableLike variable) =>

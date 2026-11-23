@@ -313,7 +313,7 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
     propertyMetaData <- ask
     maybeQueries <- runReaderT (compilePartitionsToQueries partitions) (propertyMetaData, globalCtx)
     case maybeQueries of
-      Trivial b -> return $ Trivial b
+      Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
       NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
 
 topLevelUnblockingActions :: (Monad m) => UnblockingActions m
