@@ -4,9 +4,6 @@ module Vehicle.Verify.Specification
     QueryID,
     QuerySet (..),
     Property,
-    traverseProperty,
-    forQueryInProperty,
-    propertySize,
     MultiProperty (..),
     multiPropertyAddresses,
     Specification (..),
@@ -76,18 +73,6 @@ data QuerySet a = QuerySet
   deriving stock (Show, Generic, Functor, Foldable, Traversable)
   deriving anyclass (NFData, ToJSON, FromJSON)
 
-traverseQuerySet ::
-  (Monad m) =>
-  (a -> m b) ->
-  QuerySet a ->
-  m (QuerySet b)
-traverseQuerySet f QuerySet {..} = do
-  queries' <- traverse f queries
-  return $ QuerySet negated queries'
-
-querySetSize :: QuerySet a -> Int
-querySetSize QuerySet {..} = length queries
-
 --------------------------------------------------------------------------------
 -- Property expression
 
@@ -98,28 +83,6 @@ querySetSize QuerySet {..} = length queries
 -- This type captures this boolean structure, and is parameterised by the type
 -- of data stored at the position of each query.
 type Property a = MaybeTrivial (BooleanExpr (QuerySet a))
-
-traverseProperty ::
-  forall m a b.
-  (Monad m) =>
-  (a -> m b) ->
-  Property a ->
-  m (Property b)
-traverseProperty f = traverse (traverse (traverseQuerySet f))
-
-forQueryInProperty ::
-  (Monad m) =>
-  Property a ->
-  (a -> m ()) ->
-  m ()
-forQueryInProperty p f = do
-  _ <- traverseProperty f p
-  return ()
-
-propertySize :: Property a -> Int
-propertySize = \case
-  Trivial {} -> 0
-  NonTrivial p -> sum (fmap querySetSize p)
 
 --------------------------------------------------------------------------------
 -- MultiProperty
