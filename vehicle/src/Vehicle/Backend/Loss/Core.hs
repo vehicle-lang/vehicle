@@ -36,7 +36,7 @@ type MonadLogicCore mode m =
 
 type MonadLogic mode m =
   ( MonadLogicCore mode m,
-    MonadError CompileError m,
+    MonadError BackendError m,
     MonadFreeContext (LossBuiltin mode) m
   )
 

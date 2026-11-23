@@ -38,7 +38,7 @@ import Vehicle.Data.Variable.Free.Context
 -- user may write  the logic at the bottom of the file with boolean operations
 -- that need to be translated above it.
 findAndLiftLogic ::
-  (MonadCompile m) =>
+  (MonadBackend m) =>
   DifferentiableLogicID ->
   Prog Builtin ->
   m (Maybe (Identifier, Prog Builtin))
@@ -62,13 +62,13 @@ data MonadLossState = MonadLossState
   }
 
 type MonadLoss m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadFreeContext Builtin m,
     MonadState MonadLossState m
   )
 
 runMonadLossT ::
-  (MonadCompile m) =>
+  (MonadBackend m) =>
   FreeContextT Builtin (StateT MonadLossState m) a ->
   m (a, MonadLossState)
 runMonadLossT action = do

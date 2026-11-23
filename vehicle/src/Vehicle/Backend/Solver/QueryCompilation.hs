@@ -196,7 +196,7 @@ data IndexingState = IndexingState
 
 compileQueryVariables ::
   forall m.
-  (MonadCompile m, MonadQueryCompilation m) =>
+  (MonadBackend m, MonadQueryCompilation m) =>
   CompileQueryVariable ->
   NetworkApplications ->
   m (Map NetworkIOElementVariable QueryVariable, VariableStore)
@@ -284,7 +284,7 @@ substBounds ::
 substBounds ctx subst = fmap (first (substVar ctx subst))
 
 substAssertions ::
-  (MonadCompile m) =>
+  (MonadBackend m) =>
   CompleteNamedBoundCtx ->
   Map NetworkIOElementVariable QueryVariable ->
   ConjunctAll (Assertion (LinearExpr NetworkIOElementVariable Rational)) ->

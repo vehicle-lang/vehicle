@@ -53,7 +53,7 @@ data IsabelleOptions = IsabelleOptions
 currentPhase :: Doc ()
 currentPhase = "compilation to Isabelle"
 
-compileProgToIsabelle :: (MonadCompile m) => Prog DecidabilityBuiltin -> IsabelleOptions -> m (Doc a)
+compileProgToIsabelle :: (MonadBackend m) => Prog DecidabilityBuiltin -> IsabelleOptions -> m (Doc a)
 compileProgToIsabelle (Main ds) options =
   logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal (Main ds)
@@ -342,7 +342,7 @@ binderBrackets _topLevel Instance {} = braces . braces
 -- Monad stack
 
 type MonadIsabelleCompile m =
-  ( MonadCompile m,
+  ( MonadBackend m,
     MonadNameContext m
   )
 
@@ -907,9 +907,9 @@ compileBuiltin isOutType localeAssms b args = case b of
       developerError $
         "compilation of builtin" <+> quotePretty b <+> "to Isabelle unsupported"
 
-    unsupportedArgsError :: (MonadIsabelleCompile m) => m a
+    unsupportedArgsError :: a
     unsupportedArgsError = do
-      compilerDeveloperError $
+      developerError $
         "compilation of"
           <+> quotePretty b
           <+> "with args"

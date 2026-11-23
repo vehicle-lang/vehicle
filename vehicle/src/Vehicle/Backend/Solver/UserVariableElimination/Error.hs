@@ -19,42 +19,42 @@ import Vehicle.Verify.QueryFormat.Core (QueryFormatID)
 
 diagnoseNonLinearity ::
   forall m.
-  (MonadCompile m, MonadIO m) =>
+  (MonadLogger m, MonadIO m) =>
   QueryFormatID ->
   Prog Builtin ->
   DeclProvenance ->
-  m CompileError
+  m BackendError
 diagnoseNonLinearity queryFormat prog propertyProv@(propertyIdentifier, _) = do
   errorOrOrigin <- diagnoseSpecIncompatiblility prog propertyIdentifier linearityTypeCheck
   let origin = case errorOrOrigin of
         Left err -> DiagnosisFailed err
         Right originType -> case originType of
           Builtin _ (Linearity (NonLinear source)) -> Diagnosed source
-          _ -> DiagnosisFailed $ unexpectedOriginType propertyIdentifier
+          _ -> unexpectedOriginType propertyIdentifier
   return $ UnsupportedNonLinearConstraint queryFormat propertyProv origin
 
 diagnoseAlternatingQuantifiers ::
   forall m.
-  (MonadCompile m, MonadIO m) =>
+  (MonadLogger m, MonadIO m) =>
   QueryFormatID ->
   Prog Builtin ->
   DeclProvenance ->
-  m CompileError
+  m BackendError
 diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier, _) = do
   errorOrOrigin <- diagnoseSpecIncompatiblility prog propertyIdentifier polarityTypeCheck
   let origin = case errorOrOrigin of
         Left err -> DiagnosisFailed err
         Right originType -> case originType of
           Builtin _ (Polarity (MixedSequential q p pp2)) -> Diagnosed (q, p, pp2)
-          _ -> DiagnosisFailed $ unexpectedOriginType propertyIdentifier
+          _ -> unexpectedOriginType propertyIdentifier
   return $ UnsupportedAlternatingQuantifiers queryFormat propertyProv origin
 
 diagnoseSpecIncompatiblility ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   Prog Builtin ->
   Identifier ->
-  (Prog Builtin -> Set Identifier -> m (Either CompileError (Prog builtin))) ->
-  m (Either CompileError (Type builtin))
+  (Prog Builtin -> Set Identifier -> m (Either FrontendError (Prog builtin))) ->
+  m (Either FrontendError (Type builtin))
 diagnoseSpecIncompatiblility prog propertyIdentifier typeCheckFn = do
   setCallDepth 0
   logDebug MinDetail $
@@ -68,13 +68,13 @@ diagnoseSpecIncompatiblility prog propertyIdentifier typeCheckFn = do
     Left err -> return $ Left err
     Right linearityProg -> Right <$> findDeclType propertyIdentifier linearityProg
 
-findDeclType :: (MonadCompile m) => Identifier -> Prog builtin -> m (Expr builtin)
+findDeclType :: (MonadLogger m) => Identifier -> Prog builtin -> m (Expr builtin)
 findDeclType propIdent (Main decls) = do
   let maybePropertyType = firstJust getPropertyType decls
   case maybePropertyType of
     Just propertyType -> return propertyType
     Nothing ->
-      compilerDeveloperError $
+      developerError $
         "Could not find property"
           <+> quotePretty propIdent
           <+> "in program after subtyping."
@@ -84,7 +84,7 @@ findDeclType propIdent (Main decls) = do
       DefFunction _ ident _ t _ | propIdent == ident -> Just t
       _ -> Nothing
 
-unexpectedOriginType :: Identifier -> CompileError
+unexpectedOriginType :: Identifier -> a
 unexpectedOriginType ident =
-  DevError $
+  developerError $
     "Unexpected secondary type for property" <+> quotePretty ident
