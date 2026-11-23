@@ -43,16 +43,18 @@
 * Fixed bug where bounds over a variable used as input two networks weren't being
   shared properly, e.g. `forall v . 0 <= v <= 1 => f v <= g v`.
 
+* Fixed rare bug where queries were sometimes generating more network applications than strictly needed.
+
+* Fixed bug where the indices of a property in a multi-dimensional tensor of properties were sometimes displayed in reverse order and in the names of the generated `.vcl-plan` files.
+
+* Fixed a bug where division by zero was performed even if under an `if` guard, e.g. `if x != 0 then 1/x else 1`.
+
 * Fixed two internal errors which occured when indexing into a vectors of natural numbers.
 
 * Fixed various internal errors  which occured when performing complex combinations of indexing operations into vectors and tensors.
 
 * Fixed an internal error that occurred when a nested index quantifier bounded a network input using a value
   obtained by further indexing into a higher-dimensional tensor, e.g. `forall i j . box ! i ! j ! 0 <= x ! i ! j <= 1`.
-
-* Fixed rare bug where queries were sometimes generating more network applications than strictly needed.
-
-* Fixed bug where the indices of a property in a multi-dimensional tensor of properties were sometimes displayed in reverse order and in the names of the generated `.vcl-plan` files.
 
 ### ITP backend
 
