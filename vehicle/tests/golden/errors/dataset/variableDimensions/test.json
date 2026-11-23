@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile queries -s variableDimensions.vcl -f MarabouQueries -d trainingDataset:dataset-nat-4.idx --network f:NO_FILE",
-  "needs": ["variableDimensions.vcl", "dataset-nat-4.idx"]
+  "run": "vehicle compile queries -s variableDimensions.vcl -f MarabouQueries -d trainingDataset:dataset-nat-4.idx --network f:fake.onnx",
+  "needs": ["variableDimensions.vcl", "dataset-nat-4.idx", "fake.onnx"]
 }
