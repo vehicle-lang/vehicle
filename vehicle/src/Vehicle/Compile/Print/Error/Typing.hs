@@ -309,7 +309,7 @@ typeRestrictionError ::
   (Eq builtin, NormalisableBuiltin builtin) =>
   ConstraintContext builtin ->
   InstanceTypeRestrictionOrigin builtin ->
-  [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
+  [FailedInstanceCandidate builtin] ->
   VehicleError
 typeRestrictionError _ctx (TypeRestrictionOrigin _freeEnv (ident, p) sort typ) _candidates = do
   VehicleUserError
@@ -371,11 +371,11 @@ typeRestrictionError _ctx (TypeRestrictionOrigin _freeEnv (ident, p) sort typ) _
 
 instanceArgOriginError ::
   forall builtin.
-  (PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
+  (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
   FreeCtx builtin ->
   ConstraintContext builtin ->
   InstanceArgOrigin builtin ->
-  [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
+  [FailedInstanceCandidate builtin] ->
   VehicleError
 instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candidates =
   VehicleUserError
@@ -399,14 +399,40 @@ instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candid
     -- This assumes that the parameters of the type-class instance are the first arguments of the type-class operation.
     -- e.g. if `HasAdd t1 t2 t3` then `add` has type `forall {t1 t2 t3} . X`. If this is not the case then this function
     -- will not work.
-    candidateOpType :: (Int, (WithContext (InstanceCandidate builtin), UnAnnDoc)) -> UnAnnDoc
+    candidateOpType :: (Int, FailedInstanceCandidate builtin) -> UnAnnDoc
     candidateOpType (no, (candidate, err)) = do
       let (candidateTypeArgs, solutionCtx) = calculateInstanceCandidateTypeArgs candidate
       let finalTypeDoc = calculateInstanceDisplayType freeCtx solutionCtx tcOpType candidateTypeArgs actualArgs
       pretty no
         <> "." <+> finalTypeDoc
         <> line
-        <> indent 2 ("- rejected:" <+> err)
+        <> indent 2 ("- rejected:" <+> candidateRejectionReason (provenanceOf tcOp) err)
+
+-- | Describes why an instance candidate for an overloaded expression was
+-- rejected. If the rejection was caused by a failure to unify the types of
+-- the same overloaded expression then the description of the expression is
+-- omitted, as it has already been given in the enclosing error.
+candidateRejectionReason ::
+  forall builtin.
+  (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
+  Provenance ->
+  TypingError builtin ->
+  UnAnnDoc
+candidateRejectionReason opProvenance = \case
+  FailedUnificationConstraints (FailedUnificationConstraintsError _ (WithContext (Unify origin e1 e2) ctx :| _))
+    | CheckingInstanceType (InstanceArgOrigin ArgOrigin {..}) <- origin,
+      sameSourceRange (provenanceOf checkedInstanceOp) opProvenance -> do
+        let namedBoundCtx = toNamedBoundCtx (boundContextOf ctx)
+        squotes (prettyFriendly (WithContext e1 namedBoundCtx))
+          <+> "is not equal to"
+          <+> squotes (prettyFriendly (WithContext e2 namedBoundCtx))
+          <> "."
+  err -> problem (typingErrorDetails err)
+  where
+    -- NOTE: the `Eq` instance for `Provenance` deliberately equates all
+    -- provenances, so we have to compare the underlying ranges.
+    sameSourceRange :: Provenance -> Provenance -> Bool
+    sameSourceRange (Provenance r1 f1) (Provenance r2 f2) = r1 == r2 && f1 == f2
 
 calculateInstanceCandidateTypeArgs ::
   forall builtin.
