@@ -17,9 +17,22 @@ import Vehicle.Prelude
   )
 import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecification)
 
+lineCommentStart :: Text
+lineCommentStart = "--"
+
+blockCommentStart :: Text
+blockCommentStart = "{-"
+
+blockCommentEnd :: Text
+blockCommentEnd = "-}"
+
 --------------------------------------------------------------------------------
 -- API
 
+-- | Collect tokens from comments using a separate pass over the file. This is necessary because
+-- comments are removed during lexing and are not given to the parser. Note that this also means
+-- the comment tokens (`--`, `{-`, `-}`) are hardcoded in this file, since they are not accessible
+-- from the generated parser code.
 collectCommentsTokens :: (MonadReadSpecification m) => FilePath -> m [IntermediateSemTok]
 collectCommentsTokens filePath = do
   moduleText <- readSpecification filePath
@@ -61,21 +74,20 @@ makeToken commentProv =
 
 data ParserState
   = NotInComment
-  | InMultiLineComment
+  | InBlockComment
       Position -- start position
 
 data NotInCommentLineParseResult
   = NoCommentStart
-  | SingleLineComment
+  | LineComment
       Int -- start column
-      Int -- end column
-  | MultiLineCommentStart
+  | BlockCommentStart
       Int -- start column
       Text -- input line with the processed text blanked out
 
-data InMultiLineCommentLineParseResult
+data InBlockCommentLineParseResult
   = NoCommentEnd
-  | MultiLineCommentEnd
+  | BlockCommentEnd
       Int -- end column
       Text -- input line with the processed text blanked out
 
@@ -86,26 +98,26 @@ findCommentProvs (lineContent : ls) thisLine = \case
     case parseLineNotInComment lineContent of
       NoCommentStart ->
         findCommentProvs ls nextLine NotInComment
-      SingleLineComment startCol endCol ->
+      LineComment startCol ->
         Provenance
           ( Range
               (Position thisLine startCol)
-              (Position thisLine endCol)
+              endOfThisLine
           )
           : findCommentProvs ls nextLine NotInComment
-      MultiLineCommentStart startCol newLineContent ->
-        findCommentProvs (newLineContent : ls) thisLine (InMultiLineComment (Position thisLine startCol))
-  InMultiLineComment startPos ->
-    case parseLineInMultiLineComment lineContent of
+      BlockCommentStart startCol newLineContent ->
+        findCommentProvs (newLineContent : ls) thisLine (InBlockComment (Position thisLine startCol))
+  InBlockComment startPos ->
+    case parseLineInBlockComment lineContent of
       NoCommentEnd ->
-        -- Split multi-line comments into one token per line
+        -- Split multi-line block comments into one token per line
         Provenance
           ( Range
               startPos
-              (Position thisLine (T.length lineContent))
+              endOfThisLine
           )
-          : findCommentProvs ls nextLine (InMultiLineComment (Position nextLine 0))
-      MultiLineCommentEnd endCol newLineContent ->
+          : findCommentProvs ls nextLine (InBlockComment (Position nextLine 0))
+      BlockCommentEnd endCol newLineContent ->
         Provenance
           ( Range
               startPos
@@ -114,31 +126,44 @@ findCommentProvs (lineContent : ls) thisLine = \case
           : findCommentProvs (newLineContent : ls) thisLine NotInComment
   where
     nextLine = thisLine + 1
+    endOfThisLine = Position thisLine (T.length lineContent)
 
 parseLineNotInComment :: Text -> NotInCommentLineParseResult
 parseLineNotInComment line = do
-  let (sPre, sSuf) = T.breakOn "--" line
-  let (mPre, mSuf) = T.breakOn "{-" sPre
-  if T.length mSuf > 0
+  let (linePrefix, lineSuffix) = T.breakOn lineCommentStart line
+  let (blockPrefix, blockSuffix) = T.breakOn blockCommentStart linePrefix
+  -- The line is now split like:
+  --
+  --  | blockPrefix | blockSuffix | lineSuffix |
+  --  | ******* linePrefix ****** |            |
+  --
+  -- If either suffix has > 0 length, it will contain their comment token.
+  --
+  -- We want to prioritise the earlier start token (i.e. `-- {-` does not open a block comment,
+  -- but `{- --` does). Due to the above splitting layout, the block comment start token will
+  -- always be earlier if it is present.
+  if T.length blockSuffix > 0
     then do
-      let startCommentCol = T.length mPre
-      let startRestCol = startCommentCol + T.length "{-"
-      MultiLineCommentStart startCommentCol (hideFirstNChars startRestCol line)
+      let startCommentCol = T.length blockPrefix
+      let startRestCol = startCommentCol + T.length blockCommentStart
+      BlockCommentStart startCommentCol (hideFirstNChars startRestCol line)
     else
-      if T.length sSuf > 0
-        then SingleLineComment (T.length sPre) (T.length line)
+      if T.length lineSuffix > 0
+        then LineComment (T.length linePrefix)
         else NoCommentStart
 
-parseLineInMultiLineComment :: Text -> InMultiLineCommentLineParseResult
-parseLineInMultiLineComment line = do
-  let (pre, suf) = T.breakOn "-}" line
+parseLineInBlockComment :: Text -> InBlockCommentLineParseResult
+parseLineInBlockComment line = do
+  -- If we're in a block comment, we don't care if there happens to be a line comment token.
+  -- For example, `-- -}` will still close the block comment.
+  let (pre, suf) = T.breakOn blockCommentEnd line
   if T.length suf > 0
     then do
-      let endCol = T.length pre + T.length "-}"
-      MultiLineCommentEnd endCol (hideFirstNChars endCol line)
+      let endCol = T.length pre + T.length blockCommentEnd
+      BlockCommentEnd endCol (hideFirstNChars endCol line)
     else NoCommentEnd
 
--- | If we find a start/end multiline comment marker, we still need to process the rest of the
+-- | If we find a start/end block comment marker, we still need to process the rest of the
 -- line. We want to preserve the column indices during this process, so rather than just dropping
 -- the first already-processed parts of the line, we "hide" them by overwriting them with spaces.
 -- This is quite hacky, but means we don't have to maintain a "how many columns have we already
