@@ -5,7 +5,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core (QueryVariable)
-import Vehicle.Verify.Specification (QueryMetaData (..))
+import Vehicle.Verify.Specification (QueryPlan (..))
 
 class IsVerified a where
   isVerified :: a -> Bool
@@ -42,7 +42,7 @@ isTimeoutError = \case
 
 data PropertyStatus
   = PropertyCompleted (MaybeTrivial (QuerySetNegationStatus, QueryResult UserVariableAssignment))
-  | PropertyErrored (QueryMetaData, SolverError)
+  | PropertyErrored (QueryPlan, SolverError)
 
 instance IsVerified PropertyStatus where
   isVerified = \case

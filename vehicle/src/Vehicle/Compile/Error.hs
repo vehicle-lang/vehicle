@@ -33,7 +33,6 @@ import Data.Aeson (ToJSON, genericToJSON)
 import Data.Aeson.Types (ToJSON (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
-import Data.Typeable (Proxy)
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
@@ -46,7 +45,7 @@ import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Code.ForcedValue (ForcedValue, Thunk, ThunkWithMetas, UnforcedBinder, UnforcedType, UnforcedTypeWithMetas)
+import Vehicle.Data.Code.ForcedValue (ForcedValue, Thunk, UnforcedBinder, UnforcedType)
 import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
@@ -120,60 +119,6 @@ data ScopeError
   | -- Unsupported @tensor records
     ZeroFieldTensorLike DeclProvenance
   | ParameterisedTensorLike DeclProvenance
-  deriving stock (Show)
-
---------------------------------------------------------------------------------
--- Typing errors
-
-data MissingExplicitArgError builtin = MissingExplicitArgError
-  { _ctx :: NamedBoundCtx,
-    explicitBinder :: Binder builtin,
-    nonExplicitArg :: Arg builtin
-  }
-  deriving stock (Show)
-
-data RelevantUseOfIrrelevantVariableError builtin = RelevantUseOfIrrelevantVariableError
-  { _proxy :: Proxy builtin,
-    _provenance :: Provenance,
-    irrelevantVariableName :: Name
-  }
-  deriving stock (Show)
-
-data FunctionTypeMismatchError builtin = FunctionTypeMismatchError
-  { _ctx :: NamedBoundCtx,
-    originalFunction :: Expr builtin,
-    currentExpectedType :: Expr builtin,
-    currentUncheckedArgs :: [Arg builtin]
-  }
-  deriving stock (Show)
-
-data FailedUnificationConstraintsError builtin = FailedUnificationConstraintsError
-  { _freeCtx :: FreeCtx builtin,
-    failedConstraints :: NonEmpty (WithContext (UnificationConstraint builtin))
-  }
-  deriving stock (Show)
-
-data FailedInstanceConstraintError builtin = FailedInstanceConstraintError
-  { _freeCtx :: FreeCtx builtin,
-    failedConstraint :: WithContext (InstanceConstraint builtin),
-    exploredCandidates :: [(WithContext (InstanceCandidate builtin), UnAnnDoc)]
-  }
-  deriving stock (Show)
-
--- | Errors thrown during type-checking
-data TypingError builtin
-  = MissingExplicitArg (MissingExplicitArgError builtin)
-  | FunctionTypeMismatch (FunctionTypeMismatchError builtin)
-  | RelevantUseOfIrrelevantVariable (RelevantUseOfIrrelevantVariableError builtin)
-  | FailedUnificationConstraints (FailedUnificationConstraintsError builtin)
-  | FailedInstanceConstraint (FailedInstanceConstraintError builtin)
-  | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
-  | FailedIndexConstraintUnknown (ConstraintContext builtin) (ThunkWithMetas builtin) (UnforcedTypeWithMetas builtin)
-  | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
-  | UnsolvedMetas (Proxy builtin) (NonEmpty (MetaID, Provenance))
-  | InvalidInstanceHead DeclProvenance (Expr builtin)
-  | NonTypeClassInstanceHead (Proxy builtin) DeclProvenance Identifier
-  | QuantifiedIfCondition (ConstraintContext builtin)
   deriving stock (Show)
 
 --------------------------------------------------------------------------------

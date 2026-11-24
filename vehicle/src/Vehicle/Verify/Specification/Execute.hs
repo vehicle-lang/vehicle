@@ -91,7 +91,7 @@ verifyProperty address = do
   PropertyVerificationPlan {..} <- readPropertyVerificationPlan propertyPlanFile
 
   -- Determine number of queries and initialise progress bar
-  result <- reportProperty address (propertySize queryMetaData) $ case queryMetaData of
+  result <- reportProperty address (propertyPlanSize propertyPlan) $ case propertyPlan of
     Trivial status ->
       return $ PropertyCompleted (Trivial status)
     NonTrivial structure -> do
@@ -106,7 +106,7 @@ verifyProperty address = do
 
 type MonadVerifyProperty m =
   ( MonadVerify m,
-    MonadError (QueryMetaData, SolverError) m
+    MonadError (QueryPlan, SolverError) m
   )
 
 -- | Lazily tries to verify the property, avoiding evaluating parts
@@ -114,19 +114,19 @@ type MonadVerifyProperty m =
 verifyPropertyBooleanStructure ::
   forall m.
   (MonadVerifyProperty m) =>
-  BooleanExpr (QuerySet QueryMetaData) ->
+  BooleanExpr QuerySetPlan ->
   m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
 verifyPropertyBooleanStructure = go
   where
     go ::
-      BooleanExpr (QuerySet QueryMetaData) ->
+      BooleanExpr QuerySetPlan ->
       m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
     go = \case
       Query qs -> verifyQuerySet qs
       Disjunct (DisjunctAll xs) -> goDisjunct xs
       Conjunct (ConjunctAll xs) -> goConjunct xs
 
-    goConjunct :: NonEmpty (BooleanExpr (QuerySet QueryMetaData)) -> m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
+    goConjunct :: NonEmpty (BooleanExpr QuerySetPlan) -> m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
     goConjunct (x :| []) = go x
     goConjunct (x :| y : ys) = do
       result@(negated, status) <- go x
@@ -134,7 +134,7 @@ verifyPropertyBooleanStructure = go
         then return result
         else goConjunct (y :| ys)
 
-    goDisjunct :: NonEmpty (BooleanExpr (QuerySet QueryMetaData)) -> m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
+    goDisjunct :: NonEmpty (BooleanExpr QuerySetPlan) -> m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
     goDisjunct (x :| []) = go x
     goDisjunct (x :| y : ys) = do
       result@(negated, status) <- go x
@@ -144,25 +144,25 @@ verifyPropertyBooleanStructure = go
 
 verifyQuerySet ::
   (MonadVerifyProperty m) =>
-  QuerySet QueryMetaData ->
+  QuerySetPlan ->
   m (QuerySetNegationStatus, QueryResult UserVariableAssignment)
-verifyQuerySet (QuerySet negated disjuncts) = do
-  result <- verifyDisjunctAll disjuncts
+verifyQuerySet QuerySetPlan {..} = do
+  let verifyPartition PartitionPlan {..} =
+        untilSAT (verifyQuery querySetVariables partitionSteps) partitionQueries
+  result <- untilSAT verifyPartition partitions
   return (negated, result)
 
-verifyDisjunctAll ::
-  forall m.
-  (MonadVerifyProperty m) =>
-  DisjunctAll QueryMetaData ->
-  m (QueryResult UserVariableAssignment)
-verifyDisjunctAll (DisjunctAll ys) = go ys
+-- | Runs the action on each disjunct in turn, stopping at the first that is SAT.
+untilSAT ::
+  (Monad m) =>
+  (a -> m (QueryResult witness)) ->
+  DisjunctAll a ->
+  m (QueryResult witness)
+untilSAT f (DisjunctAll ys) = go ys
   where
-    go ::
-      NonEmpty QueryMetaData ->
-      m (QueryResult UserVariableAssignment)
-    go (x :| []) = verifyQuery x
+    go (x :| []) = f x
     go (x :| y : xs) = do
-      r <- verifyQuery x
+      r <- f x
       if isVerified r
         then return r
         else go (y :| xs)
@@ -176,9 +176,11 @@ type MonadVerifyQuery m =
 
 verifyQuery ::
   (MonadVerifyProperty m) =>
-  QueryMetaData ->
+  QuerySetVariables ->
+  [CompilationStep] ->
+  QueryPlan ->
   m (QueryResult UserVariableAssignment)
-verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork variables reconstruction) = do
+verifyQuery querySetVariables partitionSteps queryPlan@QueryPlan {..} = do
   logCompilerSection MidDetail ("Verifying query" <+> quotePretty queryAddress) $ do
     VerificationSettings {..} <- ask
     let queryFile = calculateQueryFileName specificationCache queryAddress
@@ -191,15 +193,16 @@ verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork variables reco
           return $ SAT Nothing
         SAT (Just witness) -> do
           logDebug MidDetail $ "Query is SAT (witness provided)" <> line
-          checkWitness (getQueryVariables variables) witness
-          problemSpaceWitness <- reconstructUserVars variables reconstruction witness
+          checkWitness (Map.keys queryVariableMapping) witness
+          let reconstructionSteps = querySteps <> partitionSteps
+          problemSpaceWitness <- reconstructUserVars querySetVariables queryVariableMapping reconstructionSteps witness
           return $ SAT $ Just problemSpaceWitness
         UnSAT -> do
           logDebug MidDetail $ "Query is UnSAT" <> line
           return UnSAT
 
     case errorOrResult of
-      Left err -> throwError (queryMetaData, err)
+      Left err -> throwError (queryPlan, err)
       Right result -> return result
 
 invokeSolver ::
@@ -311,7 +314,7 @@ outputPropertyResult address result = do
     PropertyCompleted status -> case status of
       NonTrivial (_, SAT (Just assignment)) -> writeWitnessToFile specificationCache address assignment
       _ -> return ()
-    PropertyErrored (QueryMetaData {..}, err) -> do
+    PropertyErrored (QueryPlan {..}, err) -> do
       let VerificationErrorAction {..} = convertVerificationError solver queryAddress err
 
       reproducerMessage <-

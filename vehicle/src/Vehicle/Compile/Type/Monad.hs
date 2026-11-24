@@ -50,13 +50,14 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
 import Data.Sequence (Seq, (><), pattern Empty, pattern (:<|))
 import Data.Sequence qualified as Seq
-import Vehicle.Compile.Error (FrontendError (..), MonadFrontend, TypingError (..))
+import Vehicle.Compile.Error (FrontendError (..), MonadFrontend)
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyExternal, prettyExternal, prettyVerbose)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
+import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..), addMetaSolution, solvedMetaInfos, unsolvedMetaInfos)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
@@ -73,15 +74,15 @@ runTypeCheckerTInitially ::
   TypeCheckerT builtin m a ->
   m (a, ModuleTypingInterface builtin, FreeCtx builtin)
 runTypeCheckerTInitially builtinInstances importedCtx e = do
-  let state = emptyTypeCheckerState builtinInstances importedCtx
-  outcome <- runTypeCheckerT state e
+  let initialState = emptyTypeCheckerState builtinInstances importedCtx
+  (outcome, finalState) <- runTypeCheckerT initialState e
   case outcome of
     Left err -> throwError $ TypingErrors $ pure err
-    Right (result, internalState) ->
-      return (result, currentModuleInterface internalState, currentFreeCtx internalState)
+    Right result ->
+      return (result, currentModuleInterface finalState, currentFreeCtx finalState)
 
 -- | Runs a hypothetical computation in the type-checker,
--- returning the resulting state of the type-checker.
+-- returning either an error or the resulting state of the type-checker.
 runTypeCheckerTHypothetically ::
   forall builtin m a.
   (MonadTypeChecker builtin m) =>
@@ -90,13 +91,17 @@ runTypeCheckerTHypothetically ::
 runTypeCheckerTHypothetically e = do
   callDepth <- getCallDepth
   state <- getTypeCheckerState
-  result <- runTypeCheckerT state e
+  (result, finalState) <- runTypeCheckerT state e
   case result of
-    Right value -> return $ Right value
+    Right value -> return $ Right (value, finalState)
     Left err -> do
       -- If we errored then reset the call depth so logging is not disrupted.
       setCallDepth callDepth
-      return $ Left err
+      -- The hypothetical state is about to be discarded, so substitute the
+      -- meta-variable solutions found within it into the error now. They
+      -- would otherwise be lost and the user would be shown unsolved metas.
+      let finalMetaCtx = metaVariableCtx (currentDeclState finalState)
+      Left <$> MetaSubstitution.substMetas finalMetaCtx err
 
 -- | Accepts the hypothetical outcome of the type-checker.
 adoptHypotheticalState :: (MonadTypeChecker builtin m) => TypeCheckerState builtin -> m ()

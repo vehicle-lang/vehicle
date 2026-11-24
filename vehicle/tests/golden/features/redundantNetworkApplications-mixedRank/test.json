@@ -1,0 +1,11 @@
+[
+  {
+    "name": "VNNLib",
+    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries/ --network f:fake.onnx",
+    "needs": ["spec.vcl", "fake.onnx"],
+    "produces": ["VNNLib.queries/p.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    }
+  }
+]

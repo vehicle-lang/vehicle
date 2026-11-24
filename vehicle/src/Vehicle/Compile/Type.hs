@@ -231,9 +231,12 @@ recoverDecl action = do
   (Right <$> action) `catchError` \err -> do
     -- The logging call depth is not restored when an error is thrown.
     setCallDepth callDepth
+    -- The handler runs in the state at the point the error was thrown, so
+    -- substitute any meta-variables solved by then before rolling back.
+    substErr <- substMetaVariables err
     modifyTypeCheckerState (const state)
     resetDeclState (Proxy @builtin)
-    return $ Left err
+    return $ Left substErr
 
 -------------------------------------------------------------------------------
 -- Constraint solving

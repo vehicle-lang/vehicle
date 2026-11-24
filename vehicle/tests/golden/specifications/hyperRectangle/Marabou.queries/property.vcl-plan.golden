@@ -1,233 +1,239 @@
 {
-  "queryMetaData": {
+  "propertyPlan": {
     "tag": "NonTrivial",
     "contents": {
       "tag": "Query",
       "contents": {
-        "queries": {
+        "querySetVariables": {
+          "vehicleVariableCtx": [
+            "classifier₀[output]!1",
+            "classifier₀[output]!0",
+            "classifier₀[output]",
+            "classifier₀[input]!29",
+            "classifier₀[input]!28",
+            "classifier₀[input]!27",
+            "classifier₀[input]!26",
+            "classifier₀[input]!25",
+            "classifier₀[input]!24",
+            "classifier₀[input]!23",
+            "classifier₀[input]!22",
+            "classifier₀[input]!21",
+            "classifier₀[input]!20",
+            "classifier₀[input]!19",
+            "classifier₀[input]!18",
+            "classifier₀[input]!17",
+            "classifier₀[input]!16",
+            "classifier₀[input]!15",
+            "classifier₀[input]!14",
+            "classifier₀[input]!13",
+            "classifier₀[input]!12",
+            "classifier₀[input]!11",
+            "classifier₀[input]!10",
+            "classifier₀[input]!9",
+            "classifier₀[input]!8",
+            "classifier₀[input]!7",
+            "classifier₀[input]!6",
+            "classifier₀[input]!5",
+            "classifier₀[input]!4",
+            "classifier₀[input]!3",
+            "classifier₀[input]!2",
+            "classifier₀[input]!1",
+            "classifier₀[input]!0",
+            "classifier₀[input]",
+            "x!29",
+            "x!28",
+            "x!27",
+            "x!26",
+            "x!25",
+            "x!24",
+            "x!23",
+            "x!22",
+            "x!21",
+            "x!20",
+            "x!19",
+            "x!18",
+            "x!17",
+            "x!16",
+            "x!15",
+            "x!14",
+            "x!13",
+            "x!12",
+            "x!11",
+            "x!10",
+            "x!9",
+            "x!8",
+            "x!7",
+            "x!6",
+            "x!5",
+            "x!4",
+            "x!3",
+            "x!2",
+            "x!1",
+            "x!0",
+            "x"
+          ],
+          "userVariables": [
+            0
+          ]
+        },
+        "partitions": {
           "unDisjunctAll": [
             {
-              "variableStore": {
-                "vehicleVariableCtx": [
-                  "classifier₀[output]!1",
-                  "classifier₀[output]!0",
-                  "classifier₀[output]",
-                  "classifier₀[input]!29",
-                  "classifier₀[input]!28",
-                  "classifier₀[input]!27",
-                  "classifier₀[input]!26",
-                  "classifier₀[input]!25",
-                  "classifier₀[input]!24",
-                  "classifier₀[input]!23",
-                  "classifier₀[input]!22",
-                  "classifier₀[input]!21",
-                  "classifier₀[input]!20",
-                  "classifier₀[input]!19",
-                  "classifier₀[input]!18",
-                  "classifier₀[input]!17",
-                  "classifier₀[input]!16",
-                  "classifier₀[input]!15",
-                  "classifier₀[input]!14",
-                  "classifier₀[input]!13",
-                  "classifier₀[input]!12",
-                  "classifier₀[input]!11",
-                  "classifier₀[input]!10",
-                  "classifier₀[input]!9",
-                  "classifier₀[input]!8",
-                  "classifier₀[input]!7",
-                  "classifier₀[input]!6",
-                  "classifier₀[input]!5",
-                  "classifier₀[input]!4",
-                  "classifier₀[input]!3",
-                  "classifier₀[input]!2",
-                  "classifier₀[input]!1",
-                  "classifier₀[input]!0",
-                  "classifier₀[input]",
-                  "x!29",
-                  "x!28",
-                  "x!27",
-                  "x!26",
-                  "x!25",
-                  "x!24",
-                  "x!23",
-                  "x!22",
-                  "x!21",
-                  "x!20",
-                  "x!19",
-                  "x!18",
-                  "x!17",
-                  "x!16",
-                  "x!15",
-                  "x!14",
-                  "x!13",
-                  "x!12",
-                  "x!11",
-                  "x!10",
-                  "x!9",
-                  "x!8",
-                  "x!7",
-                  "x!6",
-                  "x!5",
-                  "x!4",
-                  "x!3",
-                  "x!2",
-                  "x!1",
-                  "x!0",
-                  "x"
-                ],
-                "userVariables": [
-                  0
-                ],
-                "queryVariableMapping": {
-                  "y1": 64,
-                  "y0": 63,
-                  "x9": 41,
-                  "x8": 40,
-                  "x7": 39,
-                  "x6": 38,
-                  "x5": 37,
-                  "x4": 36,
-                  "x3": 35,
-                  "x29": 61,
-                  "x28": 60,
-                  "x27": 59,
-                  "x26": 58,
-                  "x25": 57,
-                  "x24": 56,
-                  "x23": 55,
-                  "x22": 54,
-                  "x21": 53,
-                  "x20": 52,
-                  "x2": 34,
-                  "x19": 51,
-                  "x18": 50,
-                  "x17": 49,
-                  "x16": 48,
-                  "x15": 47,
-                  "x14": 46,
-                  "x13": 45,
-                  "x12": 44,
-                  "x11": 43,
-                  "x10": 42,
-                  "x1": 33,
-                  "x0": 32
-                }
-              },
-              "variableCompilationTrace": {
-                "reconstructionSteps": [
-                  {
-                    "tag": "ReconstructTensorVariable",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            30
-                          ]
-                        },
-                        "nestedStartingVariable": 31
+              "partitionSteps": [
+                {
+                  "tag": "SolveEquality",
+                  "contents": [
+                    {
+                      "nestedTensorShape": {
+                        "tag": "UniModal",
+                        "contents": [
+                          30
+                        ]
                       },
-                      "AllDimensions"
-                    ]
-                  },
-                  {
-                    "tag": "ReconstructTensorVariable",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            2
-                          ]
-                        },
-                        "nestedStartingVariable": 62
-                      },
-                      "AllDimensions"
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": {
-                          "tag": "UniModal",
-                          "contents": [
-                            30
-                          ]
-                        },
-                        "nestedStartingVariable": 0
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              30
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
+                      "nestedStartingVariable": 0
+                    },
+                    {
+                      "constantValue": {
+                        "tag": "ConstantTensor",
+                        "contents": [
                           [
-                            31,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
+                            30
+                          ],
+                          {
+                            "numerator": 0,
+                            "denominator": 1
+                          }
+                        ]
+                      },
+                      "coefficients": [
+                        [
+                          31,
+                          {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "partitionQueries": {
+                "unDisjunctAll": [
+                  {
+                    "queryVariableMapping": {
+                      "y1": 64,
+                      "y0": 63,
+                      "x9": 41,
+                      "x8": 40,
+                      "x7": 39,
+                      "x6": 38,
+                      "x5": 37,
+                      "x4": 36,
+                      "x3": 35,
+                      "x29": 61,
+                      "x28": 60,
+                      "x27": 59,
+                      "x26": 58,
+                      "x25": 57,
+                      "x24": 56,
+                      "x23": 55,
+                      "x22": 54,
+                      "x21": 53,
+                      "x20": 52,
+                      "x2": 34,
+                      "x19": 51,
+                      "x18": 50,
+                      "x17": 49,
+                      "x16": 48,
+                      "x15": 47,
+                      "x14": 46,
+                      "x13": 45,
+                      "x12": 44,
+                      "x11": 43,
+                      "x10": 42,
+                      "x1": 33,
+                      "x0": 32
+                    },
+                    "querySteps": [
+                      {
+                        "tag": "ReconstructTensorVariable",
+                        "contents": [
+                          {
+                            "nestedTensorShape": {
+                              "tag": "UniModal",
+                              "contents": [
+                                30
+                              ]
+                            },
+                            "nestedStartingVariable": 31
+                          },
+                          "AllDimensions"
+                        ]
+                      },
+                      {
+                        "tag": "ReconstructTensorVariable",
+                        "contents": [
+                          {
+                            "nestedTensorShape": {
+                              "tag": "UniModal",
+                              "contents": [
+                                2
+                              ]
+                            },
+                            "nestedStartingVariable": 62
+                          },
+                          "AllDimensions"
                         ]
                       }
+                    ],
+                    "queryAddress": {
+                      "tag": "QueryAddress",
+                      "queryID": 1,
+                      "property": {
+                        "tag": "PropertyAddress",
+                        "propertyName": "property",
+                        "propertyIndices": []
+                      }
+                    },
+                    "metaNetwork": [
+                      [
+                        "classifier",
+                        {
+                          "networkType": {
+                            "networkOutputType": {
+                              "tag": "UniModal",
+                              "contents": {
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    2
+                                  ],
+                                  "baseType": []
+                                }
+                              }
+                            },
+                            "networkInputType": {
+                              "tag": "UniModal",
+                              "contents": {
+                                "tag": "TensorIOType",
+                                "contents": {
+                                  "dimensions": [
+                                    30
+                                  ],
+                                  "baseType": []
+                                }
+                              }
+                            }
+                          },
+                          "networkFilepath": "adv.onnx"
+                        },
+                        1
+                      ]
                     ]
                   }
                 ]
-              },
-              "queryAddress": {
-                "tag": "QueryAddress",
-                "queryID": 1,
-                "property": {
-                  "tag": "PropertyAddress",
-                  "propertyName": "property",
-                  "propertyIndices": []
-                }
-              },
-              "metaNetwork": [
-                [
-                  "classifier",
-                  {
-                    "networkType": {
-                      "networkOutputType": {
-                        "tag": "UniModal",
-                        "contents": {
-                          "tag": "TensorIOType",
-                          "contents": {
-                            "dimensions": [
-                              2
-                            ],
-                            "baseType": []
-                          }
-                        }
-                      },
-                      "networkInputType": {
-                        "tag": "UniModal",
-                        "contents": {
-                          "tag": "TensorIOType",
-                          "contents": {
-                            "dimensions": [
-                              30
-                            ],
-                            "baseType": []
-                          }
-                        }
-                      }
-                    },
-                    "networkFilepath": "adv.onnx"
-                  },
-                  1
-                ]
-              ]
+              }
             }
           ]
         },
