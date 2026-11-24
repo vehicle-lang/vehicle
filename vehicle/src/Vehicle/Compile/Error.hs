@@ -215,8 +215,7 @@ deriving stock instance Show FrontendError
 
 -- | Errors thrown by the back end of the compiler.
 data BackendError
-  = DevError UnAnnDoc
-  | -- Resource loading errors
+  = -- Resource loading errors
     ResourcesNotProvided (NonEmpty MissingResource)
   | ResourceIOError DeclProvenance ExternalResource IOException
   | UnsupportedResourceFormat DeclProvenance ExternalResource String

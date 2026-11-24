@@ -22,7 +22,6 @@ class VehicleLexer(ExternalLexer):
             (r"@property", token.Keyword.Declaration),
             (r"@postulate", token.Keyword.Declaration),
             (r"->", token.Operator),
-            (r"forallT", token.Keyword),
             (r"if", token.Keyword),
             (r"then", token.Keyword),
             (r"else", token.Keyword),

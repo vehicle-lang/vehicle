@@ -3,13 +3,13 @@ module Vehicle.Compile.ExpandResources.Dataset.IDX
   )
 where
 
-import Control.Exception (try)
 import Control.Monad (zipWithM)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (..))
+import Data.ByteString.Lazy qualified as LazyByteString
 import Data.IDX
   ( IDXData,
-    decodeIDXFile,
+    decodeIDX,
     idxDimensions,
     idxDoubleContent,
     idxIntContent,
@@ -73,16 +73,13 @@ readIDX file decl rawDatasetType expectedType = do
           parseIDX (mkCtx parser) expectedType elems
 
 readIDXFile ::
-  (MonadBackend m, MonadIO m) =>
+  (MonadExpandResources m, MonadIO m) =>
   DeclProvenance ->
   FilePath ->
   m (Maybe IDXData)
 readIDXFile decl file = do
-  result <- liftIO $ try (decodeIDXFile file)
-  case result of
-    Right idxData -> return idxData
-    Left ioExcept -> do
-      throwError $ ResourceIOError decl Dataset ioExcept
+  contents <- readResourceFile decl Dataset file
+  return $ decodeIDX $ LazyByteString.fromStrict contents
 
 parseIDX ::
   (MonadExpandResources m, Vector.Unbox a) =>

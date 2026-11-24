@@ -24,7 +24,6 @@ position token TokAnnotation ({"@"}
 );
 
 position token TokArrow     {"->"};
-position token TokForallT   {"forallT"};
 position token TokIf        {"if"};
 position token TokThen      {"then"};
 position token TokElse      {"else"};
@@ -166,11 +165,17 @@ separator NameBinder "";
 
 -- * Binders where the user must provide a type but can omit the name
 
-ExplicitTypeBinder. TypeBinder ::= Expr14;
--- ExplicitTypeBinderMods. TypeBinder ::= "(" Modality [Modality] Expr15 ")"; -- Causes a shift/reduce conflict
-ImplicitTypeBinder. TypeBinder ::= "{" [Modality] Expr1 "}";
-InstanceTypeBinder. TypeBinder ::= "{{" [Modality] Expr1 "}}";
-BasicTypeBinder.    TypeBinder ::= BasicBinder;
+-- Note that `(x : A)` and `{x : A}` are deliberately NOT parsed as `BasicBinder`s
+-- here, as they are indistinguishable from a bracketed annotation `x : A`
+-- (and `{x ...` from a record) with one token of lookahead. Instead they are
+-- parsed as an `Ann` inside the binder and converted to a named binder during
+-- desugaring. `BasicTypeBinder` is kept as an internal rule for the printer.
+ExplicitTypeBinder.     TypeBinder ::= Expr14;
+ExplicitTypeBinderMods. TypeBinder ::= "(" Modality [Modality] Expr ")";
+ImplicitTypeBinder.     TypeBinder ::= "{" Expr "}";
+ImplicitTypeBinderMods. TypeBinder ::= "{" Modality [Modality] Expr "}";
+InstanceTypeBinder.     TypeBinder ::= "{{" [Modality] Expr "}}";
+internal BasicTypeBinder. TypeBinder ::= BasicBinder;
 
 -- * Arguments6
 
@@ -218,12 +223,10 @@ Type.    Expr17 ::= TokType;
 
 -- Core structure.
 Ann.       Expr   ::= Expr2 TokElemOf Expr1;
-ForallT.   Expr1  ::= TokForallT [NameBinder] "." Expr1;
 Let.       Expr2  ::= TokLet [LetDecl] "in" Expr2;
 Lam.       Expr2  ::= TokLambda [NameBinder] TokArrow Expr2;
 Fun.       Expr12 ::= TypeBinder TokArrow Expr12;
 App.       Expr14 ::= Expr14 Arg;
--- This record declaration causes a shift-reduce conflict.
 Record.    Expr11 ::= "{" [RecordFieldAssign] "}";
 RecordAcc. Expr16 ::= Expr16 FieldAccess;
 Var.       Expr17 ::= Name;
@@ -246,7 +249,7 @@ Pow. Expr11 ::= Expr11 TokPow Expr12;
 Neg. Expr12 ::= TokSub Expr12;
 
 -- Boolean expressions.
-If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr2;
+If.      Expr4  ::= TokIf Expr4 TokThen Expr4 TokElse Expr2;
 Impl.    Expr5  ::= Expr6 TokImpl Expr5;
 And.     Expr7  ::= Expr8 TokAnd Expr7;
 Or.      Expr7  ::= Expr8 TokOr  Expr7;
@@ -267,25 +270,42 @@ GtPoint. Expr8  ::= Expr8 TokGtPoint Expr9;
 -- Quantifiers and `if` have very low precedence, so ordinarily they would
 -- have to be bracketed when used as the right-hand operand of a boolean
 -- connective, e.g. `p and (exists x . q)` or `p => (if c then q else r)`.
--- To allow these brackets to be omitted, the boolean connectives below may
--- also take an `Expr18` as their right-hand operand. `Expr18` contains only
--- the quantifiers and `if` (it is deliberately not part of the coercion
--- chain). As with lambdas in Haskell, the body of the quantifier (or the
--- `else` branch of the `if`) extends as far to the right as possible.
+-- To allow these brackets to be omitted, there is a separate "open spine" of
+-- `=>`, `and` and `or` chains whose final right-hand operand is an `Expr18`.
+-- `Expr18` contains only the quantifiers and `if`. As with lambdas in Haskell,
+-- the body of the quantifier (or the `else` branch of the `if`) extends as
+-- far to the right as possible.
 --
--- The duplicated labels are harmless as the generated printer uses the
--- precedence of the first rule for each label. Therefore the `Expr18` rules
--- must always come AFTER the original rules, otherwise the printer will omit
--- necessary brackets.
-Impl.      Expr5  ::= Expr6 TokImpl Expr18;
-And.       Expr7  ::= Expr8 TokAnd  Expr18;
-Or.        Expr7  ::= Expr8 TokOr   Expr18;
+--   * `Expr19` is an open `=>` chain (or an open `and`/`or` chain).
+--   * `Expr20` is an open `and`/`or` chain.
+--
+-- The open spine is only included in the grammar at `Expr4` and is
+-- deliberately not part of the coercion chain. This ensures that the left
+-- operands of `=>` (`Expr6`) and `::` (`Expr5`) can never end in an
+-- unbracketed `Expr18`, as otherwise expressions such as
+-- `a and forall x . b => c` would be ambiguous, causing shift/reduce
+-- conflicts. For the same reason the condition and `then` branch of an `if`
+-- are `Expr4` rather than `Expr5`, so that they may also contain the open
+-- spine.
+--
+-- The `_` rules are coercions that do not generate a constructor. The
+-- duplicated labels are harmless as the generated printer uses the precedence
+-- of the first rule for each label. Therefore these rules must always come
+-- AFTER the original rules, otherwise the printer will omit necessary brackets.
+Impl.      Expr19 ::= Expr6 TokImpl Expr19;
+Impl.      Expr19 ::= Expr6 TokImpl Expr18;
+_.         Expr19 ::= Expr20;
+And.       Expr20 ::= Expr8 TokAnd  Expr20;
+Or.        Expr20 ::= Expr8 TokOr   Expr20;
+And.       Expr20 ::= Expr8 TokAnd  Expr18;
+Or.        Expr20 ::= Expr8 TokOr   Expr18;
+_.         Expr4  ::= Expr19;
 Foreach.   Expr18 ::= TokForeach [NameBinder] "." Expr2;
 Forall.    Expr18 ::= TokForall [NameBinder] "." Expr2;
 Exists.    Expr18 ::= TokExists [NameBinder] "." Expr2;
 ForallIn.  Expr18 ::= TokForall NameBinder "in" Expr3 "." Expr2;
 ExistsIn.  Expr18 ::= TokExists NameBinder "in" Expr3 "." Expr2;
-If.        Expr18 ::= TokIf Expr5 TokThen Expr5 TokElse Expr2;
+If.        Expr18 ::= TokIf Expr4 TokThen Expr4 TokElse Expr2;
 
 -- Container syntax.
 VecLiteral. Expr17 ::= TokSeqOpen [Expr] TokSeqClose;

@@ -89,13 +89,12 @@ elabDeclGroup anns = \case
 
   -- Function declaration and body.
   B.DefFunType typeName _ t :| B.DefFunExpr exprName bs e : ds -> do
-    d' <- elabFunctionDef anns typeName exprName t bs e
+    d' <- elabFunctionDef anns typeName exprName (Just t) bs e
     return (d', ds)
 
   -- Function body without a declaration.
   B.DefFunExpr n bs e :| ds -> do
-    let unknownType = constructUnknownDefType n bs
-    d' <- elabFunctionDef anns n n unknownType bs e
+    d' <- elabFunctionDef anns n n Nothing bs e
     return (d', ds)
 
   -- Abstract function declaration with no body
@@ -216,10 +215,7 @@ elabTypeDef annotations name binders expr = do
       throwError $ TypeDefWithAnnotation p ident (pretty ann)
     [] -> return ()
 
-  let typeTyp
-        | null binders = tokType 0
-        | otherwise = B.ForallT tokForallT binders (tokType 0)
-
+  typeTyp <- elabTelescopeType binders (tokType 0)
   let sort = V.TypeDecl (length binders)
 
   elabGenericDefFun p ident sort typeTyp binders expr
@@ -229,11 +225,11 @@ elabFunctionDef ::
   [AnnotationResult] ->
   B.Name ->
   B.Name ->
-  B.Expr ->
+  Maybe B.Expr ->
   [B.NameBinder] ->
   B.Expr ->
   m (V.Decl Builtin)
-elabFunctionDef annotations name1 name2 typ binders expr = do
+elabFunctionDef annotations name1 name2 maybeType binders expr = do
   p <- mkProvenance name1
   ident1 <- elabName name1
   ident2 <- elabName name2
@@ -253,6 +249,10 @@ elabFunctionDef annotations name1 name2 typ binders expr = do
         throwError $ NonAbstractDefWithAbstractAnnotation p ident1 (pretty absAnn)
       [RecordDeclAnn absAnn] ->
         throwError $ FunctionDefWithRecordAnnotation p ident1 (pretty absAnn)
+
+  typ <- case maybeType of
+    Just t -> elabDeclType t
+    Nothing -> constructUnknownDefType name1 binders
 
   elabGenericDefFun p ident1 sort typ binders expr
 
@@ -291,14 +291,13 @@ elabGenericDefFun ::
   V.Provenance ->
   V.Identifier ->
   V.DefFunctionSort ->
-  B.Expr ->
+  V.Expr Builtin ->
   [B.NameBinder] ->
   B.Expr ->
   m (V.Decl Builtin)
-elabGenericDefFun p ident sort t binders e = do
+elabGenericDefFun p ident sort t' binders e = do
   -- This is a bit evil, we don't normally store possibly empty set of
   -- binders, but we will use this to indicate the set of LHS variables.
-  t' <- elabDeclType t
   let body = case binders of
         [] -> e
         _ -> B.Lam tokLambda binders tokArrow e
@@ -404,7 +403,6 @@ elabExpr expr = case expr of
   B.VecLiteral tk1 es _tk2 -> elabVecLiteral tk1 es
   B.App e1 e2 -> elabApp e1 e2
   B.Let tk1 ds e -> elabLet tk1 ds e
-  B.ForallT tk1 ns t -> elabForallT tk1 ns t
   B.Lam tk1 ns _tk2 e -> elabLam tk1 ns e
   B.Record xs -> elabRecord xs
   B.RecordAcc e n -> elabRecordAcc e n
@@ -581,10 +579,21 @@ elabTypeBinder ::
   B.TypeBinder ->
   m (V.GenericBinder expr)
 elabTypeBinder elab folded = \case
-  B.ExplicitTypeBinder t -> mkBinder elab folded mempty V.Explicit $ That t
-  B.ImplicitTypeBinder modalities t -> mkBinder elab folded modalities (V.Implicit False) $ That t
-  B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ That t
+  B.ExplicitTypeBinder t -> mkBinder elab folded mempty V.Explicit $ typeBinderNaming t
+  B.ExplicitTypeBinderMods m ms t -> mkBinder elab folded (m : ms) V.Explicit $ typeBinderNaming t
+  B.ImplicitTypeBinder t -> mkBinder elab folded mempty (V.Implicit False) $ typeBinderNaming t
+  B.ImplicitTypeBinderMods m ms t -> mkBinder elab folded (m : ms) (V.Implicit False) $ typeBinderNaming t
+  B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ typeBinderNaming t
   B.BasicTypeBinder b -> elabBasicBinder elab folded b
+
+-- | The parser cannot distinguish the named binder `(x : A)` from a bracketed
+-- annotation `x : A` (see the note in `External.cf`), so it always parses the
+-- latter. An annotated variable in binder position is therefore converted
+-- into a named binder here.
+typeBinderNaming :: B.Expr -> These B.Name B.Expr
+typeBinderNaming = \case
+  B.Ann (B.Var n) _tk t -> These n t
+  t -> That t
 
 -- re: elabCompareReduced and elabComparePointwise, even though Pointwise and Reduced Tensor Comparisons are distinct in the frontend/user syntax,
 -- the compiler moves them to a single representation, V. CompareRatTensor, that is able to handle both pointwise and reduced comparisons
@@ -755,13 +764,19 @@ elabApp fun arg = do
   arg' <- elabArg arg
   return $ V.normAppList fun' [arg']
 
--- | Unfolds a list of binders into a consecutative forall expressions
-elabForallT :: (MonadElab m, DesugarableBuiltin Builtin) => B.TokForallT -> [B.NameBinder] -> B.Expr -> m (V.Expr Builtin)
-elabForallT tk binders body = do
-  p <- mkProvenance tk
-  binders' <- elabNamedBinders tk binders
+-- | Constructs the type of a declaration whose LHS binds the provided
+-- variables, i.e. a sequence of pi types over the binders. The pi types
+-- don't appear in the source, so they are given a provenance with no location.
+elabTelescopeType :: (MonadElab m, DesugarableBuiltin Builtin) => [B.NameBinder] -> B.Expr -> m (V.Expr Builtin)
+elabTelescopeType binders body = do
+  p <- V.Provenance mempty <$> getFile
   body' <- elabExpr body
-  return $ foldr (V.Pi p) body' binders'
+  case binders of
+    [] -> return body'
+    d : ds -> do
+      d' <- elabNameBinder elabExpr False d
+      ds' <- traverse (elabNameBinder elabExpr True) ds
+      return $ foldr (V.Pi p) body' (d' : ds')
 
 elabLam :: (MonadElab m, DesugarableBuiltin Builtin) => B.TokLambda -> [B.NameBinder] -> B.Expr -> m (V.Expr Builtin)
 elabLam tk binders body = do
@@ -885,10 +900,8 @@ elabNamedBinders tk binders = case binders of
 
 -- | Constructs a pi type filled with an appropriate number of holes for
 --  a definition which has no accompanying type.
-constructUnknownDefType :: B.Name -> [B.NameBinder] -> B.Expr
-constructUnknownDefType n binders
-  | null binders = returnType
-  | otherwise = B.ForallT tokForallT binders returnType
+constructUnknownDefType :: (MonadElab m, DesugarableBuiltin Builtin) => B.Name -> [B.NameBinder] -> m (V.Expr Builtin)
+constructUnknownDefType n binders = elabTelescopeType binders returnType
   where
     returnType :: B.Expr
     returnType = B.Hole $ mkToken B.HoleToken (typifyName (tkSymbol n))

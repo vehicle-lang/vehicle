@@ -36,7 +36,6 @@ class ExternalLexer(pygments.lexer.RegexLexer):
             (r"\{", Name),
             (r"\}", Name),
             (r"->", Name),
-            (r"forallT", Name),
             (r"if", Name),
             (r"then", Name),
             (r"else", Name),

@@ -47,19 +47,14 @@ test_tokenEdgeCases =
             "\n"
           ]
           AllowStrictOverlaps,
-      -- This one is awkward, because `forallT` is only a keyword currently because it is
-      -- misidentified as a lambda's `\` token. But eventually we want to classify it as a keyword
-      -- for the correct reason.
-      testCase "forallT" $
+      testCase "named implicit type binder" $
         expectTokens
           [ "identity1" `as` (SemanticTokenTypes_Function, []),
-            " : ",
-            "forallT" `eventually` (SemanticTokenTypes_Keyword, []),
-            " {",
+            " : {",
             "t" `as` (SemanticTokenTypes_Type, []),
             " : ",
             "Type" `as` (SemanticTokenTypes_Type, []),
-            "} . ",
+            "} -> ",
             "t" `as` (SemanticTokenTypes_Type, []),
             " -> ",
             "t" `as` (SemanticTokenTypes_Type, []),
@@ -73,13 +68,11 @@ test_tokenEdgeCases =
             "x" `as` (SemanticTokenTypes_Variable, []),
             "\n\n",
             "identity2" `as` (SemanticTokenTypes_Function, []),
-            " : ",
-            "forallT" `as` (SemanticTokenTypes_Keyword, []),
-            " {",
+            " : {",
             "t" `as` (SemanticTokenTypes_Type, []),
             " : ",
             "Type" `as` (SemanticTokenTypes_Type, []),
-            "} . ",
+            "} -> ",
             "t" `as` (SemanticTokenTypes_Type, []),
             " -> ",
             "t" `as` (SemanticTokenTypes_Type, []),
