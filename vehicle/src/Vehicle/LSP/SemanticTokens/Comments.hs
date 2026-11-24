@@ -17,36 +17,22 @@ import Vehicle.Prelude
   )
 import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecification)
 
+--------------------------------------------------------------------------------
+-- API
+
 collectCommentsTokens :: (MonadReadSpecification m) => FilePath -> m [IntermediateSemTok]
 collectCommentsTokens filePath = do
   moduleText <- readSpecification filePath
   return $ collectCommentsTokensFromModuleText moduleText
+
+--------------------------------------------------------------------------------
+-- Token creation
 
 collectCommentsTokensFromModuleText :: Text -> [IntermediateSemTok]
 collectCommentsTokensFromModuleText moduleText = map makeToken commentProvs
   where
     moduleLines = T.lines moduleText
     commentProvs = findCommentProvs moduleLines (Position (-1) (-1)) NotInComment
-
-data ParserState
-  = NotInComment
-  | InMultiLineComment
-      Position -- start position
-
-data NotInCommentLineParseResult
-  = NoCommentStart
-  | SingleLineComment
-      Int -- start column
-      Int -- end column
-  | MultiLineCommentStart
-      Int -- start column
-      Text -- input line with the processed text blanked out
-
-data InMultiLineCommentLineParseResult
-  = NoCommentEnd
-  | MultiLineCommentEnd
-      Int -- end column
-      Text -- input line with the processed text blanked out
 
 -- | Note: The `Provenance` used here uses 0-based lines and columns, different from the 1-based
 -- `Provenance` values used elsewhere. This is mainly done for ease of implementation, and because
@@ -69,6 +55,29 @@ makeToken commentProv =
     (Provenance (Range (Position sl sc) (Position _el ec)) _) = commentProv mempty
     tType = SemanticTokenTypes_Comment
     modifiers = []
+
+--------------------------------------------------------------------------------
+-- Parser state machine
+
+data ParserState
+  = NotInComment
+  | InMultiLineComment
+      Position -- start position
+
+data NotInCommentLineParseResult
+  = NoCommentStart
+  | SingleLineComment
+      Int -- start column
+      Int -- end column
+  | MultiLineCommentStart
+      Int -- start column
+      Text -- input line with the processed text blanked out
+
+data InMultiLineCommentLineParseResult
+  = NoCommentEnd
+  | MultiLineCommentEnd
+      Int -- end column
+      Text -- input line with the processed text blanked out
 
 findCommentProvs :: [Text] -> Position -> ParserState -> [CommentProvenance]
 findCommentProvs [] endOfLastLine = \case
@@ -129,6 +138,11 @@ parseLineInMultiLineComment line = do
       MultiLineCommentEnd endCol (hideFirstNChars endCol line)
     else NoCommentEnd
 
+-- | If we find a start/end multiline comment marker, we still need to process the rest of the
+-- line. We want to preserve the column indices during this process, so rather than just dropping
+-- the first already-processed parts of the line, we "hide" them by overwriting them with spaces.
+-- This is quite hacky, but means we don't have to maintain a "how many columns have we already
+-- dropped" integer in the parser state.
 hideFirstNChars :: Int -> Text -> Text
 hideFirstNChars n s = T.replicate n blank <> T.drop n s
   where
