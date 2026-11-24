@@ -69,5 +69,48 @@ test_tokensComments =
             "  world  " `as` (SemanticTokenTypes_Comment, []),
             "\n"
           ]
+          NoOverlaps,
+      testCase "single line comment containing block comment marker" $
+        expectTokens
+          [ "  ",
+            "-- text before {- text after" `as` (SemanticTokenTypes_Comment, []),
+            "\n  "
+          ]
+          NoOverlaps,
+      testCase "block comment containing single line comment marker" $
+        expectTokens
+          [ "  ",
+            "{- text before -- text after -}" `as` (SemanticTokenTypes_Comment, []),
+            "  \n"
+          ]
+          NoOverlaps,
+      testCase "block comment then single line comment" $
+        expectTokens
+          [ "{- block -}" `as` (SemanticTokenTypes_Comment, []),
+            " ",
+            "-- line" `as` (SemanticTokenTypes_Comment, []),
+            "\n"
+          ]
+          NoOverlaps,
+      testCase "adjacent block comments" $
+        expectTokens
+          [ "{- one -}" `as` (SemanticTokenTypes_Comment, []),
+            "{- two -}" `as` (SemanticTokenTypes_Comment, []),
+            "\n"
+          ]
+          NoOverlaps,
+      testCase "block comment between code" $
+        expectTokens
+          [ "foo ",
+            "{- comment -}" `as` (SemanticTokenTypes_Comment, []),
+            " bar",
+            "\n"
+          ]
+          NoOverlaps,
+      testCase "block comment starts immediately after block comment" $
+        expectTokens
+          [ "{- {- -}" `as` (SemanticTokenTypes_Comment, []),
+            "\n"
+          ]
           NoOverlaps
     ]
