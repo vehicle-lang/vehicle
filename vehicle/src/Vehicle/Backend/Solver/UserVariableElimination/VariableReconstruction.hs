@@ -33,16 +33,16 @@ import Vehicle.Verify.Specification
 --------------------------------------------------------------------------------
 -- Variable reconstruction
 
+-- | Reconstructs the values of the user variables from the solver's assignment
+-- to the query variables, by applying the compilation steps in order.
 reconstructUserVars ::
   (MonadLogger m) =>
-  VariableStore ->
-  VariableCompilationTrace ->
+  QuerySetVariables ->
+  Map QueryVariable NetworkIOElementVariable ->
+  [CompilationStep] ->
   QueryVariableAssignment ->
   m UserVariableAssignment
-reconstructUserVars variables (Reconstruction steps) networkVariableAssignment = do
-  let queryVariableMap = getQueryVariableMap variables
-  let vehicleVariableCtx = getVehicleVariableCtx variables
-  let userVariables = getUserVariables variables
+reconstructUserVars QuerySetVariables {..} queryVariableMap steps networkVariableAssignment = do
   let assignment = createInitialAssignment queryVariableMap networkVariableAssignment
   alteredAssignment <- foldlM (applyReconstructionStep vehicleVariableCtx) assignment steps
   finalAssignment <- createFinalAssignment vehicleVariableCtx userVariables alteredAssignment

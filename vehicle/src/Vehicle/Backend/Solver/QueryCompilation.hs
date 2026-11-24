@@ -38,7 +38,7 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
-import Vehicle.Verify.Specification (CompilationStep (..), QueryMetaData (..), ReconstructionDepth (AllDimensions), VariableCompilationTrace (..), VariableStore (..), getQueryVariables)
+import Vehicle.Verify.Specification (CompilationStep (..), PartitionPlan (..), QueryPlan (..), ReconstructionDepth (AllDimensions))
 import Vehicle.Verify.Specification.IO (writeVerificationQuery)
 
 --------------------------------------------------------------------------------
@@ -48,30 +48,31 @@ import Vehicle.Verify.Specification.IO (writeVerificationQuery)
 compilePartitionsToQueries ::
   (MonadQueryCompilation m, MonadStdIO m, MonadSupply QueryID m) =>
   Partitions ->
-  m (MaybeTrivial (DisjunctAll QueryMetaData))
+  m (MaybeTrivial (DisjunctAll PartitionPlan))
 compilePartitionsToQueries partitions = do
-  allQueries <- forM (partitionsToDisjuncts partitions) $ \(trace, assertions) -> do
+  allPartitions <- forM (partitionsToDisjuncts partitions) $ \(trace, assertions) -> do
     logCompilerSection2 MaxDetail "compiling partition" $ do
       let dnfTree = exprToDNF assertions
       logDebug MaxDetail $ "Conversion to DNF resulted in" <+> pretty (length dnfTree) <+> "potential queries"
-      forM dnfTree $ \dnfAssertions -> do
+      queries <- forM dnfTree $ \dnfAssertions -> do
         logCompilerSection2 MaxDetail "compiling potential query" $
           calculateMetaNetworkApplications dnfAssertions `bindNonTrivial` \(metaNetwork, eliminatedAssertions, eliminationSteps) ->
             -- Check if all variables have lower and upper bounds
             findInputVariableBounds metaNetwork eliminatedAssertions `bindNonTrivial` \boundedAssertions ->
               reduceAllRemainingNetworkTensorVariables metaNetwork boundedAssertions `bindNonTrivial` \(reducedAssertions, reductionSteps) -> do
-                let finalCompilationSteps = reductionSteps <> eliminationSteps <> trace
-                NonTrivial <$> compilePartitionToQuery metaNetwork finalCompilationSteps reducedAssertions
+                let querySpecificSteps = reductionSteps <> eliminationSteps
+                NonTrivial <$> compilePartitionToQuery metaNetwork querySpecificSteps reducedAssertions
+      return $ PartitionPlan trace <$> eliminateTrivialDisjunctions queries
 
-  return $ eliminateTrivialDisjunctions $ disjunctDisjuncts allQueries
+  return $ eliminateTrivialDisjunctions allPartitions
 
 compilePartitionToQuery ::
   (MonadQueryCompilation m, MonadStdIO m, MonadSupply QueryID m) =>
   NetworkApplications ->
   [CompilationStep] ->
   BoundedAssertions NetworkIOElementVariable NetworkIOElementVariable Rational ->
-  m QueryMetaData
-compilePartitionToQuery metaNetworkApps compilationSteps (BoundedAssertions bounds assertions) = do
+  m QueryPlan
+compilePartitionToQuery metaNetworkApps querySteps (BoundedAssertions bounds assertions) = do
   (PropertyMetaData {..}, _) <- ask
 
   -- Calculate query address
@@ -80,12 +81,11 @@ compilePartitionToQuery metaNetworkApps compilationSteps (BoundedAssertions boun
 
   logCompilerSection2 MaxDetail ("compiling query" <+> pretty queryID) $ do
     -- Create the substitution from network variables to query variables
-    (variableSubstitution, variableStore) <- compileQueryVariables (compileVariable queryFormat) metaNetworkApps
+    (variableSubstitution, queryVariableMapping) <- compileQueryVariables (compileVariable queryFormat) metaNetworkApps
 
     -- Construct the meta-data object
     let metaNetwork = makeMetaNetwork networkCtx metaNetworkApps
-    let reconstruction = Reconstruction compilationSteps
-    let queryMetaData = QueryMetaData queryAddress metaNetwork variableStore reconstruction
+    let queryPlan = QueryPlan {..}
 
     -- Convert the compiled bounds and assertions to the format expected by the solver interface
     nameCtx <- getCompleteNamedCtx
@@ -93,14 +93,15 @@ compilePartitionToQuery metaNetworkApps compilationSteps (BoundedAssertions boun
     queryAssertions <- substAssertions nameCtx variableSubstitution assertions
 
     -- Actually compile to the query to the format
-    queryText <- compileQuery queryFormat queryAddress metaNetwork (getQueryVariables variableStore) queryBounds queryAssertions
+    let queryVariables = Map.keys queryVariableMapping
+    queryText <- compileQuery queryFormat queryAddress metaNetwork queryVariables queryBounds queryAssertions
 
     -- Write out the query to disk
     case outputLocation of
       Nothing -> programOutput $ line <> line <> pretty queryAddress <> line <> pretty queryText
-      Just folder -> writeVerificationQuery queryFormat folder (queryMetaData, queryText)
+      Just folder -> writeVerificationQuery queryFormat folder (queryAddress, queryText)
 
-    return queryMetaData
+    return queryPlan
 
 makeMetaNetwork :: NetworkContext -> NetworkApplications -> MetaNetwork
 makeMetaNetwork networkCtx metaNetworkApps = do
@@ -199,26 +200,16 @@ compileQueryVariables ::
   (MonadBackend m, MonadQueryCompilation m) =>
   CompileQueryVariable ->
   NetworkApplications ->
-  m (Map NetworkIOElementVariable QueryVariable, VariableStore)
+  m (Map NetworkIOElementVariable QueryVariable, Map QueryVariable NetworkIOElementVariable)
 compileQueryVariables compileVariable metaNetworkApps = do
   -- Compute the set of new input and output variables
   let initialState = IndexingState mempty mempty
   indexingState <- foldlM compileNetworkApplicationsVariables initialState (Map.toList metaNetworkApps)
 
-  -- Make the queries more asthetically pleasing
-  nameCtx <- getCompleteNamedCtx
   -- Substitute them through the assertions
   let queryVariableMapping = Map.fromList (networkInputVariables indexingState <> networkOutputVariables indexingState)
   let substitution = Map.fromList (swap <$> Map.toList queryVariableMapping)
-
-  (_, GlobalCtx {..}) <- ask
-  let variableStore =
-        VariableStore
-          { queryVariableMapping = queryVariableMapping,
-            vehicleVariableCtx = nameCtx,
-            userVariables = userTensorVariables
-          }
-  return (substitution, variableStore)
+  return (substitution, queryVariableMapping)
   where
     compileNetworkApplicationsVariables ::
       IndexingState ->
