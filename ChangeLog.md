@@ -38,6 +38,8 @@
 
 * Optimised solver backend, reducing compilation time by ~40% and memory requirements by ~30%.
 
+* The `.vcl-plan` files generated for large queries are about 70\% smaller.
+
 * The files generated for tensors of properties no longer contain the special character `!` in their names, e.g. `robust!0-query1.txt` is now `robust-0-query1.txt`.
 
 * Fixed bug where bounds over a variable used as input two networks weren't being
