@@ -11,19 +11,20 @@ namespace HolorIndex
 
 variable {ds : List ℕ} {d : ℕ}
 
-instance : DecidableEq (HolorIndex ds) := Subtype.instDecidableEq
+instance instDecidableEq : DecidableEq (HolorIndex ds) := Subtype.instDecidableEq
 
 /-- Prepend a new dimension to a `HolorIndex`. -/
 def cons (i : Fin d) (is : HolorIndex ds) : HolorIndex (d :: ds) :=
   ⟨i :: is.1, List.Forall₂.cons i.isLt is.2⟩
 
 /-- The finite set of all `HolorIndex`s for a given list of dimensions. -/
-def all_elems : (ds : List ℕ) → Finset (HolorIndex ds)
+private def univ' : (ds : List ℕ) → Finset (HolorIndex ds)
   | [] => {⟨[], .nil⟩}
-  | d :: ds => Finset.image₂ cons (.univ : Finset (Fin d)) (all_elems ds)
+  | d :: ds => Finset.image₂ cons (.univ : Finset (Fin d)) (univ' ds)
 
-instance : Fintype (HolorIndex ds) where
-  elems := all_elems ds
+@[no_expose]
+instance instFintype : Fintype (HolorIndex ds) where
+  elems := univ' ds
   complete := by
     induction ds with
     | nil =>
@@ -33,15 +34,15 @@ instance : Fintype (HolorIndex ds) where
       rintro ⟨is, (h)⟩
       cases h with
       | @cons a _ l _ ha hl =>
-        dsimp [all_elems]
+        dsimp [univ']
         rw [Finset.image₂]
         let a' : Fin d := ⟨a, ha⟩
         have ha' : a' ∈ Finset.univ := Finset.mem_univ a'
         let l' : HolorIndex ds := ⟨l, hl⟩
-        have hl' : l' ∈ all_elems ds := Finset.mem_coe.mp (ih l')
+        have hl' : l' ∈ univ' ds := Finset.mem_coe.mp (ih l')
         exact Finset.mem_image.mpr ⟨⟨a', l'⟩, ⟨Finset.mk_mem_product ha' (ih l'), rfl⟩⟩
 
-instance : Finite (HolorIndex ds) := by infer_instance
+instance instFinite : Finite (HolorIndex ds) := by infer_instance
 
 end HolorIndex
 
@@ -49,42 +50,42 @@ namespace Holor
 
 variable {α β γ : Type} {ds : List ℕ}
 
-instance [DecidableEq α] : DecidableEq (Holor α ds) :=
+instance instDecidableEq [DecidableEq α] : DecidableEq (Holor α ds) :=
   Fintype.decidablePiFintype
 
 section order
 
-instance [LE α] : LE (Holor α ds) :=
+instance instLE [LE α] : LE (Holor α ds) :=
   ⟨fun x y ↦ ∀ t, x t ≤ y t⟩
 
-instance [LT α] : LT (Holor α ds) :=
+instance instLT [LT α] : LT (Holor α ds) :=
   ⟨fun x y ↦ ∀ t, x t < y t⟩
 
-instance [LE α] [DecidableLE α] : DecidableLE (Holor α ds) :=
+instance instDecidableLE [LE α] [DecidableLE α] : DecidableLE (Holor α ds) :=
   fun x y ↦ by
     letI : DecidablePred (fun t : HolorIndex ds ↦ x t ≤ y t) := fun _ ↦ inferInstance
     exact Fintype.decidableForallFintype
 
-instance [LT α] [DecidableLT α] : DecidableLT (Holor α ds) :=
+instance instDecidableLT [LT α] [DecidableLT α] : DecidableLT (Holor α ds) :=
   fun x y ↦ by
     let : DecidablePred (fun t : HolorIndex ds ↦ x t < y t) := fun _ ↦ inferInstance
     exact Fintype.decidableForallFintype
 
-instance [Preorder α] : Preorder (Holor α ds) :=
+instance instPreorder [Preorder α] : Preorder (Holor α ds) :=
   inferInstanceAs <| Preorder (HolorIndex ds → α)
 
-instance [PartialOrder α] : PartialOrder (Holor α ds) :=
+instance instPartialOrder [PartialOrder α] : PartialOrder (Holor α ds) :=
   inferInstanceAs <| PartialOrder (HolorIndex ds → α)
 
 @[to_dual]
-instance [SemilatticeSup α] : SemilatticeSup (Holor α ds) where
+instance instSemilatticeSup [SemilatticeSup α] : SemilatticeSup (Holor α ds) where
   sup x y t := x t ⊔ y t
   le_sup_left _ _ _ := le_sup_left
   le_sup_right _ _ _ := le_sup_right
   sup_le _ _ _ hxy hyz t := sup_le (hxy t) (hyz t)
 
 @[to_dual]
-instance [SupSet α] : SupSet (Holor α ds) where
+instance instSupSet [SupSet α] : SupSet (Holor α ds) where
   sSup s t := SupSet.sSup (s.image fun x ↦ x t)
 
 @[to_dual]
@@ -108,7 +109,7 @@ lemma isLUB_app_of_isLUB [LE α] {s : Set (Holor α ds)} {x : Holor α ds}
     simpa [z] using hsx.right hz t
 
 @[to_dual]
-instance [Preorder α] [OrderSupSet α] : OrderSupSet (Holor α ds) where
+instance instOrderSupSet [Preorder α] [OrderSupSet α] : OrderSupSet (Holor α ds) where
   isLUB_sSup_of_isLUB s x hsx := by
     have ht (t : HolorIndex ds) := OrderSupSet.isLUB_sSup_of_isLUB _ _ (isLUB_app_of_isLUB hsx t)
     constructor
@@ -120,7 +121,8 @@ instance [Preorder α] [OrderSupSet α] : OrderSupSet (Holor α ds) where
       exact hy hz t
 
 @[to_dual]
-instance [CompleteSemilatticeSup α] : CompleteSemilatticeSup (Holor α ds) where
+instance instCompleteSemilatticeSup [CompleteSemilatticeSup α] :
+    CompleteSemilatticeSup (Holor α ds) where
   isLUB_sSup s := by
     constructor
     · intro x hx t
@@ -130,21 +132,21 @@ instance [CompleteSemilatticeSup α] : CompleteSemilatticeSup (Holor α ds) wher
       rintro y ⟨z, hz, rfl⟩
       exact hx hz t
 
-instance [Lattice α] : Lattice (Holor α ds) :=
+instance instLattice [Lattice α] : Lattice (Holor α ds) :=
   inferInstanceAs <| Lattice (HolorIndex ds → α)
 
 @[to_dual]
-instance [Top α] : Top (Holor α ds) :=
+instance instTop [Top α] : Top (Holor α ds) :=
   ⟨fun _ => ⊤⟩
 
 @[to_dual]
-instance [LE α] [OrderTop α] : OrderTop (Holor α ds) :=
+instance instOrderTop [LE α] [OrderTop α] : OrderTop (Holor α ds) :=
   inferInstanceAs <| OrderTop (HolorIndex ds → α)
 
-instance [LE α] [BoundedOrder α] : BoundedOrder (Holor α ds) :=
+instance instBoundedOrder [LE α] [BoundedOrder α] : BoundedOrder (Holor α ds) :=
   inferInstanceAs <| BoundedOrder (HolorIndex ds → α)
 
-instance [CompleteLattice α] : CompleteLattice (Holor α ds) where
+instance instCompleteLattice [CompleteLattice α] : CompleteLattice (Holor α ds) where
 
 end order
 
@@ -194,36 +196,47 @@ end HadamardMul
 
 section PointwiseOps
 
+/-- Apply any binary operation pointwise to two holors. -/
 def pointwise (x : Holor α ds) (y : Holor β ds) (f : α → β → γ) : Holor γ ds :=
   fun t ↦ f (x t) (y t)
 
+/-- `≤` applied pointwise to two holors. -/
 def pointwiseLE [LE α] [DecidableLE α] (x y : Holor α ds) : Holor Bool ds :=
   x.pointwise y (fun a b ↦ decide (a ≤ b))
 
+/-- `<` applied pointwise to two holors. -/
 def pointwiseLT [LT α] [DecidableLT α] (x y : Holor α ds) : Holor Bool ds :=
   x.pointwise y (fun a b ↦ decide (a < b))
 
+/-- `==` applied pointwise to two holors. -/
 def pointwiseEq [DecidableEq α] (x y : Holor α ds) : Holor Bool ds :=
   x.pointwise y BEq.beq
 
+/-- `!=` applied pointwise to two holors. -/
 def pointwiseNe [DecidableEq α] (x y : Holor α ds) : Holor Bool ds :=
   x.pointwise y bne
 
+/-- `&&` applied pointwise to two holors. -/
 def pointwiseAnd (x y : Holor Bool ds) : Holor Bool ds :=
   x.pointwise y and
 
+/-- `||` applied pointwise to two holors. -/
 def pointwiseOr (x y : Holor Bool ds) : Holor Bool ds :=
   x.pointwise y or
 
+/-- `/` applied pointwise to two holors. -/
 def pointwiseDiv [Div α] (x y : Holor α ds) : Holor α ds :=
   x.pointwise y Div.div
 
+/-- `^ t` applied pointwise to a holor. -/
 def pointwisePow [Pow α β] (x : Holor α ds) (y : β) : Holor α ds :=
   fun t ↦ x t ^ y
 
+/-- `log` applied pointwise to a holor. -/
 noncomputable def pointwiseLog (x : Holor ℝ ds) : Holor ℝ ds :=
   fun t ↦ (x t).log
 
+/-- `exp` applied pointwise to a holor. -/
 noncomputable def pointwiseExp (x : Holor ℝ ds) : Holor ℝ ds :=
   fun t ↦ (x t).exp
 
@@ -231,20 +244,26 @@ end PointwiseOps
 
 section ReduceOps
 
+/-- Fold a commutative and associative binary operation over a holor. -/
 def fold (op : α → α → α) [Std.Commutative op] [Std.Associative op] (init : α) {ds : List ℕ}
     (x : Holor α ds) : α :=
   Finset.univ.fold op init x
 
+/-- The `&&` off all elements in a holor. -/
 def reduceAnd (x : Holor Bool ds) : Bool := x.fold and true
 
+/-- The `||` off all elements in a holor. -/
 def reduceOr (x : Holor Bool ds) : Bool := x.fold or false
 
+/-- The sum of all elements in a holor. -/
 def reduceAdd [AddCommMonoid α] (x : Holor α ds) : α :=
   ∑ t, x t
 
+/-- The minimum element in a holor. -/
 def reduceMin [LinearOrder α] [BoundedOrder α] (x : Holor α ds) : α :=
   x.fold min ⊤
 
+/-- The maximum element in a holor. -/
 def reduceMax [LinearOrder α] [BoundedOrder α] (x : Holor α ds) : α :=
   x.fold max ⊥
 
