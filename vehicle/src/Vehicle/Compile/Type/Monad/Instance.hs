@@ -30,7 +30,7 @@ import Vehicle.Data.Variable.Free.Context
 -- Implementation
 
 type TypeCheckerTInternals builtin m =
-  StateT (TypeCheckerState builtin) (ExceptT (TypingError builtin) m)
+  ExceptT (TypingError builtin) (StateT (TypeCheckerState builtin) m)
 
 --------------------------------------------------------------------------------
 -- The type-checking monad
@@ -40,21 +40,23 @@ newtype TypeCheckerT builtin m a = TypeCheckerT
   }
   deriving newtype (Functor, Applicative, Monad)
 
+-- | Runs the type-checker, returning the final state of the type-checker
+-- even if an error was thrown.
 runTypeCheckerT ::
   (Monad m) =>
   TypeCheckerState builtin ->
   TypeCheckerT builtin m a ->
-  m (Either (TypingError builtin) (a, TypeCheckerState builtin))
+  m (Either (TypingError builtin) a, TypeCheckerState builtin)
 runTypeCheckerT initialState (TypeCheckerT action) =
-  runExceptT $ runStateT action initialState
+  runStateT (runExceptT action) initialState
 
 mapTypeCheckerT ::
-  ( m (Either (TypingError builtin) (a, TypeCheckerState builtin)) ->
-    n (Either (TypingError builtin) (b, TypeCheckerState builtin))
+  ( m (Either (TypingError builtin) a, TypeCheckerState builtin) ->
+    n (Either (TypingError builtin) b, TypeCheckerState builtin)
   ) ->
   TypeCheckerT builtin m a ->
   TypeCheckerT builtin n b
-mapTypeCheckerT f m = TypeCheckerT (mapStateT (mapExceptT f) (unTypeCheckerT m))
+mapTypeCheckerT f m = TypeCheckerT (mapExceptT (mapStateT f) (unTypeCheckerT m))
 
 --------------------------------------------------------------------------------
 -- Instances that TypeCheckerT satisfies

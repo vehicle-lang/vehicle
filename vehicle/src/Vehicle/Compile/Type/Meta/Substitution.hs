@@ -286,6 +286,51 @@ instance MetaSubstitutable m builtin (InstanceConstraintOrigin builtin) where
     InstanceTypeRestrictionOrigin t -> InstanceTypeRestrictionOrigin <$> substMetasAt ctx s t
     InstanceArgOrigin t -> InstanceArgOrigin <$> substMetasAt ctx s t
 
+instance MetaSubstitutable m builtin (CheckingExprType builtin) where
+  substMetasAt ctx s (CheckingExpr expr expectedType actualType) =
+    CheckingExpr
+      <$> traverse (substMetasAt ctx s) expr
+      <*> substMetasAt ctx s expectedType
+      <*> substMetasAt ctx s actualType
+
+instance MetaSubstitutable m builtin (UnificationConstraintOrigin builtin) where
+  substMetasAt ctx s = \case
+    CheckingExprType t -> CheckingExprType <$> substMetasAt ctx s t
+    CheckingInstanceType t -> CheckingInstanceType <$> substMetasAt ctx s t
+
+instance MetaSubstitutable m builtin (UnificationConstraint builtin) where
+  substMetasAt ctx s (Unify origin e1 e2) =
+    Unify <$> substMetasAt ctx s origin <*> substMetasAt ctx s e1 <*> substMetasAt ctx s e2
+
+instance MetaSubstitutable m builtin (ArgInsertionProblem builtin) where
+  substMetasAt ctx s ArgInsertionProblem {..} = do
+    originalFun' <- substMetasAt ctx s originalFun
+    originalArgs' <- substMetasAt ctx s originalArgs
+    originalType' <- substMetasAt ctx s originalType
+    checkedArgs' <- substMetasAt ctx s checkedArgs
+    currentExpectedType' <- substMetasAt ctx s currentExpectedType
+    uncheckedArgs' <- substMetasAt ctx s uncheckedArgs
+    return $
+      ArgInsertionProblem
+        { originalFun = originalFun',
+          originalArgs = originalArgs',
+          originalType = originalType',
+          checkedArgs = checkedArgs',
+          currentExpectedType = currentExpectedType',
+          uncheckedArgs = uncheckedArgs',
+          contextRelevance = contextRelevance
+        }
+
+instance MetaSubstitutable m builtin (ApplicationConstraint builtin) where
+  substMetasAt ctx s (InferArgs typeSol exprSol problem) =
+    InferArgs typeSol exprSol <$> substMetasAt ctx s problem
+
+instance MetaSubstitutable m builtin (Constraint builtin) where
+  substMetasAt ctx s = \case
+    UnificationConstraint c -> UnificationConstraint <$> substMetasAt ctx s c
+    InstanceConstraint c -> InstanceConstraint <$> substMetasAt ctx s c
+    ApplicationConstraint c -> ApplicationConstraint <$> substMetasAt ctx s c
+
 --------------------------------------------------------------------------------
 -- Substitution operation
 
@@ -313,3 +358,37 @@ instance RawMetaSubstitutable m builtin (MetaVariableContext builtin) where
     where
       subst :: (MetaSubstitutable m builtin a) => MetaInfo builtin -> a -> m a
       subst entry = substMetasAt (toNamedBoundCtx $ metaCtx entry) s
+
+instance RawMetaSubstitutable m builtin (TypingError builtin) where
+  substMetas s err = case err of
+    MissingExplicitArg (MissingExplicitArgError ctx binder arg) ->
+      fmap MissingExplicitArg $
+        MissingExplicitArgError ctx <$> substMetasAt ctx s binder <*> substMetasAt ctx s arg
+    FunctionTypeMismatch (FunctionTypeMismatchError ctx fun expectedType args) ->
+      fmap FunctionTypeMismatch $
+        FunctionTypeMismatchError ctx
+          <$> substMetasAt ctx s fun
+          <*> substMetasAt ctx s expectedType
+          <*> substMetasAt ctx s args
+    FailedUnificationConstraints (FailedUnificationConstraintsError freeCtx constraints) ->
+      FailedUnificationConstraints . FailedUnificationConstraintsError freeCtx
+        <$> traverse (substMetas s) constraints
+    FailedInstanceConstraint (FailedInstanceConstraintError freeCtx constraint candidates) -> do
+      -- The errors attached to the rejected candidates have already been
+      -- substituted using the hypothetical state in which each candidate was
+      -- tried. They must not be substituted again here, as meta-variable IDs
+      -- are reused between hypothetical states.
+      constraint' <- substMetas s constraint
+      return $ FailedInstanceConstraint $ FailedInstanceConstraintError freeCtx constraint' candidates
+    FailedIndexConstraintUnknown ctx value typ -> do
+      let namedCtx = namedBoundCtxOf ctx
+      FailedIndexConstraintUnknown ctx <$> substMetasAt namedCtx s value <*> substMetasAt namedCtx s typ
+    UnsolvedConstraints constraints ->
+      UnsolvedConstraints <$> traverse (substMetas s) constraints
+    InvalidInstanceHead declProv expr ->
+      InvalidInstanceHead declProv <$> substMetasAt mempty s expr
+    FailedIndexConstraintTooBig {} -> return err
+    RelevantUseOfIrrelevantVariable {} -> return err
+    UnsolvedMetas {} -> return err
+    NonTypeClassInstanceHead {} -> return err
+    QuantifiedIfCondition {} -> return err
