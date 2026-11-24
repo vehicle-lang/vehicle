@@ -92,23 +92,5 @@ test_tokenTypes =
             "3" `as` (SemanticTokenTypes_Number, []),
             "\n"
           ]
-          AllowStrictOverlaps,
-      testCase "comments" $
-        expectTokens
-          [ "-- this is a single-line comment\n" `eventually` (SemanticTokenTypes_Comment, []),
-            "{-\nand this is\n\na multi-line\ncomment -}" `eventually` (SemanticTokenTypes_Comment, []),
-            "\n\n",
-            "foo" `as` (SemanticTokenTypes_Variable, []),
-            " = ",
-            "True" `as` (SemanticTokenTypes_Keyword, []),
-            "  ",
-            "-- this is an inline comment\n" `eventually` (SemanticTokenTypes_Comment, []),
-            "bar" `as` (SemanticTokenTypes_Variable, []),
-            " ",
-            "{- comments can -}" `eventually` (SemanticTokenTypes_Comment, []),
-            " = ",
-            "{- go anywhere! -}" `eventually` (SemanticTokenTypes_Comment, []),
-            "False" `as` (SemanticTokenTypes_Keyword, [])
-          ]
-          NoOverlaps
+          AllowStrictOverlaps
     ]

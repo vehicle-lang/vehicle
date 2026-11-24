@@ -306,6 +306,7 @@ library
     Vehicle.LSP.Handlers
     Vehicle.LSP.Monad
     Vehicle.LSP.SemanticTokens
+    Vehicle.LSP.SemanticTokens.Comments
     Vehicle.LSP.SemanticTokens.Internal
     Vehicle.LSP.State
     Vehicle.Prelude.Error
@@ -451,6 +452,7 @@ test-suite lsp-tests
   hs-source-dirs:     tests/LSP
   other-modules:
     SemanticTokens.Binders
+    SemanticTokens.Comments
     SemanticTokens.Common
     SemanticTokens.Declarations
     SemanticTokens.EdgeCases

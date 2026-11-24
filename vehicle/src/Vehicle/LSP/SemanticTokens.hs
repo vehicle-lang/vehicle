@@ -27,6 +27,7 @@ import Vehicle.Data.Builtin.Standard
   )
 import Vehicle.Data.Variable.Bound.Context.Generic (runFreshBoundContextT)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, runFreshFreeContextT)
+import Vehicle.LSP.SemanticTokens.Comments (collectCommentsTokens)
 import Vehicle.LSP.SemanticTokens.Internal (collectDeclsTokens)
 import Vehicle.LSP.State (MonadVehicleLsp)
 import Vehicle.Prelude.Logging (runSilentLoggerT)
@@ -63,12 +64,14 @@ collectSemanticTokens logger filePath = do
 
       return $ catMaybes maybeToks
 
+  commentsToks <- catMaybes <$> collectCommentsTokens filePath
+
   case errorOrToks of
     Left err -> do
       logger <& (layoutAsText $ pretty $ formatError err) `WithSeverity` Warning
-      return $ makeLspSemanticTokens []
+      return $ makeLspSemanticTokens commentsToks
     Right toks ->
-      return $ makeLspSemanticTokens toks
+      return $ makeLspSemanticTokens (toks ++ commentsToks)
   where
     makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either LspErrorMessage Lsp.SemanticTokens
     makeLspSemanticTokens tokens = do
