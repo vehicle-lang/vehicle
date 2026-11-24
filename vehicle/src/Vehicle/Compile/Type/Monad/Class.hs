@@ -17,7 +17,6 @@ import Data.Sequence (Seq, (><), (|>))
 import Data.Sequence qualified as Seq
 import GHC.Stack (HasCallStack)
 import Prettyprinter (fill)
-import Vehicle.Compile.Error (TypingError)
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)

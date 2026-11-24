@@ -15,6 +15,8 @@
 
 * Optimised the type-checker so that it now runs 40% faster.
 
+* Improved type-checker error messages.
+
 * Fixed a rare internal error in the type-checker.
 
 * Fixed an internal error when the type of an argument of an unused declaration could not be inferred, e.g. `f x = 0`.
