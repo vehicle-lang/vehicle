@@ -106,7 +106,7 @@ checkExpr expectedType expr = do
 
     -- In the case where we have an implicit or instance pi binder then insert a new
     -- lambda expression.
-    (Pi p piBinder resultType, e)
+    (Pi _ piBinder resultType, e)
       | isImplicit piBinder || isInstance piBinder -> do
           logDebug MaxDetail $ "inserting-binder" <+> prettyVerbose piBinder
 
@@ -121,7 +121,8 @@ checkExpr expectedType expr = do
           -- Re-check the expression
           checkedExpr <- addBinderToContext lamBinder $ checkExpr resultType (liftDBIndices 1 e)
 
-          return $ Lam p lamBinder checkedExpr
+          -- No provenance because compiler-generated lambda does not exist in the user's source code
+          return $ Lam mempty lamBinder checkedExpr
 
     -- Otherwise switch to inference mode
     (_, _) -> viaInfer expectedType expr

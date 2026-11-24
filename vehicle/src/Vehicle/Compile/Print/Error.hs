@@ -72,16 +72,6 @@ instance FormattableError BackendError where
 
 backendErrorDetails :: BackendError -> VehicleError
 backendErrorDetails = \case
-  ----------------------
-  -- Developer errors --
-  ----------------------
-
-  DevError text ->
-    VehicleUserError
-      { provenance = Nothing,
-        problem = text,
-        fix = Nothing
-      }
   ---------------
   -- Resources --
   ---------------

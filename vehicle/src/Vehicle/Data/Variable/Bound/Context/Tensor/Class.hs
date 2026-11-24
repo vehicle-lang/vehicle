@@ -6,7 +6,7 @@ import Control.Monad.State
 import Control.Monad.Trans.Writer.CPS qualified as CPS
 import Control.Monad.Writer.Strict
 import Data.Coerce (coerce)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Resource (NetworkModality)
@@ -50,16 +50,12 @@ instance (MonadReadableTensorBoundContext m) => MonadReadableTensorBoundContext 
   getNestedVariableCtx = lift getNestedVariableCtx
 
 getCompleteNamedCtx :: (MonadReadableTensorBoundContext m) => m CompleteNamedBoundCtx
-getCompleteNamedCtx = do
-  NestedTensorVariableCtx _ ctx <- getNestedVariableCtx
-  return ctx
+getCompleteNamedCtx = nestedVariableCtxNames <$> getNestedVariableCtx
 
 -- | Returns the context as if none of the slice variables that represent
 -- sub-tensors existed.
 getShrunkenContext :: (MonadReadableTensorBoundContext m) => m (BoundCtx ())
-getShrunkenContext = do
-  NestedTensorVariableCtx ctx _ <- getNestedVariableCtx
-  return $ fmap fst ctx
+getShrunkenContext = originalCtx <$> getNestedVariableCtx
 
 lookupNestedSliceVariable ::
   (MonadReadableTensorBoundContext m, SliceVariableLike variable) =>
@@ -83,7 +79,7 @@ lookupNestedTensorVariable ::
   variable ->
   m NestedSliceVariable
 lookupNestedTensorVariable var = do
-  NestedTensorVariableCtx ctx _ <- getNestedVariableCtx
+  ctx <- nestedVariableCtx <$> getNestedVariableCtx
   return $ findVar ctx
   where
     findVar :: GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> NestedSliceVariable
@@ -102,13 +98,9 @@ lookupParentTensorVariables ::
   m (Set TensorVariable)
 lookupParentTensorVariables sliceVars = do
   ctx <- getNestedVariableCtx
-  let result = findCorrespondingVariableInOriginalCtx ctx sliceVars
-  return $ Set.fromList $ fromMaybe mempty $ mapM extractTensorVar result
-  where
-    extractTensorVar :: (OriginalLv, Maybe NestedSliceVariable) -> Maybe TensorVariable
-    extractTensorVar = \case
-      (_, Nothing) -> Nothing
-      (_, Just var) -> Just $ coerce $ nestedStartingVariable var
+  let lookupTensorVar var = snd $ lookupInNestedVariableIndex ctx (toLv var)
+  let tensorVars = mapMaybe lookupTensorVar (Set.toList sliceVars)
+  return $ Set.fromList $ fmap (coerce . nestedStartingVariable) tensorVars
 
 lookupParentTensorVariable ::
   (MonadReadableTensorBoundContext m, SliceVariableLike variable) =>
@@ -116,9 +108,8 @@ lookupParentTensorVariable ::
   m NestedSliceVariable
 lookupParentTensorVariable var = do
   ctx <- getNestedVariableCtx
-  -- TODO turn this into a binary search for added efficiency?
-  case findCorrespondingVariableInOriginalCtx ctx (Set.singleton $ toLv var) of
-    [(_, Just v)] -> return v
+  case lookupInNestedVariableIndex ctx (toLv var) of
+    (_, Just v) -> return v
     _ -> developerError "Missing variable"
 
 -- | Takes a level and looks up if it represents some slice of a tensor. If it

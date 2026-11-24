@@ -41,7 +41,12 @@ expandResources resources prog =
     checkForUnusedResources unusedResources
 
     (finalProg, uninferableParameters) <- fillInInferableParametersInProg inferableParamCtx progWithoutResources
-    integrityInfo <- generateResourcesIntegrityInfo resources
+    integrityInfo <-
+      generateResourcesIntegrityInfo
+        (specification resources)
+        (Map.elems networkIntegrityInfo)
+        (Map.elems datasetIntegrityInfo)
+        (parameters resources)
     return (finalProg, networkCtx, integrityInfo, missingResources, uninferableParameters)
 
 mkFunctionDefFromResource ::
@@ -124,6 +129,9 @@ readNetwork p ident typ = do
   case maybeFile of
     Nothing -> return Nothing
     Just file -> do
+      -- We doen't currently use the contents of the network itself, but reading it
+      -- here both checks that it exists and generates its integrity hash.
+      _ <- readResourceFile (ident, p) Network file
       networkType <- checkNetwork (ident, p) typ file
       noteNetwork ident networkType
       return Nothing
