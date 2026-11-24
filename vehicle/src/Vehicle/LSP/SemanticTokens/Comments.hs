@@ -32,7 +32,7 @@ collectCommentsTokensFromModuleText :: Text -> [IntermediateSemTok]
 collectCommentsTokensFromModuleText moduleText = map makeToken commentProvs
   where
     moduleLines = T.lines moduleText
-    commentProvs = findCommentProvs moduleLines (Position (-1) (-1)) NotInComment
+    commentProvs = findCommentProvs moduleLines 0 NotInComment
 
 -- | Note: The `Provenance` used here uses 0-based lines and columns, different from the 1-based
 -- `Provenance` values used elsewhere. This is mainly done for ease of implementation, and because
@@ -79,41 +79,41 @@ data InMultiLineCommentLineParseResult
       Int -- end column
       Text -- input line with the processed text blanked out
 
-findCommentProvs :: [Text] -> Position -> ParserState -> [CommentProvenance]
-findCommentProvs [] endOfLastLine = \case
-  NotInComment -> []
-  InMultiLineComment startPos -> do
-    [Provenance (Range startPos endOfLastLine)]
-findCommentProvs (line : ls) endOfLastLine = \case
+findCommentProvs :: [Text] -> Int -> ParserState -> [CommentProvenance]
+findCommentProvs [] _ = const []
+findCommentProvs (lineContent : ls) thisLine = \case
   NotInComment ->
-    case parseLineNotInComment line of
-      NoCommentStart -> findCommentProvs ls endOfThisLine NotInComment
+    case parseLineNotInComment lineContent of
+      NoCommentStart ->
+        findCommentProvs ls nextLine NotInComment
       SingleLineComment startCol endCol ->
         Provenance
           ( Range
               (Position thisLine startCol)
               (Position thisLine endCol)
           )
-          : findCommentProvs ls endOfThisLine NotInComment
-      MultiLineCommentStart startCol newLine ->
-        findCommentProvs (newLine : ls) endOfLastLine (InMultiLineComment (Position thisLine startCol))
+          : findCommentProvs ls nextLine NotInComment
+      MultiLineCommentStart startCol newLineContent ->
+        findCommentProvs (newLineContent : ls) thisLine (InMultiLineComment (Position thisLine startCol))
   InMultiLineComment startPos ->
-    case parseLineInMultiLineComment line of
+    case parseLineInMultiLineComment lineContent of
       NoCommentEnd ->
         -- Split multi-line comments into one token per line
-        Provenance (Range startPos endOfThisLine)
-          : findCommentProvs ls endOfThisLine (InMultiLineComment startOfNextLine)
-      MultiLineCommentEnd endCol newLine ->
+        Provenance
+          ( Range
+              startPos
+              (Position thisLine (T.length lineContent))
+          )
+          : findCommentProvs ls nextLine (InMultiLineComment (Position nextLine 0))
+      MultiLineCommentEnd endCol newLineContent ->
         Provenance
           ( Range
               startPos
               (Position thisLine endCol)
           )
-          : findCommentProvs (newLine : ls) endOfLastLine NotInComment
+          : findCommentProvs (newLineContent : ls) thisLine NotInComment
   where
-    thisLine = (posLine endOfLastLine + 1)
-    endOfThisLine = Position thisLine (T.length line)
-    startOfNextLine = Position (thisLine + 1) 0
+    nextLine = thisLine + 1
 
 parseLineNotInComment :: Text -> NotInCommentLineParseResult
 parseLineNotInComment line = do

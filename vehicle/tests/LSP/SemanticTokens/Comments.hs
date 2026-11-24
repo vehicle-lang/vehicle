@@ -60,5 +60,14 @@ test_tokensComments =
             "False" `as` (SemanticTokenTypes_Keyword, []),
             "\n"
           ]
+          NoOverlaps,
+      testCase "multiline comment without end" $
+        expectTokens
+          [ "   ",
+            "{- hello" `as` (SemanticTokenTypes_Comment, []),
+            "\n",
+            "  world  " `as` (SemanticTokenTypes_Comment, []),
+            "\n"
+          ]
           NoOverlaps
     ]
