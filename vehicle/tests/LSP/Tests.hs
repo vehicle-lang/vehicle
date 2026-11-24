@@ -5,6 +5,7 @@ module Tests
 where
 
 import SemanticTokens.Binders (test_tokensBinders)
+import SemanticTokens.Comments (test_tokensComments)
 import SemanticTokens.Declarations (test_tokensDeclarations)
 import SemanticTokens.EdgeCases (test_tokenEdgeCases)
 import SemanticTokens.Simple (test_tokensSimple)
@@ -21,6 +22,7 @@ tests =
       [ test_sessionSmoke,
         test_tokensSimple,
         test_tokensBinders,
+        test_tokensComments,
         test_tokensDeclarations,
         test_tokenTypes,
         test_tokenEdgeCases
