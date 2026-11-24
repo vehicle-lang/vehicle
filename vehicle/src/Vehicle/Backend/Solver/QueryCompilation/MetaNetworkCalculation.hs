@@ -14,7 +14,8 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.DisjointSet (DisjointSet)
 import Data.DisjointSet qualified as DisjointSet
 import Data.Either (lefts)
-import Data.List (foldl', sort)
+import Data.List (sort)
+import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -179,7 +180,7 @@ calculateSliceEquivalenceClasses equalities = do
     return (nestedVar1, nestedValue)
 
   let minRank = minimum (maxBound : fmap (rankOf . fst) nestedEqualities)
-  let classes = foldl' (addEquality minRank) DisjointSet.empty nestedEqualities
+  let classes = List.foldl' (addEquality minRank) DisjointSet.empty nestedEqualities
   return $ SliceEquivalenceClasses classes minRank
   where
     addEquality ::
