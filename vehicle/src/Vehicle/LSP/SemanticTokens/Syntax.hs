@@ -19,6 +19,10 @@ import Vehicle.Syntax.Parse (parseExternalModule)
 import Vehicle.Syntax.Token
 import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecification)
 
+--------------------------------------------------------------------------------
+-- API
+
+-- | Collect tokens from static syntax constructs (i.e. those that don't require semantic info to identify).
 collectSyntaxTokens :: (MonadReadSpecification m) => FilePath -> m (Either LspErrorMessage [Lsp.SemanticTokenAbsolute])
 collectSyntaxTokens filePath = do
   moduleText <- readSpecification filePath
@@ -26,15 +30,10 @@ collectSyntaxTokens filePath = do
     Left err -> Left (T.pack err)
     Right modul -> Right $ catMaybes $ collectSyntaxTokensFromModule modul
 
-collectSyntaxTokensFromModule :: Module -> [IntermediateSemTok]
-collectSyntaxTokensFromModule (DefModule imports decls) = do
-  let importsTokens = concatMap collectSyntaxTokensFromImport imports
-  let declsTokens = concatMap collectSyntaxTokensFromDecl decls
-  importsTokens ++ declsTokens
+--------------------------------------------------------------------------------
+-- Token creation
 
-type TokenProvenance = FilePath -> Provenance
-
-mkTok :: TokenProvenance -> TokenClass -> IntermediateSemTok
+mkTok :: (FilePath -> Provenance) -> TokenClass -> IntermediateSemTok
 mkTok p = mkTokPure mempty (p mempty)
 
 mkTokFrom :: (IsToken a) => a -> TokenClass -> IntermediateSemTok
@@ -58,7 +57,15 @@ mkClassTok = flip mkTokFrom (SemanticTokenTypes_Class, [])
 mkNumberTok :: (IsToken a) => a -> IntermediateSemTok
 mkNumberTok = flip mkTokFrom (SemanticTokenTypes_Number, [])
 
--- TODO: Process import statements in semantic pass
+--------------------------------------------------------------------------------
+-- Token collection
+
+collectSyntaxTokensFromModule :: Module -> [IntermediateSemTok]
+collectSyntaxTokensFromModule (DefModule imports decls) =
+  concatMap collectSyntaxTokensFromImport imports
+    ++ concatMap collectSyntaxTokensFromDecl decls
+
+-- TODO: Process (resolved) import statements in semantic pass
 collectSyntaxTokensFromImport :: ImportStatement -> [IntermediateSemTok]
 collectSyntaxTokensFromImport (Import tk _) = [mkKeywordTok tk]
 
@@ -352,7 +359,9 @@ collectSyntaxTokensFromRecordFieldAssign (FieldAssign _name expr) = collectSynta
 
 collectSyntaxTokensFromDeclAnnOpt :: DeclAnnOption -> [IntermediateSemTok]
 collectSyntaxTokensFromDeclAnnOpt = \case
-  -- TODO: need to deal with annotations containing names/exprs during semantic pass
+  -- TODO: Need to deal with annotations containing names/exprs during semantic pass,
+  -- but NameAnnOption and TypeAnnOption currently never make it to the desugared AST.
+  -- (See: `Vehicle.Compile.Sugar.Desugar.parseAnnotation`)
   NameAnnOption tk _name ->
     [ mkTokFrom tk (SemanticTokenTypes_Parameter, [])
     ]
