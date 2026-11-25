@@ -91,6 +91,7 @@ data ParseError
   | -- Other
     UnknownBuiltin Provenance Text
   | MissingVariables Provenance Name
+  | MultipleVariablesInSingleBinder Provenance
   | UnchainableComparisons Provenance ComparisonOp ComparisonOp
   | UnknownSupportsOperation Provenance String
   deriving stock (Show)

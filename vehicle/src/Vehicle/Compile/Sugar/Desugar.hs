@@ -11,9 +11,11 @@ import Control.Monad.Except (MonadError (..), throwError)
 import Control.Monad.Reader (MonadReader, asks, runReaderT)
 import Data.Bitraversable (bitraverse)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
 import Data.Maybe (mapMaybe)
+import Data.Semigroup (sconcat)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, notMember, toList)
 import Data.Text (Text, unpack)
@@ -281,7 +283,7 @@ elabRecordDefinition annotations name telescope fields supports = do
     [FunDeclAnn absAnn] ->
       throwError $ RecordDefWithFunctionAnnotation p ident (pretty absAnn)
 
-  telescope' <- traverse (elabNameBinder elabExpr False) telescope
+  telescope' <- elabNameBinders elabExpr telescope
   fields' <- traverse elabRecordFieldDef fields
   supports' <- elabSupportedOperations supports
 
@@ -312,7 +314,7 @@ elabSupportedOperations ::
   m [V.DerivableRecordOperation]
 elabSupportedOperations = \case
   B.NoSupports -> return []
-  B.Supports names -> traverse elabOp names
+  B.Supports classes -> traverse (\(B.DerivedClass name) -> elabOp name) classes
   where
     elabOp :: B.Name -> m V.DerivableRecordOperation
     elabOp name = do
@@ -550,28 +552,31 @@ elabRecordAcc e field = do
   r <- elabExpr e
   return $ V.RecordAcc p r fieldName
 
-elabBasicBinder ::
+-- | Elaborates a sequence of binders, where the first is unfolded and the
+-- remainder are folded into it.
+elabNameBinders ::
   (MonadElab m) =>
   (B.Expr -> m expr) ->
-  Bool ->
-  B.BasicBinder ->
-  m (V.GenericBinder expr)
-elabBasicBinder elab folded = \case
-  B.ExplicitBinder mods n _tk typ -> mkBinder elab folded mods V.Explicit (These n typ)
-  B.ImplicitBinder mods n _tk typ -> mkBinder elab folded mods (V.Implicit False) (These n typ)
-  B.InstanceBinder mods n _tk typ -> mkBinder elab folded mods (V.Instance False) (These n typ)
+  [B.NameBinder] ->
+  m [V.GenericBinder expr]
+elabNameBinders elab = \case
+  [] -> return []
+  d : ds -> do
+    d' <- elabNameBinder elab False d
+    ds' <- traverse (elabNameBinder elab True) ds
+    return $ concatMap NonEmpty.toList (d' : ds')
 
-elabNameBinder ::
-  (MonadElab m) =>
-  (B.Expr -> m expr) ->
-  Bool ->
+-- | Elaborates a binder in a position where only a single variable may be bound,
+-- e.g. a `let` declaration or a `forall x in xs` quantifier.
+elabSingleNameBinder ::
+  (MonadElab m, DesugarableBuiltin Builtin) =>
   B.NameBinder ->
-  m (V.GenericBinder expr)
-elabNameBinder elab folded = \case
-  B.ExplicitNameBinder n -> mkBinder elab folded mempty V.Explicit (This n)
-  B.ImplicitNameBinder modalities n -> mkBinder elab folded modalities (V.Implicit False) (This n)
-  B.InstanceNameBinder modalities n -> mkBinder elab folded modalities (V.Instance False) (This n)
-  B.BasicNameBinder b -> elabBasicBinder elab folded b
+  m (V.Binder Builtin)
+elabSingleNameBinder binder = do
+  binders <- elabNameBinder elabExpr False binder
+  case binders of
+    b :| [] -> return b
+    _ :| (b : _) -> throwError $ MultipleVariablesInSingleBinder (V.provenanceOf b)
 
 elabTypeBinder ::
   (MonadElab m) =>
@@ -585,7 +590,33 @@ elabTypeBinder elab folded = \case
   B.ImplicitTypeBinder t -> mkBinder elab folded mempty (V.Implicit False) $ typeBinderNaming t
   B.ImplicitTypeBinderMods m ms t -> mkBinder elab folded (m : ms) (V.Implicit False) $ typeBinderNaming t
   B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ typeBinderNaming t
-  B.BasicTypeBinder b -> elabBasicBinder elab folded b
+  B.BasicTypeBinder b -> NonEmpty.head <$> elabBasicBinders elab folded b
+
+elabNameBinder ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  Bool ->
+  B.NameBinder ->
+  m (NonEmpty (V.GenericBinder expr))
+elabNameBinder elab folded = \case
+  B.ExplicitNameBinder n -> pure <$> mkBinder elab folded mempty V.Explicit (This n)
+  B.ImplicitNameBinder modalities n -> pure <$> mkBinder elab folded modalities (V.Implicit False) (This n)
+  B.InstanceNameBinder modalities n -> pure <$> mkBinder elab folded modalities (V.Instance False) (This n)
+  B.BasicNameBinder b -> elabBasicBinders elab folded b
+
+-- | A basic binder may bind multiple names that share a type, e.g. `(i j : A)`,
+-- in which case it is expanded into one binder per name. All but the first
+-- are marked as folded so that they are printed back together.
+elabBasicBinders ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  Bool ->
+  B.BasicBinder ->
+  m (NonEmpty (V.GenericBinder expr))
+elabBasicBinders elab folded = \case
+  B.ExplicitBinder mods ns _tk typ -> mkBinders elab folded mods V.Explicit ns typ
+  B.ImplicitBinder mods ns _tk typ -> mkBinders elab folded mods (V.Implicit False) ns typ
+  B.InstanceBinder mods ns _tk typ -> mkBinders elab folded mods (V.Instance False) ns typ
 
 -- | The parser cannot distinguish the named binder `(x : A)` from a bracketed
 -- annotation `x : A` (see the note in `External.cf`), so it always parses the
@@ -666,8 +697,28 @@ mkBinder elab folded modalities visibility nameTyp = do
   elabType <- elab typ
   return $ V.Binder displayForm visibility relevance elabType
 
+-- | Constructs one binder per name, all sharing the same type. All but the
+-- first are marked as folded so that they are printed back together.
+mkBinders ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  V.BinderFoldingForm ->
+  [B.Modality] ->
+  V.Visibility ->
+  [B.Name] ->
+  B.Expr ->
+  m (NonEmpty (V.GenericBinder expr))
+mkBinders elab folded modalities visibility names typ = case names of
+  [] -> developerError "Parser should not produce a binder with no names"
+  n : ns -> do
+    b <- mk folded n
+    bs <- traverse (mk True) ns
+    return (b :| bs)
+  where
+    mk f name = mkBinder elab f modalities visibility (These name typ)
+
 elabLetDecl :: (MonadElab m, DesugarableBuiltin Builtin) => B.LetDecl -> m (V.Binder Builtin, V.Expr Builtin)
-elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder elabExpr False) elabExpr (b, e)
+elabLetDecl (B.LDecl b e) = bitraverse (elabSingleNameBinder) elabExpr (b, e)
 
 elabLiteral :: (MonadElab m, DesugarableBuiltin Builtin) => B.Lit -> m (V.Expr Builtin)
 elabLiteral = \case
@@ -772,12 +823,8 @@ elabTelescopeType :: (MonadElab m, DesugarableBuiltin Builtin) => [B.NameBinder]
 elabTelescopeType binders body = do
   p <- V.Provenance mempty <$> getFile
   body' <- elabExpr body
-  case binders of
-    [] -> return body'
-    d : ds -> do
-      d' <- elabNameBinder elabExpr False d
-      ds' <- traverse (elabNameBinder elabExpr True) ds
-      return $ foldr (V.Pi p) body' (d' : ds')
+  binders' <- elabNameBinders elabExpr binders
+  return $ foldr (V.Pi p) body' binders'
 
 elabLam :: (MonadElab m, DesugarableBuiltin Builtin) => B.TokLambda -> [B.NameBinder] -> B.Expr -> m (V.Expr Builtin)
 elabLam tk binders body = do
@@ -844,7 +891,7 @@ elabQuantifierIn ::
 elabQuantifierIn tk q binder container body = do
   p <- mkProvenance tk
   let quantBuiltin = V.DerivedFunction $ V.QuantifyInList q
-  binder' <- elabNameBinder elabExpr False binder
+  binder' <- elabSingleNameBinder binder
   container' <- elabExpr container
   body' <- elabExpr body
 
@@ -893,7 +940,7 @@ elabNamedBinders tk binders = case binders of
   (d : ds) -> do
     d' <- elabNameBinder elabExpr False d
     ds' <- traverse (elabNameBinder elabExpr True) ds
-    return (d' :| ds')
+    return $ sconcat (d' :| ds')
 
 -- | Constructs a pi type filled with an appropriate number of holes for
 --  a definition which has no accompanying type.

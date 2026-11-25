@@ -115,9 +115,9 @@ instance Delaborate (V.Binder V.Builtin) B.BasicBinder where
     let m' = delabModalities binder
     t' <- delabM (V.binderValue binder)
     return $ case V.visibilityOf binder of
-      V.Explicit -> B.ExplicitBinder m' n' tokElemOf t'
-      V.Implicit {} -> B.ImplicitBinder m' n' tokElemOf t'
-      V.Instance {} -> B.InstanceBinder m' n' tokElemOf t'
+      V.Explicit -> B.ExplicitBinder m' [n'] tokElemOf t'
+      V.Implicit {} -> B.ImplicitBinder m' [n'] tokElemOf t'
+      V.Instance {} -> B.InstanceBinder m' [n'] tokElemOf t'
 
 instance Delaborate V.FieldName B.Name where
   delabM (V.FieldName _ name) = return $ mkToken B.Name name
@@ -471,7 +471,7 @@ delabRecordDecl ident sort telescope fields supports = do
 delabSupportedOperations :: [V.DerivableRecordOperation] -> B.RecordSupports
 delabSupportedOperations = \case
   [] -> B.NoSupports
-  ops -> B.Supports $ fmap (\op -> mkToken B.Name (pack $ show op)) ops
+  ops -> B.Supports $ fmap (\op -> B.DerivedClass $ mkToken B.Name (pack $ show op)) ops
 
 -- | Displays a quantifier using the quantifier syntax if its only argument is
 -- the lambda being quantified over, and otherwise using the provided head.

@@ -139,7 +139,7 @@ position token Name         (letter (letter | digit | '_')*) ;
 position token FieldAccess  ({"."} letter (letter | digit | '_')*);
 position token HoleToken    ({"?"} (letter | digit | '_')*);
 
-separator nonempty Name ",";
+separator nonempty Name "";
 
 -- * Modalities
 
@@ -149,9 +149,10 @@ separator Modality "";
 
 -- * Basic binders
 
-ExplicitBinder. BasicBinder ::= "("  [Modality] Name TokElemOf Expr1 ")";
-ImplicitBinder. BasicBinder ::= "{"  [Modality] Name TokElemOf Expr1 "}";
-InstanceBinder. BasicBinder ::= "{{" [Modality] Name TokElemOf Expr1 "}}";
+-- A binder may bind several names that share a type, e.g. `(i j : Atom)`.
+ExplicitBinder. BasicBinder ::= "("  [Modality] [Name] TokElemOf Expr1 ")";
+ImplicitBinder. BasicBinder ::= "{"  [Modality] [Name] TokElemOf Expr1 "}";
+InstanceBinder. BasicBinder ::= "{{" [Modality] [Name] TokElemOf Expr1 "}}";
 
 -- * Binders where the user must provide a name but can omit the type
 
@@ -405,7 +406,11 @@ DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
 DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}" RecordSupports;
 
-Supports.   RecordSupports ::= "supports" [Name];
+-- The type classes to derive for a record, e.g. `supports Addition, Multiplication`.
+DerivedClass. DerivedClass ::= Name;
+separator nonempty DerivedClass ",";
+
+Supports.   RecordSupports ::= "supports" [DerivedClass];
 NoSupports. RecordSupports ::= "";
 
 separator Decl ";";
