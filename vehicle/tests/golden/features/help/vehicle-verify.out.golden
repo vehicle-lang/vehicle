@@ -1,6 +1,6 @@
 Usage: vehicle verify (-s|--specification FILE) [-y|--property NAME] 
                       [-n|--network NAME:FILE] [-d|--dataset NAME:FILE] 
-                      [-p|--parameter NAME:VALUE] [-c|--cache FILE]
+                      [-p|--parameter NAME:VALUE] [-c|--cache DIRECTORY]
                       (-v|--solver FILE) [-a|--solver-args STRING] 
                       [--no-sat-print]
 
@@ -29,7 +29,7 @@ Available options:
                            colon-separated pair of the name of the parameter in
                            the specification and its value. Can be provided
                            multiple times.
-  -c,--cache FILE          The location that the verification cache for the
+  -c,--cache DIRECTORY     The location that the verification cache for the
                            specification will be generated. If not provided then
                            no cache will be created.
   -v,--solver FILE         The solver to use. Can be either a path to a solver executable or the name of a solver executable available via the system PATH environment variable.
