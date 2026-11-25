@@ -670,8 +670,9 @@ elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder elabExpr False) elabExpr 
 
 elabLiteral :: (MonadElab m, DesugarableBuiltin Builtin) => B.Lit -> m (V.Expr Builtin)
 elabLiteral = \case
-  B.UnitLiteral ->
-    return $ elabUnitLiteral mempty
+  B.UnitLiteral t -> do
+    p <- mkProvenance t
+    return $ elabUnitLiteral p
   B.BoolLiteral t -> do
     p <- mkProvenance t
     let b = readBoolLiteral t

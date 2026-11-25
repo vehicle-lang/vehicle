@@ -232,6 +232,8 @@ tokSeqOpen = mkToken B.TokSeqOpen "["
 
 tokSeqClose = mkToken B.TokSeqClose "]"
 
+tokUnitLiteral = mkToken B.UnitLit "()"
+
 tokNil = mkToken B.TokNil "nil"
 
 tokCons = mkToken B.TokCons "::"

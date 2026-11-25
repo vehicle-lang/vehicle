@@ -338,7 +338,7 @@ collectSyntaxTokensFromArg arg = collectSyntaxTokensFromExpr expr
 
 collectSyntaxTokensFromLiteral :: Lit -> [IntermediateSemTok]
 collectSyntaxTokensFromLiteral lit = case lit of
-  UnitLiteral -> [] -- TODO: Make "()" a position token
+  UnitLiteral u -> [mkKeywordTok u]
   BoolLiteral b -> [mkKeywordTok b]
   NatLiteral n -> [mkNumberTok n]
   RatLiteral r -> [mkNumberTok r]

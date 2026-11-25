@@ -311,7 +311,7 @@ delabConstructor :: (MonadDelab m) => V.BuiltinConstructor -> [V.Arg V.Builtin] 
 delabConstructor fun args = case fun of
   V.Cons -> delabInfixOp2 B.Cons tokCons args
   V.Nil -> delabApp (B.Nil tokNil) args
-  V.UnitLiteral -> return $ B.Literal B.UnitLiteral
+  V.UnitLiteral -> return $ B.Literal $ B.UnitLiteral tokUnitLiteral
   V.NatLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.IndexLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.VectorLiteral -> delabVecLiteral args
