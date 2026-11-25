@@ -6,11 +6,11 @@ f : Tensor Real -> Tensor Real
 
 @property;
 bounded_0 : Tensor Real;
-bounded_0 = search nil 0.0 1.0 (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseGreaterEqualThan nil 0.0 (f x)))
+bounded_0 = search [] 0.0 1.0 (\x -> DL2Loss.reduceDisjunction [] (DL2Loss.pointwiseGreaterEqualThan [] 0.0 (f x)))
 
 @property;
 bounded_1 : Tensor Real;
-bounded_1 = search nil 0.0 1.0 (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseGreaterEqualThan nil (f x) 1.0))
+bounded_1 = search [] 0.0 1.0 (\x -> DL2Loss.reduceDisjunction [] (DL2Loss.pointwiseGreaterEqualThan [] (f x) 1.0))
 
 @property;
 bounded_0_bool : Tensor Bool;

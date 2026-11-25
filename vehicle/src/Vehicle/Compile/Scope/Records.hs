@@ -10,10 +10,11 @@ import Data.Text qualified as Text
 import Data.Traversable (forM)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Builtin.Core.StdlibTypeClassOp
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Libraries.StandardLibrary
+import Vehicle.Libraries.Stdlib
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -36,7 +37,7 @@ generateBuiltinAuxiliaryRecordDefinitions p ident sort telescope fields derivedO
   -- All records can be used as inputs and outputs to networks
   -- so generate the marker instances that allow them to pass type-checking.
   let validNetworkIOInstances
-        | isStandardLibIdent ident = []
+        | isStdlibIdent ident = []
         | otherwise =
             [ createRecordHasValidIOTypeInstance p ident telescope fields,
               createRecordComparisonInstance p ident telescope fields
@@ -228,7 +229,7 @@ createRecordComparisonInstance p recordIdent telescope fields = do
   let for2 a b f = zipWith f a b
   let finalRecordType = fromDSL mempty parameterisedRecordType
 
-  let instanceMethods = for ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"] $ \methodName -> do
+  let instanceMethods = for (fmap (stdlibTypeClassOpName . ComparisonTC) comparisonOps) $ \methodName -> do
         -- Create two new binders, for the records that we are testing and use them to recalculate our indices:
         --    \(r1 : Pair T1 T2) (r2 : Pair T1 T2) -> <body>
         let lhsRecord = mkExplicitBinder (liftDBIndices (Lv 0) finalRecordType) (Just (mempty, "r1"))
@@ -424,8 +425,8 @@ createTensorLikeHasQuantifierInstance p recordIdent = do
   let functionName = Text.pack "_" <> nameOf recordIdent <> "HasQuantifier"
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
-  let forAllTCFieldName = FieldName p "forallTC"
-  let existsTCFieldName = FieldName p "existsTC"
+  let forAllTCFieldName = FieldName p (stdlibTypeClassOpName (QuantifierTC Forall))
+  let existsTCFieldName = FieldName p (stdlibTypeClassOpName (QuantifierTC Exists))
 
   let functionBody =
         Record

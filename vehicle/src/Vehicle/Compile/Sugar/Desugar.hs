@@ -11,9 +11,11 @@ import Control.Monad.Except (MonadError (..), throwError)
 import Control.Monad.Reader (MonadReader, asks, runReaderT)
 import Data.Bitraversable (bitraverse)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
 import Data.Maybe (mapMaybe)
+import Data.Semigroup (sconcat)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, notMember, toList)
 import Data.Text (Text, unpack)
@@ -24,6 +26,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Sugar.Core
 import Vehicle.Data.AST qualified as V
 import Vehicle.Data.AST.Expr.Desugared qualified as V
+import Vehicle.Data.Builtin.Core.StdlibTypeClassOp
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard qualified as V
 import Vehicle.Data.Real (ExtendedRational (..))
@@ -280,7 +283,7 @@ elabRecordDefinition annotations name telescope fields supports = do
     [FunDeclAnn absAnn] ->
       throwError $ RecordDefWithFunctionAnnotation p ident (pretty absAnn)
 
-  telescope' <- traverse (elabNameBinder elabExpr False) telescope
+  telescope' <- elabNameBinders elabExpr telescope
   fields' <- traverse elabRecordFieldDef fields
   supports' <- elabSupportedOperations supports
 
@@ -311,7 +314,7 @@ elabSupportedOperations ::
   m [V.DerivableRecordOperation]
 elabSupportedOperations = \case
   B.NoSupports -> return []
-  B.Supports _ names -> traverse elabOp names
+  B.Supports _ classes -> traverse (\(B.DerivedClass name) -> elabOp name) classes
   where
     elabOp :: B.Name -> m V.DerivableRecordOperation
     elabOp name = do
@@ -406,8 +409,8 @@ elabExpr expr = case expr of
   B.Lam tk1 ns _tk2 e -> elabLam tk1 ns e
   B.Record xs -> elabRecord xs
   B.RecordAcc e n -> elabRecordAcc e n
-  B.Forall tk1 ns e -> standardLibQuantifier tk1 "forallTC" ns e
-  B.Exists tk1 ns e -> standardLibQuantifier tk1 "existsTC" ns e
+  B.Forall tk1 ns e -> stdlibQuantifier tk1 (stdlibTypeClassOpName (QuantifierTC V.Forall)) ns e
+  B.Exists tk1 ns e -> stdlibQuantifier tk1 (stdlibTypeClassOpName (QuantifierTC V.Exists)) ns e
   B.ForallIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
   B.ExistsIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Exists ns e1 e2
   B.Foreach tk1 ns e -> elabForeach tk1 ns e
@@ -429,34 +432,41 @@ elabExpr expr = case expr of
   B.Or e1 tk e2 -> builtinFunction V.Or tk [e1, e2]
   B.Transpose tk -> builtinFunction V.Transpose tk []
   B.If tk1 e1 _ e2 _ e3 -> builtinFunction V.If tk1 [e1, e2, e3]
-  B.Eq e1 tk e2 -> standardLibComparison V.Eq tk e1 e2
-  B.Ne e1 tk e2 -> standardLibComparison V.Ne tk e1 e2
-  B.Le e1 tk e2 -> standardLibComparison V.Le tk e1 e2
-  B.Lt e1 tk e2 -> standardLibComparison V.Lt tk e1 e2
-  B.Ge e1 tk e2 -> standardLibComparison V.Ge tk e1 e2
-  B.Gt e1 tk e2 -> standardLibComparison V.Gt tk e1 e2
+  B.Eq e1 tk e2 -> stdlibComparison V.Eq tk e1 e2
+  B.Ne e1 tk e2 -> stdlibComparison V.Ne tk e1 e2
+  B.Le e1 tk e2 -> stdlibComparison V.Le tk e1 e2
+  B.Lt e1 tk e2 -> stdlibComparison V.Lt tk e1 e2
+  B.Ge e1 tk e2 -> stdlibComparison V.Ge tk e1 e2
+  B.Gt e1 tk e2 -> stdlibComparison V.Gt tk e1 e2
   B.EqPoint e1 tk e2 -> elabComparePointwise V.Eq tk [e1, e2]
   B.NePoint e1 tk e2 -> elabComparePointwise V.Ne tk [e1, e2]
   B.LePoint e1 tk e2 -> elabComparePointwise V.Le tk [e1, e2]
   B.LtPoint e1 tk e2 -> elabComparePointwise V.Lt tk [e1, e2]
   B.GePoint e1 tk e2 -> elabComparePointwise V.Ge tk [e1, e2]
   B.GtPoint e1 tk e2 -> elabComparePointwise V.Gt tk [e1, e2]
-  B.Add e1 tk e2 -> standardLibFunction "addTC" tk [e1, e2]
-  B.Sub e1 tk e2 -> standardLibFunction "subTC" tk [e1, e2]
-  B.Mul e1 tk e2 -> standardLibFunction "mulTC" tk [e1, e2]
-  B.Div e1 tk e2 -> standardLibFunction "divTC" tk [e1, e2]
+  B.Add e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName AddTC) tk [e1, e2]
+  B.Sub e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName SubTC) tk [e1, e2]
+  B.Mul e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName MulTC) tk [e1, e2]
+  B.Div e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName DivTC) tk [e1, e2]
   B.Pow e1 tk e2 -> builtinFunction (V.Pow V.PowRatTensor) tk [e1, e2]
   B.Min tk -> builtinFunction (V.Min V.MinRatTensor) tk []
   B.Max tk -> builtinFunction (V.Max V.MaxRatTensor) tk []
   B.Log tk -> builtinFunction (V.Log V.LogRatTensor) tk []
   B.Exp tk -> builtinFunction (V.Exp V.ExpRatTensor) tk []
-  B.Neg tk e -> builtinTypeClassOp V.NegTC tk [e]
+  B.Neg tk e -> stdlibFunction (stdlibTypeClassOpName NegTC) tk [e]
   B.AddNat tk -> builtinFunction (V.Add V.AddNat) tk []
   B.MulNat tk -> builtinFunction (V.Mul V.MulNat) tk []
   B.AddRealTensor tk -> builtinFunction (V.Add V.AddRatTensor) tk []
   B.SubRealTensor tk -> builtinFunction (V.Sub V.SubRatTensor) tk []
   B.MulRealTensor tk -> builtinFunction (V.Mul V.MulRatTensor) tk []
   B.DivRealTensor tk -> builtinFunction (V.Div V.DivRatTensor) tk []
+  B.NegRealTensor tk -> builtinFunction (V.Neg V.NegRatTensor) tk []
+  B.AtVector tk -> builtinFunction V.AtVector tk []
+  B.AtTensor tk -> builtinFunction V.AtTensor tk []
+  B.ForeachVector tk -> builtinFunction V.ForeachVector tk []
+  B.ForeachTensor tk -> builtinFunction V.ForeachTensor tk []
+  B.MapList tk -> builtinFunction V.MapList tk []
+  B.FoldList tk -> builtinFunction V.FoldList tk []
   B.QuantifyForAllIndex tk -> derivedFunction (V.QuantifyIndex V.Forall) tk []
   B.QuantifyExistsIndex tk -> derivedFunction (V.QuantifyIndex V.Exists) tk []
   B.QuantifyForallRealTensor tk -> elabQuantifyRatTensor V.Forall tk []
@@ -487,9 +497,9 @@ elabExpr expr = case expr of
   B.CompareRatTensorReducedLt tk -> elabCompareReduced V.Lt tk []
   B.CompareRatTensorReducedGe tk -> elabCompareReduced V.Ge tk []
   B.CompareRatTensorReducedGt tk -> elabCompareReduced V.Gt tk []
-  B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
-  B.Map tk -> builtinTypeClassOp V.MapTC tk []
-  B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
+  B.At e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName AtTC) tk [e1, e2]
+  B.Map tk -> stdlibFunction (stdlibTypeClassOpName MapTC) tk []
+  B.Fold tk -> stdlibFunction (stdlibTypeClassOpName FoldTC) tk []
   B.Append tk -> builtinFunction V.AppendList tk []
   B.Const tk -> builtinFunction V.ConstTensor tk []
   B.ReduceOr tk -> builtinFunction V.ReduceOrTensor tk []
@@ -498,8 +508,6 @@ elabExpr expr = case expr of
   B.ReduceMul tk -> builtinFunction V.ReduceMulRatTensor tk []
   B.ReduceMin tk -> builtinFunction V.ReduceMinRatTensor tk []
   B.ReduceMax tk -> builtinFunction V.ReduceMaxRatTensor tk []
-  B.HasMap tk -> builtinTypeClass V.HasMap tk []
-  B.HasFold tk -> builtinTypeClass V.HasFold tk []
   B.IsTensorType tk -> builtinTypeClass V.IsTensorType tk []
   -- NOTE: we reverse the arguments to make it well-typed.
   B.Ann e tk t -> derivedFunction V.TypeAnn tk [t, e]
@@ -549,28 +557,31 @@ elabRecordAcc e field = do
   r <- elabExpr e
   return $ V.RecordAcc p r fieldName
 
-elabBasicBinder ::
+-- | Elaborates a sequence of binders, where the first is unfolded and the
+-- remainder are folded into it.
+elabNameBinders ::
   (MonadElab m) =>
   (B.Expr -> m expr) ->
-  Bool ->
-  B.BasicBinder ->
-  m (V.GenericBinder expr)
-elabBasicBinder elab folded = \case
-  B.ExplicitBinder mods n _tk typ -> mkBinder elab folded mods V.Explicit (These n typ)
-  B.ImplicitBinder mods n _tk typ -> mkBinder elab folded mods (V.Implicit False) (These n typ)
-  B.InstanceBinder mods n _tk typ -> mkBinder elab folded mods (V.Instance False) (These n typ)
+  [B.NameBinder] ->
+  m [V.GenericBinder expr]
+elabNameBinders elab = \case
+  [] -> return []
+  d : ds -> do
+    d' <- elabNameBinder elab False d
+    ds' <- traverse (elabNameBinder elab True) ds
+    return $ concatMap NonEmpty.toList (d' : ds')
 
-elabNameBinder ::
-  (MonadElab m) =>
-  (B.Expr -> m expr) ->
-  Bool ->
+-- | Elaborates a binder in a position where only a single variable may be bound,
+-- e.g. a `let` declaration or a `forall x in xs` quantifier.
+elabSingleNameBinder ::
+  (MonadElab m, DesugarableBuiltin Builtin) =>
   B.NameBinder ->
-  m (V.GenericBinder expr)
-elabNameBinder elab folded = \case
-  B.ExplicitNameBinder n -> mkBinder elab folded mempty V.Explicit (This n)
-  B.ImplicitNameBinder modalities n -> mkBinder elab folded modalities (V.Implicit False) (This n)
-  B.InstanceNameBinder modalities n -> mkBinder elab folded modalities (V.Instance False) (This n)
-  B.BasicNameBinder b -> elabBasicBinder elab folded b
+  m (V.Binder Builtin)
+elabSingleNameBinder binder = do
+  binders <- elabNameBinder elabExpr False binder
+  case binders of
+    b :| [] -> return b
+    _ :| (b : _) -> throwError $ MultipleVariablesInSingleBinder (V.provenanceOf b)
 
 elabTypeBinder ::
   (MonadElab m) =>
@@ -584,7 +595,33 @@ elabTypeBinder elab folded = \case
   B.ImplicitTypeBinder t -> mkBinder elab folded mempty (V.Implicit False) $ typeBinderNaming t
   B.ImplicitTypeBinderMods m ms t -> mkBinder elab folded (m : ms) (V.Implicit False) $ typeBinderNaming t
   B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ typeBinderNaming t
-  B.BasicTypeBinder b -> elabBasicBinder elab folded b
+  B.BasicTypeBinder b -> NonEmpty.head <$> elabBasicBinders elab folded b
+
+elabNameBinder ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  Bool ->
+  B.NameBinder ->
+  m (NonEmpty (V.GenericBinder expr))
+elabNameBinder elab folded = \case
+  B.ExplicitNameBinder n -> pure <$> mkBinder elab folded mempty V.Explicit (This n)
+  B.ImplicitNameBinder modalities n -> pure <$> mkBinder elab folded modalities (V.Implicit False) (This n)
+  B.InstanceNameBinder modalities n -> pure <$> mkBinder elab folded modalities (V.Instance False) (This n)
+  B.BasicNameBinder b -> elabBasicBinders elab folded b
+
+-- | A basic binder may bind multiple names that share a type, e.g. `(i j : A)`,
+-- in which case it is expanded into one binder per name. All but the first
+-- are marked as folded so that they are printed back together.
+elabBasicBinders ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  Bool ->
+  B.BasicBinder ->
+  m (NonEmpty (V.GenericBinder expr))
+elabBasicBinders elab folded = \case
+  B.ExplicitBinder mods ns _tk typ -> mkBinders elab folded mods V.Explicit ns typ
+  B.ImplicitBinder mods ns _tk typ -> mkBinders elab folded mods (V.Implicit False) ns typ
+  B.InstanceBinder mods ns _tk typ -> mkBinders elab folded mods (V.Instance False) ns typ
 
 -- | The parser cannot distinguish the named binder `(x : A)` from a bracketed
 -- annotation `x : A` (see the note in `External.cf`), so it always parses the
@@ -665,8 +702,28 @@ mkBinder elab folded modalities visibility nameTyp = do
   elabType <- elab typ
   return $ V.Binder displayForm visibility relevance elabType
 
+-- | Constructs one binder per name, all sharing the same type. All but the
+-- first are marked as folded so that they are printed back together.
+mkBinders ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  V.BinderFoldingForm ->
+  [B.Modality] ->
+  V.Visibility ->
+  [B.Name] ->
+  B.Expr ->
+  m (NonEmpty (V.GenericBinder expr))
+mkBinders elab folded modalities visibility names typ = case names of
+  [] -> developerError "Parser should not produce a binder with no names"
+  n : ns -> do
+    b <- mk folded n
+    bs <- traverse (mk True) ns
+    return (b :| bs)
+  where
+    mk f name = mkBinder elab f modalities visibility (These name typ)
+
 elabLetDecl :: (MonadElab m, DesugarableBuiltin Builtin) => B.LetDecl -> m (V.Binder Builtin, V.Expr Builtin)
-elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder elabExpr False) elabExpr (b, e)
+elabLetDecl (B.LDecl b e) = bitraverse (elabSingleNameBinder) elabExpr (b, e)
 
 elabLiteral :: (MonadElab m, DesugarableBuiltin Builtin) => B.Lit -> m (V.Expr Builtin)
 elabLiteral = \case
@@ -732,8 +789,8 @@ builtinFunction b = builtin (V.BuiltinFunction b)
 derivedFunction :: (MonadElab m, IsToken token) => V.DerivedFunction -> token -> [B.Expr] -> m (V.Expr Builtin)
 derivedFunction b = builtin (V.DerivedFunction b)
 
-standardLibFunction :: (MonadElab m, IsToken token) => V.Name -> token -> [B.Expr] -> m (V.Expr Builtin)
-standardLibFunction name tk args = do
+stdlibFunction :: (MonadElab m, IsToken token) => V.Name -> token -> [B.Expr] -> m (V.Expr Builtin)
+stdlibFunction name tk args = do
   p <- mkProvenance tk
   app (V.Var p name) <$> traverse elabExpr args
 
@@ -772,12 +829,8 @@ elabTelescopeType :: (MonadElab m, DesugarableBuiltin Builtin) => [B.NameBinder]
 elabTelescopeType binders body = do
   p <- V.Provenance mempty <$> getFile
   body' <- elabExpr body
-  case binders of
-    [] -> return body'
-    d : ds -> do
-      d' <- elabNameBinder elabExpr False d
-      ds' <- traverse (elabNameBinder elabExpr True) ds
-      return $ foldr (V.Pi p) body' (d' : ds')
+  binders' <- elabNameBinders elabExpr binders
+  return $ foldr (V.Pi p) body' binders'
 
 elabLam :: (MonadElab m, DesugarableBuiltin Builtin) => B.TokLambda -> [B.NameBinder] -> B.Expr -> m (V.Expr Builtin)
 elabLam tk binders body = do
@@ -786,8 +839,8 @@ elabLam tk binders body = do
   body' <- elabExpr body
   return $ foldr (V.Lam p) body' binders'
 
-standardLibComparison :: (MonadElab m, IsToken token, DesugarableBuiltin Builtin) => V.ComparisonOp -> token -> B.Expr -> B.Expr -> m (V.Expr Builtin)
-standardLibComparison op tk e1 e2 = do
+stdlibComparison :: (MonadElab m, IsToken token, DesugarableBuiltin Builtin) => V.ComparisonOp -> token -> B.Expr -> B.Expr -> m (V.Expr Builtin)
+stdlibComparison op tk e1 e2 = do
   let Tk tkDetails = toToken tk
   let chainedOrder = case e1 of
         B.Le _ _ e -> Just (V.Le, e)
@@ -798,13 +851,9 @@ standardLibComparison op tk e1 e2 = do
         _ -> Nothing
   p <- mkProvenance tk
   case chainedOrder of
-    Nothing -> case op of
-      V.Le -> app (V.Var p "leTC") <$> traverse elabExpr [e1, e2]
-      V.Lt -> app (V.Var p "ltTC") <$> traverse elabExpr [e1, e2]
-      V.Ge -> app (V.Var p "geTC") <$> traverse elabExpr [e1, e2]
-      V.Gt -> app (V.Var p "gtTC") <$> traverse elabExpr [e1, e2]
-      V.Eq -> app (V.Var p "eqTC") <$> traverse elabExpr [e1, e2]
-      V.Ne -> app (V.Var p "neTC") <$> traverse elabExpr [e1, e2]
+    Nothing -> do
+      let tcOp = V.Var p (stdlibTypeClassOpName (ComparisonTC op))
+      app tcOp <$> traverse elabExpr [e1, e2]
     Just (prevOp, e)
       | not (V.chainable prevOp op) -> do
           throwError $ UnchainableComparisons p prevOp op
@@ -816,14 +865,14 @@ standardLibComparison op tk e1 e2 = do
           V.Eq -> B.Eq e (B.TokEq tkDetails) e2
           V.Ne -> B.Ne e (B.TokNe tkDetails) e2
 
-standardLibQuantifier ::
+stdlibQuantifier ::
   (MonadElab m, IsToken token) =>
   token ->
   V.Name ->
   [B.NameBinder] ->
   B.Expr ->
   m (V.Expr Builtin)
-standardLibQuantifier tk name binders body = do
+stdlibQuantifier tk name binders body = do
   p <- mkProvenance tk
   let quant = V.Var p name
 
@@ -848,7 +897,7 @@ elabQuantifierIn ::
 elabQuantifierIn tk q binder container body = do
   p <- mkProvenance tk
   let quantBuiltin = V.DerivedFunction $ V.QuantifyInList q
-  binder' <- elabNameBinder elabExpr False binder
+  binder' <- elabSingleNameBinder binder
   container' <- elabExpr container
   body' <- elabExpr body
 
@@ -873,7 +922,7 @@ elabForeach tk binders body = do
 
   let mkForeach binder newBody =
         V.normAppList
-          (V.Builtin p $ V.TypeClassOp V.ForeachTC)
+          (V.Var p (stdlibTypeClassOpName ForeachTC))
           [ mkArg mempty V.Explicit (V.Lam mempty binder newBody)
           ]
 
@@ -897,7 +946,7 @@ elabNamedBinders tk binders = case binders of
   (d : ds) -> do
     d' <- elabNameBinder elabExpr False d
     ds' <- traverse (elabNameBinder elabExpr True) ds
-    return (d' :| ds')
+    return $ sconcat (d' :| ds')
 
 -- | Constructs a pi type filled with an appropriate number of holes for
 --  a definition which has no accompanying type.

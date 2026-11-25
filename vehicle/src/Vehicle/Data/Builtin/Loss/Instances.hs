@@ -10,10 +10,10 @@ import Vehicle.Data.AST.Decl (InstancePriority)
 import Vehicle.Data.AST.Record (FieldName (..))
 import Vehicle.Data.Builtin.Core (BuiltinFunction (..))
 import Vehicle.Data.Builtin.Loss
-import Vehicle.Data.Code.DSL hiding (validParameterType)
+import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Data.DifferentiableLogic
-import Vehicle.Libraries.StandardLibrary (differentiableTensorLogicIdent)
+import Vehicle.Libraries.Stdlib (differentiableTensorLogicIdent)
 
 lossBuiltinInstances ::
   LossMode ->

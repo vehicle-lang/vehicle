@@ -3,4 +3,4 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 reachable : (Tensor Real -> Tensor Real) -> Tensor Real;
-reachable f = search [2] (const 0.0 [2]) (const 1.0 [2]) (\x -> DL2Loss.pointwiseEqual nil (f x) 0.0)
+reachable f = search [2] (const 0.0 [2]) (const 1.0 [2]) (\x -> DL2Loss.pointwiseEqual [] (f x) 0.0)

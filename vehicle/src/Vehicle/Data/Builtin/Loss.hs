@@ -14,8 +14,8 @@ import Vehicle.Data.AST.Name (HasIdentifier (..))
 import Vehicle.Data.Builtin.Core.BasicOperations
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Builtin.Standard.Core hiding (HasQuantifier)
-import Vehicle.Data.Builtin.Standard.Core qualified as S hiding (HasQuantifier)
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard.Core qualified as S
 import Vehicle.Data.Code.DSL (tRat, tTensor)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL

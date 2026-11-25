@@ -85,6 +85,13 @@ position token TokAddRealTensor {"addRealTensor"};
 position token TokSubRealTensor {"subRealTensor"};
 position token TokMulRealTensor {"mulRealTensor"};
 position token TokDivRealTensor {"divRealTensor"};
+position token TokNegRealTensor {"negRealTensor"};
+position token TokAtVector {"atVector"};
+position token TokAtTensor {"atTensor"};
+position token TokForeachVector {"foreachVector"};
+position token TokForeachTensor {"foreachTensor"};
+position token TokMapList {"mapList"};
+position token TokFoldList {"foldList"};
 position token TokQuantifyForAllIndex {"quantifyForAllIndex"};
 position token TokQuantifyExistsIndex {"quantifyExistsIndex"};
 position token TokQuantifyForallRealTensor {"quantifyForallRealTensor"};
@@ -133,8 +140,6 @@ position token TokReduceMul {"reduceMul"};
 position token TokReduceMin {"reduceMin"};
 position token TokReduceMax {"reduceMax"};
 
-position token TokHasFold   {"HasFold"};
-position token TokHasMap    {"HasMap"};
 position token TokIsTensorType {"IsTensorType"};
 
 position token TokAnnNameOpt  {"name"};
@@ -146,7 +151,7 @@ position token Name         (letter (letter | digit | '_')*) ;
 position token FieldAccess  ({"."} letter (letter | digit | '_')*);
 position token HoleToken    ({"?"} (letter | digit | '_')*);
 
-separator nonempty Name ",";
+separator nonempty Name "";
 
 -- * Modalities
 
@@ -156,9 +161,10 @@ separator Modality "";
 
 -- * Basic binders
 
-ExplicitBinder. BasicBinder ::= "("  [Modality] Name TokElemOf Expr1 ")";
-ImplicitBinder. BasicBinder ::= "{"  [Modality] Name TokElemOf Expr1 "}";
-InstanceBinder. BasicBinder ::= "{{" [Modality] Name TokElemOf Expr1 "}}";
+-- A binder may bind several names that share a type, e.g. `(i j : Atom)`.
+ExplicitBinder. BasicBinder ::= "("  [Modality] [Name] TokElemOf Expr1 ")";
+ImplicitBinder. BasicBinder ::= "{"  [Modality] [Name] TokElemOf Expr1 "}";
+InstanceBinder. BasicBinder ::= "{{" [Modality] [Name] TokElemOf Expr1 "}}";
 
 -- * Binders where the user must provide a name but can omit the type
 
@@ -330,6 +336,13 @@ AddRealTensor.                Expr17 ::= TokAddRealTensor;
 SubRealTensor.                Expr17 ::= TokSubRealTensor;
 MulRealTensor.                Expr17 ::= TokMulRealTensor;
 DivRealTensor.                Expr17 ::= TokDivRealTensor;
+NegRealTensor.                Expr17 ::= TokNegRealTensor;
+AtVector.                     Expr17 ::= TokAtVector;
+AtTensor.                     Expr17 ::= TokAtTensor;
+ForeachVector.                Expr17 ::= TokForeachVector;
+ForeachTensor.                Expr17 ::= TokForeachTensor;
+MapList.                      Expr17 ::= TokMapList;
+FoldList.                     Expr17 ::= TokFoldList;
 QuantifyForAllIndex.          Expr17 ::= TokQuantifyForAllIndex;
 QuantifyExistsIndex.          Expr17 ::= TokQuantifyExistsIndex;
 QuantifyForallRealTensor.     Expr17 ::= TokQuantifyForallRealTensor;
@@ -381,8 +394,6 @@ Real.          Expr17 ::= TokReal;
 List.          Expr17 ::= TokList;
 Vector.        Expr17 ::= TokVector;
 Tensor.        Expr17 ::= TokTensor;
-HasMap.        Expr17 ::= TokHasMap;
-HasFold.       Expr17 ::= TokHasFold;
 IsTensorType.  Expr17 ::= TokIsTensorType;
 NonCastingTensor. Expr17 ::= TokNonCastingTensor;
 NonCastingReal. Expr17 ::= TokNonCastingReal;
@@ -412,7 +423,11 @@ DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
 DefRecord.    Decl ::= TokRecord Name [NameBinder] TokWhere "{" [RecordFieldDef] "}" RecordSupports;
 
-Supports.   RecordSupports ::= TokSupports [Name];
+-- The type classes to derive for a record, e.g. `supports Addition, Multiplication`.
+DerivedClass. DerivedClass ::= Name;
+separator nonempty DerivedClass ",";
+
+Supports.   RecordSupports ::= TokSupports [DerivedClass];
 NoSupports. RecordSupports ::= "";
 
 separator Decl ";";

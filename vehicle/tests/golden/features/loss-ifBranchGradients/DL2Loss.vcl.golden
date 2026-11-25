@@ -3,4 +3,4 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 p : (Tensor Real -> Tensor Real) -> Nat -> Tensor Real;
-p f n = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [if n == 1 then x else 0.0] ! 0) 0.5)))
+p f n = DL2Loss.pointwiseNegation [] (search [] 0.0 1.0 (\x -> DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseGreaterEqualThan [] (f [if n == 1 then x else 0.0] ! 0) 0.5)))

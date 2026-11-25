@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.29.0
+version:            0.30.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -158,7 +158,7 @@ library
     Vehicle.Export
     Vehicle.Libraries
     Vehicle.Libraries.Core
-    Vehicle.Libraries.StandardLibrary
+    Vehicle.Libraries.Stdlib
     Vehicle.List
     Vehicle.LSP
     Vehicle.Prelude
@@ -259,6 +259,7 @@ library
     Vehicle.Data.Builtin.Core
     Vehicle.Data.Builtin.Core.BasicOperations
     Vehicle.Data.Builtin.Core.Derived
+    Vehicle.Data.Builtin.Core.StdlibTypeClassOp
     Vehicle.Data.Builtin.Core.TypeClass
     Vehicle.Data.Builtin.Decidability
     Vehicle.Data.Builtin.Decidability.Instances

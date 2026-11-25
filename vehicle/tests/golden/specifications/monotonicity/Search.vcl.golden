@@ -6,7 +6,7 @@ f : Tensor Real -> Tensor Real
 
 @property;
 monotonic_0 : Tensor Real;
-monotonic_0 = search nil 0.0 1.0 (\x1 -> search nil (max 0.0 x1) 1.0 (\x2 -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseGreaterThan nil (f x1) (f x2))))
+monotonic_0 = search [] 0.0 1.0 (\x1 -> search [] (max 0.0 x1) 1.0 (\x2 -> DL2Loss.reduceDisjunction [] (DL2Loss.pointwiseGreaterThan [] (f x1) (f x2))))
 
 @property;
 monotonic_0_bool : Tensor Bool;

@@ -9,11 +9,11 @@ decode : Tensor Real -> Tensor Real
 
 @property;
 identity_0 : Tensor Real;
-identity_0 = search [5] (const -infinity [5]) (const infinity [5]) (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.reduceConjunction [5] (DL2Loss.pointwiseGreaterThan [5] (x - (foreach i. 0.1)) (decode (encode x)))))
+identity_0 = search [5] (const -infinity [5]) (const infinity [5]) (\x -> DL2Loss.reduceDisjunction [] (DL2Loss.reduceConjunction [5] (DL2Loss.pointwiseGreaterThan [5] (x - (foreach i. 0.1)) (decode (encode x)))))
 
 @property;
 identity_1 : Tensor Real;
-identity_1 = search [5] (const -infinity [5]) (const infinity [5]) (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.reduceConjunction [5] (DL2Loss.pointwiseGreaterThan [5] (decode (encode x)) (x + (foreach i. 0.1)))))
+identity_1 = search [5] (const -infinity [5]) (const infinity [5]) (\x -> DL2Loss.reduceDisjunction [] (DL2Loss.reduceConjunction [5] (DL2Loss.pointwiseGreaterThan [5] (decode (encode x)) (x + (foreach i. 0.1)))))
 
 @property;
 identity_0_bool : Tensor Bool;

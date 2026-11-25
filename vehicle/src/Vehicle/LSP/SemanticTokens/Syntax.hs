@@ -90,7 +90,8 @@ collectSyntaxTokensFromDecl = \case
   DefRecord tkRecord _name binders tkWhere fields supports -> do
     let supportsToks = case supports of
           NoSupports -> []
-          Supports tk s -> mkKeywordTok tk : map (\t -> mkTypeTok t) s
+          -- TODO: This maybe should be the responsibility of the semantic pass?
+          Supports tk s -> mkKeywordTok tk : map (\(DerivedClass t) -> mkTypeTok t) s
     mkKeywordTok tkRecord
       : mkKeywordTok tkWhere
       : collectSyntaxTokensFromNameBinders binders
@@ -247,6 +248,13 @@ collectSyntaxTokensFromExpr = \case
   SubRealTensor tk -> [mkKeywordTok tk]
   MulRealTensor tk -> [mkKeywordTok tk]
   DivRealTensor tk -> [mkKeywordTok tk]
+  NegRealTensor tk -> [mkKeywordTok tk]
+  AtVector tk -> [mkKeywordTok tk]
+  AtTensor tk -> [mkKeywordTok tk]
+  ForeachVector tk -> [mkKeywordTok tk]
+  ForeachTensor tk -> [mkKeywordTok tk]
+  MapList tk -> [mkKeywordTok tk]
+  FoldList tk -> [mkKeywordTok tk]
   QuantifyForAllIndex tk -> [mkKeywordTok tk]
   QuantifyExistsIndex tk -> [mkKeywordTok tk]
   QuantifyForallRealTensor tk -> [mkKeywordTok tk]
@@ -297,8 +305,6 @@ collectSyntaxTokensFromExpr = \case
   List tk -> [mkTypeTok tk]
   Vector tk -> [mkTypeTok tk]
   Tensor tk -> [mkTypeTok tk]
-  HasMap tk -> [mkClassTok tk]
-  HasFold tk -> [mkClassTok tk]
   IsTensorType tk -> [mkClassTok tk]
   NonCastingTensor tk -> [mkClassTok tk]
   NonCastingReal tk -> [mkClassTok tk]

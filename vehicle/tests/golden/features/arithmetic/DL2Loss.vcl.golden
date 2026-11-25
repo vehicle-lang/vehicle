@@ -6,4 +6,4 @@ natLitNatLitDiv = 1.0 / 2.0
 
 @property;
 property : (Tensor Real -> Tensor Real) -> Tensor Real;
-property f = DL2Loss.pointwiseGreaterEqualThan nil (f [natLitNatLitDiv] ! 0) 0.0
+property f = DL2Loss.pointwiseGreaterEqualThan [] (f [natLitNatLitDiv] ! 0) 0.0

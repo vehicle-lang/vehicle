@@ -35,8 +35,12 @@ data ComparisonOp
   | Gt
   | Eq
   | Ne
-  deriving stock (Eq, Ord, Show, Generic)
+  deriving stock (Eq, Ord, Show, Enum, Bounded, Generic)
   deriving anyclass (NFData, Hashable, Serialize)
+
+-- | All the comparison operations.
+comparisonOps :: [ComparisonOp]
+comparisonOps = [minBound .. maxBound]
 
 instance Pretty ComparisonOp where
   pretty = \case

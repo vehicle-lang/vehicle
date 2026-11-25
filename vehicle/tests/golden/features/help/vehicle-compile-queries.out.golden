@@ -2,7 +2,7 @@ Usage: vehicle compile queries (-f|--format FORMAT) (-s|--specification FILE)
                                [-e|--declaration NAME] [-n|--network NAME:FILE] 
                                [-d|--dataset NAME:FILE] 
                                [-p|--parameter NAME:VALUE] [-o|--output FILE] 
-                               [-c|--cache FILE]
+                               [-c|--cache DIRECTORY]
 
   Compile a specification to VNN-LIB queries for a solver.
 
@@ -32,7 +32,7 @@ Available options:
                            multiple times.
   -o,--output FILE         Output location for compiled file(s). Defaults to
                            `stdout` if not provided.
-  -c,--cache FILE          The location of the verification cache that can be
+  -c,--cache DIRECTORY     The location of the verification cache that can be
                            used to check the verification status of the
                            specification. Should be passed when compiling to an
                            ITP.

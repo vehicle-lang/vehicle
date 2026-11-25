@@ -6,27 +6,27 @@ f : Tensor Real -> Tensor Real
 
 @property;
 existBelowAnd_0 : Tensor Real;
-existBelowAnd_0 = search nil 0.0 1.0 (\x1 -> DL2Loss.pointwiseGreaterEqualThan nil (f x1) 1.0)
+existBelowAnd_0 = search [] 0.0 1.0 (\x1 -> DL2Loss.pointwiseGreaterEqualThan [] (f x1) 1.0)
 
 @property;
 existBelowAnd_1 : Tensor Real;
-existBelowAnd_1 = search nil 1.0 2.0 (\x2 -> DL2Loss.pointwiseGreaterEqualThan nil (f x2) 2.0)
+existBelowAnd_1 = search [] 1.0 2.0 (\x2 -> DL2Loss.pointwiseGreaterEqualThan [] (f x2) 2.0)
 
 @property;
 forallBelowAnd_0 : Tensor Real;
-forallBelowAnd_0 = search nil 0.0 1.0 (\x1 -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseLessThan nil (f x1) 1.0))
+forallBelowAnd_0 = search [] 0.0 1.0 (\x1 -> DL2Loss.reduceDisjunction [] (DL2Loss.pointwiseLessThan [] (f x1) 1.0))
 
 @property;
 forallBelowAnd_1 : Tensor Real;
-forallBelowAnd_1 = search nil 1.0 2.0 (\x2 -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseLessThan nil (f x2) 2.0))
+forallBelowAnd_1 = search [] 1.0 2.0 (\x2 -> DL2Loss.reduceDisjunction [] (DL2Loss.pointwiseLessThan [] (f x2) 2.0))
 
 @property;
 existsAndForallDifferentScopes_0 : Tensor Real;
-existsAndForallDifferentScopes_0 = search nil 0.0 1.0 (\x1 -> DL2Loss.pointwiseGreaterEqualThan nil (f x1) 1.0)
+existsAndForallDifferentScopes_0 = search [] 0.0 1.0 (\x1 -> DL2Loss.pointwiseGreaterEqualThan [] (f x1) 1.0)
 
 @property;
 existsAndForallDifferentScopes_1 : Tensor Real;
-existsAndForallDifferentScopes_1 = search nil 1.0 2.0 (\x2 -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseLessThan nil (f x2) 2.0))
+existsAndForallDifferentScopes_1 = search [] 1.0 2.0 (\x2 -> DL2Loss.reduceDisjunction [] (DL2Loss.pointwiseLessThan [] (f x2) 2.0))
 
 @property;
 existBelowAnd_0_bool : Tensor Bool;

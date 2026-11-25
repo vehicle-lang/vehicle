@@ -14,8 +14,8 @@ normalise : Tensor Real -> Tensor Real;
 normalise x = foreach i. (x ! i + 4.0) / 8.0
 
 safeOutput : (Tensor Real -> Tensor Real) -> Tensor Real -> Tensor Real;
-safeOutput controller x = let y = controller (normalise x) ! velocity in DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseLessThan nil (- 1.25) (y + 2.0 * x ! currentSensor - x ! previousSensor)) (DL2Loss.pointwiseLessThan nil (y + 2.0 * x ! currentSensor - x ! previousSensor) 1.25)
+safeOutput controller x = let y = controller (normalise x) ! velocity in DL2Loss.pointwiseConjunction [] (DL2Loss.pointwiseLessThan [] (- 1.25) (y + 2.0 * x ! currentSensor - x ! previousSensor)) (DL2Loss.pointwiseLessThan [] (y + 2.0 * x ! currentSensor - x ! previousSensor) 1.25)
 
 @property;
 safe : (Tensor Real -> Tensor Real) -> Tensor Real;
-safe controller = DL2Loss.pointwiseNegation nil (search [2] (const -3.25 [2]) (const 3.25 [2]) (\x -> DL2Loss.pointwiseNegation nil (safeOutput controller x)))
+safe controller = DL2Loss.pointwiseNegation [] (search [2] (const -3.25 [2]) (const 3.25 [2]) (\x -> DL2Loss.pointwiseNegation [] (safeOutput controller x)))

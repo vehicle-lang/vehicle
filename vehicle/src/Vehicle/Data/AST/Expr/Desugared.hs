@@ -28,6 +28,7 @@ module Vehicle.Data.AST.Expr.Desugared
     mkHole,
     normAppList,
     headOf,
+    isEmptyList,
   )
 where
 
@@ -41,8 +42,9 @@ import Vehicle.Data.AST.Module (GenericModule)
 import Vehicle.Data.AST.Name (Name)
 import Vehicle.Data.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
 import Vehicle.Data.AST.Record (FieldName, GenericRecordField, GenericRecordFields)
-import Vehicle.Data.Builtin.Core.BasicOperations
-import Vehicle.Data.Builtin.Standard.Core (Builtin (..), TypeClassOp (..))
+import Vehicle.Data.AST.Visibility (isExplicit)
+import Vehicle.Data.Builtin.Core.StdlibTypeClassOp (StdlibTypeClassOp (..), lookupStdlibTypeClassOp)
+import Vehicle.Data.Builtin.Standard.Core (Builtin (..), BuiltinConstructor (..), TypeClassOp (..))
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -148,6 +150,16 @@ headOf = \case
   UnsafeApp f _ -> f
   e -> e
 
+-- | Whether the expression is the empty list, either as the `Nil` constructor
+-- or as an empty vector literal (which is how `Nil` is displayed to the user).
+isEmptyList :: Expr Builtin -> Bool
+isEmptyList = \case
+  Builtin _ (BuiltinConstructor Nil) -> True
+  UnsafeApp (Builtin _ (BuiltinConstructor Nil)) _ -> True
+  Builtin _ (TypeClassOp VecLiteralTC) -> True
+  UnsafeApp (Builtin _ (TypeClassOp VecLiteralTC)) args -> not (any isExplicit args)
+  _ -> False
+
 --------------------------------------------------------------------------------
 -- Instances
 
@@ -179,12 +191,13 @@ instance HasBasicBinders (Expr builtin) where
 
 instance HasBuiltinBinders (Expr Builtin) where
   getQuantifierBinder q = \case
-    App (Var _ "existsTC") ((argExpr -> Lam _ binder body) :| []) | q == Exists -> Just (binder, body)
-    App (Var _ "forallTC") ((argExpr -> Lam _ binder body) :| []) | q == Forall -> Just (binder, body)
+    App (Var _ name) ((argExpr -> Lam _ binder body) :| [])
+      | lookupStdlibTypeClassOp name == Just (QuantifierTC q) -> Just (binder, body)
     _ -> Nothing
 
   getForeachBinder = \case
-    App (Builtin _ (TypeClassOp ForeachTC)) ((argExpr -> Lam _ binder body) :| []) -> Just (binder, body)
+    App (Var _ name) ((argExpr -> Lam _ binder body) :| [])
+      | lookupStdlibTypeClassOp name == Just ForeachTC -> Just (binder, body)
     _ -> Nothing
 
 --------------------------------------------------------------------------------

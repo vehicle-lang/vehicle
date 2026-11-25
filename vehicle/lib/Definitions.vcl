@@ -7,6 +7,58 @@ typeAnn : (t : Type) -> t -> t
 typeAnn t a = a
 
 --------------------------------------------------------------------------------
+-- Container type classes
+--------------------------------------------------------------------------------
+
+-- HasAt
+@typeclass
+record HasAt t1 t2 t3 where
+  { atTC : t1 -> t2 -> t3
+  }
+
+@instance
+vectorHasAt : HasAt (Vector t d) (Index d) t
+vectorHasAt = { atTC = atVector }
+
+@instance
+tensorHasAt : HasAt (NonCastingTensor t (d :: ds)) (Index d) (NonCastingTensor t ds)
+tensorHasAt = { atTC = atTensor }
+
+-- HasForeach
+@typeclass
+record HasForeach t1 t2 t3 where
+  { foreachTC : (t2 -> t3) -> t1
+  }
+
+@instance
+vectorHasForeach : HasForeach (Vector t d) (Index d) t
+vectorHasForeach = { foreachTC = foreachVector }
+
+@instance
+tensorHasForeach : HasForeach (NonCastingTensor t (d :: ds)) (Index d) (NonCastingTensor t ds)
+tensorHasForeach = { foreachTC = foreachTensor }
+
+-- HasMap
+@typeclass
+record HasMap (f : Type -> Type) where
+  { mapTC : (a -> b) -> f a -> f b
+  }
+
+@instance
+listHasMap : HasMap List
+listHasMap = { mapTC = mapList }
+
+-- HasFold
+@typeclass
+record HasFold (f : Type -> Type) where
+  { foldTC : (a -> b -> b) -> b -> f a -> b
+  }
+
+@instance
+listHasFold : HasFold List
+listHasFold = { foldTC = foldList }
+
+--------------------------------------------------------------------------------
 -- Bool
 --------------------------------------------------------------------------------
 
@@ -78,6 +130,16 @@ record HasDiv t1 t2 t3 where
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
 
+-- HasNeg
+@typeclass
+record HasNeg t1 t2 where
+  { negTC : t1 -> t2
+  }
+
+@instance
+realTensorHasNeg : HasNeg (Tensor Real dims) (Tensor Real dims)
+realTensorHasNeg = { negTC = negRealTensor }
+
 -- Quantifiers
 @typeclass
 record HasQuantifier t where
@@ -98,6 +160,53 @@ tensorHasQuantifier =
   { forallTC = quantifyForallRealTensor
   , existsTC = quantifyExistsRealTensor
   }
+
+-- Property types
+@typeclass
+record HasValidPropertyType (t : Type) where {}
+
+@instance
+boolTensorHasValidPropertyType : HasValidPropertyType (Tensor Bool dims)
+boolTensorHasValidPropertyType = {}
+
+@instance
+vectorHasValidPropertyType : {{HasValidPropertyType t}} -> HasValidPropertyType (Vector t dim)
+vectorHasValidPropertyType = {}
+
+-- Parameter types
+@typeclass
+record HasValidInferableParameterType (t : Type) where {}
+
+@instance
+natHasValidInferableParameterType : HasValidInferableParameterType Nat
+natHasValidInferableParameterType = {}
+
+@typeclass
+record HasValidNonInferableParameterType (t : Type) where {}
+
+@instance
+boolHasValidNonInferableParameterType : HasValidNonInferableParameterType Bool
+boolHasValidNonInferableParameterType = {}
+
+@instance
+indexHasValidNonInferableParameterType : HasValidNonInferableParameterType (Index n)
+indexHasValidNonInferableParameterType = {}
+
+@instance
+natHasValidNonInferableParameterType : HasValidNonInferableParameterType Nat
+natHasValidNonInferableParameterType = {}
+
+@instance
+realHasValidNonInferableParameterType : HasValidNonInferableParameterType Real
+realHasValidNonInferableParameterType = {}
+
+-- Tensor-like record types
+@typeclass
+record HasValidTensorLikeType (t : Type) where {}
+
+@instance
+tensorHasValidTensorLikeType : HasValidTensorLikeType (NonCastingTensor t dims)
+tensorHasValidTensorLikeType = {}
 
 -- Network IO
 @typeclass
@@ -229,8 +338,6 @@ vectorHasValidDatasetType = {}
 @instance
 tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetType (NonCastingTensor t dims)
 tensorHasValidDatasetType = {}
-
-
 
 --------------------------------------------------------------------------------
 -- Loss logics

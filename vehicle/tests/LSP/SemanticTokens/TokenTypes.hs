@@ -10,21 +10,19 @@ test_tokenTypes =
   testGroup "token types" $
     [ testCase "class" $
         expectTokens
-          [ "usesMap" `as` (SemanticTokenTypes_Function, []),
+          [ "something" `as` (SemanticTokenTypes_Function, []),
             " ",
             ":" `as` (SemanticTokenTypes_Operator, []),
             " ",
-            "HasMap" `as` (SemanticTokenTypes_Class, []),
-            " ",
-            "List" `as` (SemanticTokenTypes_Type, []),
+            "NonCastingReal" `as` (SemanticTokenTypes_Class, []),
             " ",
             "->" `as` (SemanticTokenTypes_Operator, []),
             " ",
             "Bool" `as` (SemanticTokenTypes_Type, []),
             "\n",
-            "usesMap" `eventually` (SemanticTokenTypes_Function, []),
+            "something" `eventually` (SemanticTokenTypes_Function, []),
             " ",
-            "evidence" `as` (SemanticTokenTypes_Variable, []),
+            "x" `as` (SemanticTokenTypes_Variable, []),
             " = ",
             "True" `as` (SemanticTokenTypes_Keyword, []),
             "\n"
@@ -84,31 +82,5 @@ test_tokenTypes =
             ".left" `as` (SemanticTokenTypes_Method, []),
             "\n"
           ]
-          AllowStrictOverlaps,
-      testCase "operator" $
-        expectTokens
-          [ "useAt" `as` (SemanticTokenTypes_Function, []),
-            " ",
-            ":" `as` (SemanticTokenTypes_Operator, []),
-            " ",
-            "Vector" `as` (SemanticTokenTypes_Type, []),
-            " ",
-            "Real" `as` (SemanticTokenTypes_Type, []),
-            " ",
-            "5" `as` (SemanticTokenTypes_Number, []),
-            " ",
-            "->" `as` (SemanticTokenTypes_Operator, []),
-            " ",
-            "Real" `as` (SemanticTokenTypes_Type, []),
-            "\n",
-            "useAt" `eventually` (SemanticTokenTypes_Function, []),
-            " ",
-            "v" `as` (SemanticTokenTypes_Variable, []),
-            " = ",
-            "v" `as` (SemanticTokenTypes_Variable, []),
-            "!" `as` (SemanticTokenTypes_Operator, []),
-            "3" `as` (SemanticTokenTypes_Number, []),
-            "\n"
-          ]
-          NoOverlaps
+          AllowStrictOverlaps
     ]

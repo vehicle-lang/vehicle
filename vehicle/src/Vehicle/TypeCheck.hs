@@ -45,7 +45,7 @@ import Vehicle.Data.Builtin.Standard.Type ()
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeCtxs, typedModule)
 import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
 import Vehicle.Libraries.Core (ResolvedLibrary (..))
-import Vehicle.Libraries.StandardLibrary (getStandardLibrary, standardLibIdent, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
+import Vehicle.Libraries.Stdlib (getStdlib, stdlibContent, stdlibName)
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecification)
 
@@ -66,7 +66,7 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
         LinearityTypes -> printPropertyTypes =<< linearityTypeCheck prog mempty
         PolarityTypes -> printPropertyTypes =<< polarityTypeCheck prog mempty
         DecidabilityTypes -> printPropertyTypes . Right =<< decidabilityTypeCheck prog
-        GradientCarryingTypes -> printPropertyTypes . Right =<< gradientTypeCheck @_ @'Train Train (standardLibIdent (nameOf $ BuiltinLogic VehicleLoss)) prog
+        GradientCarryingTypes -> printPropertyTypes . Right =<< gradientTypeCheck @_ @'Train Train (stdlibIdentifier (nameOf $ BuiltinLogic VehicleLoss)) prog
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
@@ -76,8 +76,8 @@ typeCheckUserProg ::
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
-  standardLibrary <- getStandardLibrary
-  ensureLatestVersionOfLibraryInstalled standardLibrary standardLibraryContent
+  stdlib <- getStdlib
+  ensureLatestVersionOfLibraryInstalled stdlib stdlibContent
 
   -- Load builtins and definitions
   (userProg, importedModules, moduleGraph) <- loadUserSpecification specification
@@ -291,7 +291,7 @@ loadUserSpecification specificationFile = do
             stackRemainingModules = [],
             availableModules = availableModules
           }
-  let implicitImports = ImportStatement <$> [standardLibraryDefinitionsModulePath]
+  let implicitImports = ImportStatement <$> [stdlibDefinitionsModulePath]
   let action = loadUnloadedModule implicitImports userModulePath
   (_status, programCtx) <- runModuleLoaderT initialStack initialContext action
 
@@ -309,8 +309,8 @@ loadLibraries specificationFile = do
         ResolvedLibrary
           { resolvedModules = [(userModulePath, specificationFile)]
           }
-  resolvedStandardLibrary <- resolveLibrary standardLibraryName
-  let libraries = [resolvedStandardLibrary, resolvedUserLibrary] :: [ResolvedLibrary]
+  resolvedStdlib <- resolveLibrary stdlibName
+  let libraries = [resolvedStdlib, resolvedUserLibrary] :: [ResolvedLibrary]
   let availableModules = concatMap resolvedModules libraries
   return $ Map.fromListWithKey duplicateModuleError availableModules
 
@@ -398,7 +398,7 @@ parseAndTypeCheckModule moduleFile implicitImports moduleText = do
   (_status, importedCtx) <- loadImports finalImports
 
   let instances =
-        if modulePath == standardLibraryDefinitionsModulePath
+        if modulePath == stdlibDefinitionsModulePath
           then standardBuiltinInstances
           else emptyInstanceDatabase
   (scopedDecls, scopingInterface) <- lift $ scopeModuleDecls modulePath importedCtx decls

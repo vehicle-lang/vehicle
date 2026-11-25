@@ -3,12 +3,12 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 direct : (Tensor Real -> Tensor Real) -> Tensor Real;
-direct f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (search nil -infinity infinity (\z -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, z] ! 0) 0.5))))))
+direct f = DL2Loss.pointwiseNegation [] (search [] 0.0 1.0 (\x -> DL2Loss.pointwiseNegation [] (search [] -infinity infinity (\z -> DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseGreaterEqualThan [] (f [x, z] ! 0) 0.5))))))
 
 @property;
 underConjunction : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConjunction f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseDisjunction nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, x] ! 0) 0.5)) (DL2Loss.pointwiseNegation nil (search nil -infinity infinity (\z -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, z] ! 0) 0.5)))))))
+underConjunction f = DL2Loss.pointwiseNegation [] (search [] 0.0 1.0 (\x -> DL2Loss.pointwiseDisjunction [] (DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseGreaterEqualThan [] (f [x, x] ! 0) 0.5)) (DL2Loss.pointwiseNegation [] (search [] -infinity infinity (\z -> DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseGreaterEqualThan [] (f [x, z] ! 0) 0.5)))))))
 
 @property;
 underDisjunction : (Tensor Real -> Tensor Real) -> Tensor Real;
-underDisjunction f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, x] ! 0) 0.5)) (DL2Loss.pointwiseNegation nil (search nil -infinity infinity (\z -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f [x, z] ! 0) 0.5)))))))
+underDisjunction f = DL2Loss.pointwiseNegation [] (search [] 0.0 1.0 (\x -> DL2Loss.pointwiseConjunction [] (DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseGreaterEqualThan [] (f [x, x] ! 0) 0.5)) (DL2Loss.pointwiseNegation [] (search [] -infinity infinity (\z -> DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseGreaterEqualThan [] (f [x, z] ! 0) 0.5)))))))

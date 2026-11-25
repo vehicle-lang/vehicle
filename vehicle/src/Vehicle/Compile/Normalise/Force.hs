@@ -6,6 +6,7 @@ module Vehicle.Compile.Normalise.Force
     eval,
     forceApplication,
     forceThunk,
+    deepEval,
     forceFreeVar,
     forceInEmptyEnv,
     findInstanceArg,
@@ -30,7 +31,8 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.Interface (HasBuiltinConstructor (..), IsArgs (..))
-import Vehicle.Data.Variable.Bound.Context.Name (prettyFriendlyInCtx)
+import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext (..), MonadReadableNameContext (..), prettyFriendlyInCtx)
+import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
 import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext (..))
 
 -----------------------------------------------------------------------------
@@ -161,6 +163,38 @@ eval env expr = do
 
   showExit result
   return result
+
+-- | Fully eval the thunk, i.e. forces all of its sub-expressions (including
+-- those under binders) rather than just its head, and converts the result back
+-- into an expression. This is expensive and so should only be used when
+-- displaying expressions to the user.
+deepEval ::
+  forall meta builtin m.
+  (MonadNorm builtin m, TypedEvalScheme meta builtin m) =>
+  GenericThunk meta builtin ->
+  m (Expr builtin)
+deepEval thunk = do
+  lv <- boundCtxLv <$> getNameContext
+  value <- forceThunk thunk
+  case value of
+    VUniverse u -> return $ Universe mempty u
+    VMeta m spine -> deepForceApp (Meta mempty (toMetaID m)) spine
+    VFreeVar v spine -> deepForceApp (FreeVar mempty v) spine
+    VBoundVar v spine -> deepForceApp (BoundVar mempty (dbLevelToIndex lv v)) spine
+    VBuiltin b spine -> deepForceApp (Builtin mempty b) spine
+    VPi binder closure -> Pi mempty <$> traverse deepEval binder <*> deepForceClosure lv binder closure
+    VLam binder closure -> Lam mempty <$> traverse deepEval binder <*> deepForceClosure lv binder closure
+    VRecord recordType fields ->
+      Record mempty <$> deepEval recordType <*> traverseRecordFields deepEval (OMap.assocs fields)
+    VRecordAcc recordType record field spine -> do
+      proj <- RecordProj mempty <$> deepEval recordType <*> deepEval record <*> pure field
+      deepForceApp proj spine
+  where
+    deepForceApp fun spine = normAppList fun <$> traverse (traverse deepEval) spine
+
+    deepForceClosure lv binder (Closure env body) =
+      addNameToContext binder $
+        deepEval (Unforced (extendEnvWithBound lv binder env) body)
 
 forceApplication ::
   (MonadNorm builtin m, TypedEvalScheme meta builtin m) =>

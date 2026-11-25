@@ -6,4 +6,4 @@ untyped = const 0.0 [1]
 
 @property;
 p : (Tensor Real -> Tensor Real) -> Tensor Real;
-p f = DL2Loss.pointwiseGreaterEqualThan nil (f untyped ! 0) 0.0
+p f = DL2Loss.pointwiseGreaterEqualThan [] (f untyped ! 0) 0.0

@@ -1,8 +1,8 @@
 Error in file 'incorrectTensorLength.vcl' at Line 2, Columns 10-11: unable to work out a valid type for the overloaded expression '[1]'.
 The possible options explored were:
-  1. iterate (\f -> \e -> Tensor d tCont -> f e) 0 (Tensor t (d :: ds))
+  1. Tensor t (d :: ds)
     - rejected: '1' is not equal to '2'.
-  2. iterate (\f -> \e -> d -> f e) 0 (Vector t d)
+  2. Vector t d
     - rejected: 'Tensor Real [2]' is not equal to 'Vector ?22 1'.
-  3. iterate (\f -> \e -> d -> f e) 0 (List t)
+  3. List t
     - rejected: 'Tensor Real [2]' is not equal to 'List ?22'.

@@ -1,0 +1,2 @@
+Error in file 'multipleVariablesInLet.vcl' at Line 2, Columns 16-25: only a single variable may be bound here
+Fix: split the binder into separate declarations

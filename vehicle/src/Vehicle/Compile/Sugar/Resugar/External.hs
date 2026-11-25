@@ -19,6 +19,7 @@ import Vehicle.Data.AST qualified as V
 import Vehicle.Data.AST.Arg
 import Vehicle.Data.AST.Decl (LHSBinderCount)
 import Vehicle.Data.AST.Expr.Desugared qualified as V
+import Vehicle.Data.Builtin.Core.StdlibTypeClassOp
 import Vehicle.Data.Builtin.Standard.Core qualified as V
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.Error
@@ -88,6 +89,9 @@ instance Delaborate (V.Expr V.Builtin) B.Expr where
     V.Let _ e1 b e2 -> delabLet e1 b e2
     V.Lam _ binder body -> delabLam binder body
     V.App (V.Builtin _ b) args -> delabBuiltin b (NonEmpty.toList args)
+    V.App (V.Var _ n) args
+      | Just op <- lookupStdlibTypeClassOp n ->
+          delabStdlibTypeClassOp op (NonEmpty.toList args)
     V.App fun args -> do
       fun' <- delabM fun
       delabApp fun' (NonEmpty.toList args)
@@ -111,9 +115,9 @@ instance Delaborate (V.Binder V.Builtin) B.BasicBinder where
     let m' = delabModalities binder
     t' <- delabM (V.binderValue binder)
     return $ case V.visibilityOf binder of
-      V.Explicit -> B.ExplicitBinder m' n' tokElemOf t'
-      V.Implicit {} -> B.ImplicitBinder m' n' tokElemOf t'
-      V.Instance {} -> B.InstanceBinder m' n' tokElemOf t'
+      V.Explicit -> B.ExplicitBinder m' [n'] tokElemOf t'
+      V.Implicit {} -> B.ImplicitBinder m' [n'] tokElemOf t'
+      V.Instance {} -> B.InstanceBinder m' [n'] tokElemOf t'
 
 instance Delaborate V.FieldName B.Name where
   delabM (V.FieldName _ name) = return $ mkToken B.Name name
@@ -141,7 +145,12 @@ cheatDelab :: Text -> B.Expr
 cheatDelab n = B.Var (delabSymbol n)
 
 cheatDelabPretty :: (MonadDelab m, Pretty a) => a -> [V.Arg V.Builtin] -> m B.Expr
-cheatDelabPretty x = delabApp (cheatDelab (layoutAsText $ pretty x))
+cheatDelabPretty x = delabApp (rawHead x)
+
+-- | The head used to display a builtin that has no surface syntax, or whose
+-- arguments cannot be displayed using its surface syntax.
+rawHead :: (Pretty a) => a -> B.Expr
+rawHead = cheatDelab . layoutAsText . pretty
 
 delabRelevance :: (V.HasRelevance a) => a -> [B.Modality]
 delabRelevance x = case V.relevanceOf x of
@@ -163,11 +172,13 @@ delabNameBinder b = case V.binderNamingForm b of
   V.OnlyName name _ -> do
     let modalities = delabModalities b
     let finalName = delabSymbol name
-    return $ case (V.visibilityOf b, modalities) of
-      (V.Explicit, []) -> B.ExplicitNameBinder finalName
-      (V.Explicit, _m : _ms) -> B.ExplicitNameBinder finalName -- B.ExplicitNameBinderMods m ms finalName
-      (V.Implicit {}, _) -> B.ImplicitNameBinder modalities finalName
-      (V.Instance {}, _) -> B.InstanceNameBinder modalities finalName
+    case (V.visibilityOf b, modalities) of
+      (V.Explicit, []) -> return $ B.ExplicitNameBinder finalName
+      -- There is no syntax for an explicit name binder with modalities (see
+      -- the grammar), so we have to display the binder's type as well.
+      (V.Explicit, _ : _) -> B.BasicNameBinder <$> delabM b
+      (V.Implicit {}, _) -> return $ B.ImplicitNameBinder modalities finalName
+      (V.Instance {}, _) -> return $ B.InstanceNameBinder modalities finalName
 
 delabModalities :: V.Binder V.Builtin -> [B.Modality]
 delabModalities binder
@@ -235,8 +246,8 @@ delabDerivedFunction :: (MonadDelab m) => V.DerivedFunction -> [V.Arg V.Builtin]
 delabDerivedFunction fun args = case fun of
   -- Reverse the arguments to make it un-well typed again
   V.TypeAnn -> delabInfixOp2 B.Ann tokElemOf (reverse args)
-  V.QuantifyIndex q -> delabQuantifier q args
-  V.QuantifyInList q -> delabQuantifierIn q args
+  V.QuantifyIndex q -> delabQuantifier q (rawHead fun) args
+  V.QuantifyInList q -> delabQuantifierIn q (rawHead fun) args
 
 delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg V.Builtin] -> m B.Expr
 delabBuiltinFunction fun args = case fun of
@@ -247,7 +258,7 @@ delabBuiltinFunction fun args = case fun of
   V.If -> delabIf args
   V.Add _dom -> delabInfixOp2 B.Add tokAdd args
   V.Mul _dom -> delabInfixOp2 B.Mul tokMul args
-  V.Neg _dom -> delabTypeClassOp V.NegTC args
+  V.Neg _dom -> delabOp1 B.Neg tokSub args
   V.Sub _dom -> delabInfixOp2 B.Sub tokSub args
   V.Div _dom -> delabInfixOp2 B.Div tokDiv args
   V.Min _dom -> delabApp (B.Min tokMin) args
@@ -255,22 +266,22 @@ delabBuiltinFunction fun args = case fun of
   V.Pow _dom -> delabInfixOp2 B.Pow tokPow args
   V.Log _dom -> delabApp (B.Log tokLog) args
   V.Exp _dom -> delabApp (B.Exp tokExp) args
-  V.QuantifyRatTensor q -> delabQuantifier q args
-  V.QuantifyRecord q -> delabQuantifier q args
+  V.QuantifyRatTensor q -> delabQuantifier q (rawHead fun) args
+  V.QuantifyRecord q -> delabQuantifier q (rawHead fun) args
   V.CompareRatTensor op -> case args of
-    [V.headOf . argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), _rDims, xs, ys] -> delabCompareReduced op [xs, ys]
-    [_pDims, V.headOf . argExpr -> V.Builtin _ (V.BuiltinConstructor V.Nil), xs, ys] -> delabComparePointwise op [xs, ys]
+    [V.isEmptyList . argExpr -> True, _rDims, xs, ys] -> delabCompareReduced op [xs, ys]
+    [_pDims, V.isEmptyList . argExpr -> True, xs, ys] -> delabComparePointwise op [xs, ys]
     [xs, ys] -> delabCompareReduced op [xs, ys]
     _ -> cheatDelabPretty op args
   V.CompareIndex op -> delabComparison op args
   V.CompareNat op -> delabComparison op args
-  V.FoldList -> delabTypeClassOp V.FoldTC args
-  V.MapList -> delabTypeClassOp V.MapTC args
+  V.FoldList -> delabApp (B.Fold tokFold) args
+  V.MapList -> delabApp (B.Map tokMap) args
   V.AppendList -> delabApp (B.Append tokAppend) args
   V.AtTensor -> delabInfixOp2 B.At tokAt args
   V.AtVector -> delabInfixOp2 B.At tokAt args
-  V.ForeachTensor -> delabForeach args
-  V.ForeachVector -> delabForeach args
+  V.ForeachTensor -> delabForeach (rawHead fun) args
+  V.ForeachVector -> delabForeach (rawHead fun) args
   V.ReduceAndTensor -> delabApp (B.ReduceAnd tokReduceAnd) args
   V.ReduceOrTensor -> delabApp (B.ReduceOr tokReduceOr) args
   -- Builtins not yet in the surface syntax.
@@ -301,8 +312,6 @@ delabBuiltinType fun args = case fun of
 
 delabTypeClass :: (MonadDelab m) => V.TypeClass -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClass tc args = case tc of
-  V.HasMap -> delabApp (B.HasMap tokHasMap) args
-  V.HasFold -> delabApp (B.HasFold tokHasFold) args
   _ -> cheat
   where
     cheat = delabApp (B.Var (delabSymbol (layoutAsText $ pretty tc))) args
@@ -314,7 +323,7 @@ delabConstructor fun args = case fun of
   V.UnitLiteral -> return $ B.Literal $ B.UnitLiteral tokUnitLiteral
   V.NatLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.IndexLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
-  V.VectorLiteral -> delabVecLiteral args
+  V.VectorLiteral -> delabVecLiteral (rawHead fun) args
   V.NatTensorLiteral t -> return $ delabTensor t
   V.RatTensorLiteral t -> return $ delabTensor t
   V.BoolTensorLiteral t -> return $ delabTensor t
@@ -332,13 +341,35 @@ delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Builtin] -> m B.
 delabTypeClassOp op args = case op of
   V.FromNatTC {} -> cheatDelabPretty op args
   V.FromRatTC {} -> cheatDelabPretty op args
-  V.VecLiteralTC {} -> delabVecLiteral args
-  V.NegTC -> delabOp1 B.Neg tokSub args
-  V.MapTC -> delabApp (B.Map tokMap) args
-  V.FoldTC -> delabApp (B.Fold tokFold) args
-  V.AtTC -> delabInfixOp2 B.At tokAt args
-  V.ForeachTC -> delabForeach args
+  V.VecLiteralTC {} -> delabVecLiteral (rawHead op) args
   V.TensorTypeTC -> cheatDelabPretty op args
+
+-- | Converts an application of a stdlib type-class operation back into the
+-- surface-syntax operator that it was desugared from. This is only possible if
+-- the arguments are exactly those that the operator syntax displays, e.g. the
+-- two explicit operands of `>`, and otherwise the application is displayed
+-- using the name of the type-class operation.
+delabStdlibTypeClassOp :: (MonadDelab m) => StdlibTypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
+delabStdlibTypeClassOp tcOp args = case tcOp of
+  QuantifierTC q -> delabQuantifier q fallbackHead args
+  ForeachTC -> delabForeach fallbackHead args
+  MapTC -> delabApp (B.Map tokMap) args
+  FoldTC -> delabApp (B.Fold tokFold) args
+  NegTC -> case args of
+    [arg] | V.isExplicit arg -> delabOp1 B.Neg tokSub args
+    _ -> delabApp fallbackHead args
+  _ | not (isBinaryOpArgs args) -> delabApp fallbackHead args
+  AddTC -> delabInfixOp2 B.Add tokAdd args
+  SubTC -> delabInfixOp2 B.Sub tokSub args
+  MulTC -> delabInfixOp2 B.Mul tokMul args
+  DivTC -> delabInfixOp2 B.Div tokDiv args
+  ComparisonTC op -> delabComparison op args
+  AtTC -> delabInfixOp2 B.At tokAt args
+  where
+    fallbackHead = cheatDelab (stdlibTypeClassOpName tcOp)
+    isBinaryOpArgs = \case
+      [arg1, arg2] -> V.isExplicit arg1 && V.isExplicit arg2
+      _ -> False
 
 delabComparison :: (MonadDelab m) => V.ComparisonOp -> [V.Arg V.Builtin] -> m B.Expr
 delabComparison op args = case op of
@@ -440,32 +471,28 @@ delabRecordDecl ident sort telescope fields supports = do
 delabSupportedOperations :: [V.DerivableRecordOperation] -> B.RecordSupports
 delabSupportedOperations = \case
   [] -> B.NoSupports
-  ops -> B.Supports tokSupports $ fmap (\op -> mkToken B.Name (pack $ show op)) ops
+  ops -> B.Supports tokSupports $ fmap (\op -> B.DerivedClass $ mkToken B.Name (pack $ show op)) ops
 
-delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Builtin] -> m B.Expr
-delabQuantifier q args = case reverse args of
-  V.RelevantExplicitArg (V.Lam _ binder body) : _rArgs -> do
-    (binders', body') <- case _rArgs of
-      [upperBound, lowerBound] | q == V.Exists -> do
-        -- Special case rendering for when we have just added the domain to the quantifiers in the loss backend.
-        -- Should probably handle this better by adding special syntax for this in the grammar...
-        let bounds = V.normAppList (V.Var mempty "boundedBy") [lowerBound, upperBound]
-        let andExpr = V.normAppList (V.Builtin mempty (V.BuiltinFunction V.And)) [explicit bounds, explicit body]
-        return ([binder], andExpr)
-      _ -> return $ first (binder :) $ foldQuantifierBinders q binder body
-
+-- | Displays a quantifier using the quantifier syntax if its only argument is
+-- the lambda being quantified over, and otherwise using the provided head.
+delabQuantifier :: (MonadDelab m) => V.Quantifier -> B.Expr -> [V.Arg V.Builtin] -> m B.Expr
+delabQuantifier q fallbackHead args = case args of
+  [V.RelevantExplicitArg (V.Lam _ binder body)] -> do
+    let (binders, foldedBody) = first (binder :) $ foldQuantifierBinders q binder body
     let mkTk = case q of
           V.Forall -> B.Forall tokForall
           V.Exists -> B.Exists tokExists
+    binders' <- traverse delabNameBinder binders
+    body' <- delabM foldedBody
+    return $ mkTk binders' body'
+  _ -> delabApp fallbackHead args
 
-    binders'' <- traverse delabNameBinder binders'
-    body'' <- delabM body'
-    return $ mkTk binders'' body''
-  _ -> cheatDelabPretty q args
-
-delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Builtin] -> m B.Expr
-delabQuantifierIn q args = case reverse args of
-  V.RelevantExplicitArg (V.Lam _ binder body) : V.RelevantExplicitArg container : _ -> do
+-- | Displays a quantifier over a container using the quantifier syntax if its
+-- only arguments are the container and the lambda being quantified over, and
+-- otherwise using the provided head.
+delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> B.Expr -> [V.Arg V.Builtin] -> m B.Expr
+delabQuantifierIn q fallbackHead args = case args of
+  [V.RelevantExplicitArg container, V.RelevantExplicitArg (V.Lam _ binder body)] -> do
     binder' <- delabNameBinder binder
     body' <- delabM body
     container' <- delabM container
@@ -473,16 +500,18 @@ delabQuantifierIn q args = case reverse args of
           V.Forall -> B.ForallIn tokForall
           V.Exists -> B.ExistsIn tokExists
     return $ mkTk binder' container' body'
-  _ -> cheatDelabPretty q args
+  _ -> delabApp fallbackHead args
 
-delabForeach :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
-delabForeach args = case reverse args of
-  V.RelevantExplicitArg (V.Lam _ binder body) : _ -> do
+-- | Displays a foreach using the foreach syntax if its only argument is the
+-- lambda, and otherwise using the provided head.
+delabForeach :: (MonadDelab m) => B.Expr -> [V.Arg V.Builtin] -> m B.Expr
+delabForeach fallbackHead args = case args of
+  [V.RelevantExplicitArg (V.Lam _ binder body)] -> do
     let (foldedBinders, foldedBody) = foldForeachBinders binder body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
     return $ B.Foreach tokForeach binders' body'
-  _ -> cheatDelabPretty V.ForeachTC args
+  _ -> delabApp fallbackHead args
 
 delabRecord :: (MonadDelab m) => V.RecordFields V.Builtin -> m B.Expr
 delabRecord fields = do
@@ -511,10 +540,13 @@ delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts
 delabAnn name ops = B.DefAnn name $ B.DeclAnnWithOpts ops
 
-delabVecLiteral :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
-delabVecLiteral args = do
-  let explArgs = filter V.isExplicit args
-  B.VecLiteral tokSeqOpen <$> traverse (delabM . argExpr) explArgs <*> pure tokSeqClose
+-- | Displays a vector literal using the vector literal syntax if all of its
+-- arguments are its explicit elements, and otherwise using the provided head.
+delabVecLiteral :: (MonadDelab m) => B.Expr -> [V.Arg V.Builtin] -> m B.Expr
+delabVecLiteral fallbackHead args
+  | all V.isExplicit args =
+      B.VecLiteral tokSeqOpen <$> traverse (delabM . argExpr) args <*> pure tokSeqClose
+  | otherwise = delabApp fallbackHead args
 
 mkBoolAnnOption :: Text -> Bool -> B.DeclAnnOption
 mkBoolAnnOption name value =

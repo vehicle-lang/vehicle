@@ -36,7 +36,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.ModuleInterface
-import Vehicle.Libraries.StandardLibrary (isBuiltinModule)
+import Vehicle.Libraries.Stdlib (isBuiltinModule)
 
 --------------------------------------------------------------------------------
 -- Builtin interface

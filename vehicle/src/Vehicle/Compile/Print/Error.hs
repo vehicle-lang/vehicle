@@ -892,6 +892,12 @@ parseErrorDetails = \case
         problem = "expected at least one variable name after" <+> quotePretty symbol,
         fix = Just $ "add one or more names after" <+> quotePretty symbol
       }
+  MultipleVariablesInSingleBinder p ->
+    VehicleUserError
+      { provenance = Just p,
+        problem = "only a single variable may be bound here",
+        fix = Just "split the binder into separate declarations"
+      }
   UnchainableComparisons p prevOrder currentOrder ->
     VehicleUserError
       { provenance = Just p,

@@ -259,7 +259,3 @@ tokReduceMul = mkToken B.TokReduceMul "reduceMul"
 tokReduceMin = mkToken B.TokReduceMin "reduceMin"
 
 tokReduceMax = mkToken B.TokReduceMax "reduceMax"
-
-tokHasMap = mkToken B.TokHasMap "HasMap"
-
-tokHasFold = mkToken B.TokHasFold "HasFold"
