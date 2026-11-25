@@ -28,7 +28,7 @@ import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.DSL
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
-import Vehicle.Libraries.StandardLibrary (differentiableTensorLogicIdent)
+import Vehicle.Libraries.Stdlib (differentiableTensorLogicIdent)
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------

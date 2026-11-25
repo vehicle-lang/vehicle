@@ -25,7 +25,7 @@ import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
-import Vehicle.Libraries.StandardLibrary
+import Vehicle.Libraries.Stdlib
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------

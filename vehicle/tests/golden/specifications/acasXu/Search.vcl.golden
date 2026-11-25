@@ -36,51 +36,51 @@ normAcasXu x = acasXu (normalise x)
 
 @property;
 property1_0 : Tensor Real;
-property1_0 = search [5] [55947.691, max (- pi) -infinity, max (- pi) -infinity, 1145.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 60.0] (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseGreaterThan nil (acasXu (foreach i. (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i)) ! 0) ((1500.0 - 7.518884) / 373.94992)))
+property1_0 = search [5] [55947.691, max (- pi) -infinity, max (- pi) -infinity, 1145.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 60.0] (\x -> DL2Loss.reduceDisjunction [] (DL2Loss.pointwiseGreaterThan [] (acasXu (foreach i. (x ! i - meanScalingValues ! i) / (maximumInputValues ! i - minimumInputValues ! i)) ! 0) ((1500.0 - 7.518884) / 373.94992)))
 
 @property;
 property2_0 : Tensor Real;
-property2_0 = search [5] [55947.691, max (- pi) -infinity, max (- pi) -infinity, 1145.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 60.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseGreaterThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement)))
+property2_0 = search [5] [55947.691, max (- pi) -infinity, max (- pi) -infinity, 1145.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 60.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseGreaterThan [] (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement)))
 
 @property;
 property3_0 : Tensor Real;
-property3_0 = search [5] [1500.0, max (- pi) -6.0e-2, max (- pi) 3.1, 980.0, 960.0] [1800.0, 6.0e-2, 3.141592, 1200.0, 1200.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement)))
+property3_0 = search [5] [1500.0, max (- pi) -6.0e-2, max (- pi) 3.1, 980.0, 960.0] [1800.0, 6.0e-2, 3.141592, 1200.0, 1200.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement)))
 
 @property;
 property4_0 : Tensor Real;
-property4_0 = search [5] [1500.0, max (- pi) -6.0e-2, max (- pi) 0.0, 1000.0, 700.0] [1800.0, 6.0e-2, 0.0, 1200.0, 800.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement)))
+property4_0 = search [5] [1500.0, max (- pi) -6.0e-2, max (- pi) 0.0, 1000.0, 700.0] [1800.0, 6.0e-2, 0.0, 1200.0, 800.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement)))
 
 @property;
 property5_0 : Tensor Real;
-property5_0 = search [5] [250.0, max (- pi) 0.2, max (- pi) -3.141592, 100.0, 0.0] [400.0, 0.4, -3.136592, 400.0, 400.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! strongRight) (normAcasXu x ! i)) (not (strongRight != i)) (DL2Loss.trueElement))))
+property5_0 = search [5] [250.0, max (- pi) 0.2, max (- pi) -3.141592, 100.0, 0.0] [400.0, 0.4, -3.136592, 400.0, 400.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation [] (where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! strongRight) (normAcasXu x ! i)) (not (strongRight != i)) (DL2Loss.trueElement))))
 
 @property;
 property6_0 : Tensor Real;
-property6_0 = search [5] [12000.0, max (- pi) -3.141592, max (- pi) -3.141592, 100.0, 0.0] [60261.0, -0.7, -3.136592, 1200.0, 1200.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement))))
+property6_0 = search [5] [12000.0, max (- pi) -3.141592, max (- pi) -3.141592, 100.0, 0.0] [60261.0, -0.7, -3.136592, 1200.0, 1200.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation [] (where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement))))
 
 @property;
 property6_1 : Tensor Real;
-property6_1 = search [5] [12000.0, max (- pi) 0.7, max (- pi) -3.141592, 100.0, 0.0] [60261.0, 3.141592, -3.136592, 1200.0, 1200.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement))))
+property6_1 = search [5] [12000.0, max (- pi) 0.7, max (- pi) -3.141592, 100.0, 0.0] [60261.0, 3.141592, -3.136592, 1200.0, 1200.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation [] (where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement))))
 
 @property;
 property7_0 : Tensor Real;
-property7_0 = search [5] [0.0, max (- pi) -3.141592, max (- pi) -3.141592, 100.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 1200.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! strongLeft) (normAcasXu x ! i)) (not (strongLeft != i)) (DL2Loss.trueElement)))
+property7_0 = search [5] [0.0, max (- pi) -3.141592, max (- pi) -3.141592, 100.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 1200.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! strongLeft) (normAcasXu x ! i)) (not (strongLeft != i)) (DL2Loss.trueElement)))
 
 @property;
 property7_1 : Tensor Real;
-property7_1 = search [5] [0.0, max (- pi) -3.141592, max (- pi) -3.141592, 100.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 1200.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! strongRight) (normAcasXu x ! i)) (not (strongRight != i)) (DL2Loss.trueElement)))
+property7_1 = search [5] [0.0, max (- pi) -3.141592, max (- pi) -3.141592, 100.0, 0.0] [60261.0, 3.141592, 3.141592, 1200.0, 1200.0] (\x -> DL2Loss.reduceConjunction [5] (foreach i. where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! strongRight) (normAcasXu x ! i)) (not (strongRight != i)) (DL2Loss.trueElement)))
 
 @property;
 property8_0 : Tensor Real;
-property8_0 = search [5] [0.0, max (- pi) -3.141592, max (- pi) -0.1, 600.0, 600.0] [60261.0, -2.356194, 0.1, 1200.0, 1200.0] (\x -> DL2Loss.pointwiseConjunction nil (DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement)))) (DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! weakLeft) (normAcasXu x ! i)) (not (weakLeft != i)) (DL2Loss.trueElement)))))
+property8_0 = search [5] [0.0, max (- pi) -3.141592, max (- pi) -0.1, 600.0, 600.0] [60261.0, -2.356194, 0.1, 1200.0, 1200.0] (\x -> DL2Loss.pointwiseConjunction [] (DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation [] (where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement)))) (DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation [] (where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! weakLeft) (normAcasXu x ! i)) (not (weakLeft != i)) (DL2Loss.trueElement)))))
 
 @property;
 property9_0 : Tensor Real;
-property9_0 = search [5] [2000.0, max (- pi) -0.4, max (- pi) -3.141592, 100.0, 0.0] [7000.0, -0.14, -3.131592, 150.0, 150.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! strongLeft) (normAcasXu x ! i)) (not (strongLeft != i)) (DL2Loss.trueElement))))
+property9_0 = search [5] [2000.0, max (- pi) -0.4, max (- pi) -3.141592, 100.0, 0.0] [7000.0, -0.14, -3.131592, 150.0, 150.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation [] (where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! strongLeft) (normAcasXu x ! i)) (not (strongLeft != i)) (DL2Loss.trueElement))))
 
 @property;
 property10_0 : Tensor Real;
-property10_0 = search [5] [36000.0, max (- pi) 0.7, max (- pi) -3.141592, 900.0, 600.0] [60261.0, 3.141592, -3.131592, 1200.0, 1200.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseLessThan nil (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement))))
+property10_0 = search [5] [36000.0, max (- pi) 0.7, max (- pi) -3.141592, 900.0, 600.0] [60261.0, 3.141592, -3.131592, 1200.0, 1200.0] (\x -> DL2Loss.reduceDisjunction [5] (foreach i. DL2Loss.pointwiseNegation [] (where (DL2Loss.pointwiseLessThan [] (normAcasXu x ! clearOfConflict) (normAcasXu x ! i)) (not (clearOfConflict != i)) (DL2Loss.trueElement))))
 
 @property;
 property1_0_bool : Tensor Bool;

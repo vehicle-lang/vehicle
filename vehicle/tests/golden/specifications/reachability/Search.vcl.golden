@@ -6,7 +6,7 @@ f : Tensor Real -> Tensor Real
 
 @property;
 reachable_0 : Tensor Real;
-reachable_0 = search [2] (const 0.0 [2]) (const 1.0 [2]) (\x -> DL2Loss.pointwiseEqual nil (f x) 0.0)
+reachable_0 = search [2] (const 0.0 [2]) (const 1.0 [2]) (\x -> DL2Loss.pointwiseEqual [] (f x) 0.0)
 
 @property;
 reachable_0_bool : Tensor Bool;

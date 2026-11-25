@@ -3,4 +3,4 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 p : Tensor Real -> (Tensor Real -> Tensor Real) -> Tensor Real;
-p r f = DL2Loss.pointwiseGreaterThan nil (f r) 0.0
+p r f = DL2Loss.pointwiseGreaterThan [] (f r) 0.0

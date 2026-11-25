@@ -6,8 +6,8 @@ add1 x = x + 1.0
 
 @property;
 p1 : (Tensor Real -> Tensor Real) -> Tensor Real;
-p1 f = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (f x) (add1 0.0))))
+p1 f = DL2Loss.pointwiseNegation [] (search [] 0.0 1.0 (\x -> DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseGreaterEqualThan [] (f x) (add1 0.0))))
 
 @property;
 p2 : (Tensor Real -> Tensor Real) -> Tensor Real;
-p2 g = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (DL2Loss.pointwiseGreaterEqualThan nil (g x) 0.0)))
+p2 g = DL2Loss.pointwiseNegation [] (search [] 0.0 1.0 (\x -> DL2Loss.pointwiseNegation [] (DL2Loss.pointwiseGreaterEqualThan [] (g x) 0.0)))

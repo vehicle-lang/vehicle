@@ -6,7 +6,7 @@ f : Tensor Real -> Tensor Real
 
 @property;
 increasing_0 : Tensor Real;
-increasing_0 = search nil 0.0 1.0 (\x -> DL2Loss.reduceDisjunction nil (DL2Loss.pointwiseGreaterThan nil x (f x)))
+increasing_0 = search [] 0.0 1.0 (\x -> DL2Loss.reduceDisjunction [] (DL2Loss.pointwiseGreaterThan [] x (f x)))
 
 @property;
 increasing_0_bool : Tensor Bool;

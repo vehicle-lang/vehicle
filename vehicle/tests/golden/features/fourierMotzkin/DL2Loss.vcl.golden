@@ -3,16 +3,16 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 unusedVar : (Tensor Real -> Tensor Real) -> Tensor Real;
-unusedVar f = search nil 0.0 1.0 (\x -> search nil -infinity infinity (\y -> DL2Loss.pointwiseGreaterEqualThan nil (f [x] ! 0) 0.0))
+unusedVar f = search [] 0.0 1.0 (\x -> search [] -infinity infinity (\y -> DL2Loss.pointwiseGreaterEqualThan [] (f [x] ! 0) 0.0))
 
 @property;
 underConstrainedVar1 : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConstrainedVar1 f = search nil 1.0 2.0 (\x -> search nil 2.0 3.0 (\y -> DL2Loss.pointwiseGreaterEqualThan nil (f [x + y] ! 0) 0.0))
+underConstrainedVar1 f = search [] 1.0 2.0 (\x -> search [] 2.0 3.0 (\y -> DL2Loss.pointwiseGreaterEqualThan [] (f [x + y] ! 0) 0.0))
 
 @property;
 underConstrainedVar2 : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConstrainedVar2 f = search nil 1.0 2.0 (\x -> search nil 1.0 3.0 (\y -> DL2Loss.pointwiseGreaterEqualThan nil (f [2.0 * x + y] ! 0) 0.0))
+underConstrainedVar2 f = search [] 1.0 2.0 (\x -> search [] 1.0 3.0 (\y -> DL2Loss.pointwiseGreaterEqualThan [] (f [2.0 * x + y] ! 0) 0.0))
 
 @property;
 underConstrainedVars : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConstrainedVars f = search [5] [ 0.0, 0.0, 0.0, 2.0, 0.0 ] (const 10.0 [5]) (\x -> DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseGreaterEqualThan nil (x ! 2 + x ! 3) 1.0) (DL2Loss.pointwiseConjunction nil (DL2Loss.pointwiseGreaterEqualThan nil (x ! 1 - 2.0 * x ! 3) 2.5) (DL2Loss.pointwiseGreaterEqualThan nil (f [x ! 0 + x ! 1] ! 0) 2.0)))
+underConstrainedVars f = search [5] [ 0.0, 0.0, 0.0, 2.0, 0.0 ] (const 10.0 [5]) (\x -> DL2Loss.pointwiseConjunction [] (DL2Loss.pointwiseGreaterEqualThan [] (x ! 2 + x ! 3) 1.0) (DL2Loss.pointwiseConjunction [] (DL2Loss.pointwiseGreaterEqualThan [] (x ! 1 - 2.0 * x ! 3) 2.5) (DL2Loss.pointwiseGreaterEqualThan [] (f [x ! 0 + x ! 1] ! 0) 2.0)))
