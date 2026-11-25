@@ -26,7 +26,7 @@ syn match vehicleValueBuiltin "\w\@<!()\w\@!"
 syn keyword vehicleValueBuiltin True False nil not map dfold fold indices fromNat fromInt
 
 " Type builtins
-syn keyword vehicleTypeBuiltin forallT Unit Bool Nat Int Real Vector Tensor List Index
+syn keyword vehicleTypeBuiltin Unit Bool Nat Int Real Vector Tensor List Index
 syn match vehicleTypeBuiltin "\<Type\(\s*\([0-9]\+\)\?\)\>"
 
 " Operator builtins
