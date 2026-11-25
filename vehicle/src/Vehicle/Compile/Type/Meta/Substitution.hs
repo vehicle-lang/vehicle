@@ -8,6 +8,7 @@ module Vehicle.Compile.Type.Meta.Substitution
     MetaSubstitution,
     forceThunkWithMetas,
     forceApplicationWithMetas,
+    deepForceWithMetas,
   )
 where
 
@@ -50,6 +51,17 @@ forceApplicationWithMetas ::
   m (ForcedValueWithMetas builtin)
 forceApplicationWithMetas ctx metaCtx fun spine = do
   fst <$> runForceT ctx metaCtx (forceApplication fun spine)
+
+-- | Fully forces the thunk using the solutions to the meta-variables
+-- (see `deepEval`).
+deepForceWithMetas ::
+  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+  NamedBoundCtx ->
+  MetaVariableContext builtin ->
+  ThunkWithMetas builtin ->
+  m (Expr builtin)
+deepForceWithMetas ctx metaCtx thunk =
+  fst <$> runForceT ctx metaCtx (deepEval thunk)
 
 runForceT ::
   (MonadFreeContext builtin m) =>

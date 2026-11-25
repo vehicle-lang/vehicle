@@ -488,19 +488,37 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
     instantiateTelescope :: BoundCtx (Type builtin) -> UnforcedTypeWithMetas builtin -> [(Arg builtin, Bool)] -> Doc a
     instantiateTelescope ctx typ arguments = do
       let (forcedType, _) =
-            runNorm freeEnv $
+            runNorm displayFreeCtx $
               MetaSubstitution.forceThunkWithMetas (toNamedBoundCtx ctx) emptyMetaVariableContext typ
       case (forcedType, arguments) of
         (VPi binder _, [])
-          | isExplicit binder ->
-              prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
+          | isExplicit binder -> prettyNormalised ctx typ
         (VPi binder (Closure env body), args) -> do
           let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
           let recType = Unforced (alterEnv env) body
           let unnormBinder = unnormalise (boundCtxLv ctx) binder
           instantiateTelescope (unnormBinder : ctx) recType remainingArgs
-        (_, []) -> prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
+        (_, []) -> prettyNormalised ctx typ
         _ -> "Malformed type-class operation type" <+> prettyVerbose typ <+> "and args" <+> prettyVerbose (fmap fst arguments)
+
+    -- The type of the operation is computed from the typing rules of the
+    -- builtins, and so may contain unevaluated internal computation. It is
+    -- therefore normalised before being displayed to the user.
+    prettyNormalised :: BoundCtx (Type builtin) -> UnforcedTypeWithMetas builtin -> Doc a
+    prettyNormalised ctx typ = do
+      let namedCtx = toNamedBoundCtx ctx
+      let normType =
+            runNorm displayFreeCtx $
+              MetaSubstitution.deepForceWithMetas namedCtx emptyMetaVariableContext typ
+      prettyFriendly (WithContext normType namedCtx)
+
+    -- Normalisation unfolds function definitions, but the user's definitions
+    -- should be displayed as they wrote them. Therefore they are replaced with
+    -- abstract definitions, which normalisation does not unfold.
+    displayFreeCtx :: FreeCtx builtin
+    displayFreeCtx = flip fmap freeEnv $ \case
+      decl@(DefFunction p ident _ typ _) | isUserCode decl -> DefAbstract p ident BuiltinDef typ
+      decl -> decl
 
     findRemainingArgs :: BoundCtx (Type builtin) -> UnforcedBinderWithMetas binder -> [(Arg builtin, Bool)] -> (BoundEnvWithMetas builtin -> BoundEnvWithMetas builtin, [(Arg builtin, Bool)])
     findRemainingArgs ctx binder args = case args of
