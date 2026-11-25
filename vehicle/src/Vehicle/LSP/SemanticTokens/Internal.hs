@@ -144,8 +144,8 @@ collectExprTokens = \case
   Builtin _p _builtin -> return [] -- Handled by syntax pass
   BoundVar p ix -> singleton <$> (emitAt p =<< classifyBoundVar 0 ix)
   FreeVar p ident -> singleton <$> (emitAt p =<< classifyFreeVar ident)
-  Hole p _name -> singleton <$> mkTok p (SemanticTokenTypes_Decorator, [])
-  Meta p _metaId -> singleton <$> mkTok p (SemanticTokenTypes_TypeParameter, [])
+  Hole _p _name -> return [] -- Handled by syntax pass
+  Meta _p _metaId -> return [] -- Handled by syntax pass
   App f args -> do
     fnToks <- collectExprTokens f
     argsToks <- concat <$> traverse collectArgTokens (filter (not . wasInsertedByCompiler) (NonEmpty.toList args))
