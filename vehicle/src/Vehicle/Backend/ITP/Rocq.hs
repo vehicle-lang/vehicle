@@ -390,7 +390,7 @@ compileExpr expr = do
     Let _ bound binder body -> do
       cBoundExpr <- compileLetBinder (binder, bound)
       cBody <- addNameToContext binder $ compileExpr body
-      return $ "let" <+> cBoundExpr <+> "in" <+> cBody
+      return $ annotate (mempty, Just 200) ("let" <+> cBoundExpr <+> "in" <+> cBody)
     Lam _ binder body -> compileLam binder body
     Builtin _p b -> compileBuiltin b []
     App fun args -> compileApp fun args
