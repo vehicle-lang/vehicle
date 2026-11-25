@@ -58,9 +58,9 @@ mkClassTok = flip mkTokFrom (SemanticTokenTypes_Class, [])
 mkNumberTok :: (IsToken a) => a -> IntermediateSemTok
 mkNumberTok = flip mkTokFrom (SemanticTokenTypes_Number, [])
 
--- TODO: Make "import" a position token in BNFC so we can get its provenance here
+-- TODO: Process import statements in semantic pass
 collectSyntaxTokensFromImport :: ImportStatement -> [IntermediateSemTok]
-collectSyntaxTokensFromImport _importStatement = []
+collectSyntaxTokensFromImport (Import tk _) = [mkKeywordTok tk]
 
 collectSyntaxTokensFromDecl :: Decl -> [IntermediateSemTok]
 collectSyntaxTokensFromDecl = \case
@@ -70,9 +70,9 @@ collectSyntaxTokensFromDecl = \case
           DeclAnnWithOpts opts -> concatMap collectSyntaxTokensFromDeclAnnOpt opts
           DeclAnnWithoutOpts -> []
     annTok : optToks
-  -- TODO: Make "type" a position token
-  DefType _name binders expr ->
-    collectSyntaxTokensFromNameBinders binders
+  DefType tk _name binders expr ->
+    mkKeywordTok tk
+      : collectSyntaxTokensFromNameBinders binders
       ++ collectSyntaxTokensFromExpr expr
   DefFunType _name tokElemOf expr ->
     mkElemOfTok tokElemOf
@@ -80,14 +80,17 @@ collectSyntaxTokensFromDecl = \case
   DefFunExpr _name binders expr ->
     collectSyntaxTokensFromNameBinders binders
       ++ collectSyntaxTokensFromExpr expr
-  DefRecord _name binders fields supports -> do
-    -- TODO: Make "record", "where", and "supports" position tokens
+  DefRecord tkRecord _name binders tkWhere fields supports -> do
     let bindersToks = collectSyntaxTokensFromNameBinders binders
     let fieldsToks = map (\(FieldDef _ tok _) -> mkElemOfTok tok) fields
     let supportsToks = case supports of
           NoSupports -> []
-          Supports s -> map (\tok -> mkTypeTok tok) s
-    bindersToks ++ fieldsToks ++ supportsToks
+          Supports tk s -> mkKeywordTok tk : map (\tok -> mkTypeTok tok) s
+    mkKeywordTok tkRecord
+      : mkKeywordTok tkWhere
+      : bindersToks
+      ++ fieldsToks
+      ++ supportsToks
 
 collectSyntaxTokensFromExprs :: [Expr] -> [IntermediateSemTok]
 collectSyntaxTokensFromExprs = concatMap collectSyntaxTokensFromExpr

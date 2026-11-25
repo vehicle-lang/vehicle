@@ -23,6 +23,12 @@ position token TokAnnotation ({"@"}
   )
 );
 
+position token TokTypeDef   {"type"};
+position token TokRecord    {"record"};
+position token TokWhere     {"where"};
+position token TokSupports  {"supports"};
+position token TokImport    {"import"};
+
 position token TokArrow     {"->"};
 position token TokIf        {"if"};
 position token TokThen      {"then"};
@@ -400,12 +406,12 @@ DeclAnnWithoutOpts. DeclAnnOpts ::= "";
 -- * Declarations
 
 DefAnn.       Decl ::= TokAnnotation DeclAnnOpts;
-DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
+DefType.      Decl ::= TokTypeDef Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
-DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}" RecordSupports;
+DefRecord.    Decl ::= TokRecord Name [NameBinder] TokWhere "{" [RecordFieldDef] "}" RecordSupports;
 
-Supports.   RecordSupports ::= "supports" [Name];
+Supports.   RecordSupports ::= TokSupports [Name];
 NoSupports. RecordSupports ::= "";
 
 separator Decl ";";
@@ -416,7 +422,7 @@ ModulePathFrag. ModulePathFragment ::= Name;
 
 separator nonempty ModulePathFragment ".";
 
-Import. ImportStatement ::= "import" [ModulePathFragment];
+Import. ImportStatement ::= TokImport [ModulePathFragment];
 
 separator ImportStatement ";";
 

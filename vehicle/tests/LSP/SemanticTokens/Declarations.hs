@@ -42,7 +42,7 @@ test_tokensDeclarations =
           AllowStrictOverlaps,
       testCase "type aliases" $
         expectTokens
-          [ "type" `eventually` (SemanticTokenTypes_Keyword, []),
+          [ "type" `as` (SemanticTokenTypes_Keyword, []),
             " ",
             "Alias" `as` (SemanticTokenTypes_Type, []),
             " = ",

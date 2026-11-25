@@ -52,7 +52,7 @@ instance Delaborate (V.Module V.Builtin) B.Module where
 instance Delaborate V.ImportStatement B.ImportStatement where
   delabM (V.ImportStatement (V.ModulePath path)) = do
     let path' = fmap go path
-    return $ B.Import path'
+    return $ B.Import tokImport path'
     where
       go :: String -> B.ModulePathFragment
       go = B.ModulePathFrag . mkToken B.Name . pack
@@ -418,7 +418,7 @@ delabTypeDecl ::
 delabTypeDecl ident binderCount expr = do
   let (binders, body) = foldDeclBinders binderCount expr
   let n' = delabIdentifier ident
-  defType <- B.DefType n' <$> traverse delabNameBinder binders <*> delabM body
+  defType <- B.DefType tokTypeDef n' <$> traverse delabNameBinder binders <*> delabM body
   return [defType]
 
 delabRecordDecl ::
@@ -435,12 +435,12 @@ delabRecordDecl ident sort telescope fields supports = do
   telescope' <- traverse delabNameBinder telescope
   fields' <- traverse delabM fields
   let supports' = delabSupportedOperations supports
-  return $ annDecl <> [B.DefRecord n' telescope' fields' supports']
+  return $ annDecl <> [B.DefRecord tokRecord n' telescope' tokWhere fields' supports']
 
 delabSupportedOperations :: [V.DerivableRecordOperation] -> B.RecordSupports
 delabSupportedOperations = \case
   [] -> B.NoSupports
-  ops -> B.Supports $ fmap (\op -> mkToken B.Name (pack $ show op)) ops
+  ops -> B.Supports tokSupports $ fmap (\op -> mkToken B.Name (pack $ show op)) ops
 
 delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Builtin] -> m B.Expr
 delabQuantifier q args = case reverse args of

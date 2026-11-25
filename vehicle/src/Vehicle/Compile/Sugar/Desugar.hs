@@ -62,7 +62,7 @@ elabModule file (B.DefModule imports decls) = flip runReaderT file $ do
   return $ V.Module imports' decls'
 
 elabImportStatement :: B.ImportStatement -> V.ImportStatement
-elabImportStatement (B.Import path) = do
+elabImportStatement (B.Import _ path) = do
   let fragToString (B.ModulePathFrag frag) = unpack $ tkSymbol frag
   V.ImportStatement $ V.ModulePath $ fmap fragToString path
 
@@ -83,7 +83,7 @@ elabDeclGroup ::
   m (V.Decl Builtin, [B.Decl])
 elabDeclGroup anns = \case
   -- Type definition.
-  B.DefType n bs t :| ds -> do
+  B.DefType _ n bs t :| ds -> do
     d' <- elabTypeDef anns n bs t
     return (d', ds)
 
@@ -103,7 +103,7 @@ elabDeclGroup anns = \case
     return (d', ds)
 
   -- Record declaration
-  B.DefRecord name telescope fields supports :| ds -> do
+  B.DefRecord _ name telescope _ fields supports :| ds -> do
     d' <- elabRecordDefinition anns name telescope fields supports
     return (d', ds)
 
@@ -311,7 +311,7 @@ elabSupportedOperations ::
   m [V.DerivableRecordOperation]
 elabSupportedOperations = \case
   B.NoSupports -> return []
-  B.Supports names -> traverse elabOp names
+  B.Supports _ names -> traverse elabOp names
   where
     elabOp :: B.Name -> m V.DerivableRecordOperation
     elabOp name = do

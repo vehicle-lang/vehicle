@@ -32,11 +32,11 @@ test_tokenTypes =
           AllowStrictOverlaps,
       testCase "record fields and projections are methods" $
         expectTokens
-          [ "record" `eventually` (SemanticTokenTypes_Keyword, []),
+          [ "record" `as` (SemanticTokenTypes_Keyword, []),
             " ",
             "Pair" `as` (SemanticTokenTypes_Type, []),
             " ",
-            "where" `eventually` (SemanticTokenTypes_Keyword, []),
+            "where" `as` (SemanticTokenTypes_Keyword, []),
             "\n  { ",
             "left" `as` (SemanticTokenTypes_Method, []),
             " ",
