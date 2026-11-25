@@ -39,7 +39,7 @@ test_tokensDeclarations =
             "Nat" `as` (SemanticTokenTypes_Type, []),
             "\n"
           ]
-          AllowStrictOverlaps,
+          NoOverlaps,
       testCase "type aliases" $
         expectTokens
           [ "type" `as` (SemanticTokenTypes_Keyword, []),
@@ -49,5 +49,5 @@ test_tokensDeclarations =
             "Nat" `as` (SemanticTokenTypes_Type, []),
             "\n"
           ]
-          AllowStrictOverlaps
+          NoOverlaps
     ]

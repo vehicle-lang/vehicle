@@ -20,4 +20,4 @@ specification =
 test_tokensSimple :: TestTree
 test_tokensSimple =
   testCase "produces tokens for a simple example" $
-    expectTokens specification AllowStrictOverlaps
+    expectTokens specification NoOverlaps

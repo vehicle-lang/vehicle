@@ -22,10 +22,6 @@ import Language.LSP.Protocol.Types as Lsp
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Builtin.Standard
   ( Builtin (..),
-    BuiltinConstructor (..),
-    BuiltinFunction (..),
-    DerivedFunction (..),
-    TypeClassOp (..),
   )
 import Vehicle.Data.Variable.Bound.Context.Core (lookupIx)
 import Vehicle.Data.Variable.Bound.Context.Generic (MonadBoundContext (..))
@@ -145,7 +141,7 @@ collectExprTokens = \case
     binderToks <- collectBinderTokens binder
     exprToks <- addBinderToContext binder $ collectExprTokens res
     return $ binderToks ++ exprToks
-  Builtin p builtin -> singleton <$> emitAt p (getBuiltinToken builtin)
+  Builtin _p _builtin -> return [] -- Handled by syntax pass
   BoundVar p ix -> singleton <$> (emitAt p =<< classifyBoundVar 0 ix)
   FreeVar p ident -> singleton <$> (emitAt p =<< classifyFreeVar ident)
   Hole p _name -> singleton <$> mkTok p (SemanticTokenTypes_Decorator, [])
@@ -154,17 +150,15 @@ collectExprTokens = \case
     fnToks <- collectExprTokens f
     argsToks <- concat <$> traverse collectArgTokens (filter (not . wasInsertedByCompiler) (NonEmpty.toList args))
     return $ fnToks ++ argsToks
-  Let p bound bodyBinder bodyExpr -> do
-    letToks <- singleton <$> mkTok p (SemanticTokenTypes_Keyword, [])
+  Let _p bound bodyBinder bodyExpr -> do
     boundToks <- collectExprTokens bound
     binderToks <- collectBinderTokens bodyBinder
     bodyToks <- addBinderToContext bodyBinder $ collectExprTokens bodyExpr
-    return $ letToks ++ boundToks ++ binderToks ++ bodyToks
-  Lam p binder body -> do
-    lamToks <- singleton <$> mkTok p (SemanticTokenTypes_Keyword, [])
+    return $ boundToks ++ binderToks ++ bodyToks
+  Lam _p binder body -> do
     binderToks <- collectBinderTokens binder
     bodyToks <- addBinderToContext binder $ collectExprTokens body
-    return $ lamToks ++ binderToks ++ bodyToks
+    return $ binderToks ++ bodyToks
   Record _p _typ fields -> do
     fieldsToks <- collectFieldsTokens fields
     return fieldsToks
@@ -189,88 +183,6 @@ collectFieldsTokens fields =
           fieldTok <- mkTok (provenanceOf field) (SemanticTokenTypes_Method, [])
           return $ fieldTok : valueToks
       )
-
--- Builtins are always a single token and cannot be free/bound variables, so this function
--- can be pure.
-getBuiltinToken :: Builtin -> Maybe TokenClass
-getBuiltinToken = \case
-  BuiltinConstructor constructor -> case constructor of
-    Nil -> tok SemanticTokenTypes_Keyword
-    Cons -> tok SemanticTokenTypes_Operator
-    UnitLiteral -> tok SemanticTokenTypes_Keyword
-    IndexLiteral _ -> tok SemanticTokenTypes_Number
-    NatLiteral _ -> tok SemanticTokenTypes_Number
-    VectorLiteral -> tok SemanticTokenTypes_Keyword
-    BoolTensorLiteral _ -> tok SemanticTokenTypes_Keyword
-    NatTensorLiteral _ -> tok SemanticTokenTypes_Number
-    RatTensorLiteral _ -> tok SemanticTokenTypes_Number
-  -- TODO: It would be nice to be able to access the external syntax here. We want to say
-  -- "if the external token is alphanumeric, use Keyword, otherwise use Operator".
-  BuiltinFunction fn -> case fn of
-    Not -> tok SemanticTokenTypes_Operator
-    And -> tok SemanticTokenTypes_Operator
-    Or -> tok SemanticTokenTypes_Operator
-    Implies -> tok SemanticTokenTypes_Operator
-    QuantifyRatTensor {} -> tok SemanticTokenTypes_Keyword
-    QuantifyRecord {} -> tok SemanticTokenTypes_Keyword
-    If -> tok SemanticTokenTypes_Keyword
-    CompareIndex {} -> tok SemanticTokenTypes_Operator
-    CompareNat {} -> tok SemanticTokenTypes_Operator
-    CompareRatTensor {} -> tok SemanticTokenTypes_Operator
-    ReduceAndTensor -> tok SemanticTokenTypes_Keyword
-    ReduceOrTensor -> tok SemanticTokenTypes_Keyword
-    -- Rat operations
-    Add {} -> tok SemanticTokenTypes_Operator
-    Mul {} -> tok SemanticTokenTypes_Operator
-    Neg {} -> tok SemanticTokenTypes_Operator
-    Sub {} -> tok SemanticTokenTypes_Operator
-    Div {} -> tok SemanticTokenTypes_Operator
-    Min {} -> tok SemanticTokenTypes_Operator
-    Max {} -> tok SemanticTokenTypes_Operator
-    Pow {} -> tok SemanticTokenTypes_Operator
-    Log {} -> tok SemanticTokenTypes_Operator
-    Exp {} -> tok SemanticTokenTypes_Operator
-    ReduceAddRatTensor -> tok SemanticTokenTypes_Keyword
-    ReduceMulRatTensor -> tok SemanticTokenTypes_Keyword
-    ReduceMinRatTensor -> tok SemanticTokenTypes_Keyword
-    ReduceMaxRatTensor -> tok SemanticTokenTypes_Keyword
-    -- Tensor operations
-    AtTensor -> tok SemanticTokenTypes_Operator
-    StackTensor -> tok SemanticTokenTypes_Keyword
-    ConstTensor -> tok SemanticTokenTypes_Keyword
-    Iterate -> tok SemanticTokenTypes_Keyword
-    ForeachTensor -> tok SemanticTokenTypes_Keyword
-    Transpose -> tok SemanticTokenTypes_Keyword
-    WhereTensor -> tok SemanticTokenTypes_Keyword
-    SearchRatTensor -> tok SemanticTokenTypes_Keyword
-    -- Vector operations
-    AtVector -> tok SemanticTokenTypes_Operator
-    ForeachVector -> tok SemanticTokenTypes_Keyword
-    -- List operations
-    FoldList -> tok SemanticTokenTypes_Keyword
-    MapList -> tok SemanticTokenTypes_Keyword
-    ReverseList -> tok SemanticTokenTypes_Keyword
-    AppendList -> tok SemanticTokenTypes_Keyword
-  BuiltinType _typ -> tok SemanticTokenTypes_Type
-  BuiltinCast _cast -> tok SemanticTokenTypes_Function
-  DerivedFunction fn -> case fn of
-    TypeAnn -> tok SemanticTokenTypes_Operator
-    QuantifyIndex {} -> tok SemanticTokenTypes_Keyword
-    QuantifyInList {} -> tok SemanticTokenTypes_Keyword
-  TypeClass _tc -> tok SemanticTokenTypes_Class
-  TypeClassOp tcOp -> case tcOp of
-    FromNatTC -> Nothing
-    FromRatTC -> Nothing
-    VecLiteralTC -> tok SemanticTokenTypes_Keyword
-    NegTC -> tok SemanticTokenTypes_Operator
-    AtTC -> tok SemanticTokenTypes_Operator
-    MapTC -> tok SemanticTokenTypes_Keyword
-    FoldTC -> tok SemanticTokenTypes_Keyword
-    ForeachTC -> tok SemanticTokenTypes_Keyword
-    TensorTypeTC -> tok SemanticTokenTypes_Type
-  NatInDomainConstraint -> Nothing
-  where
-    tok typ = Just (typ, [])
 
 --------------------------------------------------------------------------------
 -- Token classification:

@@ -60,7 +60,7 @@ test_tokensComments =
             "False" `as` (SemanticTokenTypes_Keyword, []),
             "\n"
           ]
-          AllowStrictOverlaps,
+          NoOverlaps,
       testCase "multiline comment without end" $
         expectTokens
           [ "   ",

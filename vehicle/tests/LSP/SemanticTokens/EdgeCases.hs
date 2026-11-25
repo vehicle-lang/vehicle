@@ -30,7 +30,7 @@ test_tokenEdgeCases =
             " ",
             "singleton" `as` (SemanticTokenTypes_Variable, []),
             " = ",
-            "[" `as` (SemanticTokenTypes_Keyword, []), -- TODO: Operator
+            "[" `as` (SemanticTokenTypes_Operator, []),
             "1" `as` (SemanticTokenTypes_Number, []),
             "]" `as` (SemanticTokenTypes_Operator, []),
             " ",
@@ -46,7 +46,7 @@ test_tokenEdgeCases =
             " ",
             "else" `as` (SemanticTokenTypes_Keyword, []),
             " ",
-            "[" `as` (SemanticTokenTypes_Keyword, []), -- TODO: Operator
+            "[" `as` (SemanticTokenTypes_Operator, []),
             "]" `as` (SemanticTokenTypes_Operator, []),
             "\n"
           ]
