@@ -38,7 +38,7 @@ mkTok :: TokenProvenance -> TokenClass -> IntermediateSemTok
 mkTok p = mkTokPure mempty (p mempty)
 
 mkTokFrom :: (IsToken a) => a -> TokenClass -> IntermediateSemTok
-mkTokFrom tok = mkTok (tkProvenance tok)
+mkTokFrom tk = mkTok (tkProvenance tk)
 
 mkElemOfTok :: TokElemOf -> IntermediateSemTok
 mkElemOfTok = flip mkTokFrom (SemanticTokenTypes_Operator, [])
@@ -64,8 +64,8 @@ collectSyntaxTokensFromImport (Import tk _) = [mkKeywordTok tk]
 
 collectSyntaxTokensFromDecl :: Decl -> [IntermediateSemTok]
 collectSyntaxTokensFromDecl = \case
-  DefAnn tokAnnotation declAnnOpts -> do
-    let annTok = mkTokFrom tokAnnotation (SemanticTokenTypes_Decorator, [])
+  DefAnn tk declAnnOpts -> do
+    let annTok = mkTokFrom tk (SemanticTokenTypes_Decorator, [])
     let optToks = case declAnnOpts of
           DeclAnnWithOpts opts -> concatMap collectSyntaxTokensFromDeclAnnOpt opts
           DeclAnnWithoutOpts -> []
@@ -74,22 +74,20 @@ collectSyntaxTokensFromDecl = \case
     mkKeywordTok tk
       : collectSyntaxTokensFromNameBinders binders
       ++ collectSyntaxTokensFromExpr expr
-  DefFunType _name tokElemOf expr ->
-    mkElemOfTok tokElemOf
+  DefFunType _name tkElemOf expr ->
+    mkElemOfTok tkElemOf
       : collectSyntaxTokensFromExpr expr
   DefFunExpr _name binders expr ->
     collectSyntaxTokensFromNameBinders binders
       ++ collectSyntaxTokensFromExpr expr
   DefRecord tkRecord _name binders tkWhere fields supports -> do
-    let bindersToks = collectSyntaxTokensFromNameBinders binders
-    let fieldsToks = map (\(FieldDef _ tok _) -> mkElemOfTok tok) fields
     let supportsToks = case supports of
           NoSupports -> []
-          Supports tk s -> mkKeywordTok tk : map (\tok -> mkTypeTok tok) s
+          Supports tk s -> mkKeywordTok tk : map (\t -> mkTypeTok t) s
     mkKeywordTok tkRecord
       : mkKeywordTok tkWhere
-      : bindersToks
-      ++ fieldsToks
+      : collectSyntaxTokensFromNameBinders binders
+      ++ map (\(FieldDef _ tk _) -> mkElemOfTok tk) fields
       ++ supportsToks
 
 collectSyntaxTokensFromExprs :: [Expr] -> [IntermediateSemTok]
@@ -125,16 +123,16 @@ collectSyntaxTokensFromExpr = \case
   Var _name -> []
   Literal lit -> collectSyntaxTokensFromLiteral lit
   Hole holeToken -> [mkTokFrom holeToken (SemanticTokenTypes_Macro, [])]
-  Foreach tokForeach binders e ->
-    mkKeywordTok tokForeach
+  Foreach tk binders e ->
+    mkKeywordTok tk
       : collectSyntaxTokensFromNameBinders binders
       ++ collectSyntaxTokensFromExpr e
-  Forall tokForall binders e ->
-    mkKeywordTok tokForall
+  Forall tk binders e ->
+    mkKeywordTok tk
       : collectSyntaxTokensFromNameBinders binders
       ++ collectSyntaxTokensFromExpr e
-  Exists tokExists binders e ->
-    mkKeywordTok tokExists
+  Exists tk binders e ->
+    mkKeywordTok tk
       : collectSyntaxTokensFromNameBinders binders
       ++ collectSyntaxTokensFromExpr e
   -- TODO: Make "in" a position token
@@ -164,10 +162,10 @@ collectSyntaxTokensFromExpr = \case
   Neg tk e ->
     mkOperatorTok tk
       : collectSyntaxTokensFromExpr e
-  If tokIf e1 tokThen e2 tokElse e3 ->
-    mkKeywordTok tokIf
-      : mkKeywordTok tokThen
-      : mkKeywordTok tokElse
+  If tkIf e1 tkThen e2 tkElse e3 ->
+    mkKeywordTok tkIf
+      : mkKeywordTok tkThen
+      : mkKeywordTok tkElse
       : collectSyntaxTokensFromExprs [e1, e2, e3]
   Impl e1 tk e2 ->
     mkOperatorTok tk
@@ -295,10 +293,10 @@ collectSyntaxTokensFromExpr = \case
 
 collectSyntaxTokensFromBasicBinder :: BasicBinder -> [IntermediateSemTok]
 collectSyntaxTokensFromBasicBinder binder =
-  mkElemOfTok tok
+  mkElemOfTok tk
     : collectSyntaxTokensFromExpr expr
   where
-    (tok, expr) = case binder of
+    (tk, expr) = case binder of
       ExplicitBinder _ _ t e -> (t, e)
       ImplicitBinder _ _ t e -> (t, e)
       InstanceBinder _ _ t e -> (t, e)
@@ -350,15 +348,15 @@ collectSyntaxTokensFromRecordFieldAssign (FieldAssign _name expr) = collectSynta
 collectSyntaxTokensFromDeclAnnOpt :: DeclAnnOption -> [IntermediateSemTok]
 collectSyntaxTokensFromDeclAnnOpt = \case
   -- TODO: need to deal with annotations containing names/exprs during semantic pass
-  NameAnnOption tokAnnNameOpt _name ->
-    [ mkTokFrom tokAnnNameOpt (SemanticTokenTypes_Parameter, [])
+  NameAnnOption tk _name ->
+    [ mkTokFrom tk (SemanticTokenTypes_Parameter, [])
     ]
-  InferAnnOption tokAnnInferOpt b ->
-    [ mkTokFrom tokAnnInferOpt (SemanticTokenTypes_Parameter, []),
+  InferAnnOption tk b ->
+    [ mkTokFrom tk (SemanticTokenTypes_Parameter, []),
       mkKeywordTok b
     ]
-  DefaultAnnOption tokAnnDefaultOpt n ->
-    [ mkTokFrom tokAnnDefaultOpt (SemanticTokenTypes_Parameter, []),
+  DefaultAnnOption tk n ->
+    [ mkTokFrom tk (SemanticTokenTypes_Parameter, []),
       mkNumberTok n
     ]
   TypeAnnOption name expr ->
