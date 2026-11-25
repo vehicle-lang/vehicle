@@ -75,6 +75,7 @@ collectSemanticTokens logger filePath = do
           logger <& (layoutAsText $ pretty $ formatError err) `WithSeverity` Warning
           return $ makeLspSemanticTokens (syntaxToks ++ commentsToks)
         Right toks ->
+          -- Note: Put semantic tokens before syntax tokens so if they overlap, the former takes precedence.
           return $ makeLspSemanticTokens (toks ++ syntaxToks ++ commentsToks)
   where
     makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either LspErrorMessage Lsp.SemanticTokens
