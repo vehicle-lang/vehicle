@@ -11,6 +11,8 @@
 * The `else` branch of an `if` can now contain another `if`, a quantifier, a `let` or a lambda without brackets,
   so `if`s can be chained, e.g. `if i == 0 then 1.0 else if i == 1 then 2.0 else 0.0`.
 
+* You can now bind multiple variables with a single type, e.g. `forall (x y : Real) . ...` or `\(u v : Real) -> ...`.
+
 ### Type-checker
 
 * Optimised the type-checker so that it now runs 40% faster.
