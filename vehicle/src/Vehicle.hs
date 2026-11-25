@@ -7,6 +7,7 @@ where
 
 import Control.Exception (Exception (..), Handler (..), SomeException (..), catches, handle, throwIO)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as Text (pack)
 import Data.Text.IO qualified as TextIO (hPutStrLn)
@@ -121,5 +122,7 @@ handleParseResult (Failure failure) = do
 handleParseResult (CompletionInvoked compl) = do
   progn <- liftIO getProgName
   msg <- liftIO $ execCompletion compl progn
-  VIO.programOutput (pretty msg)
+  -- Written directly rather than pretty-printed, as the shell parses the
+  -- output and this not used by the Python bindings.
+  writeStdout (Text.pack $ unlines $ nub $ lines msg)
   liftIO exitSuccess

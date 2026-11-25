@@ -17,6 +17,7 @@ import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Options.Applicative
+import Options.Applicative.Types (Completer (..))
 import Vehicle.Backend.Prelude (BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, LossFunctionMode (Training), SecondaryTypeSystem (..))
 import Vehicle.Compile (CompileOptions (..), ITPOptions (..), LossOptions (..), QueryOptions (..))
 import Vehicle.Export (ExportOptions (..))
@@ -252,6 +253,7 @@ lossLogicParser =
     long "logic"
       <> short 'l'
       <> metavar "LOGIC"
+      <> completeWith allBuiltinDifferentiableLogics
       <> helpDoc (Just ("The differentiable logic to export to." <+> supportedOptions allBuiltinDifferentiableLogics))
 
 lossModeParser :: Parser LossFunctionMode
@@ -260,6 +262,7 @@ lossModeParser =
     long "lossMode"
       <> short 'm'
       <> metavar "MODE"
+      <> completeWith allLossModes
       <> value Training
       <> showDefault
       <> helpDoc (Just ("Sets the loss function for training or search." <+> supportedOptions allLossModes))
@@ -293,6 +296,7 @@ queryFormatParser =
     long "format"
       <> short 'f'
       <> metavar "FORMAT"
+      <> completeWith allSolversFormats
       <> helpDoc (Just ("The query format to export to." <+> supportedOptions allSolversFormats))
 
 --------------------------------------------------------------------------------
@@ -399,7 +403,6 @@ lspParser :: Parser LSPOptions
 lspParser =
   LSPOptions
     <$> logFileOption
-      <**> helper
 
 lspParserInfo :: ParserInfo ModeOptions
 lspParserInfo = info (LSP <$> lspParser) lspDescription
@@ -409,6 +412,7 @@ logFileOption =
   optional . strOption . mconcat $
     [ long "log-file",
       metavar "FILE",
+      action "file",
       help "Log file to use while LSP logging is unavailable."
     ]
 
@@ -439,6 +443,17 @@ allTypeSystems = flip map (zip [1 :: Int ..] (enumerate @SecondaryTypeSystem)) $
       DecidabilityTypes -> "check which booleans are decidable and which are undecidable in the context of Vehicle"
       GradientCarryingTypes -> "check which parts of the program have gradient information suitable for conversions to loss functions."
 
+-- | The names accepted by the `Read` instance of `SecondaryTypeSystem`.
+allTypeSystemNames :: [String]
+allTypeSystemNames = map (layoutAsString . pretty) (enumerate @SecondaryTypeSystem)
+
+-- | Completes the file part of a `NAME:FILE` argument, leaving the name as is.
+-- Like `resourceOption`, splits on the first colon only.
+resourceFileCompleter :: Completer
+resourceFileCompleter = mkCompleter $ \word -> case break (== ':') word of
+  (name, ':' : file) -> map ((name <> ":") <>) <$> runCompleter (bashCompleter "file") file
+  _ -> return []
+
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
   where
@@ -464,12 +479,14 @@ redirectLogsParser =
       long "redirect-logs"
         <> internal
         <> metavar "FILE"
+        <> action "file"
         <> help "Redirects logs to the provided file. If no argument is provided will default to stdout."
 
 loggingLevelParser :: Parser LoggingLevel
 loggingLevelParser =
   option auto $
     long "logging"
+      <> completeWith allLoggingLevels
       <> value defaultLoggingLevel
       <> showDefault
       <> helpDoc (Just loggingLevelHelp)
@@ -485,6 +502,7 @@ loggingTargetParser =
   optional $
     option auto $
       long "loggingPass"
+        <> completeWith allCompilerPasses
         <> helpDoc (Just loggingPassHelp)
 
 loggingPassHelp :: Doc a
@@ -504,6 +522,7 @@ verifySpecificationParser =
     long "specification"
       <> short 's'
       <> metavar "FILE"
+      <> action "file"
       <> help
         ( "Either: i) a "
             <> specificationFileExtension
@@ -519,6 +538,7 @@ typeSystemParser =
       long "typeSystem"
         <> short 't'
         <> metavar "TYPE_SYSTEM"
+        <> completeWith allTypeSystemNames
         <> help
           ( "A secondary type system to be used."
               <> layoutAsString
@@ -536,6 +556,7 @@ specificationParser =
     long "specification"
       <> short 's'
       <> metavar "FILE"
+      <> action "file"
       <> helpDoc (Just ("The " <> pretty specificationFileExtension <> " file containing the specification."))
 
 networkParser :: Parser (Map Text FilePath)
@@ -544,6 +565,7 @@ networkParser =
     long "network"
       <> short 'n'
       <> metavar "NAME:FILE"
+      <> completer resourceFileCompleter
       <> help
         ( "Provide the implementation of a network declared in the "
             <> "specification. Its value should consist of a colon-separated "
@@ -557,6 +579,7 @@ datasetParser =
     long "dataset"
       <> short 'd'
       <> metavar "NAME:FILE"
+      <> completer resourceFileCompleter
       <> help
         ( "Provide a dataset declared in the specification. Its value should "
             <> "consist of a colon-separated pair of the name of the dataset in "
@@ -598,6 +621,7 @@ outputParser =
       long "output"
         <> short 'o'
         <> metavar "FILE"
+        <> action "file"
         <> help "Output location for compiled file(s). Defaults to `stdout` if not provided."
 
 outputAsJSONParser :: Parser OutputAsJSON
@@ -646,6 +670,8 @@ solverParser =
     long "solver"
       <> short 'v'
       <> metavar "FILE"
+      <> action "file"
+      <> action "command"
       <> helpDoc (Just "The solver to use. Can be either a path to a solver executable or the name of a solver executable available via the system PATH environment variable.")
 
 solverExtraArgsParser :: Parser (Maybe String)
@@ -670,6 +696,7 @@ itpParser =
     long "target"
       <> short 't'
       <> metavar "TARGET"
+      <> completeWith allITPs
       <> helpDoc (Just ("The target to export to." <+> supportedOptions allITPs))
 
 cacheOption :: Mod OptionFields String -> Parser String
@@ -677,7 +704,8 @@ cacheOption helpField =
   strOption $
     long "cache"
       <> short 'c'
-      <> metavar "FILE"
+      <> metavar "DIRECTORY"
+      <> action "directory"
       <> helpField
 
 validateCacheParser :: Parser FilePath
