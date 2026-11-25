@@ -9,6 +9,8 @@ module Vehicle.Compile.Type.Meta.Substitution
     forceThunkWithMetas,
     forceApplicationWithMetas,
     deepForceWithMetas,
+    forceThunkWithUnsolvedMetas,
+    deepForceWithUnsolvedMetas,
   )
 where
 
@@ -63,14 +65,45 @@ deepForceWithMetas ::
 deepForceWithMetas ctx metaCtx thunk =
   fst <$> runForceT ctx metaCtx (deepEval thunk)
 
+-- | Like `forceThunkWithMetas` but treats every meta-variable as unsolved.
+-- Used when displaying objects whose solved meta-variables have already been
+-- substituted, e.g. those in errors.
+forceThunkWithUnsolvedMetas ::
+  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+  NamedBoundCtx ->
+  ThunkWithMetas builtin ->
+  m (ForcedValueWithMetas builtin)
+forceThunkWithUnsolvedMetas ctx thunk =
+  fst <$> runForceTWith ctx (const Nothing) (forceThunk thunk)
+
+-- | Like `deepForceWithMetas` but treats every meta-variable as unsolved.
+-- Used when displaying objects whose solved meta-variables have already been
+-- substituted, e.g. those in errors. Also returns the set of meta-variables
+-- that blocked normalisation.
+deepForceWithUnsolvedMetas ::
+  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+  NamedBoundCtx ->
+  ThunkWithMetas builtin ->
+  m (Expr builtin, MetaSet)
+deepForceWithUnsolvedMetas ctx thunk =
+  runForceTWith ctx (const Nothing) (deepEval thunk)
+
 runForceT ::
   (MonadFreeContext builtin m) =>
   NamedBoundCtx ->
   MetaVariableContext builtin ->
   ReaderT (MetaID -> Maybe (GluedExprWithMetas builtin)) (WriterT MetaSet (NameBoundContextT m)) a ->
   m (a, MetaSet)
-runForceT ctx metaCtx action =
-  runNameBoundContextT ctx $ runWriterT $ runReaderT action (lookupMetaSolution metaCtx)
+runForceT ctx metaCtx = runForceTWith ctx (lookupMetaSolution metaCtx)
+
+runForceTWith ::
+  (MonadFreeContext builtin m) =>
+  NamedBoundCtx ->
+  (MetaID -> Maybe (GluedExprWithMetas builtin)) ->
+  ReaderT (MetaID -> Maybe (GluedExprWithMetas builtin)) (WriterT MetaSet (NameBoundContextT m)) a ->
+  m (a, MetaSet)
+runForceTWith ctx lookupSolution action =
+  runNameBoundContextT ctx $ runWriterT $ runReaderT action lookupSolution
 
 --------------------------------------------------------------------------------
 -- Objects which have meta variables in.
@@ -298,16 +331,17 @@ instance MetaSubstitutable m builtin (InstanceConstraintOrigin builtin) where
     InstanceTypeRestrictionOrigin t -> InstanceTypeRestrictionOrigin <$> substMetasAt ctx s t
     InstanceArgOrigin t -> InstanceArgOrigin <$> substMetasAt ctx s t
 
-instance MetaSubstitutable m builtin (CheckingExprType builtin) where
-  substMetasAt ctx s (CheckingExpr expr expectedType actualType) =
-    CheckingExpr
+instance RawMetaSubstitutable m builtin (CheckingExprType builtin) where
+  substMetas s (CheckingExpr boundCtx expr expectedType actualType) = do
+    let ctx = toNamedBoundCtx boundCtx
+    CheckingExpr boundCtx
       <$> traverse (substMetasAt ctx s) expr
       <*> substMetasAt ctx s expectedType
       <*> substMetasAt ctx s actualType
 
 instance MetaSubstitutable m builtin (UnificationConstraintOrigin builtin) where
   substMetasAt ctx s = \case
-    CheckingExprType t -> CheckingExprType <$> substMetasAt ctx s t
+    CheckingExprType t -> CheckingExprType <$> substMetas s t
     CheckingInstanceType t -> CheckingInstanceType <$> substMetasAt ctx s t
 
 instance MetaSubstitutable m builtin (UnificationConstraint builtin) where
@@ -349,7 +383,7 @@ instance MetaSubstitutable m builtin (Constraint builtin) where
 class RawMetaSubstitutable m builtin a | a -> builtin where
   -- | Substitutes meta-variables through the provided object, returning the
   -- updated object and the set of meta-variables within the object for which
-  -- no subsitution was provided.
+  -- no substitution was provided.
   substMetas ::
     (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
     MetaSubstitution builtin ->

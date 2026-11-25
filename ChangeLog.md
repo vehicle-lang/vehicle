@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Type-checker
+
+* Various improvements to the readability of the error messages produced.
+
 ## v0.30.0
 
 ### General

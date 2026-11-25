@@ -18,6 +18,7 @@ where
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
+import Prettyprinter (Pretty (..))
 import Vehicle.Data.Builtin.Core.BasicOperations (ComparisonOp (..), Quantifier (..), comparisonOps)
 
 data StdlibTypeClassOp
@@ -28,6 +29,17 @@ data StdlibTypeClassOp
   | DivTC
   | ComparisonTC ComparisonOp
   deriving stock (Eq, Show)
+
+-- | Displays the surface-syntax operator that the type-class operation is
+-- desugared from.
+instance Pretty StdlibTypeClassOp where
+  pretty = \case
+    QuantifierTC q -> pretty q
+    AddTC -> "+"
+    SubTC -> "-"
+    MulTC -> "*"
+    DivTC -> "/"
+    ComparisonTC op -> pretty op
 
 -- | All the stdlib type-class operations.
 stdlibTypeClassOps :: [StdlibTypeClassOp]

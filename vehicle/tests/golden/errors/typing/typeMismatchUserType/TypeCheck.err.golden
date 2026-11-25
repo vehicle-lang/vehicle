@@ -1,0 +1,4 @@
+Error in file 'spec.vcl' at Line 9, Columns 5-6: 'p' does not have the expected type.
+  Expected: Vector Nat 2
+  Actual:   Pair
+They differ in that the expected type has 'Nat' where the actual type has 'Real'.

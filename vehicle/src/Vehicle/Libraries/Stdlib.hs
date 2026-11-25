@@ -7,7 +7,6 @@ module Vehicle.Libraries.Stdlib
     stdlibBuiltinModulePath,
     stdlibInstanceOps,
     isBuiltinModule,
-    isStdlibIdent,
     validNetworkTypeIdent,
     validNetworkIOTypeIdent,
     validNetworkFieldTypeIdent,
@@ -42,9 +41,6 @@ import Vehicle.Data.Builtin.Core.StdlibTypeClassOp
 import Vehicle.Libraries
 import Vehicle.Libraries.Core (LibraryContent)
 import Vehicle.Prelude
-
-isStdlibIdent :: Identifier -> Bool
-isStdlibIdent ident = modulePath ident == stdlibDefinitionsModulePath
 
 stdlibInstanceOps :: Set Identifier
 stdlibInstanceOps =

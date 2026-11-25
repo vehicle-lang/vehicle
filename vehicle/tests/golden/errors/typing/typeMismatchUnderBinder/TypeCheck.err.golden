@@ -1,0 +1,4 @@
+Error in file 'spec.vcl' at Line 7, Columns 5-6: 'f' does not have the expected type.
+  Expected: (Nat -> Bool) -> Bool
+  Actual:   (Nat -> Nat) -> Bool
+They differ in that the expected type has 'Bool' where the actual type has 'Nat'.

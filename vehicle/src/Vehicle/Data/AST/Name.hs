@@ -71,6 +71,9 @@ stdlibDefinitionsModulePath = ModulePath ["Definitions"]
 stdlibIdentifier :: Name -> Identifier
 stdlibIdentifier = Identifier stdlibDefinitionsModulePath
 
+isStdlibIdent :: Identifier -> Bool
+isStdlibIdent ident = modulePath ident == stdlibDefinitionsModulePath
+
 isUserCode :: (HasIdentifier a) => a -> Bool
 isUserCode object = modulePath (identifierOf object) == userModulePath
 
