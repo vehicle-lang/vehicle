@@ -29,7 +29,7 @@ test_tokenTypes =
             "True" `as` (SemanticTokenTypes_Keyword, []),
             "\n"
           ]
-          AllowStrictOverlaps,
+          NoOverlaps,
       testCase "record fields and projections are methods" $
         expectTokens
           [ "record" `as` (SemanticTokenTypes_Keyword, []),
@@ -110,5 +110,5 @@ test_tokenTypes =
             "3" `as` (SemanticTokenTypes_Number, []),
             "\n"
           ]
-          AllowStrictOverlaps
+          NoOverlaps
     ]

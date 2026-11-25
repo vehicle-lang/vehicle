@@ -136,7 +136,7 @@ collectExprTokens ::
   Expr Builtin ->
   m [IntermediateSemTok]
 collectExprTokens = \case
-  Universe p _level -> singleton <$> mkTok p (SemanticTokenTypes_Type, [])
+  Universe _p _level -> return [] -- Handled by syntax pass
   Pi _p binder res -> do
     binderToks <- collectBinderTokens binder
     exprToks <- addBinderToContext binder $ collectExprTokens res

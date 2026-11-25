@@ -50,7 +50,7 @@ test_tokenEdgeCases =
             "]" `as` (SemanticTokenTypes_Operator, []),
             "\n"
           ]
-          AllowStrictOverlaps,
+          NoOverlaps,
       testCase "named implicit type binder" $
         expectTokens
           [ "identity1" `as` (SemanticTokenTypes_Function, []),
