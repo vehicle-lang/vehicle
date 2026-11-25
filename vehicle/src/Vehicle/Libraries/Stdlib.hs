@@ -8,6 +8,10 @@ module Vehicle.Libraries.Stdlib
     stdlibInstanceOps,
     isBuiltinModule,
     isStdlibIdent,
+    validPropertyTypeIdent,
+    validInferableParameterTypeIdent,
+    validNonInferableParameterTypeIdent,
+    validTensorLikeTypeIdent,
     validNetworkTypeIdent,
     validNetworkIOTypeIdent,
     validNetworkFieldTypeIdent,
@@ -57,6 +61,18 @@ stdlibBuiltinModulePath typeSystem = ModulePath $ case typeSystem of
   Just LinearityTypes -> ["Builtins", "Linearity"]
   Just DecidabilityTypes -> ["Builtins", "Decidability"]
   Just GradientCarryingTypes -> ["Builtins", "GradientCarrying"]
+
+validPropertyTypeIdent :: Identifier
+validPropertyTypeIdent = stdlibIdentifier "HasValidPropertyType"
+
+validInferableParameterTypeIdent :: Identifier
+validInferableParameterTypeIdent = stdlibIdentifier "HasValidInferableParameterType"
+
+validNonInferableParameterTypeIdent :: Identifier
+validNonInferableParameterTypeIdent = stdlibIdentifier "HasValidNonInferableParameterType"
+
+validTensorLikeTypeIdent :: Identifier
+validTensorLikeTypeIdent = stdlibIdentifier "HasValidTensorLikeType"
 
 validNetworkTypeIdent :: Identifier
 validNetworkTypeIdent = stdlibIdentifier "HasValidNetworkType"
