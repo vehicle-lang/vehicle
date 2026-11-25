@@ -82,6 +82,8 @@
 
 * Datasets are now only read from disk once during compilation, and the hashes used to check whether networks and datasets have been altered since verification are now computed from the same contents used during compilation. A network or dataset file that cannot be read is now reported with the location of its declaration in the specification.
 
+* Vim syntax files are now available under `tools/vim`.
+
 ## v0.29.0
 
 ### Language
