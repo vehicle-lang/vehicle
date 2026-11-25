@@ -85,21 +85,10 @@ typeStandardBuiltin p = \case
 
 typeOfTypeClass :: TypeClass -> DSLExpr Builtin
 typeOfTypeClass tc = case tc of
-  HasQuantifier {} -> type0 ~> type0 ~> type0
-  HasNeg -> type0 ~> type0 ~> type0
-  HasAt -> type0 ~> type0 ~> type0 ~> type0
-  HasForeach -> type0 ~> type0 ~> type0 ~> type0
-  HasMap -> (type0 ~> type0) ~> type0
-  HasFold -> (type0 ~> type0) ~> type0
-  HasQuantifierIn {} -> type0 ~> type0 ~> type0
   HasNatLits {} -> type0 ~> type0
   HasRatLits -> type0 ~> type0
   HasVecLits {} -> type0 ~> type0 ~> tNat ~> type0
-  ValidPropertyType -> type0 ~> type0
-  ValidParameterType {} -> type0 ~> type0
-  ValidNetworkTensorType -> type0 ~> type0
   IsTensorType {} -> typeOfBuiltinType TensorType
-  ValidTensorLikeType -> type0 ~> type0
 
 typeOfTypeClassOp :: TypeClassOp -> DSLExpr Builtin
 typeOfTypeClassOp b = case b of
@@ -110,15 +99,6 @@ typeOfTypeClassOp b = case b of
   FromNatTC -> forAllTypes $ \t -> hasNatLits t ~~~> typeOfFromNat t
   FromRatTC -> forAllTypes $ \t -> hasRatLits t ~~~> typeOfFromRat t
   VecLiteralTC -> typeOfVectorLiteral
-  NegTC -> typeOfTCOp1 hasNeg
-  AtTC -> typeOfTCOp2 hasAt
-  ForeachTC ->
-    forAll "A" type0 $ \t1 ->
-      forAll "B" type0 $ \t2 ->
-        forAll "C" type0 $ \t3 ->
-          hasForeach t1 t2 t3 ~~~> typeOfForeach t1 t2 t3
-  MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
-  FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
 
 typeOfBuiltinCast :: BuiltinCast -> DSLExpr Builtin
 typeOfBuiltinCast = \case
@@ -182,8 +162,9 @@ restrictStandardDeclType ::
 restrictStandardDeclType declSort (ident, p) typ = do
   env <- getFreeCtx (Proxy @Builtin)
   let tc = case declSort of
-        RestrictedProperty -> Builtin p (TypeClass ValidPropertyType)
-        RestrictedParameter s -> Builtin p (TypeClass (ValidParameterType s))
+        RestrictedProperty -> FreeVar p validPropertyTypeIdent
+        RestrictedParameter Inferable -> FreeVar p validInferableParameterTypeIdent
+        RestrictedParameter NonInferable -> FreeVar p validNonInferableParameterTypeIdent
         RestrictedDataset -> FreeVar p validDatasetTypeIdent
         RestrictedNetwork -> FreeVar p validNetworkTypeIdent
 
@@ -202,7 +183,7 @@ restrictStandardRecordAnnotatedAsTensorType (ident, p) fields = case fields of
   [] -> return ()
   (firstFieldName, firstFieldType) : restFields -> do
     env <- getFreeCtx (Proxy @Builtin)
-    let expr = App (Builtin p (TypeClass ValidTensorLikeType)) [explicit firstFieldType]
+    let expr = App (FreeVar p validTensorLikeTypeIdent) [explicit firstFieldType]
     let restrictionDetails = Right (FieldTypeIsAllowed firstFieldName)
     let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
     _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr

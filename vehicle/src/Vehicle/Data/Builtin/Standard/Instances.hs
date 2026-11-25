@@ -18,75 +18,26 @@ import Vehicle.Prelude
 standardBuiltinInstances :: InstanceDatabase Builtin
 standardBuiltinInstances = makeInstanceDatabase allInstances
 
--- Manually declared here as we have no way of declaring them in the language
--- itself.
-
--- Also note that annoyingly because of a lack of first class records we have
--- to duplicate the context for both the candidate and the candidate's solution.
-
+-- All other type-classes and their instances are declared in the standard
+-- library (`lib/Definitions.vcl`). The ones that remain here cannot be moved
+-- there because:
+--
+--   * `HasNatLits`, `HasRatLits` and `HasVecLits` are coercions inserted
+--     around every literal during desugaring (including the literals in the
+--     standard library itself). They are treated specially by the type-checker
+--     (see `isCastConstraint`), the `Index` instance must inspect the value of
+--     the literal via the `NatInDomainConstraint`, vector literals are variadic,
+--     and their solutions are casts that have no surface syntax.
+--
+--   * `IsTensorType` is what gives meaning to the `Tensor` keyword, so any
+--     standard library declaration of it would itself have to use `Tensor`.
+--     Its solutions are types rather than records of operations, and the
+--     decidability type-system relies on its own builtin version of it.
 allInstances :: [InstanceCandidate Builtin]
 allInstances =
   mkCandidate
     <$> [
-          -----------------------
-          -- ValidPropertyType --
-          -----------------------
-          ( forAllDims $ \ds ->
-              validPropertyType (tBoolTensor ds),
-            lamDims $ \_ds ->
-              tUnit,
-            Nothing
-          ),
-          ( forAllTypes $ \tElem ->
-              forAllDims $ \d ->
-                validPropertyType tElem
-                  .~~~> validPropertyType (tVector tElem d),
-            lamType $ \tElem ->
-              lamDim $ \_d ->
-                instLam "r1" (validPropertyType tElem) $ \_inst ->
-                  tUnit,
-            Nothing
-          ),
-          ------------------------------------
-          -- ValidNonInferableParameterType --
-          ------------------------------------
-          ( validNonInferableParameterType (tBoolTensor dimNil),
-            unitLit,
-            Nothing
-          ),
-          ( forAllIrrelevantNat "n" $ \n ->
-              validNonInferableParameterType (tIndex n),
-            irrelImplNatLam "n" $ \_n ->
-              unitLit,
-            Nothing
-          ),
-          ( validNonInferableParameterType tNat,
-            unitLit,
-            Nothing
-          ),
-          ( validNonInferableParameterType (tRatTensor dimNil),
-            unitLit,
-            Nothing
-          ),
-          ---------------------------------
-          -- ValidInferableParameterType --
-          ---------------------------------
-          ( validInferableParameterType tNat,
-            unitLit,
-            Nothing
-          ),
-          -------------------------
-          -- ValidTensorLikeType --
-          -------------------------
-          ( forAllTypes $ \t ->
-              forAllDims $ \ds ->
-                validTensorLikeType (tTensor t ds),
-            lamType $ \_t ->
-              lamDim $ \_ds ->
-                tUnit,
-            Nothing
-          ),
-          -- ----------------
+          ----------------
           -- HasRatLits --
           ----------------
           ( hasRatLits (tRatTensor dimNil),
@@ -160,69 +111,6 @@ allInstances =
             lamDims $ \ds ->
               implLam "t" type0 $ \t ->
                 tTensor t ds,
-            Nothing
-          ),
-          ------------
-          -- HasNeg --
-          ------------
-          ( forAllDims $ \dims -> hasNeg (tRatTensor dims) (tRatTensor dims),
-            lamDims $ \dims -> builtinFunction (Neg NegRatTensor) .@@@ [dims],
-            Nothing
-          ),
-          ------------
-          -- HasAt --
-          ------------
-          ( forAllTypes $ \tElem ->
-              forAllDim Irrelevant $ \d ->
-                hasAt (tVector tElem d) (tIndex d) tElem,
-            lamType $ \tElem ->
-              lamDim $ \d ->
-                builtinFunction AtVector @@@ [tElem] .@@@ [d],
-            Nothing
-          ),
-          ( forAllTypes $ \tElem ->
-              forAllDim Irrelevant $ \d ->
-                forAllDims $ \ds ->
-                  hasAt (tTensor tElem (cons tDim d ds)) (tIndex d) (tTensor tElem ds),
-            lamType $ \tElem ->
-              lamDim $ \d ->
-                lamDims $ \ds ->
-                  builtinFunction AtTensor @@@ [tElem] .@@@ [d, ds],
-            Nothing
-          ),
-          ------------
-          -- HasForeach --
-          ------------
-          ( forAllTypes $ \tElem ->
-              forAllDim Relevant $ \d ->
-                hasForeach (tVector tElem d) (tIndex d) tElem,
-            lamType $ \tElem ->
-              lam "d" (Implicit False) Relevant tDim $ \d ->
-                builtinFunction ForeachVector @@@ [tElem, d],
-            Nothing
-          ),
-          ( forAllTypes $ \tElem ->
-              forAllDim Relevant $ \d ->
-                forAllDims $ \ds ->
-                  hasForeach (tTensor tElem (cons tDim d ds)) (tIndex d) (tTensor tElem ds),
-            lamType $ \tElem ->
-              lam "d" (Implicit False) Relevant tDim $ \d ->
-                lamDims $ \ds ->
-                  builtinFunction ForeachTensor @@@ [tElem, d] .@@@ [ds],
-            Nothing
-          ),
-          ------------
-          -- HasMap --
-          ------------
-          ( hasMap tListRaw,
-            builtinFunction MapList,
-            Nothing
-          ),
-          ------------
-          -- HasFold --
-          ------------
-          ( hasFold tListRaw,
-            builtinFunction FoldList,
             Nothing
           )
         ]

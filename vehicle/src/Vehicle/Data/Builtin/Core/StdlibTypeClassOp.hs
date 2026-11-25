@@ -27,7 +27,12 @@ data StdlibTypeClassOp
   | SubTC
   | MulTC
   | DivTC
+  | NegTC
   | ComparisonTC ComparisonOp
+  | AtTC
+  | ForeachTC
+  | MapTC
+  | FoldTC
   deriving stock (Eq, Show)
 
 -- | Displays the surface-syntax operator that the type-class operation is
@@ -45,8 +50,9 @@ instance Pretty StdlibTypeClassOp where
 stdlibTypeClassOps :: [StdlibTypeClassOp]
 stdlibTypeClassOps =
   fmap QuantifierTC [Forall, Exists]
-    <> [AddTC, SubTC, MulTC, DivTC]
+    <> [AddTC, SubTC, MulTC, DivTC, NegTC]
     <> fmap ComparisonTC comparisonOps
+    <> [AtTC, ForeachTC, MapTC, FoldTC]
 
 -- | The name of the type-class operation in the stdlib.
 stdlibTypeClassOpName :: StdlibTypeClassOp -> Text
@@ -57,12 +63,17 @@ stdlibTypeClassOpName = \case
   SubTC -> "subTC"
   MulTC -> "mulTC"
   DivTC -> "divTC"
+  NegTC -> "negTC"
   ComparisonTC Le -> "leTC"
   ComparisonTC Lt -> "ltTC"
   ComparisonTC Ge -> "geTC"
   ComparisonTC Gt -> "gtTC"
   ComparisonTC Eq -> "eqTC"
   ComparisonTC Ne -> "neTC"
+  AtTC -> "atTC"
+  ForeachTC -> "foreachTC"
+  MapTC -> "mapTC"
+  FoldTC -> "foldTC"
 
 -- | Finds the stdlib type-class operation with the provided name, if any.
 lookupStdlibTypeClassOp :: Text -> Maybe StdlibTypeClassOp

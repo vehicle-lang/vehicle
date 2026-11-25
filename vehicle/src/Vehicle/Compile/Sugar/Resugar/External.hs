@@ -258,7 +258,7 @@ delabBuiltinFunction fun args = case fun of
   V.If -> delabIf args
   V.Add _dom -> delabInfixOp2 B.Add tokAdd args
   V.Mul _dom -> delabInfixOp2 B.Mul tokMul args
-  V.Neg _dom -> delabTypeClassOp V.NegTC args
+  V.Neg _dom -> delabOp1 B.Neg tokSub args
   V.Sub _dom -> delabInfixOp2 B.Sub tokSub args
   V.Div _dom -> delabInfixOp2 B.Div tokDiv args
   V.Min _dom -> delabApp (B.Min tokMin) args
@@ -275,8 +275,8 @@ delabBuiltinFunction fun args = case fun of
     _ -> cheatDelabPretty op args
   V.CompareIndex op -> delabComparison op args
   V.CompareNat op -> delabComparison op args
-  V.FoldList -> delabTypeClassOp V.FoldTC args
-  V.MapList -> delabTypeClassOp V.MapTC args
+  V.FoldList -> delabApp (B.Fold tokFold) args
+  V.MapList -> delabApp (B.Map tokMap) args
   V.AppendList -> delabApp (B.Append tokAppend) args
   V.AtTensor -> delabInfixOp2 B.At tokAt args
   V.AtVector -> delabInfixOp2 B.At tokAt args
@@ -312,8 +312,6 @@ delabBuiltinType fun args = case fun of
 
 delabTypeClass :: (MonadDelab m) => V.TypeClass -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClass tc args = case tc of
-  V.HasMap -> delabApp (B.HasMap tokHasMap) args
-  V.HasFold -> delabApp (B.HasFold tokHasFold) args
   _ -> cheat
   where
     cheat = delabApp (B.Var (delabSymbol (layoutAsText $ pretty tc))) args
@@ -344,11 +342,6 @@ delabTypeClassOp op args = case op of
   V.FromNatTC {} -> cheatDelabPretty op args
   V.FromRatTC {} -> cheatDelabPretty op args
   V.VecLiteralTC {} -> delabVecLiteral (rawHead op) args
-  V.NegTC -> delabOp1 B.Neg tokSub args
-  V.MapTC -> delabApp (B.Map tokMap) args
-  V.FoldTC -> delabApp (B.Fold tokFold) args
-  V.AtTC -> delabInfixOp2 B.At tokAt args
-  V.ForeachTC -> delabForeach (rawHead op) args
   V.TensorTypeTC -> cheatDelabPretty op args
 
 -- | Converts an application of a stdlib type-class operation back into the
@@ -359,12 +352,19 @@ delabTypeClassOp op args = case op of
 delabStdlibTypeClassOp :: (MonadDelab m) => StdlibTypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
 delabStdlibTypeClassOp tcOp args = case tcOp of
   QuantifierTC q -> delabQuantifier q fallbackHead args
+  ForeachTC -> delabForeach fallbackHead args
+  MapTC -> delabApp (B.Map tokMap) args
+  FoldTC -> delabApp (B.Fold tokFold) args
+  NegTC -> case args of
+    [arg] | V.isExplicit arg -> delabOp1 B.Neg tokSub args
+    _ -> delabApp fallbackHead args
   _ | not (isBinaryOpArgs args) -> delabApp fallbackHead args
   AddTC -> delabInfixOp2 B.Add tokAdd args
   SubTC -> delabInfixOp2 B.Sub tokSub args
   MulTC -> delabInfixOp2 B.Mul tokMul args
   DivTC -> delabInfixOp2 B.Div tokDiv args
   ComparisonTC op -> delabComparison op args
+  AtTC -> delabInfixOp2 B.At tokAt args
   where
     fallbackHead = cheatDelab (stdlibTypeClassOpName tcOp)
     isBinaryOpArgs = \case

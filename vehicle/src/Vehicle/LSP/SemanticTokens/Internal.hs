@@ -254,11 +254,6 @@ getBuiltinToken = \case
     FromNatTC -> Nothing
     FromRatTC -> Nothing
     VecLiteralTC -> tok SemanticTokenTypes_Keyword
-    NegTC -> tok SemanticTokenTypes_Operator
-    AtTC -> tok SemanticTokenTypes_Operator
-    MapTC -> tok SemanticTokenTypes_Keyword
-    FoldTC -> tok SemanticTokenTypes_Keyword
-    ForeachTC -> tok SemanticTokenTypes_Keyword
     TensorTypeTC -> tok SemanticTokenTypes_Type
   NatInDomainConstraint -> Nothing
   where

@@ -1,4 +1,4 @@
-Error in file 'intAsNat.vcl' at Line 2, Columns 7-8: unable to work out a valid type for the overloaded expression '-'.
+Error in file 'intAsNat.vcl' at Line 2, Columns 7-8: unable to work out a valid type for the overloaded expression 'negTC'.
 The possible options explored were:
-  1. Tensor Real ds -> Tensor Real A
+  1. Tensor Real dims -> Tensor Real t1
     - rejected: 'Nat' is not equal to 'Tensor Real ?6'.

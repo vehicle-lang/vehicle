@@ -122,29 +122,8 @@ builtinTypeClass = builtin . mkBuiltinTypeClass
 typeClass :: (BuiltinHasStandardTypeClasses builtin) => TypeClass -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 typeClass tc args = builtinTypeClass tc @@ args
 
-hasQuantifier :: (BuiltinHasStandardTypeClasses builtin) => Quantifier -> DSLExpr builtin -> DSLExpr builtin
-hasQuantifier q t = typeClass (HasQuantifier q) [t]
-
 numOp2TypeClass :: (BuiltinHasStandardTypeClasses builtin) => TypeClass -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 numOp2TypeClass tc t1 t2 t3 = typeClass tc [t1, t2, t3]
-
-hasNeg :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasNeg t1 t2 = typeClass HasNeg [t1, t2]
-
-hasAt :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasAt tCont tInd tRes = typeClass HasAt [tCont, tInd, tRes]
-
-hasForeach :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasForeach tInd tElem tRes = typeClass HasForeach [tInd, tElem, tRes]
-
-hasMap :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-hasMap tCont = typeClass HasMap [tCont]
-
-hasFold :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-hasFold tCont = typeClass HasFold [tCont]
-
-hasQuantifierIn :: (BuiltinHasStandardTypeClasses builtin) => Quantifier -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasQuantifierIn q tCont tElem tRes = typeClass (HasQuantifierIn q) [tCont, tElem, tRes]
 
 hasNatLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 hasNatLits t = typeClass HasNatLits [t]
@@ -154,24 +133,6 @@ hasRatLits t = typeClass HasRatLits [t]
 
 hasVecLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasVecLits tCont tElem d = typeClass HasVecLits [tCont, tElem, d]
-
-validParameterType :: (BuiltinHasStandardTypeClasses builtin) => ParameterSort -> DSLExpr builtin -> DSLExpr builtin
-validParameterType s t = typeClass (ValidParameterType s) [t]
-
-validPropertyType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validPropertyType t = typeClass ValidPropertyType [t]
-
-validInferableParameterType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validInferableParameterType t = typeClass (ValidParameterType Inferable) [t]
-
-validNonInferableParameterType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validNonInferableParameterType t = typeClass (ValidParameterType NonInferable) [t]
-
-validNetworkTensorType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validNetworkTensorType t = typeClass ValidNetworkTensorType [t]
-
-validTensorLikeType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validTensorLikeType t = typeClass ValidTensorLikeType [t]
 
 --------------------------------------------------------------------------------
 -- Dimension types DSL
