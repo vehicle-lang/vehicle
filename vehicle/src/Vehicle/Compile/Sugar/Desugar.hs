@@ -24,6 +24,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Sugar.Core
 import Vehicle.Data.AST qualified as V
 import Vehicle.Data.AST.Expr.Desugared qualified as V
+import Vehicle.Data.Builtin.Core.StdlibTypeClassOp
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard qualified as V
 import Vehicle.Data.Real (ExtendedRational (..))
@@ -406,8 +407,8 @@ elabExpr expr = case expr of
   B.Lam tk1 ns _tk2 e -> elabLam tk1 ns e
   B.Record xs -> elabRecord xs
   B.RecordAcc e n -> elabRecordAcc e n
-  B.Forall tk1 ns e -> standardLibQuantifier tk1 "forallTC" ns e
-  B.Exists tk1 ns e -> standardLibQuantifier tk1 "existsTC" ns e
+  B.Forall tk1 ns e -> stdlibQuantifier tk1 (stdlibTypeClassOpName (QuantifierTC V.Forall)) ns e
+  B.Exists tk1 ns e -> stdlibQuantifier tk1 (stdlibTypeClassOpName (QuantifierTC V.Exists)) ns e
   B.ForallIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
   B.ExistsIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Exists ns e1 e2
   B.Foreach tk1 ns e -> elabForeach tk1 ns e
@@ -429,22 +430,22 @@ elabExpr expr = case expr of
   B.Or e1 tk e2 -> builtinFunction V.Or tk [e1, e2]
   B.Transpose tk -> builtinFunction V.Transpose tk []
   B.If tk1 e1 _ e2 _ e3 -> builtinFunction V.If tk1 [e1, e2, e3]
-  B.Eq e1 tk e2 -> standardLibComparison V.Eq tk e1 e2
-  B.Ne e1 tk e2 -> standardLibComparison V.Ne tk e1 e2
-  B.Le e1 tk e2 -> standardLibComparison V.Le tk e1 e2
-  B.Lt e1 tk e2 -> standardLibComparison V.Lt tk e1 e2
-  B.Ge e1 tk e2 -> standardLibComparison V.Ge tk e1 e2
-  B.Gt e1 tk e2 -> standardLibComparison V.Gt tk e1 e2
+  B.Eq e1 tk e2 -> stdlibComparison V.Eq tk e1 e2
+  B.Ne e1 tk e2 -> stdlibComparison V.Ne tk e1 e2
+  B.Le e1 tk e2 -> stdlibComparison V.Le tk e1 e2
+  B.Lt e1 tk e2 -> stdlibComparison V.Lt tk e1 e2
+  B.Ge e1 tk e2 -> stdlibComparison V.Ge tk e1 e2
+  B.Gt e1 tk e2 -> stdlibComparison V.Gt tk e1 e2
   B.EqPoint e1 tk e2 -> elabComparePointwise V.Eq tk [e1, e2]
   B.NePoint e1 tk e2 -> elabComparePointwise V.Ne tk [e1, e2]
   B.LePoint e1 tk e2 -> elabComparePointwise V.Le tk [e1, e2]
   B.LtPoint e1 tk e2 -> elabComparePointwise V.Lt tk [e1, e2]
   B.GePoint e1 tk e2 -> elabComparePointwise V.Ge tk [e1, e2]
   B.GtPoint e1 tk e2 -> elabComparePointwise V.Gt tk [e1, e2]
-  B.Add e1 tk e2 -> standardLibFunction "addTC" tk [e1, e2]
-  B.Sub e1 tk e2 -> standardLibFunction "subTC" tk [e1, e2]
-  B.Mul e1 tk e2 -> standardLibFunction "mulTC" tk [e1, e2]
-  B.Div e1 tk e2 -> standardLibFunction "divTC" tk [e1, e2]
+  B.Add e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName AddTC) tk [e1, e2]
+  B.Sub e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName SubTC) tk [e1, e2]
+  B.Mul e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName MulTC) tk [e1, e2]
+  B.Div e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName DivTC) tk [e1, e2]
   B.Pow e1 tk e2 -> builtinFunction (V.Pow V.PowRatTensor) tk [e1, e2]
   B.Min tk -> builtinFunction (V.Min V.MinRatTensor) tk []
   B.Max tk -> builtinFunction (V.Max V.MaxRatTensor) tk []
@@ -731,8 +732,8 @@ builtinFunction b = builtin (V.BuiltinFunction b)
 derivedFunction :: (MonadElab m, IsToken token) => V.DerivedFunction -> token -> [B.Expr] -> m (V.Expr Builtin)
 derivedFunction b = builtin (V.DerivedFunction b)
 
-standardLibFunction :: (MonadElab m, IsToken token) => V.Name -> token -> [B.Expr] -> m (V.Expr Builtin)
-standardLibFunction name tk args = do
+stdlibFunction :: (MonadElab m, IsToken token) => V.Name -> token -> [B.Expr] -> m (V.Expr Builtin)
+stdlibFunction name tk args = do
   p <- mkProvenance tk
   app (V.Var p name) <$> traverse elabExpr args
 
@@ -785,8 +786,8 @@ elabLam tk binders body = do
   body' <- elabExpr body
   return $ foldr (V.Lam p) body' binders'
 
-standardLibComparison :: (MonadElab m, IsToken token, DesugarableBuiltin Builtin) => V.ComparisonOp -> token -> B.Expr -> B.Expr -> m (V.Expr Builtin)
-standardLibComparison op tk e1 e2 = do
+stdlibComparison :: (MonadElab m, IsToken token, DesugarableBuiltin Builtin) => V.ComparisonOp -> token -> B.Expr -> B.Expr -> m (V.Expr Builtin)
+stdlibComparison op tk e1 e2 = do
   let Tk tkDetails = toToken tk
   let chainedOrder = case e1 of
         B.Le _ _ e -> Just (V.Le, e)
@@ -797,13 +798,9 @@ standardLibComparison op tk e1 e2 = do
         _ -> Nothing
   p <- mkProvenance tk
   case chainedOrder of
-    Nothing -> case op of
-      V.Le -> app (V.Var p "leTC") <$> traverse elabExpr [e1, e2]
-      V.Lt -> app (V.Var p "ltTC") <$> traverse elabExpr [e1, e2]
-      V.Ge -> app (V.Var p "geTC") <$> traverse elabExpr [e1, e2]
-      V.Gt -> app (V.Var p "gtTC") <$> traverse elabExpr [e1, e2]
-      V.Eq -> app (V.Var p "eqTC") <$> traverse elabExpr [e1, e2]
-      V.Ne -> app (V.Var p "neTC") <$> traverse elabExpr [e1, e2]
+    Nothing -> do
+      let tcOp = V.Var p (stdlibTypeClassOpName (ComparisonTC op))
+      app tcOp <$> traverse elabExpr [e1, e2]
     Just (prevOp, e)
       | not (V.chainable prevOp op) -> do
           throwError $ UnchainableComparisons p prevOp op
@@ -815,14 +812,14 @@ standardLibComparison op tk e1 e2 = do
           V.Eq -> B.Eq e (B.TokEq tkDetails) e2
           V.Ne -> B.Ne e (B.TokNe tkDetails) e2
 
-standardLibQuantifier ::
+stdlibQuantifier ::
   (MonadElab m, IsToken token) =>
   token ->
   V.Name ->
   [B.NameBinder] ->
   B.Expr ->
   m (V.Expr Builtin)
-standardLibQuantifier tk name binders body = do
+stdlibQuantifier tk name binders body = do
   p <- mkProvenance tk
   let quant = V.Var p name
 

@@ -64,8 +64,12 @@ instance HasIdentifier Identifier where
 userModulePath :: ModulePath
 userModulePath = ModulePath ["User"]
 
+-- | The path of the module in the stdlib that contains its definitions.
+stdlibDefinitionsModulePath :: ModulePath
+stdlibDefinitionsModulePath = ModulePath ["Definitions"]
+
 stdlibIdentifier :: Name -> Identifier
-stdlibIdentifier = Identifier (ModulePath ["Definitions"])
+stdlibIdentifier = Identifier stdlibDefinitionsModulePath
 
 isUserCode :: (HasIdentifier a) => a -> Bool
 isUserCode object = modulePath (identifierOf object) == userModulePath

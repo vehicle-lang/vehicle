@@ -48,7 +48,7 @@ import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), emptyModuleScopingInterface, emptyModuleTypingInterface)
 import Vehicle.Data.Variable.Free.Context (FreeContextT, MonadFreeContext (..), addDeclToContext, runFreshFreeContextT)
-import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath, standardLibraryInstanceOps)
+import Vehicle.Libraries.Stdlib (stdlibBuiltinModulePath, stdlibInstanceOps)
 import Vehicle.Syntax.Parse (parseExternalModule)
 
 polarityTypeCheck ::
@@ -141,9 +141,9 @@ loadTypeSystemBuiltins ::
   m (ImportedModuleContext builtin)
 loadTypeSystemBuiltins typeSystem _instanceCandidates = do
   -- Locate the builtin module file
-  let builtinModulePath = standardLibraryBuiltinModulePath (Just typeSystem)
-  -- standardLibraryPath <- getLibraryPath standardLibraryName
-  -- let builtinModuleFile = calculateModuleFilePath standardLibraryPath builtinModulePath
+  let builtinModulePath = stdlibBuiltinModulePath (Just typeSystem)
+  -- stdlibPath <- getLibraryPath stdlibName
+  -- let builtinModuleFile = calculateModuleFilePath stdlibPath builtinModulePath
 
   -- Parse the builtin file
   -- builtinModuleText <- readSpecification builtinModuleFile
@@ -212,7 +212,7 @@ resolveInstanceArgumentsAndCasts (Main decls) =
 
     removeExternalInstances :: FreeVarUpdate (FreeContextT builtin m) builtin
     removeExternalInstances recGo p ident args
-      | Set.member ident standardLibraryInstanceOps = do
+      | Set.member ident stdlibInstanceOps = do
           args' <- traverseArgs recGo args
           (inst, remainingArgs) <- findInstanceArg ident args'
           unfoldedInst <- unfoldInstance inst

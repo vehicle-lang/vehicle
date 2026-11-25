@@ -3,8 +3,8 @@ DL2Loss = {trueElement = 0.0, falseElement = infinity, pointwiseNegation = \dims
 
 @property;
 conjunction : (Tensor Real -> Tensor Real) -> Tensor Bool -> Tensor Real;
-conjunction f strict = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (where (DL2Loss.pointwiseGreaterEqualThan nil (f [x] ! 0) 0.5) strict (DL2Loss.trueElement))))
+conjunction f strict = DL2Loss.pointwiseNegation [] (search [] 0.0 1.0 (\x -> DL2Loss.pointwiseNegation [] (where (DL2Loss.pointwiseGreaterEqualThan [] (f [x] ! 0) 0.5) strict (DL2Loss.trueElement))))
 
 @property;
 condition : (Tensor Real -> Tensor Real) -> Tensor Bool -> Tensor Real;
-condition f strict = DL2Loss.pointwiseNegation nil (search nil 0.0 1.0 (\x -> DL2Loss.pointwiseNegation nil (if strict then DL2Loss.pointwiseGreaterEqualThan nil (f [x] ! 0) 0.5 else DL2Loss.pointwiseLessEqualThan nil (f [x] ! 0) 0.5)))
+condition f strict = DL2Loss.pointwiseNegation [] (search [] 0.0 1.0 (\x -> DL2Loss.pointwiseNegation [] (if strict then DL2Loss.pointwiseGreaterEqualThan [] (f [x] ! 0) 0.5 else DL2Loss.pointwiseLessEqualThan [] (f [x] ! 0) 0.5)))
