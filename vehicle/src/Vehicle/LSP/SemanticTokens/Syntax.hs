@@ -87,8 +87,13 @@ collectSyntaxTokensFromDecl = \case
     mkKeywordTok tkRecord
       : mkKeywordTok tkWhere
       : collectSyntaxTokensFromNameBinders binders
-      ++ map (\(FieldDef _ tk _) -> mkElemOfTok tk) fields
+      ++ concatMap collectSyntaxTokensFromRecordFieldDef fields
       ++ supportsToks
+
+collectSyntaxTokensFromRecordFieldDef :: RecordFieldDef -> [IntermediateSemTok]
+collectSyntaxTokensFromRecordFieldDef (FieldDef _ tk expr) =
+  mkElemOfTok tk
+    : collectSyntaxTokensFromExpr expr
 
 collectSyntaxTokensFromExprs :: [Expr] -> [IntermediateSemTok]
 collectSyntaxTokensFromExprs = concatMap collectSyntaxTokensFromExpr
