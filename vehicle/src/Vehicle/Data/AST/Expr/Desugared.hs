@@ -196,7 +196,8 @@ instance HasBuiltinBinders (Expr Builtin) where
     _ -> Nothing
 
   getForeachBinder = \case
-    App (Builtin _ (TypeClassOp ForeachTC)) ((argExpr -> Lam _ binder body) :| []) -> Just (binder, body)
+    App (Var _ name) ((argExpr -> Lam _ binder body) :| [])
+      | lookupStdlibTypeClassOp name == Just ForeachTC -> Just (binder, body)
     _ -> Nothing
 
 --------------------------------------------------------------------------------

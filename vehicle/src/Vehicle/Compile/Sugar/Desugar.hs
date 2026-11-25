@@ -453,13 +453,20 @@ elabExpr expr = case expr of
   B.Max tk -> builtinFunction (V.Max V.MaxRatTensor) tk []
   B.Log tk -> builtinFunction (V.Log V.LogRatTensor) tk []
   B.Exp tk -> builtinFunction (V.Exp V.ExpRatTensor) tk []
-  B.Neg tk e -> builtinTypeClassOp V.NegTC tk [e]
+  B.Neg tk e -> stdlibFunction (stdlibTypeClassOpName NegTC) tk [e]
   B.AddNat tk -> builtinFunction (V.Add V.AddNat) tk []
   B.MulNat tk -> builtinFunction (V.Mul V.MulNat) tk []
   B.AddRealTensor tk -> builtinFunction (V.Add V.AddRatTensor) tk []
   B.SubRealTensor tk -> builtinFunction (V.Sub V.SubRatTensor) tk []
   B.MulRealTensor tk -> builtinFunction (V.Mul V.MulRatTensor) tk []
   B.DivRealTensor tk -> builtinFunction (V.Div V.DivRatTensor) tk []
+  B.NegRealTensor tk -> builtinFunction (V.Neg V.NegRatTensor) tk []
+  B.AtVector tk -> builtinFunction V.AtVector tk []
+  B.AtTensor tk -> builtinFunction V.AtTensor tk []
+  B.ForeachVector tk -> builtinFunction V.ForeachVector tk []
+  B.ForeachTensor tk -> builtinFunction V.ForeachTensor tk []
+  B.MapList tk -> builtinFunction V.MapList tk []
+  B.FoldList tk -> builtinFunction V.FoldList tk []
   B.QuantifyForAllIndex tk -> derivedFunction (V.QuantifyIndex V.Forall) tk []
   B.QuantifyExistsIndex tk -> derivedFunction (V.QuantifyIndex V.Exists) tk []
   B.QuantifyForallRealTensor tk -> elabQuantifyRatTensor V.Forall tk []
@@ -490,9 +497,9 @@ elabExpr expr = case expr of
   B.CompareRatTensorReducedLt tk -> elabCompareReduced V.Lt tk []
   B.CompareRatTensorReducedGe tk -> elabCompareReduced V.Ge tk []
   B.CompareRatTensorReducedGt tk -> elabCompareReduced V.Gt tk []
-  B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
-  B.Map tk -> builtinTypeClassOp V.MapTC tk []
-  B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
+  B.At e1 tk e2 -> stdlibFunction (stdlibTypeClassOpName AtTC) tk [e1, e2]
+  B.Map tk -> stdlibFunction (stdlibTypeClassOpName MapTC) tk []
+  B.Fold tk -> stdlibFunction (stdlibTypeClassOpName FoldTC) tk []
   B.Append tk -> builtinFunction V.AppendList tk []
   B.Const tk -> builtinFunction V.ConstTensor tk []
   B.ReduceOr tk -> builtinFunction V.ReduceOrTensor tk []
@@ -501,8 +508,6 @@ elabExpr expr = case expr of
   B.ReduceMul tk -> builtinFunction V.ReduceMulRatTensor tk []
   B.ReduceMin tk -> builtinFunction V.ReduceMinRatTensor tk []
   B.ReduceMax tk -> builtinFunction V.ReduceMaxRatTensor tk []
-  B.HasMap tk -> builtinTypeClass V.HasMap tk []
-  B.HasFold tk -> builtinTypeClass V.HasFold tk []
   B.IsTensorType tk -> builtinTypeClass V.IsTensorType tk []
   -- NOTE: we reverse the arguments to make it well-typed.
   B.Ann e tk t -> derivedFunction V.TypeAnn tk [t, e]
@@ -916,7 +921,7 @@ elabForeach tk binders body = do
 
   let mkForeach binder newBody =
         V.normAppList
-          (V.Builtin p $ V.TypeClassOp V.ForeachTC)
+          (V.Var p (stdlibTypeClassOpName ForeachTC))
           [ mkArg mempty V.Explicit (V.Lam mempty binder newBody)
           ]
 
