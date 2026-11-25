@@ -11,9 +11,13 @@ test_tokensDeclarations =
     [ testCase "single-argument function" $
         expectTokens
           [ "foo" `as` (SemanticTokenTypes_Function, []),
-            " : ",
+            " ",
+            ":" `as` (SemanticTokenTypes_Operator, []),
+            " ",
             "Real" `as` (SemanticTokenTypes_Type, []),
-            " -> ",
+            " ",
+            "->" `as` (SemanticTokenTypes_Operator, []),
+            " ",
             "Real" `as` (SemanticTokenTypes_Type, []),
             "\n",
             "foo" `eventually` (SemanticTokenTypes_Function, []),
@@ -26,14 +30,16 @@ test_tokensDeclarations =
           AllowStrictOverlaps,
       testCase "@ annotations" $
         expectTokens
-          [ "@parameter" `eventually` (SemanticTokenTypes_Decorator, []),
+          [ "@parameter" `as` (SemanticTokenTypes_Decorator, []),
             "\n",
             "p" `as` (SemanticTokenTypes_Variable, []),
-            " : ",
+            " ",
+            ":" `as` (SemanticTokenTypes_Operator, []),
+            " ",
             "Nat" `as` (SemanticTokenTypes_Type, []),
             "\n"
           ]
-          NoOverlaps,
+          AllowStrictOverlaps,
       testCase "type aliases" $
         expectTokens
           [ "type" `eventually` (SemanticTokenTypes_Keyword, []),
@@ -43,5 +49,5 @@ test_tokensDeclarations =
             "Nat" `as` (SemanticTokenTypes_Type, []),
             "\n"
           ]
-          NoOverlaps
+          AllowStrictOverlaps
     ]

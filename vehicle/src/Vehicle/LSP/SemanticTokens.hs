@@ -28,7 +28,8 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Variable.Bound.Context.Generic (runFreshBoundContextT)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, runFreshFreeContextT)
 import Vehicle.LSP.SemanticTokens.Comments (collectCommentsTokens)
-import Vehicle.LSP.SemanticTokens.Internal (collectDeclsTokens)
+import Vehicle.LSP.SemanticTokens.Internal (LspErrorMessage, collectDeclsTokens)
+import Vehicle.LSP.SemanticTokens.Syntax (collectSyntaxTokens)
 import Vehicle.LSP.State (MonadVehicleLsp)
 import Vehicle.Prelude.Logging (runSilentLoggerT)
 import Vehicle.Prelude.Prettyprinter (Pretty (..), layoutAsText)
@@ -37,41 +38,44 @@ import Vehicle.TypeCheck (loadUserSpecification)
 --------------------------------------------------------------------------------
 -- API
 
--- Inherited from `Language.LSP.Protocol.Types.SemanticTokens.makeSemanticTokens`,
--- type-aliased for readability.
-type LspErrorMessage = Text
-
 collectSemanticTokens ::
   (MonadVehicleLsp m) =>
   LogAction m (WithSeverity Text) ->
   FilePath ->
   m (Either LspErrorMessage Lsp.SemanticTokens)
 collectSemanticTokens logger filePath = do
-  (errorOrToks, _warnings) <-
-    runSilentLoggerT $ logCompileError $ do
-      -- TODO: This means a specification has to successfully type check before we can
-      -- produce semantic tokens for it, which sucks. We should just do scope checking
-      -- here instead.
-      (Main userDecls, builtinModules, _) <- loadUserSpecification filePath
-      let builtinDecls = concat (elems builtinModules)
-
-      maybeToks <-
-        runFreshFreeContextT (Proxy @Builtin) $
-          populateFreeContext builtinDecls $
-            runFreshBoundContextT (Proxy @(Expr Builtin)) $
-              flip runReaderT filePath $
-                collectDeclsTokens userDecls
-
-      return $ catMaybes maybeToks
-
   commentsToks <- catMaybes <$> collectCommentsTokens filePath
 
-  case errorOrToks of
+  errorOrSyntaxToks <- collectSyntaxTokens filePath
+
+  case errorOrSyntaxToks of
     Left err -> do
-      logger <& (layoutAsText $ pretty $ formatError err) `WithSeverity` Warning
+      logger <& (layoutAsText $ pretty err) `WithSeverity` Warning
       return $ makeLspSemanticTokens commentsToks
-    Right toks ->
-      return $ makeLspSemanticTokens (toks ++ commentsToks)
+    Right syntaxToks -> do
+      (errorOrToks, _warnings) <-
+        runSilentLoggerT $ logCompileError $ do
+          -- TODO: This means a specification has to successfully type check before we can
+          -- produce semantic tokens for it, which sucks. We should just do scope checking
+          -- here instead.
+          (Main userDecls, builtinModules, _) <- loadUserSpecification filePath
+          let builtinDecls = concat (elems builtinModules)
+
+          maybeToks <-
+            runFreshFreeContextT (Proxy @Builtin) $
+              populateFreeContext builtinDecls $
+                runFreshBoundContextT (Proxy @(Expr Builtin)) $
+                  flip runReaderT filePath $
+                    collectDeclsTokens userDecls
+
+          return $ catMaybes maybeToks
+
+      case errorOrToks of
+        Left err -> do
+          logger <& (layoutAsText $ pretty $ formatError err) `WithSeverity` Warning
+          return $ makeLspSemanticTokens (syntaxToks ++ commentsToks)
+        Right toks ->
+          return $ makeLspSemanticTokens (toks ++ syntaxToks ++ commentsToks)
   where
     makeLspSemanticTokens :: [Lsp.SemanticTokenAbsolute] -> Either LspErrorMessage Lsp.SemanticTokens
     makeLspSemanticTokens tokens = do
