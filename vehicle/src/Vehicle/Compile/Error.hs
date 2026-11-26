@@ -5,6 +5,7 @@ module Vehicle.Compile.Error
     VehicleError,
     FrontendError (..),
     BackendError (..),
+    UnboundedNetworkInput (..),
     ParseError (..),
     ScopeError (..),
     TypingError (..),
@@ -32,6 +33,7 @@ import Control.Monad.Except (MonadError)
 import Data.Aeson (ToJSON, genericToJSON)
 import Data.Aeson.Types (ToJSON (..))
 import Data.List.NonEmpty (NonEmpty)
+import Data.Set (Set)
 import Data.Text (Text)
 import Data.Void (Void)
 import GHC.Generics (Generic)
@@ -163,6 +165,19 @@ data FrontendError
 
 deriving stock instance Show FrontendError
 
+-- | Information about a network application whose input could not be bounded.
+data UnboundedNetworkInput = UnboundedNetworkInput
+  { -- | The network being applied.
+    unboundedNetworkName :: NetworkName,
+    -- | The type of the network's input.
+    unboundedInputType :: NetworkIOType,
+    -- | The input to the network.
+    unboundedInputValue :: Thunk Builtin,
+    -- | The parts of the input that are missing lower and/or upper bounds.
+    unboundedIndices :: UnboundedIndices
+  }
+  deriving stock (Show)
+
 -- | Errors thrown by the back end of the compiler.
 data BackendError
   = -- Resource loading errors
@@ -197,7 +212,8 @@ data BackendError
   | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Thunk Builtin)]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (UnforcedBinder Builtin) (UnforcedType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
-  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, NetworkIOType, Thunk Builtin, [Lv], UnboundedIndices))
+  | -- | The set of networks is all the networks applied in the query.
+    UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (Set NetworkName) (NonEmpty UnboundedNetworkInput)
   | -- Loss backend errors
     UnknownDifferentiableLogic Name [Name]
   | UnreducableDifferentiableLogic DeclProvenance

@@ -1,0 +1,6 @@
+{
+  "name": "VNNLib",
+  "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -n encode:fake.onnx -n decode:fake.onnx",
+  "needs": ["spec.vcl", "fake.onnx"],
+  "external": []
+}

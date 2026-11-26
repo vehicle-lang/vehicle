@@ -16,9 +16,9 @@
                   "f₀[input]!1",
                   "f₀[input]!0",
                   "f₀[input]",
-                  "_t0!1",
-                  "_t0!0",
-                  "_t0"
+                  "x!1",
+                  "x!0",
+                  "x"
                 ],
                 "userVariables": [
                   0
@@ -31,7 +31,7 @@
                       {
                         "tag": "ConvertQuantifiedTensorLike",
                         "contents": [
-                          "_t0",
+                          "x",
                           "x",
                           [
                             "a",
@@ -242,9 +242,9 @@
                   "f₀[input]!1",
                   "f₀[input]!0",
                   "f₀[input]",
-                  "_t0!1",
-                  "_t0!0",
-                  "_t0"
+                  "y!1",
+                  "y!0",
+                  "y"
                 ],
                 "userVariables": [
                   0
@@ -257,7 +257,7 @@
                       {
                         "tag": "ConvertQuantifiedTensorLike",
                         "contents": [
-                          "_t0",
+                          "y",
                           "y",
                           [
                             "a",

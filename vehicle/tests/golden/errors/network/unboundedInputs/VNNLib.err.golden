@@ -1,0 +1,11 @@
+Error in file 'spec.vcl' at Line 11, Columns 1-2: Cannot compile property 'p' because some of the network inputs are unbounded.
+
+Verifiers require every network input to have both a lower and an upper bound, but Vehicle could not find bounds for the following:
+  in 'f x':
+    x ! 1   no lower or upper bound
+  in 'g (y + y)':
+    y + y   no lower or upper bound
+Fix: add assumptions to the property that bound these values, for example:
+  forall x y . ... and l <= x ! 1 <= u => ...
+where 'l' and 'u' are suitable constants.
+Bounding 'y' is sufficient to bound 'y + y'.

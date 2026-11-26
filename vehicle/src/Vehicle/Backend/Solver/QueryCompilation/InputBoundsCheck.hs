@@ -21,13 +21,11 @@ import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
-import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkModality (..), NetworkName)
 import Vehicle.Data.Assertion (NormalisedRelation (..), Relation (..))
 import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsEliminationWithErrors)
-import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr (LinearExpr (..))
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
@@ -323,10 +321,17 @@ checkAllBoundsPresent ::
   m (MaybeTrivial (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor))
 checkAllBoundsPresent allPartialbounds assertions = do
   (PropertyMetaData {..}, _, inputVariableMapping) <- ask
-  lv <- getBinderDepth
 
   errorsAndFinalBounds <- forM (Map.toList inputVariableMapping) $ \(var, (networkName, appInfo, varShape)) -> do
-    let errorCase indices = return $ Left (networkName, inputType appInfo, inputValue appInfo, findUnboundedVariables lv appInfo, indices)
+    let errorCase indices =
+          return $
+            Left
+              UnboundedNetworkInput
+                { unboundedNetworkName = networkName,
+                  unboundedInputType = inputType appInfo,
+                  unboundedInputValue = inputValue appInfo,
+                  unboundedIndices = indices
+                }
     case Map.lookup var allPartialbounds of
       Nothing -> errorCase wholeTensorUnbounded
       Just partialBounds -> do
@@ -342,7 +347,8 @@ checkAllBoundsPresent allPartialbounds assertions = do
     [] -> return ()
     i : is -> do
       nameCtx <- getCompleteNamedCtx
-      throwError $ UnboundedNetworkInputVariables propertyProvenance nameCtx (i :| is)
+      let networkNames = Set.fromList [n | (n, _, _) <- Map.elems inputVariableMapping]
+      throwError $ UnboundedNetworkInputVariables propertyProvenance nameCtx networkNames (i :| is)
 
   -- If Marabou, then warn if all inputs are constant.
   -- See https://github.com/NeuralNetworkVerification/Marabou/issues/670
@@ -364,10 +370,3 @@ checkAllBoundsPresent allPartialbounds assertions = do
               { variableBounds = boundedVariables,
                 assertions = ConjunctAll (a :| as)
               }
-
-findUnboundedVariables :: Lv -> NetworkApplicationInfo -> [Lv]
-findUnboundedVariables ctxSize appInfo = do
-  let inputExpr = (unnormalise ctxSize $ inputValue appInfo :: Expr Builtin)
-  -- TODO we actually need to do this recursively on any network variables that
-  -- live in this set.
-  Set.toList $ boundVariablesIn ctxSize inputExpr

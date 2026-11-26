@@ -90,7 +90,11 @@ wrapQuantifyRecord QuantifyRecordArgs {..} = do
   -- Build tensor binder with appropriate dims and type for record
   let Closure boundEnv _body = quantifyRecordBody
   let tensorType = Forced $ ITensorType (Forced IRatType) dims
-  let tensorBinderName = getFreshTensorBinderName namedCtx
+  -- Reuse the user's name for the record variable where possible so that
+  -- any errors refer to the variable the user actually wrote.
+  let tensorBinderName = case getMaybeNamedBinderInfo quantifyRecordBinder of
+        Just (userName, _) | Just userName `notElem` namedCtx -> userName
+        _ -> getFreshTensorBinderName namedCtx
   let tensorBinder = mkExplicitBinder tensorType (Just (mempty, tensorBinderName))
 
   let tensorBoundVar = explicit $ BoundVar mempty 0

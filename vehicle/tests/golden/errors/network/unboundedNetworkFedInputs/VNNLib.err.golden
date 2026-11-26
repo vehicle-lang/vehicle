@@ -1,0 +1,8 @@
+Error in file 'spec.vcl' at Line 11, Columns 1-2: Cannot compile property 'p' because some of the network inputs are unbounded.
+
+Verifiers require every network input to have both a lower and an upper bound, but Vehicle could not find bounds for the following:
+  in 'decode (encode x)':
+    encode x   no lower or upper bound
+
+Note that 'encode x' is computed from the output of 'encode'.
+Vehicle does not currently support bounding network inputs that are computed from the outputs of other networks.
