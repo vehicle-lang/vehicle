@@ -219,8 +219,6 @@ type InstanceConstraintInfo builtin =
     InstanceConstraintOrigin builtin
   )
 
-type InstanceSearchDepth = Int
-
 -- | Stores the list of instance candidates currently in scope.
 -- We use a HashMap rather than an ordinary Map as not all builtins may be
 -- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)

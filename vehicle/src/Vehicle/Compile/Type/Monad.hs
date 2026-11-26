@@ -14,7 +14,6 @@ module Vehicle.Compile.Type.Monad
     getUnsolvedMetas,
     solveMeta,
     getMetasLinkedToMetasIn,
-    trackSolvedMetas,
     prettyMeta,
     substMetaVariables,
     -- Constraints

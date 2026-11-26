@@ -29,14 +29,13 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 runInstanceSolver ::
   (MonadInstance builtin m, TypableBuiltin builtin) =>
   Proxy builtin ->
-  InstanceSearchDepth ->
   m ()
-runInstanceSolver proxy depth = do
+runInstanceSolver proxy = do
   logCompilerSection2 MaxDetail "instance solver run" $
     runConstraintSolver
       getActiveInstanceConstraints
       setInstanceConstraints
-      (solveInstanceConstraint depth)
+      solveInstanceConstraint
       True
       proxy
 
@@ -54,26 +53,24 @@ type MonadInstance builtin m =
 solveInstanceConstraint ::
   forall builtin m.
   (MonadInstance builtin m) =>
-  InstanceSearchDepth ->
   WithContext (InstanceConstraint builtin) ->
   m ()
-solveInstanceConstraint depth constraint = do
+solveInstanceConstraint constraint = do
   let goal = instanceGoal $ objectIn constraint
   candidateState <- getCurrentCandidateState constraint
-  solveInstanceGoal constraint candidateState depth goal
+  solveInstanceGoal constraint candidateState goal
 
 solveInstanceGoal ::
   forall builtin m.
   (MonadInstance builtin m) =>
   WithContext (InstanceConstraint builtin) ->
   InstanceCandidateState builtin ->
-  InstanceSearchDepth ->
   InstanceGoal builtin ->
   m ()
-solveInstanceGoal constraint (candidates, failedCandidates) depth goal = do
+solveInstanceGoal constraint (candidates, failedCandidates) goal = do
   -- Try all candidates
   (unsuccessfulCandidates, successfulCandidates) <-
-    partitionEithers <$> traverse (checkCandidate constraint goal depth) candidates
+    partitionEithers <$> traverse (checkCandidate constraint goal) candidates
 
   case successfulCandidates of
     -- If there is a single valid candidate then we adopt the resulting state
@@ -114,7 +111,6 @@ solveInstanceGoal constraint (candidates, failedCandidates) depth goal = do
               { instanceCandidateState = Just (newPossibleCandidates, newFailedCandidates)
               }
       -- TODO can we be more precise with the set of blocking metas?
-      -- Probably not as the set of blocking metas will depend on the depth at which we're searching
       blockedConstraint <- blockConstraintOn newConstraint <$> getUnsolvedMetas (Proxy @builtin)
 
       addInstanceConstraints [blockedConstraint]
@@ -200,10 +196,9 @@ checkCandidate ::
   (MonadInstance builtin m) =>
   WithContext (InstanceConstraint builtin) ->
   InstanceGoal builtin ->
-  InstanceSearchDepth ->
   WithContext (InstanceCandidate builtin) ->
   m (Either (FailedInstanceCandidate builtin) (SuccessfulInstanceCandidate builtin))
-checkCandidate constraint goal depth candidate = do
+checkCandidate constraint goal candidate = do
   let candidateDoc = squotes (prettyExternal candidate)
   logCompilerSection2 MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
     result <- runTypeCheckerTHypothetically $ do
@@ -211,12 +206,8 @@ checkCandidate constraint goal depth candidate = do
         logCompilerSection MaxDetail "hypothetically accepting candidate" $
           acceptCandidate constraint goal candidate
 
-      -- Run the solvers to check for conflicts
-      let proxy = Proxy @builtin
-      runUnificationSolver proxy False
-      if depth == 0
-        then return mempty
-        else runInstanceSolver proxy (depth - 1)
+      -- Run the unification solver to check for conflicts
+      runUnificationSolver (Proxy @builtin) False
       return instantiatedSolution
 
     case result of
