@@ -21,7 +21,7 @@ import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Prettyprinter.Render.Text (renderStrict)
 import System.FilePath (takeBaseName)
-import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison, unsupportedBuiltinFeature, unsupportedQuantifierArgsFeature)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -39,7 +39,6 @@ import Vehicle.Data.Tensor
     shapeOf,
     toList,
   )
-import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 
 --------------------------------------------------------------------------------
@@ -535,7 +534,7 @@ compileExpr isOutType localeAssms expr = do
   result <- case expr of
     Hole {} -> resolutionError currentPhase "Hole"
     Meta {} -> resolutionError currentPhase "Meta"
-    Universe _ l -> return $ compileType l
+    Universe p _ -> throwError $ UnimplementedFeature p "Compiling types as values to Isabelle"
     FreeVar _ n -> return $ annotateConstant [] (pretty (nameOf n))
     BoundVar p ix -> do
       n <- ixToProperName p ix
@@ -553,7 +552,7 @@ compileExpr isOutType localeAssms expr = do
       cBody <- addNameToContext binder $ compileExpr False localeAssms body
       return $ "let" <+> cBoundExpr <+> "in" <+> cBody
     Lam _ binder body -> compileLam localeAssms binder body
-    Builtin _p b -> compileBuiltin isOutType localeAssms b []
+    Builtin p b -> compileBuiltin isOutType localeAssms p b []
     App fun args -> compileApp isOutType localeAssms fun args
     Record _p _i fs -> compileRecord localeAssms fs
     RecordProj _p _t _r _field -> developerError "Record projection should have been eliminated before compilation"
@@ -564,9 +563,6 @@ compileRecord :: (MonadIsabelleCompile m) => [LocaleDef] -> [GenericRecordField 
 compileRecord localeAssms fs = do
   fs' <- traverse (compileRecordField localeAssms) fs
   return $ encloseSep ("\\<lparr>" <> space) (space <> "\\<rparr>") ("," <> space) fs'
-
-compileType :: UniverseLevel -> Code
-compileType _ = developerError "compilation of higher-level universes to Isabelle unsupported"
 
 compileLetBinder ::
   (MonadIsabelleCompile m) =>
@@ -743,8 +739,8 @@ compileTypeDef localeAssms name (Universe _ _) _ body = case body of
         [i]
     maxI <- compileExpr False localeAssms (argExpr i)
     return $ compileIndexTypeDef name maxI cbody
-  _ -> developerError "Only tensor and index types are currently supported for custom type definitions."
-compileTypeDef _ n _ _ _ = developerError $ "compileTypeDef reached with a non-Universe body:" <+> pretty (nameOf n :: Name)
+  _ -> unsupportedTypeSynonym (provenanceOf body) "Isabelle"
+compileTypeDef _ _ t _ _ = throwError $ UnimplementedFeature (provenanceOf t) "Compiling parameterised type synonyms to Isabelle"
 
 compileTermDef ::
   (MonadIsabelleCompile m) =>
@@ -777,17 +773,22 @@ compileTermDef localeAssms n binderCount t e = do
         <+> ") \""
     )
 
-idxBasedOp :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> [Arg DecidabilityBuiltin] -> m Code
-idxBasedOp localeAssms op args = case args of
+idxBasedOp :: (MonadIsabelleCompile m) => [LocaleDef] -> Provenance -> Code -> [Arg DecidabilityBuiltin] -> m Code
+idxBasedOp localeAssms p op args = case args of
   [(ExplicitArg _ (Lam _ binder _body))] -> case (typeOf binder) of
     (App (Builtin _p (StandardBuiltinType IndexType)) [maxIdx]) -> do
       idxArg <- (compileExpr False localeAssms (argExpr maxIdx))
       annotateApp localeAssms [RequireImport VehicleTensor] (op <+> idxArg <> " ") args
-    _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports explicit lambda arguments with indexing type"
-  _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports a single lambda argument"
+    _ -> unsupported
+  _ -> unsupported
+  where
+    unsupported =
+      throwError $
+        UnimplementedFeature p $
+          "Compiling" <+> squotes (unAnnotate op) <+> "to Isabelle when its argument is not an explicit lambda over an `Index` type"
 
-compileBuiltin :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
-compileBuiltin isOutType localeAssms b args = case b of
+compileBuiltin :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> Provenance -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
+compileBuiltin isOutType localeAssms p b args = case b of
   StandardBuiltinType t -> case t of
     BoolType -> return "bool"
     -- For the Isabelle backend, rationals are promoted to reals
@@ -866,10 +867,10 @@ compileBuiltin isOutType localeAssms b args = case b of
     QuantifyRecord _ -> unsupportedTensorLikeQuantifier
     AtTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorSubtensor, RequireImport VehicleUtils] 201 "(flex_subtensor $0 $1)" (Just "nindex") args
     If -> annotateNotation localeAssms [] minPrecedence "if $0 then $1 else $2" Nothing args
-    ForeachTensor -> idxBasedOp localeAssms "foreach" args
+    ForeachTensor -> idxBasedOp localeAssms p "foreach" args
     StackTensor -> compileStack localeAssms args
     AtVector -> annotateApp localeAssms [] "tnth" args
-    ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
+    ForeachVector -> idxBasedOp localeAssms p "foreachTuple" args
     SearchRatTensor {} -> unsupportedError
     WhereTensor {} -> unsupportedError
     Iterate -> unsupportedError
@@ -890,8 +891,8 @@ compileBuiltin isOutType localeAssms b args = case b of
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
-      Forall -> idxBasedOp localeAssms "forallIndex" args
-      Exists -> idxBasedOp localeAssms "existsIndex" args
+      Forall -> idxBasedOp localeAssms p "forallIndex" args
+      Exists -> idxBasedOp localeAssms p "existsIndex" args
     PropQuantifyInList q -> case q of
       Forall -> annotateApp localeAssms [RequireImport VehicleUtils] "forallInList" args
       Exists -> annotateApp localeAssms [RequireImport VehicleUtils] "existsInList" args
@@ -900,21 +901,11 @@ compileBuiltin isOutType localeAssms b args = case b of
     PropNaryProductAt -> unsupportedError
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
-  StandardBuiltinDerivedFunction f -> compileDerivedFunction localeAssms f args
+  StandardBuiltinDerivedFunction f -> compileDerivedFunction localeAssms p f args
   where
-    unsupportedError :: a
-    unsupportedError =
-      developerError $
-        "compilation of builtin" <+> quotePretty b <+> "to Isabelle unsupported"
+    unsupportedError = throwError $ UnimplementedFeature p (unsupportedBuiltinFeature b "Isabelle")
 
-    unsupportedArgsError :: a
-    unsupportedArgsError = do
-      developerError $
-        "compilation of"
-          <+> quotePretty b
-          <+> "with args"
-          <+> prettyVerbose args
-          <+> "to Isabelle unsupported"
+    unsupportedArgsError = throwError $ UnimplementedFeature p (unsupportedQuantifierArgsFeature b "Isabelle")
 
     monoError :: a
     monoError =
@@ -924,23 +915,23 @@ compileBuiltin isOutType localeAssms b args = case b of
 
 compileApp :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> Expr DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> m Code
 compileApp isOutType localeAssms fun args = case fun of
-  Builtin _p b -> do
+  Builtin p b -> do
     let userArgs = builtinAppArgs b args
-    compileBuiltin isOutType localeAssms b userArgs
+    compileBuiltin isOutType localeAssms p b userArgs
   _ -> do
     cFun <- compileExpr False localeAssms fun
     let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
     annotateApp localeAssms [] cFun userArgs
 
-compileDerivedFunction :: (MonadIsabelleCompile m) => [LocaleDef] -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
-compileDerivedFunction localeAssms fn args = case fn of
+compileDerivedFunction :: (MonadIsabelleCompile m) => [LocaleDef] -> Provenance -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
+compileDerivedFunction localeAssms p fn args = case fn of
   QuantifyIndex q -> case q of
     Exists -> annotateApp localeAssms [RequireImport VehicleUtils] "existsIndex" args
     Forall -> annotateApp localeAssms [RequireImport VehicleUtils] "forallIndex" args
   QuantifyInList {} -> unsupported
   TypeAnn -> annotateNotation localeAssms [] minPrecedence "$1 :: $0" Nothing args
   where
-    unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
+    unsupported = throwError $ UnimplementedFeature p (unsupportedBuiltinFeature fn "Isabelle")
 
 compileTypeLevelQuantifier ::
   (MonadIsabelleCompile m) =>
@@ -1053,3 +1044,9 @@ compileVecLiteral localeAssms xs = case getExpr accessSpine xs of
 
 toVec :: [Code] -> Code
 toVec xs = annotate ([], maxPrecedence) "[" <> concatWith (surround ",") xs <> "]"
+
+unsupportedTypeSynonym :: (MonadBackend m) => Provenance -> UnAnnDoc -> m a
+unsupportedTypeSynonym p backend =
+  throwError $
+    UnimplementedFeature p $
+      "Compiling type synonyms other than `Tensor` and `Index` types to" <+> backend
