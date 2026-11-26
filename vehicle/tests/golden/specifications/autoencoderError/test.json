@@ -8,11 +8,10 @@
     "name": "VNNLib",
     "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries/ --network encode:fake.onnx --network decode:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
-    "produces": ["VNNLib.queries/*.txt", "VNNLib.queries/identity.vcl-plan"],
+    "produces": [],
     "ignore": {
       "lines": ".*\"fileHash\".*"
-    },
-    "enabled":false
+    }
   },
   {
     "name": "Agda",

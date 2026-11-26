@@ -12,20 +12,24 @@ import Control.Monad.Identity (Identity (..))
 import Data.Containers.ListUtils (nubOrd)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Maybe (fromMaybe)
+import Data.Map qualified as Map
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Data.Proxy (Proxy (..))
-import Data.These (mergeTheseWith)
-import Prettyprinter (surround)
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.These (these)
+import Prettyprinter (fill, surround)
 import System.FilePath
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (getDimsExprs)
 import Vehicle.Compile.Normalise.Force (forceThunk)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Normalise.TypedValue (TypeValue (..), toTypeValue)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error.Property (propertyTraversalErrorDetails)
 import Vehicle.Compile.Print.Error.Typing
-import Vehicle.Compile.Resource (NetworkIOBase (..), NetworkModality (..), NetworkRecordType (..))
+import Vehicle.Compile.Resource (NetworkIOBase (..), NetworkModality (..), NetworkName, NetworkRecordType (..))
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
@@ -583,44 +587,22 @@ backendErrorDetails = \case
         problem = multipleNetworkErrorMessages (pretty queryFormat) ctx apps,
         fix = Just "this is on our road map to fix with VNNLib 2.0, but please open an issue on the Issue tracker with your use-case."
       }
-  UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputType, inputValue, _userVariables, unboundedInputs) :| _) ->
+  UnboundedNetworkInputVariables (ident, p) ctx networks unboundedInputs ->
     VehicleUserError
       { provenance = Just p,
         problem =
-          "The property"
-            <+> quotePretty ident
-            <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
-            <+> lineIndent (pretty networkName)
-            <+> unboundedVarInfo,
-        fix =
-          Just
-            "add additional inequalities that restrict the variables in the value above."
-            {-            <+> case userVariables of
-              [v] -> "the quantified variable" <+> prettyVar v
-              _ -> "the following quantified variables:" <+> hsep (fmap prettyVar userVariables)
-              -}
+          "Cannot compile property"
+            <+> quotePretty (nameOf ident)
+            <+> "because some of the network inputs are unbounded."
+            <> line
+            <> line
+            <> "Verifiers require every network input to have both a lower and an upper bound,"
+              <+> "but Vehicle could not find bounds for the following:"
+            <> line
+            <> indent 2 (vsep (fmap (prettyUnboundedNetworkInput ctx) (NonEmpty.toList unboundedInputs)))
+            <> unboundedNetworkInputsNotes ctx networks unboundedInputs,
+        fix = unboundedNetworkInputsFix ctx networks unboundedInputs
       }
-    where
-      -- prettyVar v = prettyFriendly (WithContext (VBoundVar @NoMeta @Builtin v mempty) ctx)
-      unboundedVarInfo =
-        case inputType of
-          UniModal (RecordIOType (NetworkRecordType _ recordTypeIdent _ fieldNames)) -> do
-            let varName = "x" :: Name
-            pretty varName
-              <> line
-              <> "In particular,"
-                <+> missingBoundsRecord varName fieldNames unboundedInputs
-                <+> "for"
-                <+> pretty (nameOf recordTypeIdent)
-                <+> squotes (pretty varName)
-          UniModal _ ->
-            lineIndent (prettyFriendly (WithContext (Forced.VFreeVar (Identifier userModulePath networkName) [explicit inputValue]) ctx))
-              <> line
-              <> "In particular,"
-                <+> missingBounds unboundedInputs
-                <+> "for tensor"
-                <+> squotes (prettyFriendly (WithContext inputValue ctx))
-          MultiModal _ -> developerError "MultiModal IO is not implmeneted yet"
   UnknownDifferentiableLogic name possibleNames ->
     VehicleUserError
       { provenance = Nothing,
@@ -1191,43 +1173,162 @@ multipleNetworkErrorMessages solver ctx networkNames = do
     <> line
     <> indent 2 (vsep $ fmap prettyApp networkNames)
 
-missingBounds :: UnboundedIndices -> Doc a
-missingBounds = mergeTheseWith (missingOneSidedBounds True) (missingOneSidedBounds False) (\u v -> u <+> "and" <+> v)
+--------------------------------------------------------------------------------
+-- Unbounded network inputs
 
-missingOneSidedBounds :: Bool -> NonEmpty TensorIndices -> Doc a
-missingOneSidedBounds isLowerBound missingIndices =
-  "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <> case missingIndices of
-    [[]] -> ""
-    _ -> " for indices" <+> vsep (fmap pretty missingIndices)
+-- | The quantified variables that the input to a network application is
+-- computed from.
+inputUserVariables :: CompleteNamedBoundCtx -> UnboundedNetworkInput -> [Lv]
+inputUserVariables ctx input = do
+  let lv = boundCtxLv ctx
+  -- TODO we actually need to do this recursively on any network variables that
+  -- live in this set.
+  Set.toList $ boundVariablesIn lv (unnormalise lv (unboundedInputValue input) :: Expr Builtin)
 
-missingBoundsRecord :: Name -> [Name] -> UnboundedIndices -> Doc a
-missingBoundsRecord varName fieldNames =
-  mergeTheseWith
-    (missingOneSidedBoundsRecord varName fieldNames True)
-    (missingOneSidedBoundsRecord varName fieldNames False)
-    (\u v -> u <+> "and" <+> v)
+-- | Finds the networks whose outputs the input to a network application is
+-- computed from. Vehicle cannot currently bound such inputs.
+inputFeedingNetworks :: CompleteNamedBoundCtx -> Set NetworkName -> UnboundedNetworkInput -> [NetworkName]
+inputFeedingNetworks ctx networks input = do
+  let inputExpr = unnormalise (boundCtxLv ctx) (unboundedInputValue input) :: Expr Builtin
+  filter (`Set.member` networks) $ fmap nameOf $ Set.toList $ freeVarsIn inputExpr
 
-missingOneSidedBoundsRecord :: Name -> [Name] -> Bool -> NonEmpty TensorIndices -> Doc a
-missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
-  "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <+> case missingFields of
-    [] :| [] -> ""
-    _ ->
-      "for fields"
-        <+> concatWith
-          (surround ", ")
-          (fmap prettyRecordIndices missingFields)
+-- | How an unbounded network input should be described to the user.
+data UnboundedInputDescription a = UnboundedInputDescription
+  { -- | The network application, e.g. @f x@.
+    applicationDoc :: Doc a,
+    -- | The input to the network, e.g. @x@.
+    inputDoc :: Doc a,
+    -- | Whether the input is just a variable rather than a computed value.
+    inputIsVariable :: Bool,
+    -- | Each part of the input that is missing a bound, along with which
+    -- bounds are missing.
+    missingBoundRows :: [(Doc a, Doc a)]
+  }
+
+describeUnboundedInput :: CompleteNamedBoundCtx -> UnboundedNetworkInput -> UnboundedInputDescription a
+describeUnboundedInput ctx input@UnboundedNetworkInput {..} = case unboundedInputType of
+  UniModal (RecordIOType (NetworkRecordType _ _ _ fieldNames)) -> do
+    -- Internally record inputs are reconstructed from a tensor variable, so
+    -- where possible refer to the record by the user's quantified variable.
+    let (recordDoc, isVariable) = case inputUserVariables ctx input of
+          [v] | Just name <- lookupLv ctx v -> (pretty name, True)
+          _ -> (valueDoc, valueIsVariable)
+    let fieldDoc = \case
+          [] -> recordDoc
+          i : is -> parensUnless isVariable recordDoc <> "." <> pretty (fieldNames !! i) <> indicesDoc is
+    UnboundedInputDescription
+      { applicationDoc = pretty unboundedNetworkName <+> parensUnless isVariable recordDoc,
+        inputDoc = recordDoc,
+        inputIsVariable = isVariable,
+        missingBoundRows = rowsWith fieldDoc
+      }
+  UniModal _ -> do
+    let elementDoc = \case
+          [] -> valueDoc
+          is -> parensUnless valueIsVariable valueDoc <> indicesDoc is
+    UnboundedInputDescription
+      { applicationDoc = prettyFriendly (WithContext (Forced.VFreeVar (Identifier userModulePath unboundedNetworkName) [explicit unboundedInputValue]) ctx),
+        inputDoc = valueDoc,
+        inputIsVariable = valueIsVariable,
+        missingBoundRows = rowsWith elementDoc
+      }
+  MultiModal _ -> developerError "MultiModal IO is not implmeneted yet"
   where
-    prettyRecordIndices :: TensorIndices -> Doc a
-    prettyRecordIndices = \case
-      [] -> developerError "only time empty indices can occur is when whole record is bounded"
-      i : is ->
-        pretty varName
-          <> "."
-          <> pretty (fieldNames !! i)
-          <> ( case is of
-                 [] -> ""
-                 _ -> pretty is
-             )
+    valueDoc = prettyFriendly (WithContext unboundedInputValue ctx)
+    valueIsVariable = case unnormalise (boundCtxLv ctx) unboundedInputValue :: Expr Builtin of
+      BoundVar {} -> True
+      _ -> False
+
+    parensUnless b d = if b then d else parens d
+    indicesDoc is = hcat (fmap (\i -> " !" <+> pretty i) is)
+
+    rowsWith describeIndices =
+      [(describeIndices indices, missingBoundStatus missing) | (indices, missing) <- missingBoundsByIndices unboundedIndices]
+
+-- | Merges the indices missing lower and upper bounds, so that each index
+-- appears once along with whether it is missing a lower and/or upper bound.
+missingBoundsByIndices :: UnboundedIndices -> [(TensorIndices, (Bool, Bool))]
+missingBoundsByIndices unbounded = do
+  let (lower, upper) = these (\l -> (NonEmpty.toList l, [])) (\u -> ([], NonEmpty.toList u)) (\l u -> (NonEmpty.toList l, NonEmpty.toList u)) unbounded
+  let entries = [(i, (True, False)) | i <- lower] <> [(i, (False, True)) | i <- upper]
+  Map.toList $ Map.fromListWith (\(l1, u1) (l2, u2) -> (l1 || l2, u1 || u2)) entries
+
+missingBoundStatus :: (Bool, Bool) -> Doc a
+missingBoundStatus = \case
+  (True, True) -> "no lower or upper bound"
+  (True, False) -> "no lower bound"
+  _ -> "no upper bound"
+
+-- | The maximum number of missing bounds to display per network application.
+maxMissingBoundRows :: Int
+maxMissingBoundRows = 5
+
+prettyUnboundedNetworkInput :: CompleteNamedBoundCtx -> UnboundedNetworkInput -> Doc a
+prettyUnboundedNetworkInput ctx input = do
+  let UnboundedInputDescription {..} = describeUnboundedInput ctx input
+  let (shownRows, hiddenRows) = splitAt maxMissingBoundRows missingBoundRows
+  let width = maximum (0 : fmap (length . show . fst) shownRows)
+  let rowDocs = [fill (width + 2) element <+> status | (element, status) <- shownRows]
+  let hiddenDoc = ["... and" <+> pretty (length hiddenRows) <+> "more" | not (null hiddenRows)]
+  "in" <+> squotes applicationDoc <> ":" <> line <> indent 2 (vsep (rowDocs <> hiddenDoc))
+
+-- | Explains any network inputs that cannot currently be bounded because they
+-- are computed from the outputs of other networks.
+unboundedNetworkInputsNotes :: CompleteNamedBoundCtx -> Set NetworkName -> NonEmpty UnboundedNetworkInput -> Doc a
+unboundedNetworkInputsNotes ctx networks inputs = case filter (not . null . inputFeedingNetworks ctx networks) (NonEmpty.toList inputs) of
+  [] -> ""
+  unboundable -> do
+    let note input =
+          "Note that"
+            <+> squotes (inputDoc (describeUnboundedInput ctx input))
+            <+> "is computed from the output of"
+            <+> prettyQuotedList (fmap pretty (inputFeedingNetworks ctx networks input))
+            <> "."
+    line
+      <> line
+      <> vsep (fmap note unboundable)
+      <> line
+      <> "Vehicle does not currently support bounding network inputs that are computed from the outputs of other networks."
+
+prettyQuotedList :: [Doc a] -> Doc a
+prettyQuotedList = \case
+  [d] -> squotes d
+  ds -> concatWith (surround ", ") (fmap squotes (init ds)) <+> "and" <+> squotes (last ds)
+
+unboundedNetworkInputsFix :: CompleteNamedBoundCtx -> Set NetworkName -> NonEmpty UnboundedNetworkInput -> Maybe (Doc a)
+unboundedNetworkInputsFix ctx networks inputs = do
+  let boundable = NonEmpty.filter (null . inputFeedingNetworks ctx networks) inputs
+  let prettyVar v = pretty (fromMaybe "_" (lookupLv ctx v))
+
+  let boundableFix = case [(input, describeUnboundedInput ctx input) | input <- boundable] of
+        [] -> []
+        described@((_, firstDescription) : _) -> do
+          let quantifiedVars = nubOrd (concatMap (inputUserVariables ctx . fst) described)
+          let binders = case quantifiedVars of
+                [] -> ""
+                vs -> "forall" <+> hsep (fmap prettyVar vs) <+> ". "
+          let element = maybe "x" fst (listToMaybe (missingBoundRows firstDescription))
+          let example = binders <> "... and l <=" <+> element <+> "<= u => ..."
+          let computedHint (input, description)
+                | inputIsVariable description || null (inputUserVariables ctx input) = Nothing
+                | otherwise =
+                    Just $
+                      "Bounding"
+                        <+> prettyQuotedList (fmap prettyVar (inputUserVariables ctx input))
+                        <+> "is sufficient to bound"
+                        <+> squotes (inputDoc description)
+                        <> "."
+          let mainFix =
+                "add assumptions to the property that bound these values, for example:"
+                  <> line
+                  <> indent 2 example
+                  <> line
+                  <> "where 'l' and 'u' are suitable constants."
+          mainFix : mapMaybe computedHint described
+
+  case boundableFix of
+    [] -> Nothing
+    docs -> Just (vsep docs)
 
 -- | The maximum number of suggestions to display for a misspelt name.
 maxSuggestions :: Int

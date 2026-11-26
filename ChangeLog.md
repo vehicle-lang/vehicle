@@ -4,7 +4,7 @@
 
 ### Type-checker
 
-* Various improvements to the readability of the error messages produced.
+* Various major improvements to the readability of the error messages produced.
 
 * Fixed a bug where numeric literals could not be used as the exponent of `^`, e.g. `x ^ 2` previously failed to type-check with the error `'Real' is not equal to 'Real'`.
 
@@ -15,6 +15,8 @@
 ### Solver backend
 
 * The error message for a `@dataset` whose dimensions are not constant now correctly refers to it as a `@dataset` rather than a `@parameter`.
+
+* The error message for network inputs that cannot be bounded has been rewritten to be clearer.
 
 ### All ITP backends
 
