@@ -1,5 +1,5 @@
 f : Bool
 f = True
 
-g : Bool -> Bool
-g f = True
+f : Bool
+f = True

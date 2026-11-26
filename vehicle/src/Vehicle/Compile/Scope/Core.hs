@@ -15,7 +15,7 @@ module Vehicle.Compile.Scope.Core
     lookupRecordDefinitionByFields,
     lookupVariable,
     lookupMaybeVariable,
-    mispellingsSortedByLikelihood,
+    misspellingsSortedByLikelihood,
   )
 where
 
@@ -88,10 +88,17 @@ addNewRecordDefField ::
   m ()
 addNewRecordDefField ident telescope newField = do
   ModuleScopingInterface {..} <- get
-  case Map.lookup newField recordIdentifiersByField of
+  case Map.lookupIndex newField recordIdentifiersByField of
     Nothing -> return ()
-    Just (existingIdentifier, _) ->
-      throwError $ DeclarationDeclarationShadowing (provenanceOf newField) (Left newField) existingIdentifier
+    Just index -> do
+      -- Note that we retrieve the key stored in the map, rather than using
+      -- `newField`, as the former contains the provenance of the original field.
+      let (existingField, (existingIdentifier, _)) = Map.elemAt index recordIdentifiersByField
+      throwError $
+        DeclarationDeclarationShadowing
+          (provenanceOf newField)
+          (Left newField)
+          (existingIdentifier, provenanceOf existingField)
 
   put $
     ModuleScopingInterface
@@ -123,14 +130,14 @@ addNewDecl decl = do
   ModuleScopingInterface {..} <- get
   let ident = identifierOf decl
   let name = nameOf ident
-  case Map.lookup name declsIdentifiersByName of
+  case Map.lookup name declsProvenanceByName of
     Nothing -> return ()
-    Just existingIdent ->
-      throwError $ DeclarationDeclarationShadowing (provenanceOf decl) (Right name) existingIdent
+    Just existingDecl ->
+      throwError $ DeclarationDeclarationShadowing (provenanceOf decl) (Right name) existingDecl
 
   put $
     ModuleScopingInterface
-      { declsIdentifiersByName = Map.insert name ident declsIdentifiersByName,
+      { declsProvenanceByName = Map.insert name (ident, provenanceOf decl) declsProvenanceByName,
         ..
       }
 
@@ -181,11 +188,11 @@ addBinder binder continuation = do
     Just (name, p) -> do
       maybeFreeVar <- lookupFreeVariable name
       case maybeFreeVar of
-        Just {} ->
+        Just existingDecl ->
           -- This restriction is needed so that
           -- `Vehicle.Compile.ResourceFunctionalisation`
           -- doesn't accidentally capture variables.
-          throwError $ DeclarationBoundShadowing p name
+          throwError $ DeclarationBoundShadowing p name existingDecl
         Nothing -> return ()
 
   flip local continuation $ \LocalCtx {..} ->
@@ -200,26 +207,26 @@ lookupVariable p name = do
   case maybeResult of
     Just result -> return result
     Nothing -> do
-      nonLocalNames <- concatInNonLocalCtx (Map.keys . declsIdentifiersByName)
+      nonLocalNames <- concatInNonLocalCtx (Map.keys . declsProvenanceByName)
       localNames <- asks (catMaybes . boundCtx)
-      let closestMatches = mispellingsSortedByLikelihood name (localNames <> nonLocalNames)
+      let closestMatches = misspellingsSortedByLikelihood name (localNames <> nonLocalNames)
       throwError $ UnboundName p name closestMatches
 
 lookupMaybeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe (Either Identifier Ix))
 lookupMaybeVariable name = do
   maybeFreeVar <- lookupFreeVariable name
   case maybeFreeVar of
-    Just ident -> return $ Just $ Left ident
+    Just (ident, _) -> return $ Just $ Left ident
     Nothing -> do
       maybeIx <- lookupBoundVariable name
       case maybeIx of
         Just ix -> return $ Just $ Right ix
         Nothing -> return Nothing
 
-lookupFreeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe Identifier)
+lookupFreeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe DeclProvenance)
 lookupFreeVariable name = do
   LocalCtx {..} <- ask
-  return $ lookupInCombinedContext scopingInterface (Map.lookup name . declsIdentifiersByName) currentModuleCtx importedCtx
+  return $ lookupInCombinedContext scopingInterface (Map.lookup name . declsProvenanceByName) currentModuleCtx importedCtx
 
 lookupBoundVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe Ix)
 lookupBoundVariable name = do
@@ -234,7 +241,7 @@ lookupRecordDefinitionByField field = do
     Nothing -> do
       allFieldsInScope <- concatInNonLocalCtx (Map.keys . recordIdentifiersByField)
       let fieldName = nameOf field
-      let suggestions = mispellingsSortedByLikelihood fieldName (fmap nameOf allFieldsInScope)
+      let suggestions = misspellingsSortedByLikelihood fieldName (fmap nameOf allFieldsInScope)
       throwError $ UnboundRecordAccessor (provenanceOf field) fieldName suggestions
 
 lookupRecordDefinitionByFields ::
@@ -268,7 +275,7 @@ findBestRecordMatch givenFields possibleFields
       let givenFieldsSet = Set.fromList givenFields
       let matches = fmap (second (calculateMatch givenFieldsSet)) possibleFields
       let (ident, bestMatch) = maximumBy (\(_, m1) (_, m2) -> compareMatches m1 m2) matches
-      if not (null (sharedFields bestMatch) && null (mispellings bestMatch))
+      if not (null (sharedFields bestMatch) && null (misspellings bestMatch))
         then Just (ident, bestMatch)
         else Nothing
 
@@ -279,7 +286,7 @@ compareMatches m1 m2 =
   comparing (length . sharedFields) m1 m2
     <>
     -- Otherwise prioritise matches with the highest number of potential misspellings
-    comparing (length . mispellings) m1 m2
+    comparing (length . misspellings) m1 m2
     <>
     -- Otherwise prioritise matches with the lowest number of total and missing fields
     comparing (\m -> -length (missingFields m) - length (extraFields m)) m1 m2
@@ -291,24 +298,24 @@ calculateMatch recordFields actualFields = do
           { sharedFields = Set.toList $ Set.intersection recordFields actualFields,
             missingFields = Set.toList $ Set.difference actualFields recordFields,
             extraFields = mempty,
-            mispellings = mempty
+            misspellings = mempty
           }
   let extraNames = Set.toList $ Set.difference recordFields actualFields
-  foldr matchMispellings match extraNames
+  foldr matchMisspellings match extraNames
   where
-    matchMispellings :: FieldName -> RecordMatch -> RecordMatch
-    matchMispellings field RecordMatch {..} = case mispellingsSortedByLikelihood field missingFields of
+    matchMisspellings :: FieldName -> RecordMatch -> RecordMatch
+    matchMisspellings field RecordMatch {..} = case misspellingsSortedByLikelihood field missingFields of
       [] ->
         RecordMatch
           { missingFields = missingFields,
-            mispellings = mispellings,
+            misspellings = misspellings,
             extraFields = field : extraFields,
             ..
           }
       matchedField : _ ->
         RecordMatch
           { missingFields = List.delete matchedField missingFields,
-            mispellings = (field, matchedField) : mispellings,
+            misspellings = (field, matchedField) : misspellings,
             extraFields = extraFields,
             ..
           }

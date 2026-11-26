@@ -7,6 +7,7 @@ module Vehicle.Data.AST.Provenance
     fillInProvenance,
     Position (..),
     Range (..),
+    isInSameFile,
   )
 where
 
@@ -160,6 +161,9 @@ fillInProvenance provenances = do
 
 expandProvenance :: (Int, Int) -> Provenance -> Provenance
 expandProvenance w (Provenance range o) = Provenance (expandRange w range) o
+
+isInSameFile :: Provenance -> Provenance -> Bool
+isInSameFile p1 p2 = file p1 == file p2
 
 --------------------------------------------------------------------------------
 -- Type-classes
