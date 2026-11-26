@@ -1,8 +1,5 @@
-module Vehicle.LSP.SemanticTokens.Internal
-  ( IntermediateSemTok,
-    LspErrorMessage,
-    TokenClass,
-    collectDeclsTokens,
+module Vehicle.LSP.SemanticTokens.Semantic
+  ( collectDeclsTokens,
     mkTokPure,
   )
 where
@@ -13,11 +10,8 @@ import Data.Functor ((<&>))
 import Data.List
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Proxy (Proxy (..))
-import Data.Text (Text)
 import Language.LSP.Protocol.Types as Lsp
-  ( SemanticTokenAbsolute (..),
-    SemanticTokenModifiers,
-    SemanticTokenTypes (..),
+  ( SemanticTokenTypes (..),
   )
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Builtin.Standard
@@ -27,6 +21,7 @@ import Vehicle.Data.Variable.Bound.Context.Core (lookupIx)
 import Vehicle.Data.Variable.Bound.Context.Generic (MonadBoundContext (..))
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, getDeclEntry)
+import Vehicle.LSP.SemanticTokens.Common (IntermediateSemTok, TokenClass, mkTokPure)
 import Vehicle.Prelude
   ( DefFunctionSort (..),
     GenericArg (..),
@@ -34,9 +29,7 @@ import Vehicle.Prelude
     GenericDecl (..),
     HasProvenance (..),
     Identifier,
-    Position (..),
-    Provenance (Provenance),
-    Range (..),
+    Provenance,
     binderNamingForm,
     typeOf,
     wasInsertedByCompiler,
@@ -45,10 +38,6 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- Internal types and utilities
 
--- Inherited from `Language.LSP.Protocol.Types.SemanticTokens.makeSemanticTokens`,
--- type-aliased for readability.
-type LspErrorMessage = Text
-
 type MonadEmitTokens m = MonadReader FilePath m
 
 type MonadCollectTokens m =
@@ -56,10 +45,6 @@ type MonadCollectTokens m =
     MonadBoundContext (Expr Builtin) m,
     MonadEmitTokens m
   )
-
-type IntermediateSemTok = Maybe Lsp.SemanticTokenAbsolute
-
-type TokenClass = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModifiers])
 
 type BinderDepth = Int
 
@@ -77,21 +62,6 @@ mkTok :: (MonadEmitTokens m) => Provenance -> TokenClass -> m IntermediateSemTok
 mkTok p tok = do
   filePath <- ask
   return $ mkTokPure filePath p tok
-
-mkTokPure :: FilePath -> Provenance -> TokenClass -> IntermediateSemTok
-mkTokPure filePath (Provenance (Range (Position sl sc) (Position _el ec)) provFilePath) (tType, modifiers)
-  | filePath == provFilePath && sl > 0 && sc > 0 =
-      Just $
-        -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
-        -- This also means that sl <= 0 || sc <= 0 indicates an invalid location.
-        Lsp.SemanticTokenAbsolute
-          { _line = fromIntegral sl - 1,
-            _startChar = fromIntegral sc - 1,
-            _length = fromIntegral (ec - sc),
-            _tokenType = tType,
-            _tokenModifiers = modifiers
-          }
-  | otherwise = Nothing
 
 --------------------------------------------------------------------------------
 -- Token collection:

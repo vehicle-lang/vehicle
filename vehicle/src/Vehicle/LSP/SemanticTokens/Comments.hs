@@ -9,7 +9,7 @@ import Language.LSP.Protocol.Types as Lsp
   ( SemanticTokenAbsolute (..),
     SemanticTokenTypes (..),
   )
-import Vehicle.LSP.SemanticTokens.Internal (IntermediateSemTok)
+import Vehicle.LSP.SemanticTokens.Common (IntermediateSemTok)
 import Vehicle.Prelude
   ( Position (..),
     Provenance (..),
