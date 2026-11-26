@@ -6,6 +6,10 @@
 
 * Various improvements to the readability of the error messages produced.
 
+### Loss backend
+
+* Gradient-based counter-example and witness search via `search` is now available for TensorFlow in `vehicle_lang.loss.tensorflow`, as well as the existing PyTorch implementation in `vehicle_lang.loss.pytorch`.
+
 ## v0.30.0
 
 ### General
