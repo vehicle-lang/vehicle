@@ -10,8 +10,10 @@ where
 import Control.Applicative ((<|>))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (fromMaybe)
 import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
+import Data.Text qualified as Text
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Compile.Normalise.Quote (unnormalise)
@@ -250,7 +252,7 @@ typeMismatchError freeCtx ctx CheckingExpr {..} e1 e2 =
         subject
           <+> "does not have the expected type."
           <> line
-          <> indent 2 (expectedActualBlock expectedDoc actualDoc)
+          <> indent 2 (typeComparisonBlock [("Expected", expectedDoc), ("Actual", actualDoc)])
           <> differenceNote,
       fix = Nothing
     }
@@ -273,24 +275,35 @@ typeMismatchError freeCtx ctx CheckingExpr {..} e1 e2 =
 
     differenceNote
       | sameDoc expectedPartDoc expectedDoc && sameDoc actualPartDoc actualDoc = ""
-      | otherwise =
-          line
-            <> "They differ in that the expected type has"
-              <+> squotes expectedPartDoc
-              <+> "where the actual type has"
-              <+> squotes actualPartDoc
-            <> "."
+      | otherwise = line <> typeDifferenceNote ("expected", expectedPartDoc) ("actual", actualPartDoc)
 
-    sameDoc :: UnAnnDoc -> UnAnnDoc -> Bool
-    sameDoc d1 d2 = layoutAsString d1 == layoutAsString d2
+sameDoc :: UnAnnDoc -> UnAnnDoc -> Bool
+sameDoc d1 d2 = layoutAsString d1 == layoutAsString d2
 
--- | Lays out an expected and actual type one above the other so that they
--- can be easily compared.
-expectedActualBlock :: Doc a -> Doc a -> Doc a
-expectedActualBlock expected actual =
-  "Expected:" <+> align expected
-    <> line
-    <> "Actual:  " <+> align actual
+-- | Lays out labelled types one above the other so that they can be easily
+-- compared, e.g.
+--
+--   Expected: Vector Real 2
+--   Actual:   Vector Real 3
+typeComparisonBlock :: [(Text, Doc a)] -> Doc a
+typeComparisonBlock rows = vsep (fmap row rows)
+  where
+    labelWidth = maximum (0 : fmap (Text.length . fst) rows) + 1
+    row (label, typ) = pretty (Text.justifyLeft labelWidth ' ' (label <> ":")) <+> align typ
+
+-- | Points out the parts of two types, labelled as in `typeComparisonBlock`,
+-- that differ.
+typeDifferenceNote :: (Doc a, Doc a) -> (Doc a, Doc a) -> Doc a
+typeDifferenceNote (label1, part1) (label2, part2) =
+  "They differ in that the"
+    <+> label1
+    <+> "type has"
+    <+> squotes part1
+    <+> "where the"
+    <+> label2
+    <+> "type has"
+    <+> squotes part2
+    <> "."
 
 -- | The error for when a unification constraint arising from an instance
 -- constraint fails.
@@ -442,10 +455,7 @@ instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType tc) candida
   VehicleUserError
     { provenance = Just $ provenanceOf ctx,
       problem =
-        originExpr
-          <+> "cannot be used as something of type"
-          <+> squotes usedAtType
-          <> "."
+        fromMaybe genericExplanation typeClassExplanation
           <> line
           <> "It can only be used at the following types:"
           <> line
@@ -462,21 +472,51 @@ instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType tc) candida
     -- The type of the overloaded expression at the point it is used, i.e.
     -- its type instantiated with the arguments of the type class constraint
     -- that could not be satisfied.
+    goalTypeArgs = (boundContextOf ctx, 0, typeClassArgsOf tc)
+
+    genericExplanation :: UnAnnDoc
+    genericExplanation =
+      originExpr
+        <+> "cannot be used as something of type"
+        <+> squotes usedAtType
+        <> "."
+
+    -- An explanation specific to the type class, if the builtins provide one.
+    typeClassExplanation :: Maybe UnAnnDoc
+    typeClassExplanation = do
+      typeClass <- case tc of
+        App (Builtin _ b) _ -> Just (Right b)
+        App (FreeVar _ ident) _ -> Just (Left ident)
+        _ -> Nothing
+      let namedCtx = toNamedBoundCtx (boundContextOf ctx)
+      let normalise e =
+            fst $
+              runFreeContext freeCtx $
+                MetaSubstitution.deepForceWithUnsolvedMetas namedCtx (Unforced (boundContextToEnv (boundContextOf ctx)) e)
+      let normArgs = fmap (fmap normalise) (typeClassArgsOf tc)
+      let prettyExpr e = prettyFriendly (WithContext e namedCtx)
+      explainInstanceFailure prettyExpr originExpr typeClass normArgs
+
     usedAtType :: Doc a
-    usedAtType = do
-      let goalTypeArgs = case tc of
-            App _ args -> NonEmpty.toList args
-            _ -> []
-      calculateInstanceDisplayType freeCtx isCoercion tcOpType (boundContextOf ctx, 0, goalTypeArgs) opApplication
+    usedAtType = calculateInstanceDisplayType freeCtx isCoercion tcOpType goalTypeArgs opApplication
+
+    candidateDisplayType :: FailedInstanceCandidate builtin -> UnAnnDoc
+    candidateDisplayType (candidate, _) =
+      calculateInstanceDisplayType freeCtx isCoercion tcOpType (calculateInstanceCandidateTypeArgs candidate) opApplication
 
     candidateOpType :: (Int, FailedInstanceCandidate builtin) -> UnAnnDoc
-    candidateOpType (no, (candidate, err)) = do
-      let candidateTypeArgs = calculateInstanceCandidateTypeArgs candidate
-      let finalTypeDoc = calculateInstanceDisplayType freeCtx isCoercion tcOpType candidateTypeArgs opApplication
+    candidateOpType (no, failedCandidate@(_, err)) =
       pretty no
-        <> "." <+> finalTypeDoc
+        <> "." <+> candidateDisplayType failedCandidate
         <> line
         <> indent 2 ("- rejected:" <+> candidateRejectionReason (provenanceOf tcOp) err)
+
+-- | The arguments of a type class constraint, e.g. `[Nat, Nat, Nat]` for
+-- `HasAdd Nat Nat Nat`.
+typeClassArgsOf :: Type builtin -> [Arg builtin]
+typeClassArgsOf = \case
+  App _ args -> NonEmpty.toList args
+  _ -> []
 
 -- | Describes why an instance candidate for an overloaded expression was
 -- rejected. If the rejection was caused by a failure to unify the types of
@@ -490,14 +530,21 @@ candidateRejectionReason ::
   UnAnnDoc
 candidateRejectionReason opProvenance = \case
   FailedUnificationConstraints (FailedUnificationConstraintsError _ (WithContext (Unify origin e1 e2) ctx :| _))
-    | CheckingInstanceType (InstanceArgOrigin ArgOrigin {..}) <- origin,
-      sameSourceRange (provenanceOf checkedInstanceOp) opProvenance -> do
+    | isOriginOf opProvenance origin -> do
         let namedBoundCtx = toNamedBoundCtx (boundContextOf ctx)
         squotes (prettyFriendly (WithContext e1 namedBoundCtx))
           <+> "is not equal to"
           <+> squotes (prettyFriendly (WithContext e2 namedBoundCtx))
           <> "."
   err -> problem (typingErrorDetails err)
+
+-- | Whether the unification constraint arose from checking the type of the
+-- overloaded expression at the provided location.
+isOriginOf :: Provenance -> UnificationConstraintOrigin builtin -> Bool
+isOriginOf opProvenance = \case
+  CheckingInstanceType (InstanceArgOrigin ArgOrigin {..}) ->
+    sameSourceRange (provenanceOf checkedInstanceOp) opProvenance
+  _ -> False
   where
     -- NOTE: the `Eq` instance for `Provenance` deliberately equates all
     -- provenances, so we have to compare the underlying ranges.

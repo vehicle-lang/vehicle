@@ -15,6 +15,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.AST.Expr.Desugared qualified as S
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
+import Vehicle.Data.Builtin.Standard.Print ()
 import Vehicle.Data.Code.ForcedValue (GenericForcedValue, GenericThunk)
 import Vehicle.Data.Code.ForcedValue qualified as F
 import Vehicle.Data.Universe (UniverseLevel)

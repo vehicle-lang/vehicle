@@ -575,6 +575,7 @@ instance PrintableBuiltin (LossBuiltin mode) where
   isDerivedBuiltin = \case
     StandardDerivedFunction f -> Just $ identifierOf f
     _ -> Nothing
+  explainInstanceFailure _ _ _ _ = Nothing
 
 tGradient :: DSLExpr (LossBuiltin mode)
 tGradient = builtin $ LossBuiltinType GradientType

@@ -275,6 +275,7 @@ instance ConvertableBuiltin DecidabilityBuiltin Builtin where
 instance PrintableBuiltin DecidabilityBuiltin where
   coercionArgs = const Nothing
   isDerivedBuiltin = const Nothing
+  explainInstanceFailure _ _ _ _ = Nothing
 
 --------------------------------------------------------------------------------
 -- Normalisation

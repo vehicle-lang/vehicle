@@ -1,4 +1,4 @@
-Error in file 'incorrectTensorLength.vcl' at Line 2, Columns 10-11: '[1]' cannot be used as something of type 'Tensor Real [2]'.
+Error in file 'incorrectTensorLength.vcl' at Line 2, Columns 10-11: '[1]' has 1 element, but its expected type 'Tensor Real [2]' requires 2.
 It can only be used at the following types:
   1. Tensor t (d :: ds)
     - rejected: '1' is not equal to '2'.

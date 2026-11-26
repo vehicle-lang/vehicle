@@ -39,7 +39,7 @@ import System.Console.ANSI
 import Text.EditDistance (defaultEditCosts, levenshteinDistance)
 import Vehicle.Data.AST.Name (HasName, Name, nameOf)
 import Vehicle.Prelude.Error (developerError)
-import Vehicle.Prelude.Prettyprinter (Doc, Pretty (pretty))
+import Vehicle.Prelude.Prettyprinter (Doc, Pretty (pretty), (<+>))
 
 data VehicleLang = External | Internal
   deriving stock (Show)
@@ -397,3 +397,8 @@ getNonEmptyListOf m = do
 
 putNonEmptyListOf :: Putter a -> Putter (NonEmpty a)
 putNonEmptyListOf pa = Serialize.putListOf pa . NonEmpty.toList
+
+-- | Displays a number of objects, e.g. `numberOf 2 "element"` is
+-- `2 elements`.
+numberOf :: Int -> Doc a -> Doc a
+numberOf n object = pretty n <+> object <> (if n == 1 then "" else "s")
