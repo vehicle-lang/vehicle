@@ -22,7 +22,7 @@ import Data.Text qualified as Text
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
-import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison, unsupportedBuiltinFeature, unsupportedQuantifierArgsFeature)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -41,7 +41,6 @@ import Vehicle.Data.Tensor
     shapeOf,
     toList,
   )
-import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 
 --------------------------------------------------------------------------------
@@ -474,7 +473,7 @@ compileFunDef _moduleDefs name (Universe _ _) _ body = do
     App (Builtin _p (StandardBuiltinType IndexType)) [_i] -> do
       -- Index type becomes int
       return $ "type" <+> compileIdentifier name <+> "= int"
-    _ -> developerError $ "Only tensor and index types are currently supported for custom type definitions."
+    _ -> unsupportedTypeSynonym (provenanceOf body) "Imandra"
   return res
 compileFunDef moduleDefs n t binders body = do
   -- Regular function definition: let name (arg : type) ... : returnType = body
@@ -507,14 +506,19 @@ resolveReturnType :: (MonadImandraCompile m) => [ModuleDef] -> [Binder Decidabil
 resolveReturnType moduleDefs (_ : bs) (Pi _ binder r) = addNameToContext binder $ resolveReturnType moduleDefs bs r
 resolveReturnType moduleDefs _ e = compileExpr True moduleDefs e
 
-idxBasedOp :: (MonadImandraCompile m) => [ModuleDef] -> Code -> [Arg DecidabilityBuiltin] -> m Code
-idxBasedOp moduleDefs op args = case args of
+idxBasedOp :: (MonadImandraCompile m) => [ModuleDef] -> Provenance -> Code -> [Arg DecidabilityBuiltin] -> m Code
+idxBasedOp moduleDefs p op args = case args of
   [(ExplicitArg _ (Lam _ binder _body))] -> case (typeOf binder) of
     (App (Builtin _p (StandardBuiltinType IndexType)) [maxIdx]) -> do
       idxArg <- (compileExpr False moduleDefs (argExpr maxIdx))
       annotateApp moduleDefs [RequireImport ImlVehicle] (op <+> idxArg) args
-    _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports explicit lambda arguments with indexing type"
-  _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports a single lambda argument"
+    _ -> unsupported
+  _ -> unsupported
+  where
+    unsupported =
+      throwError $
+        UnimplementedFeature p $
+          "Compiling" <+> squotes (unAnnotate op) <+> "to Imandra when its argument is not an explicit lambda over an `Index` type"
 
 --------------------------------------------------------------------------------
 -- Expression Compilation
@@ -525,7 +529,7 @@ compileExpr isOutType moduleDefs expr = do
   result <- case expr of
     Hole {} -> resolutionError currentPhase "Hole"
     Meta {} -> resolutionError currentPhase "Meta"
-    Universe _ l -> return $ compileType l
+    Universe p _ -> throwError $ UnimplementedFeature p "Compiling types as values to Imandra"
     FreeVar _ n -> return $ annotateConstant [] (pretty (toSnakeCase (nameOf n)))
     BoundVar p ix -> do
       n <- ixToProperName p ix
@@ -543,7 +547,7 @@ compileExpr isOutType moduleDefs expr = do
       cBody <- addNameToContext binder $ compileExpr False moduleDefs body
       return $ group $ "let" <+> cBoundExpr <+> "in" <> line <> cBody
     Lam _ binder body -> compileLam moduleDefs binder body
-    Builtin _p b -> compileBuiltin isOutType moduleDefs b []
+    Builtin p b -> compileBuiltin isOutType moduleDefs p b []
     App fun args -> compileApp isOutType moduleDefs fun args
     Record _p _i fs -> compileRecord moduleDefs fs
     RecordProj _p _t _r _field -> developerError "Record projection should have been eliminated before compilation"
@@ -554,9 +558,6 @@ compileRecord :: (MonadImandraCompile m) => [ModuleDef] -> [GenericRecordField (
 compileRecord moduleDefs fs = do
   fs' <- traverse (compileRecordField moduleDefs) fs
   return $ encloseSep ("{" <> space) (space <> "}") (";" <> space) fs'
-
-compileType :: UniverseLevel -> Code
-compileType _ = developerError "compilation of higher-level universes to Imandra unsupported"
 
 compileLetBinder ::
   (MonadImandraCompile m) =>
@@ -617,8 +618,8 @@ compileArgs moduleDefs precedence = traverse (compileArg moduleDefs precedence)
 --------------------------------------------------------------------------------
 -- Builtin Compilation
 
-compileBuiltin :: (MonadImandraCompile m) => Bool -> [ModuleDef] -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
-compileBuiltin _isOutType moduleDefs b args = case b of
+compileBuiltin :: (MonadImandraCompile m) => Bool -> [ModuleDef] -> Provenance -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
+compileBuiltin _isOutType moduleDefs p b args = case b of
   StandardBuiltinType t -> case t of
     BoolType -> return "bool"
     RatType -> return $ annotateConstant [] "real"
@@ -695,11 +696,11 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     QuantifyRecord _ -> unsupportedTensorLikeQuantifier
     AtTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "flex_subtensor" args
     If -> annotateNotation moduleDefs [] minPrecedence "if $0 then $1 else $2" Nothing args
-    ForeachTensor -> idxBasedOp moduleDefs "foreach" args
+    ForeachTensor -> idxBasedOp moduleDefs p "foreach" args
     StackTensor -> compileStack moduleDefs args
     Transpose -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_transpose" args
     AtVector -> annotateApp moduleDefs [] "List.nth" args
-    ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
+    ForeachVector -> idxBasedOp moduleDefs p "foreach_tuple" args
     SearchRatTensor {} -> unsupportedError
     WhereTensor {} -> unsupportedError
     Iterate -> unsupportedError
@@ -720,8 +721,8 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
-      Forall -> idxBasedOp moduleDefs "forall_index" args
-      Exists -> idxBasedOp moduleDefs "exists_index" args
+      Forall -> idxBasedOp moduleDefs p "forall_index" args
+      Exists -> idxBasedOp moduleDefs p "exists_index" args
     PropQuantifyInList q -> case q of
       Forall -> annotateApp moduleDefs [RequireImport ImlVehicle] "forall_in_list" args
       Exists -> annotateApp moduleDefs [RequireImport ImlVehicle] "exists_in_list" args
@@ -730,21 +731,11 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     PropNaryProductAt -> unsupportedError
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
-  StandardBuiltinDerivedFunction f -> compileDerivedFunction moduleDefs f args
+  StandardBuiltinDerivedFunction f -> compileDerivedFunction moduleDefs p f args
   where
-    unsupportedError :: a
-    unsupportedError =
-      developerError $
-        "compilation of builtin" <+> quotePretty b <+> "to Imandra unsupported"
+    unsupportedError = throwError $ UnimplementedFeature p (unsupportedBuiltinFeature b "Imandra")
 
-    unsupportedArgsError :: a
-    unsupportedArgsError = do
-      developerError $
-        "compilation of"
-          <+> quotePretty b
-          <+> "with args"
-          <+> prettyVerbose args
-          <+> "to Imandra unsupported"
+    unsupportedArgsError = throwError $ UnimplementedFeature p (unsupportedQuantifierArgsFeature b "Imandra")
 
     monoError :: a
     monoError =
@@ -754,23 +745,23 @@ compileBuiltin _isOutType moduleDefs b args = case b of
 
 compileApp :: (MonadImandraCompile m) => Bool -> [ModuleDef] -> Expr DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> m Code
 compileApp _isOutType moduleDefs fun args = case fun of
-  Builtin _p b -> do
+  Builtin p b -> do
     let userArgs = builtinAppArgs b args
-    compileBuiltin False moduleDefs b userArgs
+    compileBuiltin False moduleDefs p b userArgs
   _ -> do
     cFun <- compileExpr False moduleDefs fun
     let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
     annotateApp moduleDefs [] cFun userArgs
 
-compileDerivedFunction :: (MonadImandraCompile m) => [ModuleDef] -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
-compileDerivedFunction moduleDefs fn args = case fn of
+compileDerivedFunction :: (MonadImandraCompile m) => [ModuleDef] -> Provenance -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
+compileDerivedFunction moduleDefs p fn args = case fn of
   QuantifyIndex q -> case q of
     Exists -> annotateApp moduleDefs [RequireImport ImlVehicle] "exists_index" args
     Forall -> annotateApp moduleDefs [RequireImport ImlVehicle] "forall_index" args
   QuantifyInList {} -> unsupported
   TypeAnn -> annotateNotation moduleDefs [] minPrecedence "($1 : $0)" Nothing args
   where
-    unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
+    unsupported = throwError $ UnimplementedFeature p (unsupportedBuiltinFeature fn "Imandra")
 
 compileTypeLevelQuantifier ::
   (MonadImandraCompile m) =>
@@ -872,3 +863,9 @@ compileVecLiteral moduleDefs xs = case getExpr accessSpine xs of
 
 toVec :: [Code] -> Code
 toVec xs = annotate ([], maxPrecedence) "[" <> concatWith (surround "; ") xs <> "]"
+
+unsupportedTypeSynonym :: (MonadBackend m) => Provenance -> UnAnnDoc -> m a
+unsupportedTypeSynonym p backend =
+  throwError $
+    UnimplementedFeature p $
+      "Compiling type synonyms other than `Tensor` and `Index` types to" <+> backend

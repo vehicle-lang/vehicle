@@ -18,6 +18,10 @@
 
 * The error message for network inputs that cannot be bounded has been rewritten to be clearer.
 
+### All ITP backends
+
+* Using a feature that is not yet supported by a particular ITP backend (e.g. `transpose` in Agda, `exp` in Rocq) now reports a user-facing error pointing to the offending expression, rather than crashing with an internal developer error.
+
 ## v0.30.0
 
 ### General

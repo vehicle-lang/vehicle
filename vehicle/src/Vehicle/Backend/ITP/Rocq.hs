@@ -20,7 +20,7 @@ import Data.Text.Internal.Read qualified as Text.Read
 import Data.Version (makeVersion)
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
-import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison, unsupportedBuiltinFeature, unsupportedQuantifierArgsFeature)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -377,7 +377,9 @@ compileExpr expr = do
   result <- case expr of
     Hole {} -> resolutionError currentPhase "Hole"
     Meta {} -> resolutionError currentPhase "Meta"
-    Universe _ l -> return $ compileType l
+    Universe p l
+      | l == 0 -> return $ compileType l
+      | otherwise -> throwError $ UnimplementedFeature p "Compiling higher-level universes to Rocq"
     FreeVar _ n -> return $ annotateConstant [] (pretty (nameOf n))
     BoundVar p ix -> do
       n <- ixToProperName p ix
@@ -392,7 +394,7 @@ compileExpr expr = do
       cBody <- addNameToContext binder $ compileExpr body
       return $ annotate (mempty, Just 200) ("let" <+> cBoundExpr <+> "in" <+> cBody)
     Lam _ binder body -> compileLam binder body
-    Builtin _p b -> compileBuiltin b []
+    Builtin p b -> compileBuiltin p b []
     App fun args -> compileApp fun args
     Record _p _i fs -> do
       fs' <- traverse compileRecordField fs
@@ -505,8 +507,8 @@ compileFunDef name t bindings e =
     <> "."
 
 -- Default precedence for standard operations can be found at https://coq.inria.fr/doc/V8.18.0/refman/language/coq-library.html#notations
-compileBuiltin :: (MonadRocqCompile m) => DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
-compileBuiltin b args = case b of
+compileBuiltin :: (MonadRocqCompile m) => Provenance -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
+compileBuiltin p b args = case b of
   StandardBuiltinType t -> case t of
     BoolType -> return $ compileType (UniverseLevel 0)
     -- For the Rocq backend, rationals are promoted to reals
@@ -568,7 +570,7 @@ compileBuiltin b args = case b of
     ReduceMaxRatTensor -> unsupportedError
     ReduceMulRatTensor -> compileApplication [] "reduceMul" args
     ConstTensor -> compileApplication [MathcompImport Algebra] "const_t" args
-    QuantifyRatTensor q -> compileQuantifierFunction q args
+    QuantifyRatTensor q -> compileQuantifierFunction p q args
     AtTensor -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] NotAssociative (Just 30) "$0 ^^ $1" (Just "nindex") args
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 200) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [MathcompImport Algebra] "nstack" args
@@ -576,7 +578,7 @@ compileBuiltin b args = case b of
     Transpose -> compileApplication [VehicleImport VehicleUtils] "transpose_t" args
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
-    QuantifyRecord q -> compileQuantifierFunction q args
+    QuantifyRecord q -> compileQuantifierFunction p q args
     SearchRatTensor {} -> unsupportedError
     WhereTensor {} -> unsupportedError
     Iterate -> unsupportedError
@@ -607,12 +609,9 @@ compileBuiltin b args = case b of
     PropNaryProductAt -> unsupportedError
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
-  StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
+  StandardBuiltinDerivedFunction f -> compileDerivedFunction p f args
   where
-    unsupportedError :: a
-    unsupportedError =
-      developerError $
-        "compilation of builtin" <+> quotePretty b <+> "to Rocq unsupported"
+    unsupportedError = throwError $ UnimplementedFeature p (unsupportedBuiltinFeature b "Rocq")
 
     monoError :: a
     monoError =
@@ -625,16 +624,16 @@ compileFunctionType = compileNotationAndArgs [MathcompImport Boot] RightAssociat
 
 compileApp :: (MonadRocqCompile m) => Expr DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> m Code
 compileApp fun args = case fun of
-  Builtin _p b -> do
+  Builtin p b -> do
     let userArgs = builtinAppArgs b args
-    compileBuiltin b userArgs
+    compileBuiltin p b userArgs
   _ -> do
     let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
     cFun <- compileExpr fun
     compileApplication [] cFun userArgs
 
-compileDerivedFunction :: (MonadRocqCompile m) => DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
-compileDerivedFunction fn args = case fn of
+compileDerivedFunction :: (MonadRocqCompile m) => Provenance -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
+compileDerivedFunction p fn args = case fn of
   QuantifyIndex q -> case q of
     Exists -> compileApplication [VehicleImport VehicleUtils] "existsIndex" args
     Forall -> compileApplication [VehicleImport VehicleUtils] "forallIndex" args
@@ -647,7 +646,7 @@ compileDerivedFunction fn args = case fn of
     _ ->
       compileNotationAndArgs [] NotAssociative (Just 99) "$1 : $0" Nothing args
   where
-    unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
+    unsupported = throwError $ UnimplementedFeature p (unsupportedBuiltinFeature fn "Rocq")
     isIndexTypeExpr :: Expr DecidabilityBuiltin -> Bool
     isIndexTypeExpr = \case
       Builtin _ (StandardBuiltinType IndexType) -> True
@@ -659,12 +658,10 @@ compileDerivedFunction fn args = case fn of
       App (Builtin _ (StandardBuiltinConstructor (IndexLiteral n))) _ -> Just n
       _ -> Nothing
 
-compileQuantifierFunction :: (MonadRocqCompile m) => Quantifier -> [Arg DecidabilityBuiltin] -> m Code
-compileQuantifierFunction q args = case reverse args of
+compileQuantifierFunction :: (MonadRocqCompile m) => Provenance -> Quantifier -> [Arg DecidabilityBuiltin] -> m Code
+compileQuantifierFunction p q args = case reverse args of
   (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
-  _ ->
-    developerError $
-      "compilation of quantifier" <+> quotePretty q <+> "with args" <+> prettyVerbose args <+> "to Rocq unsupported"
+  _ -> throwError $ UnimplementedFeature p (unsupportedQuantifierArgsFeature q "Rocq")
 
 compileTypeLevelQuantifier ::
   (MonadRocqCompile m) =>

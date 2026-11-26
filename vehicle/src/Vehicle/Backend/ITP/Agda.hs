@@ -21,7 +21,7 @@ import GHC.Real (denominator, numerator)
 import GHC.Stack (HasCallStack)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
-import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison)
+import Vehicle.Backend.ITP.Core (ComparisonType (..), builtinAppArgs, decideIfPointwiseOrReductionComparison, unsupportedBuiltinFeature, unsupportedQuantifierArgsFeature)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Error
@@ -562,7 +562,7 @@ compileBuiltin p b args = case b of
   StandardBuiltinConstructor c -> compileBuiltinConstructor c args
   StandardBuiltinFunction f -> compileBuiltinFunction p f args
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
-  DecidabilityBuiltinFunction f -> compileDecidabilityBuiltinFunction f args
+  DecidabilityBuiltinFunction f -> compileDecidabilityBuiltinFunction p f args
   DecidabilityBuiltinTypeClass {} -> monoError b
   DecidabilityBuiltinTypeClassOp {} -> monoError b
 
@@ -635,31 +635,32 @@ compileBuiltinFunction p f args = case f of
   ReduceMaxRatTensor -> annotateApp [DataTensor] Nothing "reduceMax" args
   ReduceMulRatTensor -> annotateApp [DataTensor] Nothing "reduceMul" args
   ConstTensor -> annotateApp [DataTensor] Nothing "constTensor" args
-  QuantifyRatTensor q -> compileQuantifierFunction q args
-  QuantifyRecord q -> compileQuantifierFunction q args
+  QuantifyRatTensor q -> compileQuantifierFunction p q args
+  QuantifyRecord q -> compileQuantifierFunction p q args
   AtTensor -> annotateInfixAppWithResultPrecedence [DataTensor] 6 (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
   ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args
   ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
   StackTensor {} -> compileStack args
-  Transpose -> unsupportedError "transpose"
-  SearchRatTensor {} -> unsupportedError "search"
-  WhereTensor {} -> unsupportedError "where"
-  Iterate -> unsupportedError "iterate"
-  Pow {} -> unsupportedError "^"
-  Log {} -> unsupportedError "log"
-  Exp {} -> unsupportedError "exp"
+  Transpose -> unsupportedError
+  SearchRatTensor {} -> unsupportedError
+  WhereTensor {} -> unsupportedError
+  Iterate -> unsupportedError
+  Pow {} -> unsupportedError
+  Log {} -> unsupportedError
+  Exp {} -> unsupportedError
   where
-    unsupportedError :: UnAnnDoc -> m a
-    unsupportedError = throwError . UnimplementedFeature p
+    unsupportedError :: m a
+    unsupportedError = throwError $ UnimplementedFeature p (unsupportedBuiltinFeature f "Agda")
 
 compileDecidabilityBuiltinFunction ::
   (MonadAgdaCompile m) =>
+  Provenance ->
   DecidabilityBuiltinFunction ->
   [Arg DecidabilityBuiltin] ->
   m Code
-compileDecidabilityBuiltinFunction f args = case f of
+compileDecidabilityBuiltinFunction p f args = case f of
   PropType -> return $ compileType 0
   BoolTensorToProp -> monoError f
   BoolVectorToProp -> monoError f
@@ -672,7 +673,7 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropCompareIndex op -> compileIndexPropComparison op args
   PropCompareNat op -> compilePropComparison NatPropComparison op args
   PropCompareRatTensor op -> compilePropComparison RatTensorPropComparison op args
-  PropQuantifyIndex q -> compileQuantifierFunction q args
+  PropQuantifyIndex q -> compileQuantifierFunction p q args
   PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args
     Exists -> annotateApp [DataListAny] (Just listQualifier) "Any" args
@@ -682,21 +683,13 @@ compileDecidabilityBuiltinFunction f args = case f of
 
 compileQuantifierFunction ::
   (MonadAgdaCompile m) =>
+  Provenance ->
   Quantifier ->
   [Arg DecidabilityBuiltin] ->
   m Code
-compileQuantifierFunction q args = case reverse args of
+compileQuantifierFunction p q args = case reverse args of
   (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
-  _ -> unsupportedArgsError
-  where
-    unsupportedArgsError :: a
-    unsupportedArgsError = do
-      developerError $
-        "compilation of"
-          <+> quotePretty q
-          <+> "with args"
-          <+> prettyVerbose args
-          <+> "to Agda unsupported"
+  _ -> throwError $ UnimplementedFeature p (unsupportedQuantifierArgsFeature q "Agda")
 
 compileStack :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileStack stackArgs = do

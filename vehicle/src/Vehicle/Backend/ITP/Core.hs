@@ -40,3 +40,18 @@ builtinAppArgs :: DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> [
 builtinAppArgs b args = case b of
   StandardBuiltinFunction (CompareRatTensor _) -> NonEmpty.toList args
   _ -> NonEmpty.filter (not . wasInsertedByCompiler) args
+
+-------------------------------------------------------------------------------
+-- Error messages
+
+-- | Description of a builtin whose compilation to the given ITP backend
+-- is not yet implemented, for use with `UnimplementedFeature`.
+unsupportedBuiltinFeature :: (Pretty b) => b -> Doc a -> Doc a
+unsupportedBuiltinFeature b backend =
+  "Compiling" <+> quotePretty b <+> "to" <+> backend
+
+-- | Description of a quantifier whose body is not an explicit lambda, for use
+-- with `UnimplementedFeature`.
+unsupportedQuantifierArgsFeature :: (Pretty q) => q -> Doc a -> Doc a
+unsupportedQuantifierArgsFeature q backend =
+  "Compiling a" <+> quotePretty q <+> "whose body is not an explicit lambda to" <+> backend
