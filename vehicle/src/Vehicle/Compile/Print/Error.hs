@@ -1229,12 +1229,6 @@ missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
                  _ -> pretty is
              )
 
---------------------------------------------------------------------------------
--- Utilities
-
-isInSameFile :: Provenance -> Provenance -> Bool
-isInSameFile p1 p2 = file p1 == file p2
-
 -- | Describes the location of an existing declaration relative to the location
 -- of the error. Returns an empty document if the location is unknown.
 prettyDeclarationLocation :: Provenance -> DeclProvenance -> Doc a
