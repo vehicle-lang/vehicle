@@ -179,7 +179,7 @@ backendErrorDetails = \case
     VehicleUserError
       { provenance = Just p,
         problem =
-          unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident datasetType
+          unsupportedAnnotationTypeDescription (pretty DatasetDef) ident datasetType
             <+> "as the dimension size"
             <> line
             <> indent 2 (prettyFriendlyEmptyCtx variableDim)
