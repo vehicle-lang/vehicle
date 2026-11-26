@@ -63,6 +63,9 @@ mkTok p tok = do
   filePath <- ask
   return $ mkTokPure filePath p tok
 
+handledBySyntaxPass :: (Monad m) => m [IntermediateSemTok]
+handledBySyntaxPass = return []
+
 --------------------------------------------------------------------------------
 -- Token collection:
 --
@@ -106,16 +109,16 @@ collectExprTokens ::
   Expr Builtin ->
   m [IntermediateSemTok]
 collectExprTokens = \case
-  Universe _p _level -> return [] -- Handled by syntax pass
+  Universe _p _level -> handledBySyntaxPass
   Pi _p binder res -> do
     binderToks <- collectBinderTokens binder
     exprToks <- addBinderToContext binder $ collectExprTokens res
     return $ binderToks ++ exprToks
-  Builtin _p _builtin -> return [] -- Handled by syntax pass
+  Builtin _p _builtin -> handledBySyntaxPass
   BoundVar p ix -> singleton <$> (emitAt p =<< classifyBoundVar 0 ix)
   FreeVar p ident -> singleton <$> (emitAt p =<< classifyFreeVar ident)
-  Hole _p _name -> return [] -- Handled by syntax pass
-  Meta _p _metaId -> return [] -- Handled by syntax pass
+  Hole _p _name -> handledBySyntaxPass
+  Meta _p _metaId -> handledBySyntaxPass
   App f args -> do
     fnToks <- collectExprTokens f
     argsToks <- concat <$> traverse collectArgTokens (filter (not . wasInsertedByCompiler) (NonEmpty.toList args))
