@@ -5,21 +5,18 @@ manylinux_image="${1}"
 if [ "${manylinux_image}" = '' ]; then
     echo "Usage: ${0} [manylinux_image]"
     echo
+    echo "GHC and Cabal are installed in the container by scripts/before-all-linux.sh."
+    echo "Set GHC_VERSION and CABAL_VERSION to override the default versions."
+    echo
     echo "manylinux_2_28 (AlmaLinux 8 based)"
-    echo "Toolchain: GCC 12, GHC 9.4.8"
     echo
-    echo "- wenkokke/manylinux_2_28_ghc944_aarch64"
+    echo "- quay.io/pypa/manylinux_2_28_x86_64"
+    echo "- quay.io/pypa/manylinux_2_28_i686"
+    echo "- quay.io/pypa/manylinux_2_28_aarch64"
     echo
-    echo "manylinux2014 (CentOS 7 based)"
-    echo "Toolchain: GCC 10, GHC 9.4.8"
+    echo "musllinux_1_2 (Alpine based)"
     echo
-    echo "- wenkokke/manylinux2014_ghc944_x86_64"
-    echo "- wenkokke/manylinux2014_ghc944_i686"
-    echo
-    echo "musllinux_1_1 (Alpine 3.12 based)"
-    echo "Toolchain: GCC 9, GHC 9.4.8"
-    echo
-    echo "- wenkokke/musllinux_1_1_ghc944_x86_64"
+    echo "- quay.io/pypa/musllinux_1_2_x86_64"
     echo
     echo "See: https://github.com/pypa/manylinux#readme"
     exit 1
@@ -38,4 +35,10 @@ if [ -s "$fail" ]; then
 fi
 
 # Create a container for the build
-"${docker}" run --rm -v "${package_root}:/vehicle" -w "/vehicle/vehicle-python" "${manylinux_image}" pipx run uv run --extra wheel scripts/build-wheel.sh
+"${docker}" run --rm \
+    -v "${package_root}:/vehicle" \
+    -w "/vehicle/vehicle-python" \
+    ${GHC_VERSION:+-e "GHC_VERSION=${GHC_VERSION}"} \
+    ${CABAL_VERSION:+-e "CABAL_VERSION=${CABAL_VERSION}"} \
+    "${manylinux_image}" \
+    sh -c 'sh scripts/before-all-linux.sh && pipx run uv run --extra wheel scripts/build-wheel.sh'

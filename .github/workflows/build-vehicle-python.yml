@@ -17,10 +17,12 @@ defaults:
     shell: sh
 
 env:
-  # NOTE: cibuildwheel builds manylinux wheels in a container, and the versions
-  #       of GHC and Cabal are hardcoded in the `before-all-$ID.sh` scripts.
-  DEFAULT_GHC_VERSION: "9.4.8"
-  DEFAULT_CABAL_VERSION: "3.10.2.1"
+  # NOTE: cibuildwheel builds Linux wheels in a container, where GHC and Cabal
+  #       are installed by `vehicle-python/scripts/before-all-linux.sh`. These
+  #       versions are passed through to that script, whose fallback defaults
+  #       should be kept in sync with them.
+  DEFAULT_GHC_VERSION: "9.12.2"
+  DEFAULT_CABAL_VERSION: "3.14.2.0"
 
 jobs:
   build-vehicle-python:
@@ -66,7 +68,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: 🛠️ Install Haskell
-        # Linux distributions already come with a builtin Haskell installation
+        # On Linux, Haskell is installed inside the cibuildwheel container instead
         if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
         uses: haskell-actions/setup@v2
         id: setup-haskell
@@ -105,7 +107,8 @@ jobs:
           CIBW_ARCHS: "${{ matrix.os.arch }}"
           CIBW_TEST_EXTRAS: "${{ matrix.os.test }}"
           CIBW_TEST_COMMAND: "python -m pytest {package}/tests -v -o faulthandler_timeout=300"
-          CIBW_BEFORE_ALL_LINUX: "cabal update"
+          GHC_VERSION: "${{ env.DEFAULT_GHC_VERSION }}"
+          CABAL_VERSION: "${{ env.DEFAULT_CABAL_VERSION }}"
           MACOSX_DEPLOYMENT_TARGET: "${{ matrix.os.arch == 'x86_64' && '10.10' || '11.0' }}"
 
       - name: 🛠️ Install Cabal dependencies

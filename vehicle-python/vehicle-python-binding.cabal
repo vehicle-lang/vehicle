@@ -12,7 +12,7 @@ copyright:       © 2023-2023 Wen Kokke
 license:         MIT
 build-type:      Custom
 extra-doc-files: README.md
-tested-with:     GHC ==9.4.8
+tested-with:     GHC ==9.12.2
 
 source-repository head
   type:     git

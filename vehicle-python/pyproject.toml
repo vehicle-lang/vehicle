@@ -68,13 +68,10 @@ build = [
   "*-macosx_arm64",
   # Using a GitHub runner
   "*-win_amd64",
-  # Using wenkokke/manylinux2014_ghc965_x86_64
+  # Using the stock manylinux/musllinux images (see [tool.cibuildwheel.linux])
   "*-manylinux_x86_64",
-  # Using wenkokke/manylinux2014_ghc965_i686
   "*-manylinux_i686",
-  # Using wenkokke/manylinux_2_28_ghc965_aarch64
   "*-manylinux_aarch64",
-  # Using wenkokke/musllinux_1_1_ghc965_x86_64
   "*-musllinux_x86_64",
 ]
 skip = [
@@ -84,18 +81,15 @@ skip = [
 ]
 #test-command = "pytest {package}/tests"
 #test-extras = "test"
-# 19-06-2023:
-# Use custom manylinux and musllinux images with GHC 9.6.5 preinstalled.
-manylinux-aarch64-image = "wenkokke/manylinux_2_28_ghc965_aarch64"
-manylinux-i686-image = "wenkokke/manylinux2014_ghc965_i686"
-manylinux-x86_64-image = "wenkokke/manylinux_2_28_ghc965_x86_64"
-musllinux-x86_64-image = "wenkokke/musllinux_1_1_ghc965_x86_64"
 
-# The musllinux_1_1 image ships GCC 9.3, which cannot build NumPy >= 2.5 from source
-# (NumPy only publishes musllinux_1_2 wheels), so constrain NumPy when testing.
-[[tool.cibuildwheel.overrides]]
-select = "*-musllinux*"
-before-test = "pip install 'numpy<2.5'"
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-i686-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+musllinux-x86_64-image = "musllinux_1_2"
+# install GHC and Cabal with ghcup in `before-all`.
+before-all = "sh {package}/scripts/before-all-linux.sh"
+environment-pass = ["GHC_VERSION", "CABAL_VERSION"]
 
 [tool.mypy]
 mypy_path = "src"
