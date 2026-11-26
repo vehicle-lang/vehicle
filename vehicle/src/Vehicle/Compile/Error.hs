@@ -101,7 +101,7 @@ data ParseError
 
 data RecordMatch = RecordMatch
   { sharedFields :: [FieldName],
-    mispellings :: [(FieldName, FieldName)],
+    misspellings :: [(FieldName, FieldName)],
     missingFields :: [FieldName],
     extraFields :: [FieldName]
   }

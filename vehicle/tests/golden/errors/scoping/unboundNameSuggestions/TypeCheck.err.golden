@@ -1,0 +1,5 @@
+Error in file 'spec.vcl' at Line 14, Columns 19-23: the name 'fooo' is not in scope.
+Fix: did you mean one of the following?
+  'foo5'
+  'foo1'
+  'foo2'

@@ -9,6 +9,7 @@ where
 
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Identity (Identity (..))
+import Data.Containers.ListUtils (nubOrd)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (fromMaybe)
@@ -975,20 +976,14 @@ scopeErrorDetails = \case
   UnboundName p name suggestions ->
     VehicleUserError
       { provenance = Just p,
-        problem = "The name" <+> quotePretty name <+> "is not in scope",
-        fix =
-          if null suggestions
-            then Nothing
-            else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
+        problem = "the name" <+> quotePretty name <+> "is not in scope.",
+        fix = prettySuggestions suggestions
       }
   UnboundRecordAccessor p name suggestions ->
     VehicleUserError
       { provenance = Just p,
-        problem = "No record with field" <+> quotePretty name <+> "in scope",
-        fix =
-          if null suggestions
-            then Nothing
-            else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
+        problem = "there is no record with the field" <+> quotePretty name <+> "in scope.",
+        fix = prettySuggestions suggestions
       }
   DeclarationDeclarationShadowing p name existingDecl@(existingIdent, _) ->
     VehicleUserError
@@ -1030,47 +1025,52 @@ scopeErrorDetails = \case
     Nothing ->
       VehicleUserError
         { provenance = Just p,
-          problem = "Unable to find a record declaration with matching fields.",
+          problem = "unable to find a record declaration with matching fields.",
           fix = Just $ "declare a record with the fields:" <> lineIndent (vsep $ fmap pretty fields)
         }
     Just (ident, RecordMatch {..}) -> do
       VehicleUserError
         { provenance = Just p,
-          problem = "Unable to find a record declaration with matching fields.",
+          problem = "unable to find a record declaration with matching fields.",
           fix =
             Just $
-              "it seems likely that the intension is to construct a"
+              "it seems likely that the intention is to construct a"
                 <+> quotePretty (nameOf ident)
                 <+> "record."
-                <+> "If so, then "
-                <> suggestionDoc
+                <+> "If so, then"
+                <+> suggestionDoc
         }
       where
-        mispellingDoc = (["fix the mispellings:" <> lineIndent (vsep (fmap (\(actual, expected) -> pretty actual <+> "->" <+> pretty expected) mispellings)) | not (null mispellings)])
+        misspellingDoc = (["fix the misspellings:" <> lineIndent (vsep (fmap (\(actual, expected) -> pretty actual <+> "->" <+> pretty expected) misspellings)) | not (null misspellings)])
         missingDoc = (["add the missing fields:" <> lineIndent (vsep $ fmap pretty missingFields) | not (null missingFields)])
         extraDoc = (["remove the unneeded fields:" <> lineIndent (vsep $ fmap pretty extraFields) | not (null extraFields)])
-        suggestionDocs = mispellingDoc <> missingDoc <> extraDoc
+        suggestionDocs = misspellingDoc <> missingDoc <> extraDoc
         suggestionDoc = concatWith (\a b -> a <> line <> "and" <+> b) suggestionDocs
   ZeroFieldTensorLike (ident, p) ->
     VehicleUserError
       { provenance = Just p,
         problem =
           "annotating the record"
-            <+> quotePretty ident
+            <+> quotePretty (nameOf ident :: Name)
             <+> "with @tensor is not currently supported as it has no fields.",
         fix = Just "remove the @tensor annotation or add fields to the record."
       }
-  ParameterisedTensorLike (_ident, p) ->
+  ParameterisedTensorLike (ident, p) ->
     VehicleUserError
       { provenance = Just p,
         problem =
-          "Annotating parameterised records with"
+          "annotating the record"
+            <+> quotePretty (nameOf ident :: Name)
+            <+> "with"
             <+> pretty AnnTensor
-            <+> "is not currently implemented",
+            <+> "is not currently supported as it has parameters.",
         fix =
           Just $
-            "please open an issue on the"
-              <+> "Vehicle issue tracker to discuss adding support."
+            "remove the"
+              <+> pretty AnnTensor
+              <+> "annotation, or open an issue at"
+              <+> githubIssues
+              <+> "to discuss adding support."
       }
 
 errorInSubsystemMessage :: Doc a -> FrontendError -> Doc a
@@ -1228,6 +1228,18 @@ missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
                  [] -> ""
                  _ -> pretty is
              )
+
+-- | The maximum number of suggestions to display for a misspelt name.
+maxSuggestions :: Int
+maxSuggestions = 3
+
+-- | Formats a list of possible corrections for a misspelt name, which is
+-- assumed to be sorted from most to least likely.
+prettySuggestions :: [Name] -> Maybe (Doc a)
+prettySuggestions suggestions = case take maxSuggestions (nubOrd suggestions) of
+  [] -> Nothing
+  [suggestion] -> Just $ "did you mean" <+> quotePretty suggestion <> "?"
+  topSuggestions -> Just $ "did you mean one of the following?" <> lineIndent (vsep (fmap quotePretty topSuggestions))
 
 -- | Describes the location of an existing declaration relative to the location
 -- of the error. Returns an empty document if the location is unknown.

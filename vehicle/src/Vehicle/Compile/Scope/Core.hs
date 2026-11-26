@@ -15,7 +15,7 @@ module Vehicle.Compile.Scope.Core
     lookupRecordDefinitionByFields,
     lookupVariable,
     lookupMaybeVariable,
-    mispellingsSortedByLikelihood,
+    misspellingsSortedByLikelihood,
   )
 where
 
@@ -209,7 +209,7 @@ lookupVariable p name = do
     Nothing -> do
       nonLocalNames <- concatInNonLocalCtx (Map.keys . declsProvenanceByName)
       localNames <- asks (catMaybes . boundCtx)
-      let closestMatches = mispellingsSortedByLikelihood name (localNames <> nonLocalNames)
+      let closestMatches = misspellingsSortedByLikelihood name (localNames <> nonLocalNames)
       throwError $ UnboundName p name closestMatches
 
 lookupMaybeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe (Either Identifier Ix))
@@ -241,7 +241,7 @@ lookupRecordDefinitionByField field = do
     Nothing -> do
       allFieldsInScope <- concatInNonLocalCtx (Map.keys . recordIdentifiersByField)
       let fieldName = nameOf field
-      let suggestions = mispellingsSortedByLikelihood fieldName (fmap nameOf allFieldsInScope)
+      let suggestions = misspellingsSortedByLikelihood fieldName (fmap nameOf allFieldsInScope)
       throwError $ UnboundRecordAccessor (provenanceOf field) fieldName suggestions
 
 lookupRecordDefinitionByFields ::
@@ -275,7 +275,7 @@ findBestRecordMatch givenFields possibleFields
       let givenFieldsSet = Set.fromList givenFields
       let matches = fmap (second (calculateMatch givenFieldsSet)) possibleFields
       let (ident, bestMatch) = maximumBy (\(_, m1) (_, m2) -> compareMatches m1 m2) matches
-      if not (null (sharedFields bestMatch) && null (mispellings bestMatch))
+      if not (null (sharedFields bestMatch) && null (misspellings bestMatch))
         then Just (ident, bestMatch)
         else Nothing
 
@@ -286,7 +286,7 @@ compareMatches m1 m2 =
   comparing (length . sharedFields) m1 m2
     <>
     -- Otherwise prioritise matches with the highest number of potential misspellings
-    comparing (length . mispellings) m1 m2
+    comparing (length . misspellings) m1 m2
     <>
     -- Otherwise prioritise matches with the lowest number of total and missing fields
     comparing (\m -> -length (missingFields m) - length (extraFields m)) m1 m2
@@ -298,24 +298,24 @@ calculateMatch recordFields actualFields = do
           { sharedFields = Set.toList $ Set.intersection recordFields actualFields,
             missingFields = Set.toList $ Set.difference actualFields recordFields,
             extraFields = mempty,
-            mispellings = mempty
+            misspellings = mempty
           }
   let extraNames = Set.toList $ Set.difference recordFields actualFields
-  foldr matchMispellings match extraNames
+  foldr matchMisspellings match extraNames
   where
-    matchMispellings :: FieldName -> RecordMatch -> RecordMatch
-    matchMispellings field RecordMatch {..} = case mispellingsSortedByLikelihood field missingFields of
+    matchMisspellings :: FieldName -> RecordMatch -> RecordMatch
+    matchMisspellings field RecordMatch {..} = case misspellingsSortedByLikelihood field missingFields of
       [] ->
         RecordMatch
           { missingFields = missingFields,
-            mispellings = mispellings,
+            misspellings = misspellings,
             extraFields = field : extraFields,
             ..
           }
       matchedField : _ ->
         RecordMatch
           { missingFields = List.delete matchedField missingFields,
-            mispellings = (field, matchedField) : mispellings,
+            misspellings = (field, matchedField) : misspellings,
             extraFields = extraFields,
             ..
           }
