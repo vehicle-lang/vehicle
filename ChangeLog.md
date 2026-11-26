@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Solver backend
+
+* The error message for a `@dataset` whose dimensions are not constant now correctly refers to it as a `@dataset` rather than a `@parameter`.
+
 ## v0.30.0
 
 ### General
