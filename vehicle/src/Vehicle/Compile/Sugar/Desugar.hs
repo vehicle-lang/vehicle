@@ -65,7 +65,7 @@ elabModule file (B.DefModule imports decls) = flip runReaderT file $ do
   return $ V.Module imports' decls'
 
 elabImportStatement :: B.ImportStatement -> V.ImportStatement
-elabImportStatement (B.Import path) = do
+elabImportStatement (B.Import _ path) = do
   let fragToString (B.ModulePathFrag frag) = unpack $ tkSymbol frag
   V.ImportStatement $ V.ModulePath $ fmap fragToString path
 
@@ -86,7 +86,7 @@ elabDeclGroup ::
   m (V.Decl Builtin, [B.Decl])
 elabDeclGroup anns = \case
   -- Type definition.
-  B.DefType n bs t :| ds -> do
+  B.DefType _ n bs t :| ds -> do
     d' <- elabTypeDef anns n bs t
     return (d', ds)
 
@@ -106,7 +106,7 @@ elabDeclGroup anns = \case
     return (d', ds)
 
   -- Record declaration
-  B.DefRecord name telescope fields supports :| ds -> do
+  B.DefRecord _ name telescope _ fields supports :| ds -> do
     d' <- elabRecordDefinition anns name telescope fields supports
     return (d', ds)
 
@@ -314,7 +314,7 @@ elabSupportedOperations ::
   m [V.DerivableRecordOperation]
 elabSupportedOperations = \case
   B.NoSupports -> return []
-  B.Supports classes -> traverse (\(B.DerivedClass name) -> elabOp name) classes
+  B.Supports _ classes -> traverse (\(B.DerivedClass name) -> elabOp name) classes
   where
     elabOp :: B.Name -> m V.DerivableRecordOperation
     elabOp name = do
@@ -727,8 +727,9 @@ elabLetDecl (B.LDecl b e) = bitraverse (elabSingleNameBinder) elabExpr (b, e)
 
 elabLiteral :: (MonadElab m, DesugarableBuiltin Builtin) => B.Lit -> m (V.Expr Builtin)
 elabLiteral = \case
-  B.UnitLiteral ->
-    return $ elabUnitLiteral mempty
+  B.UnitLiteral t -> do
+    p <- mkProvenance t
+    return $ elabUnitLiteral p
   B.BoolLiteral t -> do
     p <- mkProvenance t
     let b = readBoolLiteral t

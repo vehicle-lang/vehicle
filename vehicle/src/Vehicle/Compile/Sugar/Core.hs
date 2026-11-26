@@ -68,6 +68,16 @@ instanceAnn = mkToken B.TokAnnotation "@instance"
 
 typeClassAnn = mkToken B.TokAnnotation "@typeclass"
 
+tokTypeDef = mkToken B.TokTypeDef "type"
+
+tokRecord = mkToken B.TokRecord "record"
+
+tokWhere = mkToken B.TokWhere "where"
+
+tokSupports = mkToken B.TokSupports "supports"
+
+tokImport = mkToken B.TokImport "import"
+
 tokArrow = mkToken B.TokArrow "->"
 
 tokIf = mkToken B.TokIf "if"
@@ -221,6 +231,8 @@ tokDivRealTensor = mkToken B.TokSubRealTensor "divRealTensor"
 tokSeqOpen = mkToken B.TokSeqOpen "["
 
 tokSeqClose = mkToken B.TokSeqClose "]"
+
+tokUnitLiteral = mkToken B.UnitLit "()"
 
 tokNil = mkToken B.TokNil "nil"
 

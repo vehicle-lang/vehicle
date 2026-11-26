@@ -1,6 +1,6 @@
-module Vehicle.LSP.SemanticTokens.Internal
-  ( IntermediateSemTok,
-    collectDeclsTokens,
+module Vehicle.LSP.SemanticTokens.Semantic
+  ( collectDeclsTokens,
+    mkTokPure,
   )
 where
 
@@ -11,22 +11,17 @@ import Data.List
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Proxy (Proxy (..))
 import Language.LSP.Protocol.Types as Lsp
-  ( SemanticTokenAbsolute (..),
-    SemanticTokenModifiers,
-    SemanticTokenTypes (..),
+  ( SemanticTokenTypes (..),
   )
 import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Builtin.Standard
   ( Builtin (..),
-    BuiltinConstructor (..),
-    BuiltinFunction (..),
-    DerivedFunction (..),
-    TypeClassOp (..),
   )
 import Vehicle.Data.Variable.Bound.Context.Core (lookupIx)
 import Vehicle.Data.Variable.Bound.Context.Generic (MonadBoundContext (..))
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, getDeclEntry)
+import Vehicle.LSP.SemanticTokens.Common (IntermediateSemTok, TokenClass, mkTokPure)
 import Vehicle.Prelude
   ( DefFunctionSort (..),
     GenericArg (..),
@@ -34,9 +29,7 @@ import Vehicle.Prelude
     GenericDecl (..),
     HasProvenance (..),
     Identifier,
-    Position (..),
-    Provenance (Provenance),
-    Range (..),
+    Provenance,
     binderNamingForm,
     typeOf,
     wasInsertedByCompiler,
@@ -53,10 +46,6 @@ type MonadCollectTokens m =
     MonadEmitTokens m
   )
 
-type IntermediateSemTok = Maybe Lsp.SemanticTokenAbsolute
-
-type TokenClass = (Lsp.SemanticTokenTypes, [Lsp.SemanticTokenModifiers])
-
 type BinderDepth = Int
 
 -- drop `ix + 1` binders because we want to drop all binders up to and including binder `ix`
@@ -72,22 +61,10 @@ emitAt p = \case
 mkTok :: (MonadEmitTokens m) => Provenance -> TokenClass -> m IntermediateSemTok
 mkTok p tok = do
   filePath <- ask
-  return $ makeToken filePath p tok
-  where
-    makeToken :: FilePath -> Provenance -> TokenClass -> IntermediateSemTok
-    makeToken filePath (Provenance (Range (Position sl sc) (Position _el ec)) provFilePath) (tType, modifiers)
-      | filePath == provFilePath && sl > 0 && sc > 0 =
-          Just $
-            -- LSP expects 0-indexed lines and columns but we use 1-indexed, so subtract 1 from 'sl' and 'sc'
-            -- This also means that sl <= 0 || sc <= 0 indicates an invalid location.
-            Lsp.SemanticTokenAbsolute
-              { _line = fromIntegral sl - 1,
-                _startChar = fromIntegral sc - 1,
-                _length = fromIntegral (ec - sc),
-                _tokenType = tType,
-                _tokenModifiers = modifiers
-              }
-      | otherwise = Nothing
+  return $ mkTokPure filePath p tok
+
+handledBySyntaxPass :: (Monad m) => m [IntermediateSemTok]
+handledBySyntaxPass = return []
 
 --------------------------------------------------------------------------------
 -- Token collection:
@@ -132,31 +109,29 @@ collectExprTokens ::
   Expr Builtin ->
   m [IntermediateSemTok]
 collectExprTokens = \case
-  Universe p _level -> singleton <$> mkTok p (SemanticTokenTypes_Type, [])
+  Universe _p _level -> handledBySyntaxPass
   Pi _p binder res -> do
     binderToks <- collectBinderTokens binder
     exprToks <- addBinderToContext binder $ collectExprTokens res
     return $ binderToks ++ exprToks
-  Builtin p builtin -> singleton <$> emitAt p (getBuiltinToken builtin)
+  Builtin _p _builtin -> handledBySyntaxPass
   BoundVar p ix -> singleton <$> (emitAt p =<< classifyBoundVar 0 ix)
   FreeVar p ident -> singleton <$> (emitAt p =<< classifyFreeVar ident)
-  Hole p _name -> singleton <$> mkTok p (SemanticTokenTypes_Decorator, [])
-  Meta p _metaId -> singleton <$> mkTok p (SemanticTokenTypes_TypeParameter, [])
+  Hole _p _name -> handledBySyntaxPass
+  Meta _p _metaId -> handledBySyntaxPass
   App f args -> do
     fnToks <- collectExprTokens f
     argsToks <- concat <$> traverse collectArgTokens (filter (not . wasInsertedByCompiler) (NonEmpty.toList args))
     return $ fnToks ++ argsToks
-  Let p bound bodyBinder bodyExpr -> do
-    letToks <- singleton <$> mkTok p (SemanticTokenTypes_Keyword, [])
+  Let _p bound bodyBinder bodyExpr -> do
     boundToks <- collectExprTokens bound
     binderToks <- collectBinderTokens bodyBinder
     bodyToks <- addBinderToContext bodyBinder $ collectExprTokens bodyExpr
-    return $ letToks ++ boundToks ++ binderToks ++ bodyToks
-  Lam p binder body -> do
-    lamToks <- singleton <$> mkTok p (SemanticTokenTypes_Keyword, [])
+    return $ boundToks ++ binderToks ++ bodyToks
+  Lam _p binder body -> do
     binderToks <- collectBinderTokens binder
     bodyToks <- addBinderToContext binder $ collectExprTokens body
-    return $ lamToks ++ binderToks ++ bodyToks
+    return $ binderToks ++ bodyToks
   Record _p _typ fields -> do
     fieldsToks <- collectFieldsTokens fields
     return fieldsToks
@@ -181,83 +156,6 @@ collectFieldsTokens fields =
           fieldTok <- mkTok (provenanceOf field) (SemanticTokenTypes_Method, [])
           return $ fieldTok : valueToks
       )
-
--- Builtins are always a single token and cannot be free/bound variables, so this function
--- can be pure.
-getBuiltinToken :: Builtin -> Maybe TokenClass
-getBuiltinToken = \case
-  BuiltinConstructor constructor -> case constructor of
-    Nil -> tok SemanticTokenTypes_Keyword
-    Cons -> tok SemanticTokenTypes_Operator
-    UnitLiteral -> tok SemanticTokenTypes_Keyword
-    IndexLiteral _ -> tok SemanticTokenTypes_Number
-    NatLiteral _ -> tok SemanticTokenTypes_Number
-    VectorLiteral -> tok SemanticTokenTypes_Keyword
-    BoolTensorLiteral _ -> tok SemanticTokenTypes_Keyword
-    NatTensorLiteral _ -> tok SemanticTokenTypes_Number
-    RatTensorLiteral _ -> tok SemanticTokenTypes_Number
-  -- TODO: It would be nice to be able to access the external syntax here. We want to say
-  -- "if the external token is alphanumeric, use Keyword, otherwise use Operator".
-  BuiltinFunction fn -> case fn of
-    Not -> tok SemanticTokenTypes_Operator
-    And -> tok SemanticTokenTypes_Operator
-    Or -> tok SemanticTokenTypes_Operator
-    Implies -> tok SemanticTokenTypes_Operator
-    QuantifyRatTensor {} -> tok SemanticTokenTypes_Keyword
-    QuantifyRecord {} -> tok SemanticTokenTypes_Keyword
-    If -> tok SemanticTokenTypes_Keyword
-    CompareIndex {} -> tok SemanticTokenTypes_Operator
-    CompareNat {} -> tok SemanticTokenTypes_Operator
-    CompareRatTensor {} -> tok SemanticTokenTypes_Operator
-    ReduceAndTensor -> tok SemanticTokenTypes_Keyword
-    ReduceOrTensor -> tok SemanticTokenTypes_Keyword
-    -- Rat operations
-    Add {} -> tok SemanticTokenTypes_Operator
-    Mul {} -> tok SemanticTokenTypes_Operator
-    Neg {} -> tok SemanticTokenTypes_Operator
-    Sub {} -> tok SemanticTokenTypes_Operator
-    Div {} -> tok SemanticTokenTypes_Operator
-    Min {} -> tok SemanticTokenTypes_Operator
-    Max {} -> tok SemanticTokenTypes_Operator
-    Pow {} -> tok SemanticTokenTypes_Operator
-    Log {} -> tok SemanticTokenTypes_Operator
-    Exp {} -> tok SemanticTokenTypes_Operator
-    ReduceAddRatTensor -> tok SemanticTokenTypes_Keyword
-    ReduceMulRatTensor -> tok SemanticTokenTypes_Keyword
-    ReduceMinRatTensor -> tok SemanticTokenTypes_Keyword
-    ReduceMaxRatTensor -> tok SemanticTokenTypes_Keyword
-    -- Tensor operations
-    AtTensor -> tok SemanticTokenTypes_Operator
-    StackTensor -> tok SemanticTokenTypes_Keyword
-    ConstTensor -> tok SemanticTokenTypes_Keyword
-    Iterate -> tok SemanticTokenTypes_Keyword
-    ForeachTensor -> tok SemanticTokenTypes_Keyword
-    Transpose -> tok SemanticTokenTypes_Keyword
-    WhereTensor -> tok SemanticTokenTypes_Keyword
-    SearchRatTensor -> tok SemanticTokenTypes_Keyword
-    -- Vector operations
-    AtVector -> tok SemanticTokenTypes_Operator
-    ForeachVector -> tok SemanticTokenTypes_Keyword
-    -- List operations
-    FoldList -> tok SemanticTokenTypes_Keyword
-    MapList -> tok SemanticTokenTypes_Keyword
-    ReverseList -> tok SemanticTokenTypes_Keyword
-    AppendList -> tok SemanticTokenTypes_Keyword
-  BuiltinType _typ -> tok SemanticTokenTypes_Type
-  BuiltinCast _cast -> tok SemanticTokenTypes_Function
-  DerivedFunction fn -> case fn of
-    TypeAnn -> tok SemanticTokenTypes_Operator
-    QuantifyIndex {} -> tok SemanticTokenTypes_Keyword
-    QuantifyInList {} -> tok SemanticTokenTypes_Keyword
-  TypeClass _tc -> tok SemanticTokenTypes_Class
-  TypeClassOp tcOp -> case tcOp of
-    FromNatTC -> Nothing
-    FromRatTC -> Nothing
-    VecLiteralTC -> tok SemanticTokenTypes_Keyword
-    TensorTypeTC -> tok SemanticTokenTypes_Type
-  NatInDomainConstraint -> Nothing
-  where
-    tok typ = Just (typ, [])
 
 --------------------------------------------------------------------------------
 -- Token classification:

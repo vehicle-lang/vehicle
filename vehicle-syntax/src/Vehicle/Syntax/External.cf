@@ -6,6 +6,7 @@ comment "{-" "-}";
 -- * Tokens
 
 -- NOTE: Token rules are tried IN ORDER, so the order matters!
+position token UnitLit  {"()"};
 position token Boolean  ({"True"} | {"False"});
 position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
@@ -22,6 +23,12 @@ position token TokAnnotation ({"@"}
   | {"typeclass"}
   )
 );
+
+position token TokTypeDef   {"type"};
+position token TokRecord    {"record"};
+position token TokWhere     {"where"};
+position token TokSupports  {"supports"};
+position token TokImport    {"import"};
 
 position token TokArrow     {"->"};
 position token TokIf        {"if"};
@@ -206,7 +213,7 @@ separator RecordFieldAssign ",";
 
 -- * Literals
 
-UnitLiteral.  Lit ::= "()";
+UnitLiteral.  Lit ::= UnitLit;
 BoolLiteral.  Lit ::= Boolean;
 NatLiteral.   Lit ::= Natural;
 RatLiteral.   Lit ::= Rational;
@@ -411,16 +418,16 @@ DeclAnnWithoutOpts. DeclAnnOpts ::= "";
 -- * Declarations
 
 DefAnn.       Decl ::= TokAnnotation DeclAnnOpts;
-DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
+DefType.      Decl ::= TokTypeDef Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
-DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}" RecordSupports;
+DefRecord.    Decl ::= TokRecord Name [NameBinder] TokWhere "{" [RecordFieldDef] "}" RecordSupports;
 
 -- The type classes to derive for a record, e.g. `supports Addition, Multiplication`.
 DerivedClass. DerivedClass ::= Name;
 separator nonempty DerivedClass ",";
 
-Supports.   RecordSupports ::= "supports" [DerivedClass];
+Supports.   RecordSupports ::= TokSupports [DerivedClass];
 NoSupports. RecordSupports ::= "";
 
 separator Decl ";";
@@ -431,7 +438,7 @@ ModulePathFrag. ModulePathFragment ::= Name;
 
 separator nonempty ModulePathFragment ".";
 
-Import. ImportStatement ::= "import" [ModulePathFragment];
+Import. ImportStatement ::= TokImport [ModulePathFragment];
 
 separator ImportStatement ";";
 

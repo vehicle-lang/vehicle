@@ -53,7 +53,7 @@ instance Delaborate (V.Module V.Builtin) B.Module where
 instance Delaborate V.ImportStatement B.ImportStatement where
   delabM (V.ImportStatement (V.ModulePath path)) = do
     let path' = fmap go path
-    return $ B.Import path'
+    return $ B.Import tokImport path'
     where
       go :: String -> B.ModulePathFragment
       go = B.ModulePathFrag . mkToken B.Name . pack
@@ -320,7 +320,7 @@ delabConstructor :: (MonadDelab m) => V.BuiltinConstructor -> [V.Arg V.Builtin] 
 delabConstructor fun args = case fun of
   V.Cons -> delabInfixOp2 B.Cons tokCons args
   V.Nil -> delabApp (B.Nil tokNil) args
-  V.UnitLiteral -> return $ B.Literal B.UnitLiteral
+  V.UnitLiteral -> return $ B.Literal $ B.UnitLiteral tokUnitLiteral
   V.NatLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.IndexLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.VectorLiteral -> delabVecLiteral (rawHead fun) args
@@ -449,7 +449,7 @@ delabTypeDecl ::
 delabTypeDecl ident binderCount expr = do
   let (binders, body) = foldDeclBinders binderCount expr
   let n' = delabIdentifier ident
-  defType <- B.DefType n' <$> traverse delabNameBinder binders <*> delabM body
+  defType <- B.DefType tokTypeDef n' <$> traverse delabNameBinder binders <*> delabM body
   return [defType]
 
 delabRecordDecl ::
@@ -466,12 +466,12 @@ delabRecordDecl ident sort telescope fields supports = do
   telescope' <- traverse delabNameBinder telescope
   fields' <- traverse delabM fields
   let supports' = delabSupportedOperations supports
-  return $ annDecl <> [B.DefRecord n' telescope' fields' supports']
+  return $ annDecl <> [B.DefRecord tokRecord n' telescope' tokWhere fields' supports']
 
 delabSupportedOperations :: [V.DerivableRecordOperation] -> B.RecordSupports
 delabSupportedOperations = \case
   [] -> B.NoSupports
-  ops -> B.Supports $ fmap (\op -> B.DerivedClass $ mkToken B.Name (pack $ show op)) ops
+  ops -> B.Supports tokSupports $ fmap (\op -> B.DerivedClass $ mkToken B.Name (pack $ show op)) ops
 
 -- | Displays a quantifier using the quantifier syntax if its only argument is
 -- the lambda being quantified over, and otherwise using the provided head.

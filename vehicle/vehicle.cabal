@@ -308,7 +308,9 @@ library
     Vehicle.LSP.Monad
     Vehicle.LSP.SemanticTokens
     Vehicle.LSP.SemanticTokens.Comments
-    Vehicle.LSP.SemanticTokens.Internal
+    Vehicle.LSP.SemanticTokens.Common
+    Vehicle.LSP.SemanticTokens.Semantic
+    Vehicle.LSP.SemanticTokens.Syntax
     Vehicle.LSP.State
     Vehicle.Prelude.Error
     Vehicle.Prelude.IO
