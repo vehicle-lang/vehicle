@@ -1,8 +1,1 @@
 Error in file 'spec.vcl' at Line 8, Columns 7-8: '0' is a single number, but it is used where a tensor of type 'Tensor Real [2]' is expected.
-It can only be used at the following types:
-  1. Index n
-    - rejected: 'Tensor Real [2]' is not equal to 'Index ?18'.
-  2. Nat
-    - rejected: 'Tensor Real [2]' is not equal to 'Nat'.
-  3. Real
-    - rejected: '[2]' is not equal to '[]'.

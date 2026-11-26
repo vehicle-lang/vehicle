@@ -1,8 +1,1 @@
 Error in file 'spec.vcl' at Line 4, Columns 5-6: '[1]' has 1 element, but its expected type 'Vector Nat 2' requires 2.
-It can only be used at the following types:
-  1. Tensor t (d :: ds)
-    - rejected: 'Vector Nat 2' is not equal to 'Tensor ?11 (1 :: ?13)'.
-  2. Vector t d
-    - rejected: '1' is not equal to '2'.
-  3. List t
-    - rejected: 'Vector Nat 2' is not equal to 'List ?11'.

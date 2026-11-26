@@ -1,6 +1,4 @@
 Error in file 'quantifiedVectorNat.vcl' at Line 3, Columns 5-11: 'forall' cannot be used as something of type '(Vector Nat 2 -> Bool) -> Bool'.
 It can only be used at the following types:
   1. (Tensor Real ds -> Bool) -> Bool
-    - rejected: 'Vector Nat 2' is not equal to 'Tensor Real ?21'.
   2. (Index n -> Bool) -> Bool
-    - rejected: 'Vector Nat 2' is not equal to 'Index ?21'.

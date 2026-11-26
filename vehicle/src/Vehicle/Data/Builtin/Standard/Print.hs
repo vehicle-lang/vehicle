@@ -2,7 +2,7 @@
 
 module Vehicle.Data.Builtin.Standard.Print () where
 
-import Vehicle.Data.AST.Expr.Scoped (Arg, Expr (..), normAppList)
+import Vehicle.Data.AST.Expr.Scoped (Arg, Expr (..), normAppList, pattern App)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface (pattern ICons, pattern INatLiteral, pattern ITensorType, pattern IVectorType)
@@ -54,6 +54,20 @@ explainStandardInstanceFailure prettyExpr opDoc typeClass args = case (typeClass
               <+> "requires"
               <+> pretty expectedLength
             <> "."
+  -- A vector literal whose elements have the wrong type.
+  (Right (TypeClass HasVecLits), [expectedType, actualElemType, _length])
+    | Just requiredElemType <- requiredElementType expectedType,
+      isKnown actualElemType,
+      requiredElemType /= actualElemType ->
+        Just $
+          opDoc
+            <+> "has elements of type"
+            <+> squotes (prettyExpr actualElemType)
+            <> ", but its expected type"
+              <+> squotes (prettyExpr expectedType)
+              <+> "requires elements of type"
+              <+> squotes (prettyExpr requiredElemType)
+            <> "."
   _ -> Nothing
   where
     containerDescription :: Expr Builtin -> Maybe (Doc a)
@@ -69,6 +83,22 @@ explainStandardInstanceFailure prettyExpr opDoc typeClass args = case (typeClass
       IVectorType _ (INatLiteral n) -> Just n
       ITensorType _ (ICons _ (INatLiteral n) _) -> Just n
       _ -> Nothing
+
+    -- The type that the elements of a vector literal must have to have the
+    -- type, if it is known.
+    requiredElementType :: Expr Builtin -> Maybe (Expr Builtin)
+    requiredElementType = \case
+      IVectorType tElem _ -> Just tElem
+      ITensorType tElem (ICons _ _ dims) -> Just (ITensorType tElem dims)
+      _ -> Nothing
+
+    -- Whether the type has been worked out, i.e. is not an unsolved
+    -- meta-variable.
+    isKnown :: Expr Builtin -> Bool
+    isKnown = \case
+      Meta {} -> False
+      App (Meta {}) _ -> False
+      _ -> True
 
     isNumberLiteralClass :: TypeClass -> Bool
     isNumberLiteralClass = \case

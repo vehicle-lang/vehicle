@@ -1,4 +1,1 @@
 Error in file 'spec.vcl' at Line 4, Columns 5-8: '1.5' is a single number, but it is used where a vector of type 'Vector Real 2' is expected.
-It can only be used at the following types:
-  1. Real
-    - rejected: 'Vector Real 2' is not equal to 'Real'.

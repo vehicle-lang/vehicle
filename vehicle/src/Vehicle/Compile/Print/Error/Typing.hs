@@ -10,7 +10,6 @@ where
 import Control.Applicative ((<|>))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Maybe (fromMaybe)
 import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Data.Text qualified as Text
@@ -454,12 +453,16 @@ instanceArgOriginError ::
 instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType tc) candidates =
   VehicleUserError
     { provenance = Just $ provenanceOf ctx,
-      problem =
-        fromMaybe genericExplanation typeClassExplanation
-          <> line
-          <> "It can only be used at the following types:"
-          <> line
-          <> indent 2 (vsep (fmap candidateOpType (zip [1 ..] candidates))),
+      -- If the type class gives a specific explanation then the candidates
+      -- are omitted, as the explanation is more precise than they are.
+      problem = case typeClassExplanation of
+        Just explanation -> explanation
+        Nothing ->
+          genericExplanation
+            <> line
+            <> "It can only be used at the following types:"
+            <> line
+            <> indent 2 (vsep (fmap candidateOpType (zip [1 ..] candidates))),
       fix = Nothing
     }
   where
@@ -508,8 +511,12 @@ instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType tc) candida
     candidateOpType (no, failedCandidate@(_, err)) =
       pretty no
         <> "." <+> candidateDisplayType failedCandidate
-        <> line
-        <> indent 2 ("- rejected:" <+> candidateRejectionReason (provenanceOf tcOp) err)
+        <> case err of
+          -- The candidate's type not matching the type the expression is used
+          -- at is already conveyed by the headline and the candidate's type.
+          FailedUnificationConstraints (FailedUnificationConstraintsError _ (WithContext (Unify origin _ _) _ :| _))
+            | isOriginOf (provenanceOf tcOp) origin -> ""
+          _ -> line <> indent 2 ("- rejected:" <+> candidateRejectionReason (provenanceOf tcOp) err)
 
 -- | The arguments of a type class constraint, e.g. `[Nat, Nat, Nat]` for
 -- `HasAdd Nat Nat Nat`.
