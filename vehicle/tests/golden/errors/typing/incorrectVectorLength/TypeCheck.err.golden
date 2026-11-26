@@ -1,0 +1,1 @@
+Error in file 'spec.vcl' at Line 4, Columns 5-6: '[1]' has 1 element, but its expected type 'Vector Nat 2' requires 2.

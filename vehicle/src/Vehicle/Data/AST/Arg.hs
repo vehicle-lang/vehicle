@@ -75,6 +75,10 @@ pairArg (Arg v r x, y) = Arg v r (x, y)
 unpairArg :: GenericArg (a, b) -> (GenericArg a, b)
 unpairArg (Arg v r (x, y)) = (Arg v r x, y)
 
+-- | The expressions of the explicit arguments.
+explicitArgExprs :: (Foldable f) => f (GenericArg expr) -> [expr]
+explicitArgExprs = fmap argExpr . filter isExplicit . foldr (:) []
+
 replaceArgExpr :: expr1 -> GenericArg expr2 -> GenericArg expr1
 replaceArgExpr e = fmap (const e)
 

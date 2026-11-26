@@ -279,6 +279,7 @@ library
     Vehicle.Data.Builtin.Standard.IndexSolver
     Vehicle.Data.Builtin.Standard.Instances
     Vehicle.Data.Builtin.Standard.Normalise
+    Vehicle.Data.Builtin.Standard.Print
     Vehicle.Data.Builtin.Standard.Type
     Vehicle.Data.Code.Interface.Args
     Vehicle.Data.Code.Interface.Operations

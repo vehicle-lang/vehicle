@@ -7,4 +7,5 @@ where
 
 import Vehicle.Data.Builtin.Standard.Core as Export
 import Vehicle.Data.Builtin.Standard.Normalise as Export ()
+import Vehicle.Data.Builtin.Standard.Print as Export ()
 import Vehicle.Data.Builtin.Standard.Type as Export ()

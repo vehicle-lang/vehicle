@@ -205,6 +205,7 @@ instance ConvertableBuiltin LinearityBuiltin Builtin where
 instance PrintableBuiltin LinearityBuiltin where
   coercionArgs = const Nothing
   isDerivedBuiltin = const Nothing
+  explainInstanceFailure _ _ _ _ = Nothing
 
 --------------------------------------------------------------------------------
 -- Normalisation

@@ -6,6 +6,7 @@ import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Compile.Normalise.Core
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard.Print ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Prelude (HasIdentifier (identifierOf))

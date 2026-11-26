@@ -47,6 +47,22 @@ class (Show builtin, Pretty builtin, ConvertableBuiltin builtin Builtin) => Prin
 
   isDerivedBuiltin :: builtin -> Maybe Identifier
 
+  -- | An explanation, specific to the type class, of why there is no instance
+  -- of the type class for the provided arguments, if there is a more helpful
+  -- one than the generic explanation. This allows the most common mistakes
+  -- (e.g. a vector literal with the wrong number of elements) to be explained
+  -- in terms of what the user wrote, rather than in terms of the instances.
+  explainInstanceFailure ::
+    -- | Prints an expression for the user.
+    (Expr builtin -> Doc a) ->
+    -- | The overloaded expression, as written by the user.
+    Doc a ->
+    -- | The type class.
+    Either Identifier builtin ->
+    -- | The arguments of the type class, which are fully normalised.
+    [Arg builtin] ->
+    Maybe (Doc a)
+
 isCoercionExpr :: (PrintableBuiltin builtin) => Expr builtin -> Bool
 isCoercionExpr = \case
   Builtin _ b -> isJust $ coercionArgs b
@@ -57,16 +73,3 @@ isCoercionExpr = \case
 -- standard `Builtin` type.
 cheatConvertBuiltin :: Provenance -> Doc a -> Expr builtin
 cheatConvertBuiltin p b = FreeVar p $ stdlibIdentifier $ layoutAsText b
-
-instance PrintableBuiltin Builtin where
-  coercionArgs b = case b of
-    BuiltinCast FromNat {} -> Just $ \args -> argExpr $ last args
-    BuiltinCast FromRat {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp FromNatTC {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp FromRatTC {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp VecLiteralTC {} -> Just $ \args -> normAppList (Builtin mempty b) args
-    _ -> Nothing
-
-  isDerivedBuiltin b = case b of
-    DerivedFunction f -> Just $ identifierOf f
-    _ -> Nothing
