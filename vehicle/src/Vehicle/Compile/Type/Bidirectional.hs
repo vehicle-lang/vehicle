@@ -357,6 +357,7 @@ checkExprTypesEqual p expr expectedType actualType = do
         CheckingExprType $
           CheckingExpr
             { checkedExpr = Right expr,
+              checkedExprCtx = ctx,
               checkedExprExpectedType = expectedType,
               checkedExprActualType = actualType
             }
@@ -376,6 +377,7 @@ checkPiBinderMatchesLamBinder piBinder lamBinder = do
         CheckingExprType $
           CheckingExpr
             { checkedExpr = Left (nameOf lamBinder),
+              checkedExprCtx = ctx,
               checkedExprExpectedType = expectedType,
               checkedExprActualType = actualType
             }
