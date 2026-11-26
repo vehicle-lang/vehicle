@@ -20,6 +20,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
 import Vehicle.Data.Builtin.Core (BuiltinType (..))
+import Vehicle.Data.Builtin.Core.StdlibTypeClassOp (lookupStdlibTypeClassOp)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.ForcedValue qualified as Forced
@@ -436,15 +437,16 @@ instanceArgOriginError ::
   InstanceArgOrigin builtin ->
   [FailedInstanceCandidate builtin] ->
   VehicleError
-instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candidates =
+instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType tc) candidates =
   VehicleUserError
     { provenance = Just $ provenanceOf ctx,
       problem =
-        "unable to work out a valid type for the overloaded expression"
-          <+> originExpr
+        originExpr
+          <+> "cannot be used as something of type"
+          <+> squotes usedAtType
           <> "."
           <> line
-          <> "The possible options explored were:"
+          <> "It can only be used at the following types:"
           <> line
           <> indent 2 (vsep (fmap candidateOpType (zip [1 ..] candidates))),
       fix = Nothing
@@ -453,7 +455,18 @@ instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candid
     originExpr :: Doc a
     originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
 
-    actualArgs = if isCoercionExpr tcOp then tcOpArgs else []
+    isCoercion = isCoercionExpr tcOp
+    actualArgs = if isCoercion then tcOpArgs else []
+
+    -- The type of the overloaded expression at the point it is used, i.e.
+    -- its type instantiated with the arguments of the type class constraint
+    -- that could not be satisfied.
+    usedAtType :: Doc a
+    usedAtType = do
+      let goalTypeArgs = case tc of
+            App _ args -> NonEmpty.toList args
+            _ -> []
+      calculateInstanceDisplayType freeCtx (boundContextOf ctx) isCoercion tcOpType goalTypeArgs actualArgs
 
     -- This assumes that the parameters of the type-class instance are the first arguments of the type-class operation.
     -- e.g. if `HasAdd t1 t2 t3` then `add` has type `forall {t1 t2 t3} . X`. If this is not the case then this function
@@ -461,7 +474,7 @@ instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candid
     candidateOpType :: (Int, FailedInstanceCandidate builtin) -> UnAnnDoc
     candidateOpType (no, (candidate, err)) = do
       let (candidateTypeArgs, solutionCtx) = calculateInstanceCandidateTypeArgs candidate
-      let finalTypeDoc = calculateInstanceDisplayType freeCtx solutionCtx tcOpType candidateTypeArgs actualArgs
+      let finalTypeDoc = calculateInstanceDisplayType freeCtx solutionCtx isCoercion tcOpType candidateTypeArgs actualArgs
       pretty no
         <> "." <+> finalTypeDoc
         <> line
@@ -518,11 +531,13 @@ calculateInstanceDisplayType ::
   (NormalisableBuiltin builtin, PrintableBuiltin builtin) =>
   FreeCtx builtin ->
   BoundCtx (Type builtin) ->
+  -- | Whether the overloaded operation is a coercion.
+  Bool ->
   Type builtin ->
   [Arg builtin] ->
   [Arg builtin] ->
   Doc a
-calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = do
+calculateInstanceDisplayType freeEnv boundCtx isCoercion fullType actualArgs typingArgs = do
   let normFullType = Unforced (boundContextToEnv boundCtx) fullType
   let opArgs = mergeArgs actualArgs typingArgs
   instantiateTelescope boundCtx normFullType opArgs
@@ -551,7 +566,11 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
               MetaSubstitution.forceThunkWithUnsolvedMetas (toNamedBoundCtx ctx) typ
       case (forcedType, arguments) of
         (VPi binder _, [])
-          | isExplicit binder -> prettyDisplayType freeEnv ctx typ
+          -- Coercions are inserted by the compiler and are invisible to the
+          -- user, who only sees the expression being coerced (e.g. the
+          -- literal `0`). Therefore the type shown is the result type of the
+          -- coercion, rather than the type of the coercion function itself.
+          | isExplicit binder && not isCoercion -> prettyDisplayType freeEnv ctx typ
         (VPi binder (Closure env body), args) -> do
           let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
           let recType = Unforced (alterEnv env) body
@@ -580,15 +599,20 @@ prettyTypeClassConstraintOriginExpr ::
   Expr builtin ->
   [Arg builtin] ->
   Doc a
-prettyTypeClassConstraintOriginExpr ctx fun args = do
-  let expr = case fun of
-        -- We don't want to print out the actual coercion functions as the user is
-        -- oblivious to them. Instead we want to print out what they are applied to.
-        Builtin _ b -> case coercionArgs b of
-          Just f -> f args
-          Nothing -> fun
-        _ -> fun
-  prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
+prettyTypeClassConstraintOriginExpr ctx fun args = case fun of
+  -- Overloaded operators are desugared into stdlib type-class operations
+  -- (e.g. `-` into `negTC`), so we print the operator that the user wrote.
+  FreeVar _ ident
+    | isStdlibIdent ident,
+      Just op <- lookupStdlibTypeClassOp (nameOf ident) ->
+        pretty op
+  -- We don't want to print out the actual coercion functions as the user is
+  -- oblivious to them. Instead we want to print out what they are applied to.
+  Builtin _ b
+    | Just f <- coercionArgs b -> prettyExpr (f args)
+  _ -> prettyExpr fun
+  where
+    prettyExpr expr = prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
 
 -- | Prints a type for display to the user. Types may contain unevaluated
 -- internal computation (e.g. from the typing rules of the builtins), and

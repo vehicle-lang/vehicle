@@ -1,5 +1,5 @@
-Error in file 'incorrectTensorLength.vcl' at Line 2, Columns 10-11: unable to work out a valid type for the overloaded expression '[1]'.
-The possible options explored were:
+Error in file 'incorrectTensorLength.vcl' at Line 2, Columns 10-11: '[1]' cannot be used at type 'Tensor Real [2]'.
+It can only be used at the following types:
   1. Tensor t (d :: ds)
     - rejected: '1' is not equal to '2'.
   2. Vector t d

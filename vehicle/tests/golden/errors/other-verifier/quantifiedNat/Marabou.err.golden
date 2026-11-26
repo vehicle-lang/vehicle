@@ -1,5 +1,5 @@
-Error in file 'quantifiedNat.vcl' at Line 3, Columns 5-11: unable to work out a valid type for the overloaded expression 'forallTC'.
-The possible options explored were:
+Error in file 'quantifiedNat.vcl' at Line 3, Columns 5-11: 'forall' cannot be used at type '(Nat -> Bool) -> Bool'.
+It can only be used at the following types:
   1. (Tensor Real ds -> Bool) -> Bool
     - rejected: 'Nat' is not equal to 'Tensor Real ?11'.
   2. (Index n -> Bool) -> Bool
