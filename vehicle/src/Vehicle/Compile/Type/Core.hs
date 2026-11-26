@@ -251,7 +251,11 @@ insertInstanceIntoDatabase instanceHead instanceCandidate InstanceDatabase {..} 
 -- Unification constraints
 
 data CheckingExprType builtin = CheckingExpr
-  { checkedExpr :: Either (Maybe Name) (Expr builtin),
+  { -- | The bound context that the expression and both types live in.
+    -- This may be smaller than the context of the unification constraint,
+    -- as the solver extends the context when it goes under binders.
+    checkedExprCtx :: BoundCtx (Type builtin),
+    checkedExpr :: Either (Maybe Name) (Expr builtin),
     checkedExprExpectedType :: Type builtin,
     checkedExprActualType :: Expr builtin
   }

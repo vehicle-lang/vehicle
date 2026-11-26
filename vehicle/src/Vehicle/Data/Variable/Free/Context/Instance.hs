@@ -3,6 +3,7 @@
 module Vehicle.Data.Variable.Free.Context.Instance where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
 import Control.Monad.State
 import Data.Data (Proxy (..))
@@ -25,6 +26,10 @@ newtype FreeContextT builtin m a = FreeContextT
 -- manually in the right places.
 runFreeContextT :: (Monad m) => FreeCtx builtin -> FreeContextT builtin m a -> m a
 runFreeContextT ctx (FreeContextT contextFn) = runReaderT contextFn ctx
+
+-- | Runs a pure computation in the context monad.
+runFreeContext :: FreeCtx builtin -> FreeContextT builtin Identity a -> a
+runFreeContext ctx = runIdentity . runFreeContextT ctx
 
 -- | Runs a computation in the context monad allowing you to keep track of the
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`

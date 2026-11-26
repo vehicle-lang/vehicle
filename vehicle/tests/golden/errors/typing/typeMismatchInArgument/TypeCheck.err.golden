@@ -1,0 +1,4 @@
+Error in file 'spec.vcl' at Line 10, Columns 7-8: 'h' does not have the expected type.
+  Expected: Vector Real 2
+  Actual:   Vector Real 3
+They differ in that the expected type has '2' where the actual type has '3'.

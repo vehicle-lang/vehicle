@@ -7,7 +7,6 @@ module Vehicle.Compile.Print.Error.Typing
   )
 where
 
-import Control.Monad.Identity (Identity (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Monoid (Endo (..))
@@ -18,15 +17,15 @@ import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution qualified as MetaSubstitution
-import Vehicle.Compile.Type.Meta.Variable (emptyMetaVariableContext)
 import Vehicle.Data.Builtin.Core (BuiltinType (..))
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.ForcedValue
 import Vehicle.Data.Code.ForcedValue qualified as Forced
 import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Bound.Context.Generic
-import Vehicle.Data.Variable.Free.Context (FreeContextT, runFreeContextT)
+import Vehicle.Data.Variable.Free.Context (runFreeContext)
 import Prelude hiding (pi)
 
 typingErrorDetails ::
@@ -71,18 +70,18 @@ typingErrorDetails = \case
       }
     where
       WithContext constraint ctx = NonEmpty.head cs
-      nameCtx = namedBoundCtxOf ctx
 
       constraintOriginMessage = case constraint of
         UnificationConstraint (Unify origin _ _) -> case origin of
-          CheckingExprType CheckingExpr {..} ->
+          CheckingExprType CheckingExpr {..} -> do
+            let originNameCtx = toNamedBoundCtx checkedExprCtx
             "expected"
               <+> ( case checkedExpr of
                       Left binder -> "variable" <+> quotePretty binder
-                      Right expr -> squotes (prettyUnificationConstraintOriginExpr ctx expr)
+                      Right expr -> squotes (prettyFriendly $ WithContext expr originNameCtx)
                   )
               <+> "to be of type"
-              <+> squotes (prettyFriendly $ WithContext checkedExprExpectedType nameCtx)
+              <+> squotes (prettyFriendly $ WithContext checkedExprExpectedType originNameCtx)
               <+> "but was unable to prove it."
           CheckingInstanceType instanceOrigin ->
             instanceOriginConstraintMessage instanceOrigin
@@ -224,73 +223,133 @@ failedUnificationConstraintsError ::
   (PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
   FailedUnificationConstraintsError builtin ->
   VehicleError
-failedUnificationConstraintsError (FailedUnificationConstraintsError _freeEnv (err :| _)) = failedConstraintMessage err
+failedUnificationConstraintsError (FailedUnificationConstraintsError freeCtx (WithContext (Unify origin e1 e2) ctx :| _)) =
+  case origin of
+    CheckingExprType checkingExpr -> typeMismatchError freeCtx ctx checkingExpr e1 e2
+    CheckingInstanceType instanceOrigin -> instanceTypeMismatchError ctx instanceOrigin e1 e2
+
+-- | The error for when an expression (or a binder) does not have the type
+-- expected of it. The whole expected and actual types are shown first. Only
+-- then, if unification failed on some smaller part of them, is that part
+-- pointed out.
+typeMismatchError ::
+  forall builtin.
+  (PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
+  FreeCtx builtin ->
+  ConstraintContext builtin ->
+  CheckingExprType builtin ->
+  ThunkWithMetas builtin ->
+  ThunkWithMetas builtin ->
+  VehicleError
+typeMismatchError freeCtx ctx CheckingExpr {..} e1 e2 =
+  VehicleUserError
+    { provenance = Just $ provenanceOf ctx,
+      problem =
+        subject
+          <+> "does not have the expected type."
+          <> line
+          <> indent 2 (expectedActualBlock expectedDoc actualDoc)
+          <> differenceNote,
+      fix = Nothing
+    }
   where
-    failedConstraintMessage :: WithContext (UnificationConstraint builtin) -> VehicleError
-    failedConstraintMessage (WithContext (Unify origin e1 e2) ctx) = do
-      let boundCtx = boundContextOf ctx
-      let namedBoundCtx = toNamedBoundCtx boundCtx
-      let originMessage = case origin of
-            CheckingExprType CheckingExpr {..} -> do
-              let normActualType = Unforced @MetaID (boundContextToEnv boundCtx) checkedExprActualType
-              "expected"
-                <+> ( case checkedExpr of
-                        Left binder -> "variable" <+> quotePretty binder
-                        Right expr -> squotes (prettyUnificationConstraintOriginExpr ctx expr)
-                    )
-                <+> "to be of type"
-                <+> squotes (prettyFriendly (WithContext checkedExprExpectedType namedBoundCtx))
-                <+> "but was found to be of type"
-                <+> squotes (prettyFriendly (WithContext normActualType namedBoundCtx))
-            CheckingInstanceType (InstanceArgOrigin ArgOrigin {..}) ->
-              "unable to find a consistent type for the overloaded expression"
-                <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
-            CheckingInstanceType (InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ _ (Right sort) _)) ->
-              "All fields of record declarations annotated with" <+> quotePretty sort <+> "must have the same type"
-            CheckingInstanceType (InstanceTypeRestrictionOrigin {}) ->
-              ""
+    -- The expression and its types live in the context in which it was
+    -- checked, whereas the sub-terms on which unification failed live in the
+    -- context of the failed constraint, which may contain extra binders.
+    originEnv = boundContextToEnv checkedExprCtx
+    expectedDoc = prettyDisplayType freeCtx checkedExprCtx (Unforced originEnv checkedExprExpectedType)
+    actualDoc = prettyDisplayType freeCtx checkedExprCtx (Unforced originEnv checkedExprActualType)
 
-      let problemDescription = case origin of
-            CheckingInstanceType (InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ (ident, _) (Right (FieldTypesMatch f1 f2)) _)) ->
-              "."
-                <> line
-                <> "In the declaration of"
-                  <+> quotePretty (nameOf ident)
-                  <+> "field"
-                  <+> quotePretty (nameOf f1)
-                  <+> "has type:"
-                <> line
-                <> indent 2 (squotes (prettyFriendly (WithContext e1 namedBoundCtx)))
-                <> line
-                <> "which is not the same as the type of field"
-                  <+> quotePretty (nameOf f2)
-                <> line
-                <> indent 2 (squotes (prettyFriendly (WithContext e2 namedBoundCtx)))
-            _ ->
-              "."
-                <+> "In particular"
-                <+> squotes (prettyFriendly (WithContext e1 namedBoundCtx))
-                <+> "is not equal to"
-                <+> squotes (prettyFriendly (WithContext e2 namedBoundCtx))
-                <> "."
+    failedCtx = boundContextOf ctx
+    expectedPartDoc = prettyDisplayType freeCtx failedCtx e1
+    actualPartDoc = prettyDisplayType freeCtx failedCtx e2
 
-      let fixDescription = case origin of
-            CheckingInstanceType (InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ _ (Right (FieldTypesMatch f1 f2)) _)) ->
-              "either remove the @tensor annotation or ensure"
-                <+> quotePretty (nameOf f1)
-                <+> "and"
-                <+> quotePretty (nameOf f2)
-                <+> "have the same type"
-            _ ->
-              "check your types"
+    subject = case checkedExpr of
+      Left (Just name) -> "variable" <+> quotePretty name
+      Left Nothing -> "this variable"
+      Right expr -> squotes (prettyFriendly (WithContext expr (toNamedBoundCtx checkedExprCtx)))
 
-      VehicleUserError
-        { provenance = Just $ provenanceOf ctx,
-          problem =
-            originMessage
-              <> problemDescription,
-          fix = Just fixDescription
-        }
+    differenceNote
+      | sameDoc expectedPartDoc expectedDoc && sameDoc actualPartDoc actualDoc = ""
+      | otherwise =
+          line
+            <> "They differ in that the expected type has"
+              <+> squotes expectedPartDoc
+              <+> "where the actual type has"
+              <+> squotes actualPartDoc
+            <> "."
+
+    sameDoc :: UnAnnDoc -> UnAnnDoc -> Bool
+    sameDoc d1 d2 = layoutAsString d1 == layoutAsString d2
+
+-- | Lays out an expected and actual type one above the other so that they
+-- can be easily compared.
+expectedActualBlock :: Doc a -> Doc a -> Doc a
+expectedActualBlock expected actual =
+  "Expected:" <+> align expected
+    <> line
+    <> "Actual:  " <+> align actual
+
+-- | The error for when a unification constraint arising from an instance
+-- constraint fails.
+instanceTypeMismatchError ::
+  forall builtin.
+  (PrintableBuiltin builtin) =>
+  ConstraintContext builtin ->
+  InstanceConstraintOrigin builtin ->
+  ThunkWithMetas builtin ->
+  ThunkWithMetas builtin ->
+  VehicleError
+instanceTypeMismatchError ctx origin e1 e2 = do
+  let namedBoundCtx = toNamedBoundCtx (boundContextOf ctx)
+  let originMessage = case origin of
+        InstanceArgOrigin ArgOrigin {..} ->
+          "unable to find a consistent type for the overloaded expression"
+            <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
+        InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ _ (Right sort) _) ->
+          "All fields of record declarations annotated with" <+> quotePretty sort <+> "must have the same type"
+        InstanceTypeRestrictionOrigin {} ->
+          ""
+
+  let problemDescription = case origin of
+        InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ (ident, _) (Right (FieldTypesMatch f1 f2)) _) ->
+          "."
+            <> line
+            <> "In the declaration of"
+              <+> quotePretty (nameOf ident)
+              <+> "field"
+              <+> quotePretty (nameOf f1)
+              <+> "has type:"
+            <> line
+            <> indent 2 (squotes (prettyFriendly (WithContext e1 namedBoundCtx)))
+            <> line
+            <> "which is not the same as the type of field"
+              <+> quotePretty (nameOf f2)
+            <> line
+            <> indent 2 (squotes (prettyFriendly (WithContext e2 namedBoundCtx)))
+        _ ->
+          "."
+            <+> "In particular"
+            <+> squotes (prettyFriendly (WithContext e1 namedBoundCtx))
+            <+> "is not equal to"
+            <+> squotes (prettyFriendly (WithContext e2 namedBoundCtx))
+            <> "."
+
+  let fixDescription = case origin of
+        InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ _ (Right (FieldTypesMatch f1 f2)) _) ->
+          "either remove the @tensor annotation or ensure"
+            <+> quotePretty (nameOf f1)
+            <+> "and"
+            <+> quotePretty (nameOf f2)
+            <+> "have the same type"
+        _ ->
+          "check your types"
+
+  VehicleUserError
+    { provenance = Just $ provenanceOf ctx,
+      problem = originMessage <> problemDescription,
+      fix = Just fixDescription
+    }
 
 --------------------------------------------------------------------------------
 -- FailedInstanceConstraintError
@@ -487,38 +546,19 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
 
     instantiateTelescope :: BoundCtx (Type builtin) -> UnforcedTypeWithMetas builtin -> [(Arg builtin, Bool)] -> Doc a
     instantiateTelescope ctx typ arguments = do
-      let (forcedType, _) =
-            runNorm displayFreeCtx $
-              MetaSubstitution.forceThunkWithMetas (toNamedBoundCtx ctx) emptyMetaVariableContext typ
+      let forcedType =
+            runFreeContext (abstractUserDefinitions freeEnv) $
+              MetaSubstitution.forceThunkWithUnsolvedMetas (toNamedBoundCtx ctx) typ
       case (forcedType, arguments) of
         (VPi binder _, [])
-          | isExplicit binder -> prettyNormalised ctx typ
+          | isExplicit binder -> prettyDisplayType freeEnv ctx typ
         (VPi binder (Closure env body), args) -> do
           let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
           let recType = Unforced (alterEnv env) body
           let unnormBinder = unnormalise (boundCtxLv ctx) binder
           instantiateTelescope (unnormBinder : ctx) recType remainingArgs
-        (_, []) -> prettyNormalised ctx typ
+        (_, []) -> prettyDisplayType freeEnv ctx typ
         _ -> "Malformed type-class operation type" <+> prettyVerbose typ <+> "and args" <+> prettyVerbose (fmap fst arguments)
-
-    -- The type of the operation is computed from the typing rules of the
-    -- builtins, and so may contain unevaluated internal computation. It is
-    -- therefore normalised before being displayed to the user.
-    prettyNormalised :: BoundCtx (Type builtin) -> UnforcedTypeWithMetas builtin -> Doc a
-    prettyNormalised ctx typ = do
-      let namedCtx = toNamedBoundCtx ctx
-      let normType =
-            runNorm displayFreeCtx $
-              MetaSubstitution.deepForceWithMetas namedCtx emptyMetaVariableContext typ
-      prettyFriendly (WithContext normType namedCtx)
-
-    -- Normalisation unfolds function definitions, but the user's definitions
-    -- should be displayed as they wrote them. Therefore they are replaced with
-    -- abstract definitions, which normalisation does not unfold.
-    displayFreeCtx :: FreeCtx builtin
-    displayFreeCtx = flip fmap freeEnv $ \case
-      decl@(DefFunction p ident _ typ _) | isUserCode decl -> DefAbstract p ident BuiltinDef typ
-      decl -> decl
 
     findRemainingArgs :: BoundCtx (Type builtin) -> UnforcedBinderWithMetas binder -> [(Arg builtin, Bool)] -> (BoundEnvWithMetas builtin -> BoundEnvWithMetas builtin, [(Arg builtin, Bool)])
     findRemainingArgs ctx binder args = case args of
@@ -550,16 +590,37 @@ prettyTypeClassConstraintOriginExpr ctx fun args = do
         _ -> fun
   prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
 
-prettyUnificationConstraintOriginExpr ::
-  (PrintableBuiltin builtin) =>
-  ConstraintContext builtin ->
-  Expr builtin ->
+-- | Prints a type for display to the user. Types may contain unevaluated
+-- internal computation (e.g. from the typing rules of the builtins), and
+-- therefore they are normalised first. However, the user's own definitions
+-- are not unfolded, so that the type is displayed in terms the user wrote.
+--
+-- If normalisation gets stuck on an unsolved meta-variable then the
+-- partially normalised type may expose internals (e.g. the literal `2` with
+-- an unsolved coercion instance would become `?2 2`), and so the type is
+-- instead displayed unnormalised.
+prettyDisplayType ::
+  (PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
+  FreeCtx builtin ->
+  BoundCtx (Type builtin) ->
+  ThunkWithMetas builtin ->
   Doc a
-prettyUnificationConstraintOriginExpr ctx expr =
-  prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
+prettyDisplayType freeCtx ctx typ = do
+  let namedCtx = toNamedBoundCtx ctx
+  let (normType, blockingMetas) =
+        runFreeContext (abstractUserDefinitions freeCtx) $
+          MetaSubstitution.deepForceWithUnsolvedMetas namedCtx typ
+  if MetaSet.null blockingMetas
+    then prettyFriendly (WithContext normType namedCtx)
+    else prettyFriendly (WithContext typ namedCtx)
 
-runNorm :: FreeCtx builtin -> FreeContextT builtin Identity b -> b
-runNorm freeCtx = runIdentity . runFreeContextT freeCtx
+-- | Normalisation unfolds function definitions, but the user's definitions
+-- should be displayed as they wrote them. Therefore they are replaced with
+-- abstract definitions, which normalisation does not unfold.
+abstractUserDefinitions :: FreeCtx builtin -> FreeCtx builtin
+abstractUserDefinitions = fmap $ \case
+  decl@(DefFunction p ident _ typ _) | isUserCode decl -> DefAbstract p ident BuiltinDef typ
+  decl -> decl
 
 unsupportedAnnotationTypeDescription ::
   forall builtin a.
