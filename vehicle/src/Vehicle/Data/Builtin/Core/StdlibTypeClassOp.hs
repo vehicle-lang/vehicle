@@ -44,6 +44,11 @@ instance Pretty StdlibTypeClassOp where
     SubTC -> "-"
     MulTC -> "*"
     DivTC -> "/"
+    NegTC -> "-"
+    AtTC -> "!"
+    ForeachTC -> "foreach"
+    MapTC -> "map"
+    FoldTC -> "fold"
     ComparisonTC op -> pretty op
 
 -- | All the stdlib type-class operations.
