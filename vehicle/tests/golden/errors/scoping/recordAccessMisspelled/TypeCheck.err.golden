@@ -1,0 +1,2 @@
+Error in file 'spec.vcl' at Line 9, Columns 15-20: there is no record with the field 'sped' in scope.
+Fix: did you mean 'speed'?

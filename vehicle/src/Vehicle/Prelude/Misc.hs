@@ -367,14 +367,14 @@ readRat str = case readFloat (Text.unpack str) of
 --------------------------------------------------------------------------------
 -- Spelling
 
-mispellingsSortedByLikelihood :: (HasName object Name) => object -> [object] -> [object]
-mispellingsSortedByLikelihood symbol possibilities = do
-  let scoredPossibilities = mapMaybe (symbol `isMispellingOf`) possibilities
+misspellingsSortedByLikelihood :: (HasName object Name) => object -> [object] -> [object]
+misspellingsSortedByLikelihood symbol possibilities = do
+  let scoredPossibilities = mapMaybe (symbol `isMisspellingOf`) possibilities
   let finalPossibilities = sortOn snd scoredPossibilities
   fmap fst finalPossibilities
 
-isMispellingOf :: (HasName object Name) => object -> object -> Maybe (object, Int)
-isMispellingOf symbol possibility = do
+isMisspellingOf :: (HasName object Name) => object -> object -> Maybe (object, Int)
+isMisspellingOf symbol possibility = do
   let fieldName = Text.unpack $ nameOf symbol
   let distance = levenshteinDistance defaultEditCosts fieldName (Text.unpack $ nameOf possibility)
   if distance <= length fieldName `div` 2

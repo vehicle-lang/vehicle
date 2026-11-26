@@ -17,7 +17,9 @@ data ModuleScopingInterface builtin = ModuleScopingInterface
   { recordIdentifiersByField :: Map FieldName (Identifier, Telescope builtin),
     recordIdentifiersByFields :: Map (Set FieldName) (Identifier, Telescope builtin),
     fieldsByRecordIdentifier :: Map Identifier (Set FieldName),
-    declsIdentifiersByName :: Map Name Identifier
+    -- | The identifiers of the declarations in the module, along with the
+    -- location at which they were declared.
+    declsProvenanceByName :: Map Name DeclProvenance
   }
   deriving stock (Generic)
 
@@ -29,7 +31,7 @@ emptyModuleScopingInterface =
     { recordIdentifiersByField = mempty,
       recordIdentifiersByFields = mempty,
       fieldsByRecordIdentifier = mempty,
-      declsIdentifiersByName = mempty
+      declsProvenanceByName = mempty
     }
 
 data ModuleTypingInterface builtin = ModuleTypingInterface

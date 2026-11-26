@@ -1,0 +1,2 @@
+Error in file 'spec.vcl' at Line 3, Columns 8-12: annotating the record 'Pair' with @tensor is not currently supported as it has parameters.
+Fix: remove the @tensor annotation, or open an issue at https://github.com/vehicle-lang/vehicle/issues/ to discuss adding support.
