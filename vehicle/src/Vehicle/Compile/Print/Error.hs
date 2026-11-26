@@ -990,22 +990,41 @@ scopeErrorDetails = \case
             then Nothing
             else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
       }
-  DeclarationDeclarationShadowing p name _matching ->
-    VehicleUserError
-      { provenance = Just p,
-        problem = "multiple" <+> typDoc <+> "with the name" <+> quotePretty name,
-        fix = Just "remove or rename the duplicate definitions"
-      }
-    where
-      typDoc = either (const "record fields declared") (const "declarations") name
-  DeclarationBoundShadowing p name ->
+  DeclarationDeclarationShadowing p name existingDecl@(existingIdent, _) ->
     VehicleUserError
       { provenance = Just p,
         problem =
-          "cannot re-use the name"
+          "multiple"
+            <+> typDoc
+            <+> "with the name"
+            <+> either quotePretty quotePretty name
+            <> "."
+              <+> "It was previously declared"
+            <> recordDoc
+            <> prettyDeclarationLocation p existingDecl
+            <> ".",
+        fix = Just "remove or rename one of the duplicate definitions."
+      }
+    where
+      typDoc = either (const "record fields") (const "declarations") name
+      recordDoc = case name of
+        Left {} -> " in the record" <+> quotePretty (nameOf existingIdent :: Name)
+        Right {} -> ""
+  DeclarationBoundShadowing p name existingDecl@(_, existingProv) ->
+    VehicleUserError
+      { provenance = Just p,
+        problem =
+          "cannot use the name"
             <+> quotePretty name
-            <+> "as a local variable because there is already a declaration with that name.",
-        fix = Just "rename either the original declaration or this variable"
+            <+> "for a local variable as it is already the name of a declaration"
+            <> prettyDeclarationLocation p existingDecl
+            <> "."
+              <+> "Local variables are not allowed to shadow declarations.",
+        fix =
+          Just $
+            if isInSameFile p existingProv
+              then "rename either this variable or the declaration."
+              else "rename this variable."
       }
   UnmatchedRecord p fields maybeBestMatch -> case maybeBestMatch of
     Nothing ->
@@ -1209,3 +1228,21 @@ missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
                  [] -> ""
                  _ -> pretty is
              )
+
+--------------------------------------------------------------------------------
+-- Utilities
+
+isInSameFile :: Provenance -> Provenance -> Bool
+isInSameFile p1 p2 = file p1 == file p2
+
+-- | Describes the location of an existing declaration relative to the location
+-- of the error. Returns an empty document if the location is unknown.
+prettyDeclarationLocation :: Provenance -> DeclProvenance -> Doc a
+prettyDeclarationLocation errorProv (ident, declProv)
+  | file declProv == file noProvenance = moduleDoc
+  | isInSameFile errorProv declProv = " at" <+> pretty (range declProv)
+  | otherwise = moduleDoc <+> "(" <> pretty declProv <> ")"
+  where
+    moduleDoc
+      | isInSameFile errorProv declProv = ""
+      | otherwise = " in module" <+> quotePretty (modulePath ident)

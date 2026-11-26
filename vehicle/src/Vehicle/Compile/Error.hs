@@ -114,8 +114,12 @@ instance Pretty RecordMatch where
 data ScopeError
   = UnboundName Provenance Name [Name]
   | UnboundRecordAccessor Provenance Name [Name]
-  | DeclarationDeclarationShadowing Provenance (Either FieldName Name) Identifier
-  | DeclarationBoundShadowing Provenance Name
+  | -- | The provenance of the new declaration, its name, and the existing
+    -- declaration it clashes with.
+    DeclarationDeclarationShadowing Provenance (Either FieldName Name) DeclProvenance
+  | -- | The provenance of the bound variable, its name, and the existing
+    -- declaration it clashes with.
+    DeclarationBoundShadowing Provenance Name DeclProvenance
   | UnmatchedRecord Provenance [FieldName] (Maybe (Identifier, RecordMatch))
   | -- Unsupported @tensor records
     ZeroFieldTensorLike DeclProvenance

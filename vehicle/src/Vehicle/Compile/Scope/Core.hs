@@ -88,10 +88,17 @@ addNewRecordDefField ::
   m ()
 addNewRecordDefField ident telescope newField = do
   ModuleScopingInterface {..} <- get
-  case Map.lookup newField recordIdentifiersByField of
+  case Map.lookupIndex newField recordIdentifiersByField of
     Nothing -> return ()
-    Just (existingIdentifier, _) ->
-      throwError $ DeclarationDeclarationShadowing (provenanceOf newField) (Left newField) existingIdentifier
+    Just index -> do
+      -- Note that we retrieve the key stored in the map, rather than using
+      -- `newField`, as the former contains the provenance of the original field.
+      let (existingField, (existingIdentifier, _)) = Map.elemAt index recordIdentifiersByField
+      throwError $
+        DeclarationDeclarationShadowing
+          (provenanceOf newField)
+          (Left newField)
+          (existingIdentifier, provenanceOf existingField)
 
   put $
     ModuleScopingInterface
@@ -123,14 +130,14 @@ addNewDecl decl = do
   ModuleScopingInterface {..} <- get
   let ident = identifierOf decl
   let name = nameOf ident
-  case Map.lookup name declsIdentifiersByName of
+  case Map.lookup name declsProvenanceByName of
     Nothing -> return ()
-    Just existingIdent ->
-      throwError $ DeclarationDeclarationShadowing (provenanceOf decl) (Right name) existingIdent
+    Just existingDecl ->
+      throwError $ DeclarationDeclarationShadowing (provenanceOf decl) (Right name) existingDecl
 
   put $
     ModuleScopingInterface
-      { declsIdentifiersByName = Map.insert name ident declsIdentifiersByName,
+      { declsProvenanceByName = Map.insert name (ident, provenanceOf decl) declsProvenanceByName,
         ..
       }
 
@@ -181,11 +188,11 @@ addBinder binder continuation = do
     Just (name, p) -> do
       maybeFreeVar <- lookupFreeVariable name
       case maybeFreeVar of
-        Just {} ->
+        Just existingDecl ->
           -- This restriction is needed so that
           -- `Vehicle.Compile.ResourceFunctionalisation`
           -- doesn't accidentally capture variables.
-          throwError $ DeclarationBoundShadowing p name
+          throwError $ DeclarationBoundShadowing p name existingDecl
         Nothing -> return ()
 
   flip local continuation $ \LocalCtx {..} ->
@@ -200,7 +207,7 @@ lookupVariable p name = do
   case maybeResult of
     Just result -> return result
     Nothing -> do
-      nonLocalNames <- concatInNonLocalCtx (Map.keys . declsIdentifiersByName)
+      nonLocalNames <- concatInNonLocalCtx (Map.keys . declsProvenanceByName)
       localNames <- asks (catMaybes . boundCtx)
       let closestMatches = mispellingsSortedByLikelihood name (localNames <> nonLocalNames)
       throwError $ UnboundName p name closestMatches
@@ -209,17 +216,17 @@ lookupMaybeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe (Either Id
 lookupMaybeVariable name = do
   maybeFreeVar <- lookupFreeVariable name
   case maybeFreeVar of
-    Just ident -> return $ Just $ Left ident
+    Just (ident, _) -> return $ Just $ Left ident
     Nothing -> do
       maybeIx <- lookupBoundVariable name
       case maybeIx of
         Just ix -> return $ Just $ Right ix
         Nothing -> return Nothing
 
-lookupFreeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe Identifier)
+lookupFreeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe DeclProvenance)
 lookupFreeVariable name = do
   LocalCtx {..} <- ask
-  return $ lookupInCombinedContext scopingInterface (Map.lookup name . declsIdentifiersByName) currentModuleCtx importedCtx
+  return $ lookupInCombinedContext scopingInterface (Map.lookup name . declsProvenanceByName) currentModuleCtx importedCtx
 
 lookupBoundVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe Ix)
 lookupBoundVariable name = do
