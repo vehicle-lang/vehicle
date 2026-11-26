@@ -69,7 +69,7 @@ typeOfBuiltinFunction = \case
   Max dom -> case dom of
     MaxRatTensor -> typeOfTensorOp2 tRat
   Pow dom -> case dom of
-    PowRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRat ~> tRatTensor dims
+    PowRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dimNil ~> tRatTensor dims
   Log dom -> case dom of
     LogRatTensor -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dims
   Exp dom -> case dom of

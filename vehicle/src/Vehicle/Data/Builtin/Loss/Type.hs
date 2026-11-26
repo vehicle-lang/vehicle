@@ -308,7 +308,7 @@ typeOfPowRatTensor :: DSLExpr (LossBuiltin mode)
 typeOfPowRatTensor =
   forAllGradients $ \g ->
     forAllDims $ \dims ->
-      tTensor (tRat .@@ [g]) dims ~> tRat ~> tTensor (tRat .@@ [g]) dims
+      tTensor (tRat .@@ [g]) dims ~> tRatTensorWithoutGradients dimNil ~> tTensor (tRat .@@ [g]) dims
 
 typeOfPointwiseCompareRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOfPointwiseCompareRatTensor t1 t2 t3 =
