@@ -7,6 +7,7 @@ module Vehicle.Compile.Print.Error.Typing
   )
 where
 
+import Control.Applicative ((<|>))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Monoid (Endo (..))
@@ -456,7 +457,7 @@ instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType tc) candida
     originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
 
     isCoercion = isCoercionExpr tcOp
-    actualArgs = if isCoercion then tcOpArgs else []
+    opApplication = (boundContextOf ctx, tcOpArgs)
 
     -- The type of the overloaded expression at the point it is used, i.e.
     -- its type instantiated with the arguments of the type class constraint
@@ -466,15 +467,12 @@ instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType tc) candida
       let goalTypeArgs = case tc of
             App _ args -> NonEmpty.toList args
             _ -> []
-      calculateInstanceDisplayType freeCtx (boundContextOf ctx) isCoercion tcOpType goalTypeArgs actualArgs
+      calculateInstanceDisplayType freeCtx isCoercion tcOpType (boundContextOf ctx, 0, goalTypeArgs) opApplication
 
-    -- This assumes that the parameters of the type-class instance are the first arguments of the type-class operation.
-    -- e.g. if `HasAdd t1 t2 t3` then `add` has type `forall {t1 t2 t3} . X`. If this is not the case then this function
-    -- will not work.
     candidateOpType :: (Int, FailedInstanceCandidate builtin) -> UnAnnDoc
     candidateOpType (no, (candidate, err)) = do
-      let (candidateTypeArgs, solutionCtx) = calculateInstanceCandidateTypeArgs candidate
-      let finalTypeDoc = calculateInstanceDisplayType freeCtx solutionCtx isCoercion tcOpType candidateTypeArgs actualArgs
+      let candidateTypeArgs = calculateInstanceCandidateTypeArgs candidate
+      let finalTypeDoc = calculateInstanceDisplayType freeCtx isCoercion tcOpType candidateTypeArgs opApplication
       pretty no
         <> "." <+> finalTypeDoc
         <> line
@@ -510,84 +508,149 @@ calculateInstanceCandidateTypeArgs ::
   forall builtin.
   (PrintableBuiltin builtin) =>
   WithContext (InstanceCandidate builtin) ->
-  ([Arg builtin], BoundCtx (Expr builtin))
+  (BoundCtx (Expr builtin), Int, [Arg builtin])
 calculateInstanceCandidateTypeArgs (WithContext candidate typingCtx) =
-  calculateCandidateType typingCtx (candidateExpr candidate)
+  calculateCandidateType typingCtx 0 (candidateExpr candidate)
   where
-    calculateCandidateType :: BoundCtx (Expr builtin) -> Expr builtin -> ([Arg builtin], BoundCtx (Expr builtin))
-    calculateCandidateType dbCtx = \case
-      Builtin _ _tc -> ([], dbCtx)
-      FreeVar _ _ident -> ([], dbCtx)
+    -- Returns the arguments of the head of the candidate, the context they
+    -- live in, and the number of pattern variables of the candidate.
+    calculateCandidateType :: BoundCtx (Expr builtin) -> Int -> Expr builtin -> (BoundCtx (Expr builtin), Int, [Arg builtin])
+    calculateCandidateType dbCtx numberOfPatternVars = \case
+      Builtin _ _tc -> (dbCtx, numberOfPatternVars, [])
+      FreeVar _ _ident -> (dbCtx, numberOfPatternVars, [])
       App (Builtin _ _tc) args ->
-        (NonEmpty.toList args, dbCtx)
+        (dbCtx, numberOfPatternVars, NonEmpty.toList args)
       App (FreeVar _ _ident) args ->
-        (NonEmpty.toList args, dbCtx)
+        (dbCtx, numberOfPatternVars, NonEmpty.toList args)
       Pi _ binder result ->
-        calculateCandidateType (binder : dbCtx) result
+        calculateCandidateType (binder : dbCtx) (numberOfPatternVars + 1) result
       t -> developerError $ "UNSUPPORTED PRINTING" <+> prettyVerbose t
 
+-- | Calculates the type of an overloaded operation at a particular instance
+-- of its type class, e.g. the type of `+` at the instance
+-- `HasAdd Nat Nat Nat` is `Nat -> Nat -> Nat`.
+--
+-- The type of an overloaded operation consists of the parameters of the type
+-- class, followed by the instance argument, followed by the rest of the type,
+-- e.g. `addTC : {t1 t2 t3} -> {{HasAdd t1 t2 t3}} -> t1 -> t2 -> t3`.
+-- There are two sources of information about how to instantiate it:
+--
+--   1. the arguments of the type class (see `typeClassParameterArgs`), and
+--   2. the arguments that the operation is applied to in the source, e.g. the
+--      length of a vector literal and its elements.
+--
+-- Where both are available, the argument of the type class is preferred,
+-- unless it is uninformative, i.e. a pattern variable of the instance or an
+-- unsolved meta-variable, in which case the argument of the application is
+-- used if it is informative.
 calculateInstanceDisplayType ::
   forall builtin a.
   (NormalisableBuiltin builtin, PrintableBuiltin builtin) =>
   FreeCtx builtin ->
-  BoundCtx (Type builtin) ->
   -- | Whether the overloaded operation is a coercion.
   Bool ->
+  -- | The type of the overloaded operation.
   Type builtin ->
-  [Arg builtin] ->
-  [Arg builtin] ->
+  -- | The arguments of the type class, along with the context they live in
+  -- and the number of pattern variables of the instance at the head of the
+  -- context.
+  (BoundCtx (Type builtin), Int, [Arg builtin]) ->
+  -- | The arguments that the operation is applied to, along with the context
+  -- that they live in. The context of the type class arguments must be an
+  -- extension of this context.
+  (BoundCtx (Type builtin), [Arg builtin]) ->
   Doc a
-calculateInstanceDisplayType freeEnv boundCtx isCoercion fullType actualArgs typingArgs = do
-  let normFullType = Unforced (boundContextToEnv boundCtx) fullType
-  let opArgs = mergeArgs actualArgs typingArgs
-  instantiateTelescope boundCtx normFullType opArgs
+calculateInstanceDisplayType freeEnv isCoercion opType (argsCtx, numberOfPatternVars, typeClassArgs) (appCtx, appArgs) = do
+  let opTypeValue = Unforced (boundContextToEnv argsCtx) opType
+  instantiateOpTypeForDisplay argsCtx opTypeValue (typeClassParameterArgs opType typeClassArgs) appArgs
   where
-    -- This is a complete hack
-    mergeArgs :: [Arg builtin] -> [Arg builtin] -> [(Arg builtin, Bool)]
-    mergeArgs args1 [] = fmap (,True) args1
-    mergeArgs [] args2 = fmap (,False) args2
-    mergeArgs (arg1 : args1) (arg2 : args2) = do
-      let arg
-            | isAbstract arg2 = (arg1, True)
-            | isAbstract arg1 = (arg2, False)
-            | otherwise = (arg1, True)
-      arg : mergeArgs args1 args2
-      where
-        isAbstract :: Arg builtin -> Bool
-        isAbstract (argExpr -> e) = case e of
-          Hole {} -> True
-          BoundVar {} -> True
-          _ -> False
+    -- The value to instantiate a parameter with, given the corresponding
+    -- arguments of the type class and of the application (if any).
+    parameterValue :: Maybe (Arg builtin) -> Maybe (Arg builtin) -> Maybe (UnforcedTypeWithMetas builtin)
+    parameterValue typeClassArg appArg =
+      (typeClassArg >>= informativeTypeClassArgValue)
+        <|> (appArg >>= informativeValue appCtx . argExpr)
+        <|> fmap (Unforced (boundContextToEnv argsCtx) . argExpr) typeClassArg
 
-    instantiateTelescope :: BoundCtx (Type builtin) -> UnforcedTypeWithMetas builtin -> [(Arg builtin, Bool)] -> Doc a
-    instantiateTelescope ctx typ arguments = do
+    informativeTypeClassArgValue :: Arg builtin -> Maybe (UnforcedTypeWithMetas builtin)
+    informativeTypeClassArgValue arg = case argExpr arg of
+      BoundVar _ ix | unIx ix < numberOfPatternVars -> Nothing
+      e -> informativeValue argsCtx e
+
+    informativeValue :: BoundCtx (Type builtin) -> Expr builtin -> Maybe (UnforcedTypeWithMetas builtin)
+    informativeValue ctx = \case
+      Hole {} -> Nothing
+      Meta {} -> Nothing
+      App (Meta {}) _ -> Nothing
+      e -> Just (Unforced (boundContextToEnv ctx) e)
+
+    -- Instantiates the leading binders of the type of the operation. Each
+    -- value lives in the context it came from, both of which `ctx` extends,
+    -- and `ctx` is only extended by the binders that are not instantiated.
+    instantiateOpTypeForDisplay ::
+      BoundCtx (Type builtin) ->
+      UnforcedTypeWithMetas builtin ->
+      [Maybe (Arg builtin)] ->
+      [Arg builtin] ->
+      Doc a
+    instantiateOpTypeForDisplay ctx typ typeClassParamArgs remainingAppArgs = do
       let forcedType =
             runFreeContext (abstractUserDefinitions freeEnv) $
               MetaSubstitution.forceThunkWithUnsolvedMetas (toNamedBoundCtx ctx) typ
-      case (forcedType, arguments) of
-        (VPi binder _, [])
-          -- Coercions are inserted by the compiler and are invisible to the
-          -- user, who only sees the expression being coerced (e.g. the
-          -- literal `0`). Therefore the type shown is the result type of the
-          -- coercion, rather than the type of the coercion function itself.
-          | isExplicit binder && not isCoercion -> prettyDisplayType freeEnv ctx typ
-        (VPi binder (Closure env body), args) -> do
-          let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
-          let recType = Unforced (alterEnv env) body
-          let unnormBinder = unnormalise (boundCtxLv ctx) binder
-          instantiateTelescope (unnormBinder : ctx) recType remainingArgs
-        (_, []) -> prettyDisplayType freeEnv ctx typ
-        _ -> "Malformed type-class operation type" <+> prettyVerbose typ <+> "and args" <+> prettyVerbose (fmap fst arguments)
+      case forcedType of
+        -- Coercions are inserted by the compiler and are invisible to the
+        -- user, who only sees the expression being coerced (e.g. the
+        -- literal `0`). Therefore the type shown is the result type of the
+        -- coercion, rather than the type of the coercion function itself.
+        VPi binder closure | not (isExplicit binder) || isCoercion -> do
+          let (typeClassArg, typeClassParamArgs') = case typeClassParamArgs of
+                [] -> (Nothing, [])
+                a : as -> (a, as)
+          let (appArg, remainingAppArgs') = case remainingAppArgs of
+                arg : args | visibilityMatches arg binder -> (Just arg, args)
+                _ -> (Nothing, remainingAppArgs)
+          let continueWith newCtx body =
+                instantiateOpTypeForDisplay newCtx body typeClassParamArgs' remainingAppArgs'
+          case parameterValue typeClassArg appArg of
+            Just value -> continueWith ctx (extendClosure closure binder value)
+            Nothing -> do
+              let unnormBinder = unnormalise (boundCtxLv ctx) binder
+              continueWith (unnormBinder : ctx) (extendClosureWithBound closure binder (boundCtxLv ctx))
+        _ -> prettyDisplayType freeEnv ctx typ
 
-    findRemainingArgs :: BoundCtx (Type builtin) -> UnforcedBinderWithMetas binder -> [(Arg builtin, Bool)] -> (BoundEnvWithMetas builtin -> BoundEnvWithMetas builtin, [(Arg builtin, Bool)])
-    findRemainingArgs ctx binder args = case args of
-      [] -> (extendEnvWithBound (boundCtxLv ctx) binder, [])
-      ((arg, fromCandidate) : remainingArgs)
-        | visibilityOf arg == visibilityOf binder || fromCandidate -> do
-            let normArg = Unforced (boundContextToEnv ctx) (argExpr arg)
-            (extendEnvWithDefined normArg binder, remainingArgs)
-        | isExplicit binder -> developerError "Missing explicit argument when printing"
-        | otherwise -> (extendEnvWithBound (boundCtxLv ctx) binder, args)
+-- | Matches the type of an overloaded operation against the arguments of its
+-- type class, returning for each of the leading parameters of the type of the
+-- operation the argument of the type class that it should be instantiated
+-- with (if any).
+--
+-- For example, if the type of the operation is
+-- `{t1 t2 t3} -> {{HasAdd t1 t2 t3}} -> t1 -> t2 -> t3` and the arguments of
+-- the type class are `[Nat, Nat, Nat]` then the parameters `t1`, `t2` and
+-- `t3` are each instantiated with `Nat`.
+typeClassParameterArgs :: forall builtin. Type builtin -> [Arg builtin] -> [Maybe (Arg builtin)]
+typeClassParameterArgs opType typeClassArgs = go 0 opType
+  where
+    go :: Int -> Type builtin -> [Maybe (Arg builtin)]
+    go numberOfParameters = \case
+      Pi _ binder body
+        | isInstance binder -> do
+            let instanceTypeArgs = case typeOf binder of
+                  App _ args -> NonEmpty.toList args
+                  _ -> []
+            -- The parameter that each argument of the instance binder's type
+            -- refers to, where parameters are numbered from the start of the
+            -- type of the operation.
+            let referencedParameter instanceTypeArg = case argExpr instanceTypeArg of
+                  BoundVar _ ix | unIx ix < numberOfParameters -> Just (numberOfParameters - 1 - unIx ix)
+                  _ -> Nothing
+            let assignment =
+                  [ (parameter, typeClassArg)
+                    | (instanceTypeArg, typeClassArg) <- zip instanceTypeArgs typeClassArgs,
+                      Just parameter <- [referencedParameter instanceTypeArg]
+                  ]
+            [lookup parameter assignment | parameter <- [0 .. numberOfParameters - 1]]
+        | not (isExplicit binder) -> go (numberOfParameters + 1) body
+      _ -> []
 
 --------------------------------------------------------------------------------
 -- Utilities
