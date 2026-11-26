@@ -2,6 +2,10 @@
 
 ## Next release
 
+### Loss backend
+
+* Gradient-based counter-example and witness search via `search` is now available for TensorFlow in `vehicle_lang.loss.tensorflow`, as well as the existing PyTorch implementation in `vehicle_lang.loss.pytorch`.
+
 ### Solver backend
 
 * The error message for a `@dataset` whose dimensions are not constant now correctly refers to it as a `@dataset` rather than a `@parameter`.
