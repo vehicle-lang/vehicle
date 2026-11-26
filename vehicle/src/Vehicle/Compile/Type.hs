@@ -283,27 +283,20 @@ solveConstraints proxy = logCompilerSection2 MaxDetail "constraint solving" $ do
     runSolvers = do
       runApplicationSolver proxy
       runUnificationSolver proxy True
-      runInstanceSolver proxy 0
+      runInstanceSolver proxy
       runAuxiliarySolver proxy
 
     tryToUnstick :: (TCM builtin m) => m Bool
     tryToUnstick = do
-      -- First try to increase the depth limit for instance search
-      solvedMetas <- logCompilerSection2 MaxDetail "trying to increase the depth for instance search" $ do
-        trackSolvedMetas proxy $ runInstanceSolver proxy 1
+      -- First try to use default instances
+      success <- logCompilerSection2 MaxDetail "trying to generate a new constraint using instance defaults" $ do
+        addNewInstanceConstraintUsingDefaults proxy
 
-      if not (MetaSet.null solvedMetas)
+      if success
         then return True
-        else do
-          -- Then if that fails try to use default instances
-          success <- logCompilerSection2 MaxDetail "trying to generate a new constraint using instance defaults" $ do
-            addNewInstanceConstraintUsingDefaults proxy
-
-          if success
-            then return True
-            else logCompilerSection2 MaxDetail "trying to generate a new constraint using instance defaults" $ do
-              -- Then if that fails try to use default auxiliary instances
-              generateDefaultAuxiliaryConstraint proxy
+        else logCompilerSection2 MaxDetail "trying to generate a new constraint using instance defaults" $ do
+          -- Then if that fails try to use default auxiliary instances
+          generateDefaultAuxiliaryConstraint proxy
 
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks

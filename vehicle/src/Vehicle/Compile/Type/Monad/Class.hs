@@ -198,17 +198,6 @@ addBuiltinTypeToDatabase builtin builtinType = do
             }
       }
 
--- | Track the metas solved while performing the provided computation.
--- Multiple calls can be nested arbitrarily deeply. As meta solutions are
--- never removed, the metas solved during the computation are exactly
--- those solved afterwards that were not solved beforehand.
-trackSolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m () -> m MetaSet
-trackSolvedMetas proxy performComputation = do
-  solvedBefore <- getSolvedMetas proxy
-  performComputation
-  solvedAfter <- getSolvedMetas proxy
-  return $ MetaSet.difference solvedAfter solvedBefore
-
 getIsUnblockedFn ::
   forall builtin m constraint.
   (MonadTypeChecker builtin m) =>
@@ -246,10 +235,6 @@ substMetaVariablesAt ::
 substMetaVariablesAt ctx x = do
   s <- getMetaVariableCtx
   MetaSubstitution.substMetasAt ctx s x
-
--- | The set of solved metas. Note this is O(n).
-getSolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet
-getSolvedMetas _proxy = solvedMetaIDs <$> getMetaVariableCtx @builtin
 
 -- | The set of unsolved metas. Note this is O(n).
 getUnsolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet

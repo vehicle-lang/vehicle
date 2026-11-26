@@ -16,7 +16,6 @@ module Vehicle.Compile.Type.Meta.Variable
     traverseMetaTypesAndSolutions,
     unsolvedMetaInfos,
     solvedMetaInfos,
-    solvedMetaIDs,
   )
 where
 
@@ -24,7 +23,6 @@ import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
-import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Data.Code.ForcedValue (GluedExprWithMetas)
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
 
@@ -206,11 +204,6 @@ unsolvedMetaInfos = unsolvedMetaMap
 -- | The information about, and solution to, each solved meta-variable.
 solvedMetaInfos :: MetaVariableContext builtin -> MetaMap (SolvedMetaInfo builtin)
 solvedMetaInfos = solvedMetaMap
-
--- | The set of solved meta-variables. Note this is O(n) so to check whether
--- an individual meta-variable is solved use `isMetaSolved` instead.
-solvedMetaIDs :: MetaVariableContext builtin -> MetaSet
-solvedMetaIDs = MetaMap.keys . solvedMetaMap
 
 unknownMetaError :: MetaID -> a
 unknownMetaError meta =
