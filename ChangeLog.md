@@ -6,6 +6,8 @@
 
 * Various improvements to the readability of the error messages produced.
 
+* Fixed a bug where numeric literals could not be used as the exponent of `^`, e.g. `x ^ 2` previously failed to type-check with the error `'Real' is not equal to 'Real'`.
+
 ### Loss backend
 
 * Gradient-based counter-example and witness search via `search` is now available for TensorFlow in `vehicle_lang.loss.tensorflow`, as well as the existing PyTorch implementation in `vehicle_lang.loss.pytorch`.
