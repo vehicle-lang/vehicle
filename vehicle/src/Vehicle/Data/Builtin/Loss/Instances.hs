@@ -3,7 +3,7 @@ module Vehicle.Data.Builtin.Loss.Instances
   )
 where
 
-import Vehicle.Compile.Prelude (HasName (..), Identifier, Relevance (Irrelevant))
+import Vehicle.Compile.Prelude (HasName (..), Identifier, Relevance (Irrelevant), Visibility (..))
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..))
 import Vehicle.Data.AST.Decl (InstancePriority)
@@ -46,8 +46,7 @@ allInstances mode dl =
       <> impliesCandidates dl
       <> booleanReductionOpCandidates dl hasReduceAnd ReduceAndTensor ReduceConjunction
       <> booleanReductionOpCandidates dl hasReduceOr ReduceOrTensor ReduceDisjunction
-      <> ifRatTensorCandidates
-      <> ifNonRatTensorCandidates
+      <> ifCandidates
       <> existsCandidates
       ----------------------
       -- CompareRatTensor --
@@ -74,6 +73,7 @@ allInstances mode dl =
       -- Other --
       -----------
       <> maxGradientInstances
+      <> joinGradientInstances
 
 booleanLiteralCandidates :: Identifier -> [TempCandidate mode]
 booleanLiteralCandidates dl =
@@ -276,25 +276,13 @@ pointwiseComparisonCandidates dl op =
     )
   ]
 
-ifNonRatTensorCandidates :: [TempCandidate mode]
-ifNonRatTensorCandidates =
-  [ ( hasIfNonRatTensor tBool,
+ifCandidates :: [TempCandidate mode]
+ifCandidates =
+  [ ( hasIf tBool,
       builtinFunction If,
       Nothing
     ),
-    ( hasIfNonRatTensor tRatWithGradients,
-      lossBuiltinFunction IfWhoseConditionHasGradients,
-      Nothing
-    )
-  ]
-
-ifRatTensorCandidates :: [TempCandidate mode]
-ifRatTensorCandidates =
-  [ ( hasIfRatTensor tBool,
-      lossBuiltinFunction IfRatTensor,
-      Nothing
-    ),
-    ( hasIfRatTensor tRatWithGradients,
+    ( hasIf tRatWithGradients,
       lossBuiltinFunction IfWhoseConditionHasGradients,
       Nothing
     )
@@ -427,25 +415,80 @@ networkInstances mode =
     )
   ]
 
+-- | The instances are split on the second argument rather than enumerating all four
+-- combinations, so that the third argument is determined as soon as the second is known,
+-- even if the first is not, i.e. `MaxGradients ?g1 WithGradients ?g3` solves `?g3` and
+-- `MaxGradients ?g1 WithoutGradients ?g3` unifies `?g1` and `?g3`.
+--
+-- The default prefers no gradients, as unconstrained gradients are never needed.
 maxGradientInstances :: [TempCandidate mode]
 maxGradientInstances =
-  [ ( maxGradients withGradients withGradients withGradients,
-      unitLit,
+  [ ( forAllGradients $ \g ->
+        maxGradients g withGradients withGradients,
+      implLam "g" tGradient $ const unitLit,
       Nothing
     ),
-    ( maxGradients withoutGradients withGradients withGradients,
-      unitLit,
+    ( forAllGradients $ \g ->
+        maxGradients g withoutGradients g,
+      implLam "g" tGradient $ const unitLit,
+      Just 0
+    )
+  ]
+
+-- | The structural lifting of `MaxGradients` to types. As gradients are irrelevant, all
+-- types which erase to the same type have the same representation and therefore the
+-- solutions are all trivial.
+joinGradientInstances :: [TempCandidate mode]
+joinGradientInstances =
+  [ ( forAllGradientTriples $ \g1 g2 g3 ->
+        maxGradients g1 g2 g3
+          .~~~> joinGradients (tRat .@@ [g1]) (tRat .@@ [g2]) (tRat .@@ [g3]),
+      trivialSolution 4,
       Nothing
     ),
-    ( maxGradients withGradients withoutGradients withGradients,
-      unitLit,
+    ( joinGradients tBool tBool tBool,
+      trivialSolution 0,
       Nothing
     ),
-    ( maxGradients withoutGradients withoutGradients withoutGradients,
-      unitLit,
+    ( joinGradients tNat tNat tNat,
+      trivialSolution 0,
+      Nothing
+    ),
+    ( joinGradients tUnit tUnit tUnit,
+      trivialSolution 0,
+      Nothing
+    ),
+    ( forAllIrrelevantNat "n" $ \n ->
+        joinGradients (tIndex n) (tIndex n) (tIndex n),
+      trivialSolution 1,
+      Nothing
+    ),
+    ( forAllTypeTriples $ \t1 t2 t3 ->
+        forAllDim Irrelevant $ \d ->
+          joinGradients t1 t2 t3
+            .~~~> joinGradients (tVector t1 d) (tVector t2 d) (tVector t3 d),
+      trivialSolution 5,
+      Nothing
+    ),
+    ( forAllTypeTriples $ \t1 t2 t3 ->
+        forAllDims $ \ds ->
+          joinGradients t1 t2 t3
+            .~~~> joinGradients (tTensor t1 ds) (tTensor t2 ds) (tTensor t3 ds),
+      trivialSolution 5,
+      Nothing
+    ),
+    ( forAllTypeTriples $ \t1 t2 t3 ->
+        joinGradients t1 t2 t3
+          .~~~> joinGradients (tList t1) (tList t2) (tList t3),
+      trivialSolution 4,
       Nothing
     )
   ]
+
+-- | A solution that discards the given number of arguments (i.e. the instance's
+-- telescope) and returns the unit literal.
+trivialSolution :: Int -> DSLExpr (LossBuiltin mode)
+trivialSolution n = foldr (\_ body -> lam "_" (Implicit False) Irrelevant type0 (const body)) unitLit (replicate n ())
 
 logicField :: Identifier -> TensorDifferentiableLogicField -> DSLExpr builtin
 logicField logic field = recordProj (freeVar differentiableTensorLogicIdent) (freeVar logic) (FieldName mempty $ nameOf field)

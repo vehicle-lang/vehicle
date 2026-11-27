@@ -12,7 +12,6 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (getDeclType, prependMissingFreeVarImplicitArgs)
 import Vehicle.Compile.Type.System
-import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
@@ -23,8 +22,6 @@ import Vehicle.Data.Builtin.Standard
     DerivedFunction (..),
   )
 import Vehicle.Data.Code.DSL
-import Vehicle.Data.Code.Interface.Args (IfArgs (..), IsArgs (..), StackTensorArgs (..))
-import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.DSL
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
@@ -85,8 +82,6 @@ typeLossCast = \case
 typeLossFunction :: LossBuiltinFunction -> DSLExpr (LossBuiltin mode)
 typeLossFunction = \case
   IfWhoseConditionHasGradients -> developerError "should not be typing `IfWhoseConditionHasGradients`"
-  StackRatTensor -> typeOfStackRatTensor
-  IfRatTensor -> typeIfRatTensor tBool
 
 typeStandardBuiltinType :: BuiltinType -> DSLExpr (LossBuiltin mode)
 typeStandardBuiltinType = \case
@@ -108,8 +103,7 @@ typeStandardConstructor c = case c of
   UnitLiteral -> typeOfBuiltinConstructor c
   IndexLiteral {} -> typeOfBuiltinConstructor c
   NatLiteral {} -> typeOfBuiltinConstructor c
-  -- TODO: known bug. Have to separate out veclit into a specialised rat type that takes the max over gradients
-  VectorLiteral -> typeOfBuiltinConstructor c
+  VectorLiteral -> typeOfVectorLiteralJoin
   BoolTensorLiteral {} -> typeOfBuiltinConstructor c
   NatTensorLiteral {} -> typeOfBuiltinConstructor c
 
@@ -130,9 +124,9 @@ typeLossTypeClass = \case
   HasPointwiseRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
   HasReducedRatTensorCompare {} -> type0 ~> type0 ~> type0 ~> type0
   HasExists -> type0 ~> type0
-  HasIfRatTensor -> type0 ~> type0
-  HasIfNonRatTensor -> type0 ~> type0
+  HasIf -> type0 ~> type0
   MaxGradients {} -> tGradient ~> tGradient ~> tGradient ~> tGradient
+  JoinGradients -> type0 ~> type0 ~> type0 ~> type0
   ValidNetworkType -> type0 ~> type0
   ValidNetworkIOType -> tGradient ~> type0 ~> type0
   ValidDatasetType -> type0 ~> type0
@@ -162,14 +156,10 @@ typeLossTypeClassOp = \case
     forAllTypeTriples $ \t1 t2 t3 ->
       hasReducedRatTensorComparison op t1 t2 t3
         ~~~> typeOfReducedCompareRatTensor t1 t2 t3
-  IfRatTensorTCOp ->
+  IfTCOp ->
     forAllTypes $ \t ->
-      hasIfRatTensor t
-        ~~~> typeIfRatTensor t
-  IfNonRatTensorTCOp ->
-    forAllTypes $ \t ->
-      hasIfNonRatTensor t
-        ~~~> typeNonRatTensorIf t
+      hasIf t
+        ~~~> typeOfJoinedIf t
   ExistsTCOp ->
     forAllTypes $ \t ->
       hasExists t
@@ -220,7 +210,7 @@ typeStandardFunction f = case f of
           ~> tBoolTensor dims
           ~> tRatTensorWithoutGradients dimNil
           ~> tTensor (tRat .@@ [g]) dims
-  StackTensor -> typeOfBuiltinFunction f
+  StackTensor -> typeOfStackTensorJoin
   CompareIndex {} -> typeOfBuiltinFunction f
   CompareNat {} -> typeOfBuiltinFunction f
   Add AddNat -> typeOfBuiltinFunction f
@@ -228,7 +218,7 @@ typeStandardFunction f = case f of
   Not -> typeOfBuiltinFunction f
   And -> typeOfBuiltinFunction f
   Or -> typeOfBuiltinFunction f
-  If -> typeNonRatTensorIf tBool
+  If -> typeOfJoinedIf (tBoolTensor dimNil)
   Implies -> typeOfBuiltinFunction f
   ReduceAndTensor -> typeOfBuiltinFunction f
   ReduceOrTensor -> typeOfBuiltinFunction f
@@ -246,31 +236,50 @@ typeStandardFunction f = case f of
   where
     removed = developerError $ pretty f <+> "should have been removed prior to loss type-checking"
 
-typeOfStackRatTensor :: DSLExpr (LossBuiltin mode)
-typeOfStackRatTensor =
-  forAll "n" tNat $ \n ->
-    forAllDim Relevant $ \d ->
-      forAllDims $ \ds ->
-        iterate (tGradient ~> type0) (accumulateGradient ds) n (finalTensor d ds)
-          @@ [withoutGradients]
-  where
-    finalTensor d ds =
-      explLam "g" tGradient $ \g ->
-        tTensor (tRat .@@ [g]) (dimCons d ds)
-
-accumulateGradient ::
-  DSLExpr (LossBuiltin mode) ->
+-- | The type of a sequence of `d` elements of types `mkElem t1`, ..., `mkElem td` that are
+-- combined into a value of type `mkResult t` where `t` is the join of `seed`, `t1`, ..., `td`:
+--
+--   forall t1 j1 . {{JoinGradients seed t1 j1}} -> mkElem t1 ->
+--   ...
+--   forall td jd . {{JoinGradients j(d-1) td jd}} -> mkElem td ->
+--   mkResult jd
+--
+-- The seed is the element type of the standard builtin, whose gradients are left to be
+-- inferred. For a non-empty sequence it is only constrained by the join with the first
+-- element, so the solver infers its shape from that element and then the `MaxGradients`
+-- defaults (see `maxGradientInstances`) set its gradients to `WithoutGradients`, the
+-- identity of the join. For an empty sequence it is the element type of the result and
+-- so is instead determined by the context.
+typeOfJoinedSequence ::
+  (DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)) ->
+  (DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)) ->
   DSLExpr (LossBuiltin mode) ->
   DSLExpr (LossBuiltin mode) ->
   DSLExpr (LossBuiltin mode)
-accumulateGradient ds recurse base =
-  explLam "g" tGradient $ \maxGradientSoFar ->
-    forAllGradients $ \elementGradient ->
-      forAllGradients $ \newMaxGradient ->
-        maxGradients maxGradientSoFar elementGradient newMaxGradient
-          .~~~> tTensor (tRat .@@ [elementGradient]) ds
-          ~> (recurse @@ [base])
-          @@ [newMaxGradient]
+typeOfJoinedSequence mkElem mkResult seed d =
+  iterate (type0 ~> type0) step d (explLam "t" type0 mkResult) @@ [seed]
+  where
+    -- Consumes the next element, given the join of the types of the elements so far.
+    step recurse base =
+      explLam "t1" type0 $ \joinSoFar ->
+        forAll "t2" type0 $ \elemType ->
+          forAll "t3" type0 $ \newJoin ->
+            joinGradients joinSoFar elemType newJoin
+              .~~~> mkElem elemType
+              ~> (recurse @@ [base, newJoin])
+
+typeOfVectorLiteralJoin :: DSLExpr (LossBuiltin mode)
+typeOfVectorLiteralJoin =
+  forAll "t" type0 $ \seed ->
+    forAllDim Relevant $ \d ->
+      typeOfJoinedSequence id (`tVector` d) seed d
+
+typeOfStackTensorJoin :: DSLExpr (LossBuiltin mode)
+typeOfStackTensorJoin =
+  forAll "t" type0 $ \seed ->
+    forAllDim Relevant $ \d ->
+      forAllDims $ \ds ->
+        typeOfJoinedSequence (`tTensor` ds) (\t -> tTensor t (dimCons d ds)) seed d
 
 typeOp1 :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOp1 t = t ~> t
@@ -332,28 +341,16 @@ typeOfCompareRatTensor t1 t2 t3 =
         ~> tTensor t2 (append tNat pointwiseDims reduceDims)
         ~> tTensor t3 pointwiseDims
 
-typeNonRatTensorIf :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
-typeNonRatTensorIf inputType =
-  forAllTypes $ \t ->
-    tTensor inputType dimNil ~> t ~> t ~> t
-
--- | The two branches need not have the same gradient, e.g. `if c then x else 0.0`, so the result
--- takes the join of them.
-typeIfRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
-typeIfRatTensor conditionType =
-  forAllGradientTriples $ \g1 g2 g3 ->
-    maxGradients g1 g2 g3
-      .~~~> pi
-        (Just "ds")
-        Explicit
-        Irrelevant
-        tDims
-        ( \dims ->
-            tTensor conditionType dimNil
-              ~> tTensor (tRat .@@ [g1]) dims
-              ~> tTensor (tRat .@@ [g2]) dims
-              ~> tTensor (tRat .@@ [g3]) dims
-        )
+-- | The two branches need not have the same gradients, e.g. `if c then x else 0.0`,
+-- so the result type is the join of their types.
+typeOfJoinedIf :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+typeOfJoinedIf conditionType =
+  forAllTypeTriples $ \t1 t2 t3 ->
+    joinGradients t1 t2 t3
+      .~~~> tTensor conditionType dimNil
+      ~> t1
+      ~> t2
+      ~> t3
 
 typeOfQuantifierOrSearch :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 typeOfQuantifierOrSearch outputType = do
@@ -469,22 +466,8 @@ convertToLossBuiltins decl = do
             ReduceMaxRatTensor -> convertTo 1 (StandardBuiltinFunction f)
             WhereTensor -> convertTo 1 (StandardBuiltinFunction f)
             SearchRatTensor -> convertTo 1 (StandardBuiltinFunction f)
-            -- Polymorphic functions that may need to specialised to Rat
-            If -> case getExpr accessSpine args of
-              Just (IfArgs (ITensorType IRatTypeWithGradients dims) c x y) ->
-                return $
-                  normAppList
-                    (Builtin p (LossBuiltinTypeClassOp IfRatTensorTCOp))
-                    [explicitIrrelevant dims, explicit c, explicit x, explicit y]
-              _ -> convertTo 1 (LossBuiltinTypeClassOp IfNonRatTensorTCOp)
-            StackTensor -> case getExpr accessSpine args of
-              -- Only rational stacks carry gradients, and the arity replaces the element type.
-              Just (StackTensorArgs elementType d ds xs)
-                | isRatType elementType ->
-                    return $
-                      normAppList (Builtin p (LossBuiltinFunction StackRatTensor)) $
-                        implicit (arityOf xs) : implicit d : implicit ds : fmap explicit xs
-              _ -> sameFunction f
+            If -> convertTo 1 (LossBuiltinTypeClassOp IfTCOp)
+            StackTensor -> sameFunction f
             -- Nothing needs to change
             Add AddNat -> sameFunction f
             Mul MulNat -> sameFunction f
@@ -504,9 +487,9 @@ convertToLossBuiltins decl = do
             -- Should have been eliminated
             QuantifyRatTensor Forall -> developerError "`forall`s should have been eliminated"
             QuantifyRecord {} -> developerError "quantifiers should have been eliminated"
-        BuiltinConstructor c -> return $ case c of
-          BoolTensorLiteral {} -> castWith FromBoolTensorTC (sameConstructor c)
-          _ -> sameConstructor c
+        BuiltinConstructor c -> case c of
+          BoolTensorLiteral {} -> return $ castWith FromBoolTensorTC (sameConstructor c)
+          _ -> return $ sameConstructor c
         BuiltinType t -> case t of
           RatType -> return $ normAppList (Builtin p $ StandardBuiltinType t) [explicitIrrelevant (mkRatTypeArg p)]
           BoolType -> return $ mkBoolTypeExpr p
@@ -520,14 +503,6 @@ convertToLossBuiltins decl = do
         -- Nothing changes
         sameFunction f = return $ normAppList (Builtin p (StandardBuiltinFunction f)) args
         sameConstructor c = normAppList (Builtin p $ StandardBuiltinConstructor c) args
-
-        arityOf elements = Builtin p (StandardBuiltinConstructor (NatLiteral (length elements)))
-
-        -- `Real` has already been given its gradient argument by the time the stack is reached.
-        isRatType = \case
-          Builtin _ (StandardBuiltinType RatType) -> True
-          App (Builtin _ (StandardBuiltinType RatType)) _ -> True
-          _ -> False
 
         -- Apply a cast
         prependHoles n xs = replicate n (implicit $ Hole p "_") <> xs

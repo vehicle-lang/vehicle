@@ -441,7 +441,7 @@ solveArgInsertionProblem ctx problem@ArgInsertionProblem {..} = do
       | otherwise -> do
           -- Force the current expected type to normalise
           (forcedExpectedType, blockingMetas) <- forceApplicationHeadType ctx currentExpectedType
-          logDebug MaxDetail ("normalising type to" <+> prettyExternal (WithContext forcedExpectedType (toNamedBoundCtx ctx)))
+          logDebug MaxDetail ("normalised type to" <+> prettyExternal (WithContext forcedExpectedType (toNamedBoundCtx ctx)))
           case forcedExpectedType of
             -- If the forced expression is a `Pi` then well we've lost the user's types but we can proceed
             Pi _ binder resultType -> checkArgsAgainstPiType ctx problem binder resultType

@@ -21,8 +21,7 @@ import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.ForcedValue (isVTypeUniverse)
-import Vehicle.Data.Code.Interface (IsArgs (..), SearchRatTensorArgs (..), accessLambda)
-import Vehicle.Data.Code.Interface.Patterns
+import Vehicle.Data.Code.Interface (IfArgs (..), IsArgs (..), SearchRatTensorArgs (..), StackTensorArgs (..), VectorLitArgs (..), accessLambda)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, getDeclEntry, isFunctionWhoseReturnType, runFreshFreeContextT, traverseProgDecls)
 
 convertToLossTensors ::
@@ -74,23 +73,30 @@ convertBackFromLossBuiltins = traverse $ traverseBuiltinsM $ \p b args -> do
     LossBuiltinCast {} -> gradientOpErr
     LossBuiltinFunction f -> case f of
       IfWhoseConditionHasGradients -> throwError $ UnsupportedIfLossOperation p
-      StackRatTensor -> case args of
-        _arity : d : ds : xs ->
-          return $
-            normAppList (Builtin p (BuiltinFunction StackTensor)) $
-              implicit IRatType : d : ds : xs
-        _ -> developerError "Malformed type-checked StackRatTensor"
-      IfRatTensor -> case args of
-        dims : c : x : y ->
-          return $
-            normAppList (Builtin p (BuiltinFunction If)) $
-              implicit (ITensorType IRatType (argExpr dims)) : c : x : y
-        _ -> developerError "Malformed type-checked IfRatTensor"
     -- Remaining candidates
-    StandardBuiltinConstructor c -> return $ normAppList (Builtin p $ BuiltinConstructor c) args
+    StandardBuiltinConstructor c -> case c of
+      VectorLiteral -> case args of
+        elemType : d : _ ->
+          return $
+            normAppList (Builtin p $ BuiltinConstructor c) $
+              mkExpr accessSpine (VectorLitArgs (argExpr elemType) (argExpr d) (filterExplicitArgs args))
+        _ -> developerError "Malformed type-checked vector literal"
+      _ -> return $ normAppList (Builtin p $ BuiltinConstructor c) args
     StandardBuiltinType t -> return $ normAppList (Builtin p $ BuiltinType t) args
     StandardBuiltinFunction f -> case f of
       QuantifyRatTensor Exists -> handleExistsWithoutGradients p args
+      StackTensor -> case args of
+        elemType : d : ds : _ ->
+          return $
+            normAppList (Builtin p $ BuiltinFunction f) $
+              mkExpr accessSpine (StackTensorArgs (argExpr elemType) (argExpr d) (argExpr ds) (filterExplicitArgs args))
+        _ -> developerError "Malformed type-checked stack"
+      If -> case (filter isImplicit args, filterExplicitArgs args) of
+        (_ : _ : resultType : _, [c, x, y]) ->
+          return $
+            normAppList (Builtin p $ BuiltinFunction f) $
+              mkExpr accessSpine (IfArgs (argExpr resultType) c x y)
+        _ -> developerError "Malformed type-checked if"
       _ -> return $ normAppList (Builtin p $ BuiltinFunction f) args
     StandardDerivedFunction f -> return $ normAppList (Builtin p $ DerivedFunction f) args
   where

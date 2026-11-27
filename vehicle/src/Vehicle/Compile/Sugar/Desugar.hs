@@ -661,8 +661,8 @@ elabQuantifyRatTensor quant tk args = do
   let fn = V.Builtin p (V.BuiltinFunction (V.QuantifyRatTensor quant))
   pDims <- elabExpr $ B.Nil $ mkToken B.TokNil "nil"
   let implArgs = [V.implicitIrrelevant pDims]
-  explicitArgs <- fmap V.explicit <$> traverse elabExpr args
-  return $ V.normAppList fn (implArgs ++ explicitArgs)
+  explArgs <- fmap V.explicit <$> traverse elabExpr args
+  return $ V.normAppList fn (implArgs ++ explArgs)
 
 findRelevance :: [B.Modality] -> V.Relevance
 findRelevance ms

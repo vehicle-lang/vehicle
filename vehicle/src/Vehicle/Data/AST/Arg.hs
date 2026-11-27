@@ -133,3 +133,6 @@ mapArgs ::
   [GenericArg expr1] ->
   [GenericArg expr2]
 mapArgs f = fmap (fmap f)
+
+filterExplicitArgs :: [GenericArg expr] -> [expr]
+filterExplicitArgs = fmap argExpr . filter isExplicit

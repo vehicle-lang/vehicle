@@ -104,18 +104,12 @@ data LossBuiltinFunction
     -- unsupported, but we use this constructor as a marker so we can throw a
     -- reasonable error after type-checking.
     IfWhoseConditionHasGradients
-  | -- | A `stack` whose elements each keep their own gradient.
-    StackRatTensor
-  | -- | An `if` operation whose branches each keep their own gradient.
-    IfRatTensor
   deriving stock (Eq, Ord, Show, Generic)
   deriving anyclass (Hashable)
 
 instance Pretty LossBuiltinFunction where
   pretty = \case
     IfWhoseConditionHasGradients -> "ifWhoseConditionHasGradients"
-    StackRatTensor -> "stackRatTensor"
-    IfRatTensor -> "ifRatTensor"
 
 --------------------------------------------------------------------------------
 -- Type-classes
@@ -128,12 +122,12 @@ data LossBuiltinTypeClass
   | HasImplies
   | HasReduceAnd
   | HasReduceOr
-  | HasIfRatTensor
-  | HasIfNonRatTensor
+  | HasIf
   | HasPointwiseRatTensorCompare ComparisonOp
   | HasReducedRatTensorCompare ComparisonOp
   | HasExists
   | MaxGradients
+  | JoinGradients
   | ValidNetworkType
   | ValidNetworkIOType
   | ValidDatasetType
@@ -152,10 +146,10 @@ instance Pretty LossBuiltinTypeClass where
     HasReduceOr -> "HasReduceOr"
     HasPointwiseRatTensorCompare op -> "HasPointwiseRatTensorCompare" <> brackets (pretty op)
     HasReducedRatTensorCompare op -> "HasReducedRatTensorCompare" <> brackets (pretty op)
-    HasIfRatTensor -> "HasIfRatTensor"
-    HasIfNonRatTensor -> "HasIfNonRatTensor"
+    HasIf -> "HasIf"
     HasExists -> "HasExists"
     MaxGradients -> "MaxGradients"
+    JoinGradients -> "JoinGradients"
     ValidNetworkType -> "ValidNetworkType"
     ValidNetworkIOType -> "ValidNetworkIOType"
     ValidDatasetType -> "ValidDatasetType"
@@ -175,8 +169,7 @@ data LossBuiltinTypeClassOp
   | CompareRatTensorPointwiseTCOp ComparisonOp
   | CompareRatTensorReducedTCOp ComparisonOp
   | ExistsTCOp
-  | IfRatTensorTCOp
-  | IfNonRatTensorTCOp
+  | IfTCOp
   deriving stock (Eq, Ord, Show, Generic)
   deriving anyclass (Hashable)
 
@@ -192,8 +185,7 @@ instance Pretty LossBuiltinTypeClassOp where
     CompareRatTensorPointwiseTCOp op -> comparisonOpName op <> "RatTensorPointwiseTC"
     CompareRatTensorReducedTCOp op -> comparisonOpName op <> "RatTensorReducedTC"
     ExistsTCOp -> "existsTC"
-    IfRatTensorTCOp -> "ifRatTensorTCOp"
-    IfNonRatTensorTCOp -> "ifNonRatTensorTCOp"
+    IfTCOp -> "ifTC"
 
 --------------------------------------------------------------------------------
 -- Functions
@@ -628,11 +620,8 @@ hasBoolLiterals t = lossTypeClass HasBoolLiterals @@ [t]
 hasExists :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 hasExists t = lossTypeClass HasExists @@ [t]
 
-hasIfRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
-hasIfRatTensor t = lossTypeClass HasIfRatTensor @@ [t]
-
-hasIfNonRatTensor :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
-hasIfNonRatTensor t = lossTypeClass HasIfNonRatTensor @@ [t]
+hasIf :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+hasIf t = lossTypeClass HasIf @@ [t]
 
 hasNot :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 hasNot t = lossTypeClass HasNot @@ [t]
@@ -672,6 +661,12 @@ validNetworkIOType g t = lossTypeClass ValidNetworkIOType @@ [g, t]
 
 maxGradients :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
 maxGradients g1 g2 g3 = lossTypeClass MaxGradients @@ [g1, g2, g3]
+
+-- | The lifting of `MaxGradients` to types, i.e. `t3` is the type `t1` and `t2` erase
+-- to, with each gradient in it being the maximum of the corresponding gradients in
+-- `t1` and `t2`.
+joinGradients :: DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode) -> DSLExpr (LossBuiltin mode)
+joinGradients t1 t2 t3 = lossTypeClass JoinGradients @@ [t1, t2, t3]
 
 pattern IRatTypeWithGradients :: Expr (LossBuiltin mode)
 pattern IRatTypeWithGradients <- App (Builtin _ (StandardBuiltinType RatType)) _

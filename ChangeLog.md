@@ -10,6 +10,8 @@
 
 ### Loss backend
 
+* Fixed a bug where vector literals, tensor literals and `if` expressions whose elements or branches had different gradients were not compiled correctly, e.g. `[1.0, x]` where `x` has gradients, including when nested within vectors and tensors.
+
 * Gradient-based counter-example and witness search via `search` is now available for TensorFlow in `vehicle_lang.loss.tensorflow`, as well as the existing PyTorch implementation in `vehicle_lang.loss.pytorch`.
 
 ### Solver backend
