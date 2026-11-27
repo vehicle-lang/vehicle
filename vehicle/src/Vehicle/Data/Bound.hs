@@ -14,7 +14,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
-import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorIndices, TensorShape, allTensor, anyTensor, zipWithTensor)
+import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorIndices, TensorShape, allTensor, zipWithTensor)
 import Vehicle.Data.Variable.Bound.Context.Name.Class
 import Vehicle.Data.Variable.Bound.Context.Tensor.Core (KnownPrefixOfTensorShape)
 import Vehicle.Data.Variable.Bound.Level
@@ -337,10 +337,20 @@ data Domain expr = Domain
   }
   deriving stock (Show, Functor)
 
+-- | Returns `False` only if the domain is definitely empty, i.e. there exists
+-- some element of the tensor whose lower bound is strictly greater than its
+-- upper bound.
+--
+-- Note that the strictness of the bounds is deliberately ignored, as the
+-- strictness stored in a `Domain` is an over-approximation that is shared
+-- across all elements of the tensor (see `stackBounds`). Using it here could
+-- therefore cause satisfiable domains to be incorrectly marked as
+-- unsatisfiable. See https://github.com/vehicle-lang/vehicle/issues/1061.
+--
+-- In the long run we should fix `Domain`.
 isSatisfiable :: Domain RatTensor -> Bool
-isSatisfiable (Domain LowerBound {..} UpperBound {..}) = do
-  let relation = combineInequalityRelations lowerBoundRel upperBoundRel
-  anyTensor id $ zipWithTensor (inequalityRelationToOp relation) lowerBoundValue upperBoundValue
+isSatisfiable (Domain LowerBound {..} UpperBound {..}) =
+  allTensor id $ zipWithTensor (<=) lowerBoundValue upperBoundValue
 
 isEquality :: Domain RatTensor -> Bool
 isEquality (Domain LowerBound {..} UpperBound {..}) = do

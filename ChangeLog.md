@@ -18,6 +18,8 @@
 
 * The error message for network inputs that cannot be bounded has been rewritten to be clearer.
 
+* Fixed a bug where a query was passed to the solver even though the bounds on some of its network input elements were inconsistent (e.g. `0 <= x ! 0 <= 1 and x ! 0 >= 31`). Such queries are now correctly detected as unsatisfiable without calling the solver. Previously, Marabou could incorrectly return a witness or counter-example for them.
+
 ### All ITP backends
 
 * Using a feature that is not yet supported by a particular ITP backend (e.g. `transpose` in Agda, `exp` in Rocq) now reports a user-facing error pointing to the offending expression, rather than crashing with an internal developer error.
