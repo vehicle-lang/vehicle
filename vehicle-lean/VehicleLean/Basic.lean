@@ -53,6 +53,9 @@ variable {α β γ : Type} {ds : List ℕ}
 instance instDecidableEq [DecidableEq α] : DecidableEq (Holor α ds) :=
   Fintype.decidablePiFintype
 
+/-- Create a `Holor` with a single element. -/
+def const (a : α) : Holor α [1] := fun _ ↦ a
+
 section order
 
 instance instLE [LE α] : LE (Holor α ds) :=
