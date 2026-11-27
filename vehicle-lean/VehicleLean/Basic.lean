@@ -224,6 +224,10 @@ def pointwiseAnd (x y : Holor Bool ds) : Holor Bool ds :=
 def pointwiseOr (x y : Holor Bool ds) : Holor Bool ds :=
   x.pointwise y or
 
+/-- `not` applied pointwise to a holor. -/
+def pointwiseNot (x : Holor Bool ds) : Holor Bool ds :=
+  fun t ↦ not (x t)
+
 /-- `/` applied pointwise to two holors. -/
 def pointwiseDiv [Div α] (x y : Holor α ds) : Holor α ds :=
   x.pointwise y Div.div
@@ -258,6 +262,10 @@ def reduceOr (x : Holor Bool ds) : Bool := x.fold or false
 /-- The sum of all elements in a holor. -/
 def reduceAdd [AddCommMonoid α] (x : Holor α ds) : α :=
   ∑ t, x t
+
+/-- The product of all elements in a holor. -/
+def reduceMul [CommMonoid α] (x : Holor α ds) : α :=
+  ∏ t, x t
 
 /-- The minimum element in a holor. -/
 def reduceMin [LinearOrder α] [BoundedOrder α] (x : Holor α ds) : α :=
