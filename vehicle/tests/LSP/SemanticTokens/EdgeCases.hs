@@ -34,7 +34,7 @@ test_tokenEdgeCases =
             "1" `as` (SemanticTokenTypes_Number, []),
             "]" `as` (SemanticTokenTypes_Operator, []),
             " ",
-            "in" `eventually` (SemanticTokenTypes_Keyword, []),
+            "in" `as` (SemanticTokenTypes_Keyword, []),
             "\n  ",
             "if" `as` (SemanticTokenTypes_Keyword, []),
             " ",
@@ -104,5 +104,43 @@ test_tokenEdgeCases =
             "x" `as` (SemanticTokenTypes_Variable, []),
             "\n"
           ]
-          AllowLaxOverlaps
+          AllowLaxOverlaps,
+      testCase "search tokens" $
+        expectTokens
+          [ "f" `as` (SemanticTokenTypes_Variable, []),
+            " =\n  ",
+            "let" `as` (SemanticTokenTypes_Keyword, []),
+            " ",
+            "l" `as` (SemanticTokenTypes_Variable, []),
+            " = ",
+            "[" `as` (SemanticTokenTypes_Operator, []),
+            "5" `as` (SemanticTokenTypes_Number, []),
+            "]" `as` (SemanticTokenTypes_Operator, []),
+            " ",
+            "in" `as` (SemanticTokenTypes_Keyword, []),
+            "\n  (",
+            "forall" `as` (SemanticTokenTypes_Keyword, []),
+            " ",
+            "y" `as` (SemanticTokenTypes_Variable, []),
+            " ",
+            "in" `as` (SemanticTokenTypes_Keyword, []),
+            " ",
+            "l" `as` (SemanticTokenTypes_Variable, []),
+            " . ",
+            "True" `as` (SemanticTokenTypes_Keyword, []),
+            ") ",
+            "and" `as` (SemanticTokenTypes_Keyword, []),
+            " (",
+            "exists" `as` (SemanticTokenTypes_Keyword, []),
+            " ",
+            "y" `as` (SemanticTokenTypes_Variable, []),
+            " ",
+            "in" `as` (SemanticTokenTypes_Keyword, []),
+            " ",
+            "l" `as` (SemanticTokenTypes_Variable, []),
+            " . ",
+            "True" `as` (SemanticTokenTypes_Keyword, []),
+            ")\n"
+          ]
+          NoOverlaps
     ]
