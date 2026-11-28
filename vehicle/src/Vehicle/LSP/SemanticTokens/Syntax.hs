@@ -3,17 +3,26 @@ module Vehicle.LSP.SemanticTokens.Syntax
   )
 where
 
+import Control.Lens ((^.))
+import Control.Monad.Writer
+import Data.List (uncons, unsnoc)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes)
+import Data.Text (Text)
 import Data.Text qualified as T
-import Language.LSP.Protocol.Types as Lsp
+import Language.LSP.Protocol.Lens qualified as Lsp
+import Language.LSP.Protocol.Types
   ( SemanticTokenAbsolute,
     SemanticTokenTypes (..),
   )
-import Vehicle.LSP.SemanticTokens.Common (IntermediateSemTok, LspErrorMessage, TokenClass, mkTokPure)
-import Vehicle.Prelude
-  ( Provenance (..),
+import Vehicle.Data.AST.Provenance
+  ( Position (..),
+    Provenance (..),
+    Range (..),
     tkProvenance,
   )
+import Vehicle.LSP.SemanticTokens.Common (IntermediateSemTok, LspErrorMessage, TokenClass, mkTokPure)
 import Vehicle.Syntax.External.Abs
 import Vehicle.Syntax.Parse (parseExternalModule)
 import Vehicle.Syntax.Token
@@ -23,17 +32,22 @@ import Vehicle.Verify.Specification.IO.Read (MonadReadSpecification, readSpecifi
 -- API
 
 -- | Collect tokens from static syntax constructs (i.e. those that don't require semantic info to identify).
-collectSyntaxTokens :: (MonadReadSpecification m) => FilePath -> m (Either LspErrorMessage [Lsp.SemanticTokenAbsolute])
+collectSyntaxTokens :: (MonadReadSpecification m) => FilePath -> m (Either LspErrorMessage [SemanticTokenAbsolute])
 collectSyntaxTokens filePath = do
   moduleText <- readSpecification filePath
-  return $ case parseExternalModule moduleText of
-    Left err -> Left (T.pack err)
-    Right modul -> Right $ catMaybes $ collectSyntaxTokensFromModule modul
+  case parseExternalModule moduleText of
+    Left err -> return $ Left (T.pack err)
+    Right modul -> do
+      (maybeToks, searchTokenRanges) <- runWriterT $ collect modul
+      let searchToks = map (findSearchToken moduleText) searchTokenRanges
+      return $ Right $ removeFakeToks $ catMaybes $ (maybeToks ++ searchToks)
 
 --------------------------------------------------------------------------------
 -- Token creation
 
-mkTok :: (FilePath -> Provenance) -> TokenClass -> IntermediateSemTok
+type TokenProvenance = FilePath -> Provenance
+
+mkTok :: TokenProvenance -> TokenClass -> IntermediateSemTok
 mkTok p = mkTokPure mempty (p mempty)
 
 mkTokFrom :: (IsToken a) => a -> TokenClass -> IntermediateSemTok
@@ -58,278 +72,367 @@ mkNumberTok :: (IsToken a) => a -> IntermediateSemTok
 mkNumberTok = flip mkTokFrom (SemanticTokenTypes_Number, [])
 
 --------------------------------------------------------------------------------
+-- Search tokens and fake tokens (types and utilities)
+
+data SearchTokenRange = SearchToken Text TokenClass Range SearchDirection
+  deriving stock (Show)
+
+data SearchDirection
+  = Forwards
+  | Backwards
+  deriving stock (Show)
+
+type MonadTokenCollection m = MonadWriter [SearchTokenRange] m
+
+fakeTokenIdentifier :: Text
+fakeTokenIdentifier = "__FAKE_TOK__"
+
+mkFakeTok :: (IsToken a) => a -> IntermediateSemTok
+mkFakeTok = flip mkTokFrom (SemanticTokenTypes_Custom fakeTokenIdentifier, [])
+
+removeFakeToks :: [SemanticTokenAbsolute] -> [SemanticTokenAbsolute]
+removeFakeToks = filter $ \tok ->
+  case tok ^. Lsp.tokenType of
+    SemanticTokenTypes_Custom ident -> ident /= fakeTokenIdentifier
+    _ -> True
+
+--------------------------------------------------------------------------------
 -- Token collection
 
-collectSyntaxTokensFromModule :: Module -> [IntermediateSemTok]
+class TokenCollectable a where
+  collect :: (MonadTokenCollection m) => a -> m [IntermediateSemTok]
+
+  collectMany :: (MonadTokenCollection m) => [a] -> m [IntermediateSemTok]
+  collectMany tks = concat <$> traverse collect tks
+
+instance TokenCollectable Module where
+  collect = collectSyntaxTokensFromModule
+
+instance TokenCollectable ImportStatement where
+  collect = collectSyntaxTokensFromImport
+
+instance TokenCollectable Decl where
+  collect = collectSyntaxTokensFromDecl
+
+instance TokenCollectable Expr where
+  collect = collectSyntaxTokensFromExpr
+
+instance TokenCollectable BasicBinder where
+  collect = collectSyntaxTokensFromBasicBinder
+
+instance TokenCollectable NameBinder where
+  collect = collectSyntaxTokensFromNameBinder
+
+instance TokenCollectable TypeBinder where
+  collect = collectSyntaxTokensFromTypeBinder
+
+instance TokenCollectable LetDecl where
+  collect = collectSyntaxTokensFromLetDecl
+
+instance TokenCollectable Arg where
+  collect = collectSyntaxTokensFromArg
+
+instance TokenCollectable Lit where
+  collect = collectSyntaxTokensFromLiteral
+
+instance TokenCollectable RecordFieldAssign where
+  collect = collectSyntaxTokensFromRecordFieldAssign
+
+instance TokenCollectable RecordFieldDef where
+  collect = collectSyntaxTokensFromRecordFieldDef
+
+instance TokenCollectable DeclAnnOption where
+  collect = collectSyntaxTokensFromDeclAnnOpt
+
+(<:>) :: (Monad m) => a -> m [a] -> m [a]
+x <:> mxs = do
+  xs <- mxs
+  return $ x : xs
+
+infixr 5 <:>
+
+(<++>) :: (Monad m) => m [a] -> m [a] -> m [a]
+(<++>) = liftA2 (<>)
+
+infixr 5 <++>
+
+collectSyntaxTokensFromModule :: (MonadTokenCollection m) => Module -> m [IntermediateSemTok]
 collectSyntaxTokensFromModule (DefModule imports decls) =
-  concatMap collectSyntaxTokensFromImport imports
-    ++ concatMap collectSyntaxTokensFromDecl decls
+  collectMany imports
+    <++> collectMany decls
 
 -- TODO: Process (resolved) import statements in semantic pass
-collectSyntaxTokensFromImport :: ImportStatement -> [IntermediateSemTok]
-collectSyntaxTokensFromImport (Import tk _) = [mkKeywordTok tk]
+collectSyntaxTokensFromImport :: (MonadTokenCollection m) => ImportStatement -> m [IntermediateSemTok]
+collectSyntaxTokensFromImport (Import tk _) = return [mkKeywordTok tk]
 
-collectSyntaxTokensFromDecl :: Decl -> [IntermediateSemTok]
+collectSyntaxTokensFromDecl :: (MonadTokenCollection m) => Decl -> m [IntermediateSemTok]
 collectSyntaxTokensFromDecl = \case
   DefAnn tk declAnnOpts -> do
     let annTok = mkTokFrom tk (SemanticTokenTypes_Decorator, [])
     let optToks = case declAnnOpts of
-          DeclAnnWithOpts opts -> concatMap collectSyntaxTokensFromDeclAnnOpt opts
-          DeclAnnWithoutOpts -> []
-    annTok : optToks
+          DeclAnnWithOpts opts -> collectMany opts
+          DeclAnnWithoutOpts -> return []
+    annTok <:> optToks
   DefType tk _name binders expr ->
     mkKeywordTok tk
-      : collectSyntaxTokensFromNameBinders binders
-      ++ collectSyntaxTokensFromExpr expr
+      <:> collectMany binders
+      <++> collect expr
   DefFunType _name tkElemOf expr ->
     mkElemOfTok tkElemOf
-      : collectSyntaxTokensFromExpr expr
+      <:> collect expr
   DefFunExpr _name binders expr ->
-    collectSyntaxTokensFromNameBinders binders
-      ++ collectSyntaxTokensFromExpr expr
+    collectMany binders
+      <++> collect expr
   DefRecord tkRecord _name binders tkWhere fields supports -> do
-    let supportsToks = case supports of
+    let supportsToks = return $ case supports of
           NoSupports -> []
           -- TODO: This maybe should be the responsibility of the semantic pass?
           Supports tk s -> mkKeywordTok tk : map (\(DerivedClass t) -> mkTypeTok t) s
     mkKeywordTok tkRecord
-      : mkKeywordTok tkWhere
-      : collectSyntaxTokensFromNameBinders binders
-      ++ concatMap collectSyntaxTokensFromRecordFieldDef fields
-      ++ supportsToks
+      <:> mkKeywordTok tkWhere
+      <:> collectMany binders
+      <++> collectMany fields
+      <++> supportsToks
 
-collectSyntaxTokensFromRecordFieldDef :: RecordFieldDef -> [IntermediateSemTok]
+collectSyntaxTokensFromRecordFieldDef :: (MonadTokenCollection m) => RecordFieldDef -> m [IntermediateSemTok]
 collectSyntaxTokensFromRecordFieldDef (FieldDef _ tk expr) =
   mkElemOfTok tk
-    : collectSyntaxTokensFromExpr expr
+    <:> collect expr
 
-collectSyntaxTokensFromExprs :: [Expr] -> [IntermediateSemTok]
-collectSyntaxTokensFromExprs = concatMap collectSyntaxTokensFromExpr
-
-collectSyntaxTokensFromExpr :: Expr -> [IntermediateSemTok]
+collectSyntaxTokensFromExpr :: (MonadTokenCollection m) => Expr -> m [IntermediateSemTok]
 collectSyntaxTokensFromExpr = \case
-  Type tk -> [mkTypeTok tk]
+  Type tk -> return [mkTypeTok tk]
   Ann e1 tk e2 ->
     mkElemOfTok tk
-      : collectSyntaxTokensFromExpr e1
-      ++ collectSyntaxTokensFromExpr e2
-  Let tk letDecls e ->
-    mkKeywordTok tk
-      : concatMap collectSyntaxTokensFromLetDecl letDecls
-      ++ collectSyntaxTokensFromExpr e
+      <:> collect e1
+      <++> collect e2
+  Let tk letDecls e -> do
+    let letTok = mkKeywordTok tk
+    letDeclToks <- collectMany letDecls
+    exprToks <- collect e
+    mkSearchToken "in" (SemanticTokenTypes_Keyword, []) (letTok : letDeclToks) exprToks
+    return $ letTok : letDeclToks ++ exprToks
   Lam tkLambda binders tkArrow e ->
     mkKeywordTok tkLambda
-      : mkOperatorTok tkArrow
-      : collectSyntaxTokensFromNameBinders binders
-      ++ collectSyntaxTokensFromExpr e
+      <:> mkOperatorTok tkArrow
+      <:> collectMany binders
+      <++> collect e
   Fun binder tk e ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromTypeBinder binder
-      ++ collectSyntaxTokensFromExpr e
+      <:> collect binder
+      <++> collect e
   App e arg ->
-    collectSyntaxTokensFromExpr e
-      ++ collectSyntaxTokensFromArg arg
+    collect e
+      <++> collect arg
   Record recordFieldAssigns ->
-    concatMap collectSyntaxTokensFromRecordFieldAssign recordFieldAssigns
+    collectMany recordFieldAssigns
   RecordAcc e _fieldAccess ->
-    collectSyntaxTokensFromExpr e
-  Var _name -> []
-  Literal lit -> collectSyntaxTokensFromLiteral lit
-  Hole holeToken -> [mkTokFrom holeToken (SemanticTokenTypes_Macro, [])]
+    collect e
+  Var name -> return [mkFakeTok name]
+  Literal lit -> collect lit
+  Hole holeToken -> return [mkTokFrom holeToken (SemanticTokenTypes_Macro, [])]
   Foreach tk binders e ->
     mkKeywordTok tk
-      : collectSyntaxTokensFromNameBinders binders
-      ++ collectSyntaxTokensFromExpr e
+      <:> collectMany binders
+      <++> collect e
   Forall tk binders e ->
     mkKeywordTok tk
-      : collectSyntaxTokensFromNameBinders binders
-      ++ collectSyntaxTokensFromExpr e
+      <:> collectMany binders
+      <++> collect e
   Exists tk binders e ->
     mkKeywordTok tk
-      : collectSyntaxTokensFromNameBinders binders
-      ++ collectSyntaxTokensFromExpr e
-  -- TODO: Make "in" a position token
-  ForallIn tk binder e1 e2 ->
-    mkKeywordTok tk
-      : collectSyntaxTokensFromNameBinder binder
-      ++ collectSyntaxTokensFromExprs [e1, e2]
-  ExistsIn tk binder e1 e2 ->
-    mkKeywordTok tk
-      : collectSyntaxTokensFromNameBinder binder
-      ++ collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany binders
+      <++> collect e
+  ForallIn tk binder e1 e2 -> do
+    binderToks <- collect binder
+    e1Toks <- collect e1
+    e2Toks <- collect e2
+    mkSearchToken "in" (SemanticTokenTypes_Keyword, []) binderToks e1Toks
+    return $
+      mkKeywordTok tk
+        : binderToks
+        ++ e1Toks
+        ++ e2Toks
+  ExistsIn tk binder e1 e2 -> do
+    binderToks <- collect binder
+    e1Toks <- collect e1
+    e2Toks <- collect e2
+    mkSearchToken "in" (SemanticTokenTypes_Keyword, []) binderToks e1Toks
+    return $
+      mkKeywordTok tk
+        : binderToks
+        ++ e1Toks
+        ++ e2Toks
   Add e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Sub e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Mul e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Div e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Pow e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Neg tk e ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExpr e
+      <:> collect e
   If tkIf e1 tkThen e2 tkElse e3 ->
     mkKeywordTok tkIf
-      : mkKeywordTok tkThen
-      : mkKeywordTok tkElse
-      : collectSyntaxTokensFromExprs [e1, e2, e3]
+      <:> mkKeywordTok tkThen
+      <:> mkKeywordTok tkElse
+      <:> collectMany [e1, e2, e3]
   Impl e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   And e1 tk e2 ->
     mkKeywordTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Or e1 tk e2 ->
     mkKeywordTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Not tk e ->
     mkKeywordTok tk
-      : collectSyntaxTokensFromExpr e
+      <:> collect e
   Eq e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Ne e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Le e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Lt e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Ge e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   Gt e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   EqPoint e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   NePoint e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   LePoint e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   LtPoint e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   GePoint e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   GtPoint e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   VecLiteral tkOpen exprs tkClose ->
     mkOperatorTok tkOpen
-      : mkOperatorTok tkClose
-      : collectSyntaxTokensFromExprs exprs
+      <:> mkOperatorTok tkClose
+      <:> collectMany exprs
   Cons e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
+      <:> collectMany [e1, e2]
   At e1 tk e2 ->
     mkOperatorTok tk
-      : collectSyntaxTokensFromExprs [e1, e2]
-  Min tk -> [mkKeywordTok tk]
-  Max tk -> [mkKeywordTok tk]
-  Log tk -> [mkKeywordTok tk]
-  Exp tk -> [mkKeywordTok tk]
-  AddNat tk -> [mkKeywordTok tk]
-  MulNat tk -> [mkKeywordTok tk]
-  AddRealTensor tk -> [mkKeywordTok tk]
-  SubRealTensor tk -> [mkKeywordTok tk]
-  MulRealTensor tk -> [mkKeywordTok tk]
-  DivRealTensor tk -> [mkKeywordTok tk]
-  NegRealTensor tk -> [mkKeywordTok tk]
-  AtVector tk -> [mkKeywordTok tk]
-  AtTensor tk -> [mkKeywordTok tk]
-  ForeachVector tk -> [mkKeywordTok tk]
-  ForeachTensor tk -> [mkKeywordTok tk]
-  MapList tk -> [mkKeywordTok tk]
-  FoldList tk -> [mkKeywordTok tk]
-  QuantifyForAllIndex tk -> [mkKeywordTok tk]
-  QuantifyExistsIndex tk -> [mkKeywordTok tk]
-  QuantifyForallRealTensor tk -> [mkKeywordTok tk]
-  QuantifyExistsRealTensor tk -> [mkKeywordTok tk]
-  QuantifyForallTensorLike tk -> [mkKeywordTok tk]
-  QuantifyExistsTensorLike tk -> [mkKeywordTok tk]
-  CompareIndexEq tk -> [mkKeywordTok tk]
-  CompareIndexNe tk -> [mkKeywordTok tk]
-  CompareIndexLe tk -> [mkKeywordTok tk]
-  CompareIndexLt tk -> [mkKeywordTok tk]
-  CompareIndexGe tk -> [mkKeywordTok tk]
-  CompareIndexGt tk -> [mkKeywordTok tk]
-  CompareNatEq tk -> [mkKeywordTok tk]
-  CompareNatNe tk -> [mkKeywordTok tk]
-  CompareNatLe tk -> [mkKeywordTok tk]
-  CompareNatLt tk -> [mkKeywordTok tk]
-  CompareNatGe tk -> [mkKeywordTok tk]
-  CompareNatGt tk -> [mkKeywordTok tk]
-  CompareRatTensorPointwiseEq tk -> [mkKeywordTok tk]
-  CompareRatTensorPointwiseNe tk -> [mkKeywordTok tk]
-  CompareRatTensorPointwiseLe tk -> [mkKeywordTok tk]
-  CompareRatTensorPointwiseLt tk -> [mkKeywordTok tk]
-  CompareRatTensorPointwiseGe tk -> [mkKeywordTok tk]
-  CompareRatTensorPointwiseGt tk -> [mkKeywordTok tk]
-  CompareRatTensorReducedEq tk -> [mkKeywordTok tk]
-  CompareRatTensorReducedNe tk -> [mkKeywordTok tk]
-  CompareRatTensorReducedLe tk -> [mkKeywordTok tk]
-  CompareRatTensorReducedLt tk -> [mkKeywordTok tk]
-  CompareRatTensorReducedGe tk -> [mkKeywordTok tk]
-  CompareRatTensorReducedGt tk -> [mkKeywordTok tk]
-  Nil tk -> [mkKeywordTok tk]
-  Append tk -> [mkKeywordTok tk]
-  Const tk -> [mkKeywordTok tk]
-  Transpose tk -> [mkKeywordTok tk]
-  Map tk -> [mkKeywordTok tk]
-  Fold tk -> [mkKeywordTok tk]
-  ReduceOr tk -> [mkKeywordTok tk]
-  ReduceAnd tk -> [mkKeywordTok tk]
-  ReduceAdd tk -> [mkKeywordTok tk]
-  ReduceMul tk -> [mkKeywordTok tk]
-  ReduceMin tk -> [mkKeywordTok tk]
-  ReduceMax tk -> [mkKeywordTok tk]
-  Unit tk -> [mkTypeTok tk]
-  Bool tk -> [mkTypeTok tk]
-  Index tk -> [mkTypeTok tk]
-  Nat tk -> [mkTypeTok tk]
-  Real tk -> [mkTypeTok tk]
-  List tk -> [mkTypeTok tk]
-  Vector tk -> [mkTypeTok tk]
-  Tensor tk -> [mkTypeTok tk]
-  IsTensorType tk -> [mkClassTok tk]
-  NonCastingTensor tk -> [mkClassTok tk]
-  NonCastingReal tk -> [mkClassTok tk]
+      <:> collectMany [e1, e2]
+  Min tk -> return [mkKeywordTok tk]
+  Max tk -> return [mkKeywordTok tk]
+  Log tk -> return [mkKeywordTok tk]
+  Exp tk -> return [mkKeywordTok tk]
+  AddNat tk -> return [mkKeywordTok tk]
+  MulNat tk -> return [mkKeywordTok tk]
+  AddRealTensor tk -> return [mkKeywordTok tk]
+  SubRealTensor tk -> return [mkKeywordTok tk]
+  MulRealTensor tk -> return [mkKeywordTok tk]
+  DivRealTensor tk -> return [mkKeywordTok tk]
+  NegRealTensor tk -> return [mkKeywordTok tk]
+  AtVector tk -> return [mkKeywordTok tk]
+  AtTensor tk -> return [mkKeywordTok tk]
+  ForeachVector tk -> return [mkKeywordTok tk]
+  ForeachTensor tk -> return [mkKeywordTok tk]
+  MapList tk -> return [mkKeywordTok tk]
+  FoldList tk -> return [mkKeywordTok tk]
+  QuantifyForAllIndex tk -> return [mkKeywordTok tk]
+  QuantifyExistsIndex tk -> return [mkKeywordTok tk]
+  QuantifyForallRealTensor tk -> return [mkKeywordTok tk]
+  QuantifyExistsRealTensor tk -> return [mkKeywordTok tk]
+  QuantifyForallTensorLike tk -> return [mkKeywordTok tk]
+  QuantifyExistsTensorLike tk -> return [mkKeywordTok tk]
+  CompareIndexEq tk -> return [mkKeywordTok tk]
+  CompareIndexNe tk -> return [mkKeywordTok tk]
+  CompareIndexLe tk -> return [mkKeywordTok tk]
+  CompareIndexLt tk -> return [mkKeywordTok tk]
+  CompareIndexGe tk -> return [mkKeywordTok tk]
+  CompareIndexGt tk -> return [mkKeywordTok tk]
+  CompareNatEq tk -> return [mkKeywordTok tk]
+  CompareNatNe tk -> return [mkKeywordTok tk]
+  CompareNatLe tk -> return [mkKeywordTok tk]
+  CompareNatLt tk -> return [mkKeywordTok tk]
+  CompareNatGe tk -> return [mkKeywordTok tk]
+  CompareNatGt tk -> return [mkKeywordTok tk]
+  CompareRatTensorPointwiseEq tk -> return [mkKeywordTok tk]
+  CompareRatTensorPointwiseNe tk -> return [mkKeywordTok tk]
+  CompareRatTensorPointwiseLe tk -> return [mkKeywordTok tk]
+  CompareRatTensorPointwiseLt tk -> return [mkKeywordTok tk]
+  CompareRatTensorPointwiseGe tk -> return [mkKeywordTok tk]
+  CompareRatTensorPointwiseGt tk -> return [mkKeywordTok tk]
+  CompareRatTensorReducedEq tk -> return [mkKeywordTok tk]
+  CompareRatTensorReducedNe tk -> return [mkKeywordTok tk]
+  CompareRatTensorReducedLe tk -> return [mkKeywordTok tk]
+  CompareRatTensorReducedLt tk -> return [mkKeywordTok tk]
+  CompareRatTensorReducedGe tk -> return [mkKeywordTok tk]
+  CompareRatTensorReducedGt tk -> return [mkKeywordTok tk]
+  Nil tk -> return [mkKeywordTok tk]
+  Append tk -> return [mkKeywordTok tk]
+  Const tk -> return [mkKeywordTok tk]
+  Transpose tk -> return [mkKeywordTok tk]
+  Map tk -> return [mkKeywordTok tk]
+  Fold tk -> return [mkKeywordTok tk]
+  ReduceOr tk -> return [mkKeywordTok tk]
+  ReduceAnd tk -> return [mkKeywordTok tk]
+  ReduceAdd tk -> return [mkKeywordTok tk]
+  ReduceMul tk -> return [mkKeywordTok tk]
+  ReduceMin tk -> return [mkKeywordTok tk]
+  ReduceMax tk -> return [mkKeywordTok tk]
+  Unit tk -> return [mkTypeTok tk]
+  Bool tk -> return [mkTypeTok tk]
+  Index tk -> return [mkTypeTok tk]
+  Nat tk -> return [mkTypeTok tk]
+  Real tk -> return [mkTypeTok tk]
+  List tk -> return [mkTypeTok tk]
+  Vector tk -> return [mkTypeTok tk]
+  Tensor tk -> return [mkTypeTok tk]
+  IsTensorType tk -> return [mkClassTok tk]
+  NonCastingTensor tk -> return [mkClassTok tk]
+  NonCastingReal tk -> return [mkClassTok tk]
 
-collectSyntaxTokensFromBasicBinder :: BasicBinder -> [IntermediateSemTok]
+collectSyntaxTokensFromBasicBinder :: (MonadTokenCollection m) => BasicBinder -> m [IntermediateSemTok]
 collectSyntaxTokensFromBasicBinder binder =
   mkElemOfTok tk
-    : collectSyntaxTokensFromExpr expr
+    <:> collectSyntaxTokensFromExpr expr
   where
     (tk, expr) = case binder of
       ExplicitBinder _ _ t e -> (t, e)
       ImplicitBinder _ _ t e -> (t, e)
       InstanceBinder _ _ t e -> (t, e)
 
-collectSyntaxTokensFromNameBinders :: [NameBinder] -> [IntermediateSemTok]
-collectSyntaxTokensFromNameBinders = concatMap collectSyntaxTokensFromNameBinder
-
-collectSyntaxTokensFromNameBinder :: NameBinder -> [IntermediateSemTok]
+collectSyntaxTokensFromNameBinder :: (MonadTokenCollection m) => NameBinder -> m [IntermediateSemTok]
 collectSyntaxTokensFromNameBinder = \case
-  ExplicitNameBinder _ -> []
-  ImplicitNameBinder _ _ -> []
-  InstanceNameBinder _ _ -> []
+  ExplicitNameBinder n -> return [mkFakeTok n]
+  ImplicitNameBinder _ n -> return [mkFakeTok n]
+  InstanceNameBinder _ n -> return [mkFakeTok n]
   BasicNameBinder b -> collectSyntaxTokensFromBasicBinder b
 
-collectSyntaxTokensFromTypeBinder :: TypeBinder -> [IntermediateSemTok]
+collectSyntaxTokensFromTypeBinder :: (MonadTokenCollection m) => TypeBinder -> m [IntermediateSemTok]
 collectSyntaxTokensFromTypeBinder = \case
   ExplicitTypeBinder e -> collectSyntaxTokensFromExpr e
   ExplicitTypeBinderMods _ _ e -> collectSyntaxTokensFromExpr e
@@ -338,12 +441,12 @@ collectSyntaxTokensFromTypeBinder = \case
   InstanceTypeBinder _ e -> collectSyntaxTokensFromExpr e
   BasicTypeBinder b -> collectSyntaxTokensFromBasicBinder b
 
-collectSyntaxTokensFromLetDecl :: LetDecl -> [IntermediateSemTok]
+collectSyntaxTokensFromLetDecl :: (MonadTokenCollection m) => LetDecl -> m [IntermediateSemTok]
 collectSyntaxTokensFromLetDecl (LDecl binder expr) =
   collectSyntaxTokensFromNameBinder binder
-    ++ collectSyntaxTokensFromExpr expr
+    <++> collectSyntaxTokensFromExpr expr
 
-collectSyntaxTokensFromArg :: Arg -> [IntermediateSemTok]
+collectSyntaxTokensFromArg :: (MonadTokenCollection m) => Arg -> m [IntermediateSemTok]
 collectSyntaxTokensFromArg arg = collectSyntaxTokensFromExpr expr
   where
     expr = case arg of
@@ -352,33 +455,139 @@ collectSyntaxTokensFromArg arg = collectSyntaxTokensFromExpr expr
       ImplicitArg _ e -> e
       InstanceArg _ e -> e
 
-collectSyntaxTokensFromLiteral :: Lit -> [IntermediateSemTok]
+collectSyntaxTokensFromLiteral :: (MonadTokenCollection m) => Lit -> m [IntermediateSemTok]
 collectSyntaxTokensFromLiteral lit = case lit of
-  UnitLiteral u -> [mkKeywordTok u]
-  BoolLiteral b -> [mkKeywordTok b]
-  NatLiteral n -> [mkNumberTok n]
-  RatLiteral r -> [mkNumberTok r]
-  InfLiteral inf -> [mkKeywordTok inf]
+  UnitLiteral u -> return [mkKeywordTok u]
+  BoolLiteral b -> return [mkKeywordTok b]
+  NatLiteral n -> return [mkNumberTok n]
+  RatLiteral r -> return [mkNumberTok r]
+  InfLiteral inf -> return [mkKeywordTok inf]
 
-collectSyntaxTokensFromRecordFieldAssign :: RecordFieldAssign -> [IntermediateSemTok]
+collectSyntaxTokensFromRecordFieldAssign :: (MonadTokenCollection m) => RecordFieldAssign -> m [IntermediateSemTok]
 collectSyntaxTokensFromRecordFieldAssign (FieldAssign _name expr) = collectSyntaxTokensFromExpr expr
 
-collectSyntaxTokensFromDeclAnnOpt :: DeclAnnOption -> [IntermediateSemTok]
+collectSyntaxTokensFromDeclAnnOpt :: (MonadTokenCollection m) => DeclAnnOption -> m [IntermediateSemTok]
 collectSyntaxTokensFromDeclAnnOpt = \case
   -- TODO: Need to deal with annotations containing names/exprs during semantic pass,
   -- but NameAnnOption and TypeAnnOption currently never make it to the desugared AST.
   -- (See: `Vehicle.Compile.Sugar.Desugar.parseAnnotation`)
   NameAnnOption tk _name ->
-    [ mkTokFrom tk (SemanticTokenTypes_Parameter, [])
-    ]
+    return
+      [ mkTokFrom tk (SemanticTokenTypes_Parameter, [])
+      ]
   InferAnnOption tk b ->
-    [ mkTokFrom tk (SemanticTokenTypes_Parameter, []),
-      mkKeywordTok b
-    ]
+    return
+      [ mkTokFrom tk (SemanticTokenTypes_Parameter, []),
+        mkKeywordTok b
+      ]
   DefaultAnnOption tk n ->
-    [ mkTokFrom tk (SemanticTokenTypes_Parameter, []),
-      mkNumberTok n
-    ]
+    return
+      [ mkTokFrom tk (SemanticTokenTypes_Parameter, []),
+        mkNumberTok n
+      ]
   TypeAnnOption name expr ->
     mkTokFrom name (SemanticTokenTypes_Parameter, [])
-      : collectSyntaxTokensFromExpr expr
+      <:> collectSyntaxTokensFromExpr expr
+
+--------------------------------------------------------------------------------
+-- Search tokens
+
+endOfFile :: Position
+endOfFile = Position (-1) (-1)
+
+findSearchToken :: Text -> SearchTokenRange -> IntermediateSemTok
+findSearchToken moduleText (SearchToken str cls (Range start endOrEof) direction) = do
+  let xs = T.lines moduleText
+  case xs of
+    [] -> Nothing
+    moduleLines -> do
+      let end =
+            if endOrEof == endOfFile
+              then Position (length moduleLines) (T.length $ last moduleLines)
+              else endOrEof
+
+      let zstart = oneToZero start
+      let zend = oneToZero end
+      let searchLines = slice moduleLines (posLine zstart) (posLine zend)
+      case searchLines of
+        [] -> Nothing
+        l : ls -> do
+          let searchLines' = sliceStartAndEndLines (l :| ls) (posColumn zstart) (posColumn zend)
+          let maybeFound = find zstart zend (NonEmpty.toList searchLines')
+          maybe Nothing (flip mkTok cls . Provenance . zeroToOneR) maybeFound
+  where
+    oneToZero (Position l c) = Position (l - 1) (c - 1)
+    zeroToOne (Position l c) = Position (l + 1) (c + 1)
+    zeroToOneR (Range s e) = Range (zeroToOne s) (zeroToOne e)
+
+    slice xs from to = take (to - from + 1) (drop from xs)
+
+    find startPos endPos = case direction of
+      Forwards -> findForwards (posLine startPos)
+      Backwards -> findBackwards (posLine endPos)
+
+    findForwards :: Int -> [Text] -> Maybe Range
+    findForwards startLine allxs = do
+      (x, xs) <- uncons allxs
+      let (prefix, suffix) = T.breakOn str x
+      if T.length suffix > 0
+        then
+          Just $
+            Range
+              (Position startLine (T.length prefix))
+              (Position startLine (T.length prefix + T.length str))
+        else findForwards (startLine + 1) xs
+
+    findBackwards :: Int -> [Text] -> Maybe Range
+    findBackwards endLine allxs = do
+      (xs, x) <- unsnoc allxs
+      let (prefix, _suffix) = T.breakOnEnd str x
+      if T.length prefix > 0
+        then
+          Just $
+            Range
+              (Position endLine (T.length prefix - T.length str))
+              (Position endLine (T.length prefix))
+        else findBackwards (endLine - 1) xs
+
+    sliceStartAndEndLines :: (NonEmpty Text) -> Int -> Int -> (NonEmpty Text)
+    sliceStartAndEndLines xs startColumn endColumn = do
+      let xs' = editFirst (hideFirstNChars startColumn) xs
+      editLast (\x -> hideLastNChars (T.length x - endColumn) x) xs'
+
+    hideFirstNChars n s = T.replicate n " " <> T.drop n s
+    hideLastNChars n s = T.dropEnd n s <> T.replicate n " "
+
+    editFirst :: (a -> a) -> (NonEmpty a) -> (NonEmpty a)
+    editFirst f (x :| xs) = f x :| xs
+
+    editLast :: (a -> a) -> (NonEmpty a) -> (NonEmpty a)
+    editLast f (x :| []) = f x :| []
+    editLast f (x :| (y : ys)) = x :| (NonEmpty.toList $ editLast f (y :| ys))
+
+mkSearchToken :: (MonadTokenCollection m) => Text -> TokenClass -> [IntermediateSemTok] -> [IntermediateSemTok] -> m ()
+mkSearchToken s cls beforeToks afterToks =
+  case (beforePositions, afterPositions) of
+    ([], []) -> return ()
+    ([], afters) -> go Backwards startOfFile (minimum afters)
+    (befores, []) -> go Forwards (maximum befores) endOfFile
+    (befores, afters) -> go Forwards (maximum befores) (minimum afters)
+  where
+    go d b a = tell [SearchToken s cls (Range b a) d]
+
+    beforePositions = map endPosFromSemTok $ catMaybes beforeToks
+    afterPositions = map startPosFromSemTok $ catMaybes afterToks
+
+    startOfFile = Position 1 1
+
+    startPosFromSemTok :: SemanticTokenAbsolute -> Position
+    startPosFromSemTok semTk =
+      Position
+        (fromIntegral $ semTk ^. Lsp.line + 1)
+        (fromIntegral $ semTk ^. Lsp.startChar + 1)
+
+    endPosFromSemTok :: SemanticTokenAbsolute -> Position
+    endPosFromSemTok semTk =
+      Position
+        (fromIntegral $ semTk ^. Lsp.line + 1)
+        (fromIntegral $ semTk ^. Lsp.startChar + semTk ^. Lsp.length + 1)
