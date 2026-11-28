@@ -72,9 +72,40 @@ mkNumberTok :: (IsToken a) => a -> IntermediateSemTok
 mkNumberTok = flip mkTokFrom (SemanticTokenTypes_Number, [])
 
 --------------------------------------------------------------------------------
--- Search tokens and fake tokens (types and utilities)
+-- Search tokens and fake tokens
+--
+-- Certain tokens -- in particular, the "in" keyword in "let .. in", "forall .. in",
+-- and "exists .. in" -- cannot be position tokens due to an upstream limitation
+-- in BNFC (see https://github.com/BNFC/bnfc/issues/372), and therefore we cannot
+-- get their provenance directly.
+--
+-- To work around this, we introduce a "search token": a range in the document
+-- where we expect to find this elusive token, based on the surrounding tokens
+-- whose provenance we can get directly. Then, at the end, we search for all such
+-- tokens by substring match in their respective ranges.
+--
+-- We can be confident that this will work as long as there is only one search
+-- token between otherwise-adjacent position tokens. It falls apart if, between
+-- the search token and its nearest position tokens, there is a non-position
+-- token which contains the search token as a substring.
+--
+-- To facilitate this, we also use "fake tokens": tokens which will not be
+-- emitted to the LSP client, but which are created so that their provenances
+-- are recorded. For example:
+--
+--   let width = thin in
+--
+-- Here, `thin` is a Var, which does not emit a token on the syntax pass.
+-- However, if we discard its token, our search range will be too wide; when
+-- we search for "in", the first instance will be the latter half of "thin".
+-- So we keep around "fake tokens" which are discarded at the end.
 
-data SearchTokenRange = SearchToken Text TokenClass Range SearchDirection
+data SearchTokenRange
+  = SearchToken
+      Text -- the token text to search for
+      TokenClass -- class of the token, once it's found
+      Range -- where in the document to search for the token
+      SearchDirection -- use the first or last instance in the range?
   deriving stock (Show)
 
 data SearchDirection
