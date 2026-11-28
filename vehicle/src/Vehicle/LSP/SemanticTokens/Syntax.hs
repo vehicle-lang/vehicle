@@ -3,9 +3,8 @@ module Vehicle.LSP.SemanticTokens.Syntax
   )
 where
 
-import Control.Lens ((^.))
+import Control.Lens (uncons, unsnoc, (^.))
 import Control.Monad.Writer
-import Data.List (uncons, unsnoc)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes)
