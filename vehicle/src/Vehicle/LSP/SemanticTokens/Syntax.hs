@@ -449,7 +449,7 @@ collectSyntaxTokensFromExpr = \case
 collectSyntaxTokensFromBasicBinder :: (MonadTokenCollection m) => BasicBinder -> m [IntermediateSemTok]
 collectSyntaxTokensFromBasicBinder binder =
   mkElemOfTok tk
-    <:> collectSyntaxTokensFromExpr expr
+    <:> collect expr
   where
     (tk, expr) = case binder of
       ExplicitBinder _ _ t e -> (t, e)
@@ -461,24 +461,24 @@ collectSyntaxTokensFromNameBinder = \case
   ExplicitNameBinder n -> return [mkFakeTok n]
   ImplicitNameBinder _ n -> return [mkFakeTok n]
   InstanceNameBinder _ n -> return [mkFakeTok n]
-  BasicNameBinder b -> collectSyntaxTokensFromBasicBinder b
+  BasicNameBinder b -> collect b
 
 collectSyntaxTokensFromTypeBinder :: (MonadTokenCollection m) => TypeBinder -> m [IntermediateSemTok]
 collectSyntaxTokensFromTypeBinder = \case
-  ExplicitTypeBinder e -> collectSyntaxTokensFromExpr e
-  ExplicitTypeBinderMods _ _ e -> collectSyntaxTokensFromExpr e
-  ImplicitTypeBinder e -> collectSyntaxTokensFromExpr e
-  ImplicitTypeBinderMods _ _ e -> collectSyntaxTokensFromExpr e
-  InstanceTypeBinder _ e -> collectSyntaxTokensFromExpr e
-  BasicTypeBinder b -> collectSyntaxTokensFromBasicBinder b
+  ExplicitTypeBinder e -> collect e
+  ExplicitTypeBinderMods _ _ e -> collect e
+  ImplicitTypeBinder e -> collect e
+  ImplicitTypeBinderMods _ _ e -> collect e
+  InstanceTypeBinder _ e -> collect e
+  BasicTypeBinder b -> collect b
 
 collectSyntaxTokensFromLetDecl :: (MonadTokenCollection m) => LetDecl -> m [IntermediateSemTok]
 collectSyntaxTokensFromLetDecl (LDecl binder expr) =
-  collectSyntaxTokensFromNameBinder binder
-    <++> collectSyntaxTokensFromExpr expr
+  collect binder
+    <++> collect expr
 
 collectSyntaxTokensFromArg :: (MonadTokenCollection m) => Arg -> m [IntermediateSemTok]
-collectSyntaxTokensFromArg arg = collectSyntaxTokensFromExpr expr
+collectSyntaxTokensFromArg arg = collect expr
   where
     expr = case arg of
       ExplicitArg e -> e
@@ -495,7 +495,7 @@ collectSyntaxTokensFromLiteral lit = case lit of
   InfLiteral inf -> return [mkKeywordTok inf]
 
 collectSyntaxTokensFromRecordFieldAssign :: (MonadTokenCollection m) => RecordFieldAssign -> m [IntermediateSemTok]
-collectSyntaxTokensFromRecordFieldAssign (FieldAssign _name expr) = collectSyntaxTokensFromExpr expr
+collectSyntaxTokensFromRecordFieldAssign (FieldAssign _name expr) = collect expr
 
 collectSyntaxTokensFromDeclAnnOpt :: (MonadTokenCollection m) => DeclAnnOption -> m [IntermediateSemTok]
 collectSyntaxTokensFromDeclAnnOpt = \case
@@ -518,7 +518,7 @@ collectSyntaxTokensFromDeclAnnOpt = \case
       ]
   TypeAnnOption name expr ->
     mkTokFrom name (SemanticTokenTypes_Parameter, [])
-      <:> collectSyntaxTokensFromExpr expr
+      <:> collect expr
 
 --------------------------------------------------------------------------------
 -- Search tokens
